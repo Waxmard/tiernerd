@@ -13,6 +13,7 @@ Terminal B (web bundle):
 ```bash
 cd frontend
 npm run web                       # http://localhost:8081
+EXPO_PUBLIC_API_URL=https://<cloud-run-url> npm run web   # target the deployed dev API
 ```
 
 Open `http://localhost:8081`. Chrome DevTools' device toolbar gives a phone-sized layout, and Fast Refresh applies edits without a rebuild.

@@ -70,5 +70,7 @@ frontend-typecheck:
 	cd frontend && npm run typecheck
 
 frontend-e2e:
-	@curl -sf http://localhost:8000/health >/dev/null || { echo "backend not running — run: cd fastapi && make dev DETACHED=1"; exit 1; }
+	@if [ -z "$$EXPO_PUBLIC_API_URL" ]; then \
+		curl -sf http://localhost:8000/health >/dev/null || { echo "backend not running — run: cd fastapi && make dev DETACHED=1, or set EXPO_PUBLIC_API_URL to a deployed API"; exit 1; }; \
+	fi
 	cd frontend && npm run e2e

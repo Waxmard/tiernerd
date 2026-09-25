@@ -31,6 +31,8 @@ The API is structured around the following resources:
 
 {{ include:partials/backend_commands.md }}
 
+{{ include:partials/cloud_dev.md }}
+
 {{ include:partials/backend_testing.md }}
 
 ## Project Structure

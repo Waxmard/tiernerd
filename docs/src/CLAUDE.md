@@ -20,6 +20,8 @@ Monorepo with React Native/Expo frontend and FastAPI backend.
 
 {{ include:partials/frontend_commands.md }}
 
+{{ include:partials/cloud_dev.md }}
+
 {{ include:partials/git_hooks.md }}
 
 {{ include:partials/architecture.md }}

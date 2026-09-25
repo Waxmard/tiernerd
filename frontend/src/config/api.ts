@@ -4,6 +4,11 @@ import { Platform } from 'react-native';
 
 // Get the API base URL dynamically for iOS compatibility
 const getApiBaseUrl = () => {
+  // Explicit override wins, so a local dev server can target a deployed API.
+  const override = process.env.EXPO_PUBLIC_API_URL;
+  if (override) {
+    return override;
+  }
   if (__DEV__) {
     // Web is served by the dev machine, so the API is on the same host.
     if (Platform.OS === 'web') {
