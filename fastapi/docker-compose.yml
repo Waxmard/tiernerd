@@ -33,6 +33,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-prod}
       - APP_ENV=${APP_ENV:-development}
       - CORS_ORIGINS_STR=${CORS_ORIGINS_STR:-http://localhost:8081,http://localhost:19006}
+      - CORS_ORIGIN_REGEX=${CORS_ORIGIN_REGEX:-^http://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):8081$}
       - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-180}
     depends_on:

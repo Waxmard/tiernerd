@@ -24,6 +24,7 @@ help:
 	@echo ""
 	@echo "Frontend (delegates to frontend/package.json scripts):"
 	@echo "  frontend-lint frontend-fix frontend-typecheck"
+	@echo "  frontend-e2e     - Playwright smoke spec against the web bundle"
 
 # ----- Setup -----
 
@@ -58,7 +59,7 @@ backend-%:
 
 # ----- Frontend -----
 
-.PHONY: frontend-lint frontend-fix frontend-typecheck
+.PHONY: frontend-lint frontend-fix frontend-typecheck frontend-e2e
 frontend-lint:
 	cd frontend && npm run lint && npm run format:check
 
@@ -67,3 +68,7 @@ frontend-fix:
 
 frontend-typecheck:
 	cd frontend && npm run typecheck
+
+frontend-e2e:
+	@curl -sf http://localhost:8000/health >/dev/null || { echo "backend not running — run: cd fastapi && make dev DETACHED=1"; exit 1; }
+	cd frontend && npm run e2e

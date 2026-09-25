@@ -17,6 +17,8 @@ class Settings(BaseSettings):
 
     # CORS - stored as comma-separated string, parsed via computed_field
     CORS_ORIGINS_STR: str = ""
+    # Optional regex for origins that can't be listed (e.g. LAN IPs in dev)
+    CORS_ORIGIN_REGEX: str = ""
 
     @computed_field  # type: ignore[prop-decorator]
     @property

@@ -8,6 +8,7 @@ interface FABProps {
   icon?: keyof typeof Ionicons.glyphMap;
   style?: ViewStyle;
   disabled?: boolean;
+  testID?: string;
 }
 
 export const FAB: React.FC<FABProps> = ({
@@ -15,6 +16,7 @@ export const FAB: React.FC<FABProps> = ({
   icon = 'add',
   style,
   disabled = false,
+  testID,
 }) => {
   return (
     <TouchableOpacity
@@ -22,6 +24,7 @@ export const FAB: React.FC<FABProps> = ({
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.8}
+      testID={testID}
     >
       <Ionicons name={icon} size={28} color={AppColors.textOnPrimary} />
     </TouchableOpacity>

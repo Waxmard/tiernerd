@@ -3,7 +3,6 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   StyleSheet,
   Text,
@@ -23,6 +22,7 @@ import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import type { Item } from '../services/itemsService';
 import { listsService } from '../services/listsService';
+import { confirmDestructive, notifyError } from '../utils/confirm';
 
 const TIER_ORDER = ['S', 'A', 'B', 'C', 'D', 'F'] as const;
 
@@ -73,31 +73,24 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     navigation.goBack();
   };
 
-  const handleDelete = () => {
-    Alert.alert(
+  const handleDelete = async () => {
+    const confirmed = await confirmDestructive(
       'Delete List',
       'Are you sure you want to delete this list? All items will be permanently deleted.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            if (!token) return;
-            try {
-              await listsService.deleteList(listId, token);
-              navigation.goBack();
-            } catch (err: unknown) {
-              console.error('Error deleting list:', err);
-              Alert.alert(
-                'Error',
-                err instanceof Error ? err.message : 'Failed to delete list'
-              );
-            }
-          },
-        },
-      ]
+      'Delete'
     );
+    if (!confirmed) return;
+    if (!token) return;
+    try {
+      await listsService.deleteList(listId, token);
+      navigation.goBack();
+    } catch (err: unknown) {
+      console.error('Error deleting list:', err);
+      notifyError(
+        'Error',
+        err instanceof Error ? err.message : 'Failed to delete list'
+      );
+    }
   };
 
   const handleAddPress = () => {
@@ -145,6 +138,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         onPress={handleDelete}
         style={styles.deleteButton}
         activeOpacity={0.7}
+        testID="delete-list"
       >
         <Ionicons name="trash-outline" size={24} color={AppColors.error} />
       </TouchableOpacity>
@@ -232,7 +226,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         {renderHeader()}
         {renderContent()}
 
-        <FAB onPress={handleAddPress} />
+        <FAB onPress={handleAddPress} testID="fab-add-item" />
 
         <AddItemModal
           visible={showAddModal || !!editingItem}
