@@ -237,7 +237,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 ## Development Notes for AI Agents
 
 - Check for TypeScript errors after frontend changes.
-- Frontend uses mock Google OAuth in development (not connected to backend yet).
+- Google sign-in is real: the web client obtains a Google ID token and exchanges it at `POST /api/users/google`. Setting `EXPO_PUBLIC_USE_MOCK_AUTH=true` switches auth to mocks for frontend-only work.
 - Comparison sessions are stored in-memory (not persistent).
 - API endpoints are prefixed with `/api/`.
 - Do **not** run `npm run ios`, `npm run android`, or `npx expo start` — the user runs these in a separate terminal.

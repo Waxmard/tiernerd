@@ -34,7 +34,7 @@ The entry point for unauthenticated users.
 **UI Elements:**
 - TierNerd logo
 - Email and password input fields with icons
-- "Log In" button (currently uses mock auth)
+- "Log In" button (email/password sign-in against the backend)
 - "Sign in with Google" button
 - "Forgot Password?" link
 - "Sign Up" link for new users
@@ -256,5 +256,5 @@ Interface for creating a new list or editing an existing one.
 - Built with React Native (Expo)
 - TypeScript for type safety
 - Design system with tokens for consistency
-- Mock authentication for development
-- Prepared for Google OAuth integration
+- Real authentication: Google ID token exchange at `POST /api/users/google`, plus email/password sign-in
+- Opt-in mock auth via `EXPO_PUBLIC_USE_MOCK_AUTH=true` for frontend-only work
