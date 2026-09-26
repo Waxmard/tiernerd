@@ -3,7 +3,7 @@ pre-commit:
   commands:
     biome:
       root: frontend/
-      glob: "src/**/*.{ts,tsx,js,jsx,json}"
+      glob: "*.{ts,tsx,js,jsx,json}"
       run: npm run check:staged -- {staged_files}
       stage_fixed: true
 
@@ -22,6 +22,10 @@ pre-commit:
     tach:
       root: fastapi/
       glob:
-        - "app/**/*.py"
-        - "tach.toml"
+        - "**/*.py"
+        - "**/*.toml"
       run: uv run tach check
+
+    line-limit:
+      glob: "*.{ts,tsx,py,sh}"
+      run: bash scripts/check-line-limit.sh {staged_files}

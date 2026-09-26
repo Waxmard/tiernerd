@@ -1,3 +1,5 @@
+import functools
+
 from pydantic import PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -42,4 +44,7 @@ class Settings(BaseSettings):
     )
 
 
-settings = Settings()  # type: ignore[call-arg]
+@functools.lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Read application settings once and share the instance."""
+    return Settings()  # type: ignore[call-arg]

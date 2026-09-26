@@ -16,7 +16,7 @@ from app.core.security import verify_password
 from app.crud import crud_user
 from app.db.models import User
 from app.schemas.user import UserCreate, UserUpdate
-from app.settings import settings
+from app.settings import get_settings
 
 
 @pytest.mark.asyncio
@@ -319,13 +319,13 @@ class TestReadCurrentUser:
 
         from jose import jwt
 
-        from app.settings import settings
+        from app.settings import get_settings
 
         # Create a token without the 'sub' claim
         expire = datetime.now(UTC) + timedelta(minutes=30)
         to_encode = {"exp": expire}  # Missing 'sub' claim
         malformed_token = jwt.encode(
-            to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+            to_encode, get_settings().SECRET_KEY, algorithm=get_settings().ALGORITHM
         )
 
         response = await client.get(
@@ -573,7 +573,7 @@ class TestGoogleLogin:
 
     @staticmethod
     def _patch_verifier(monkeypatch, claims):
-        monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", "test-client-id")
+        monkeypatch.setattr(get_settings(), "GOOGLE_CLIENT_ID", "test-client-id")
 
         def fake_verify(_token: str) -> dict:
             if isinstance(claims, Exception):
@@ -693,7 +693,7 @@ class TestGoogleLogin:
         self, client: AsyncClient, monkeypatch
     ):
         """Without a configured client ID the endpoint refuses to verify."""
-        monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", "")
+        monkeypatch.setattr(get_settings(), "GOOGLE_CLIENT_ID", "")
 
         response = await client.post(
             "/api/users/google", json={"id_token": "google-id-token"}

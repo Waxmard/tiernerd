@@ -26,11 +26,13 @@ ipconfig getifaddr en0            # e.g. 192.168.1.50
 
 Open `http://<ip>:8081` in Safari. The API base URL follows the host that served the app, so the phone reaches the backend on the same LAN IP.
 
-End-to-end smoke test (backend must be running):
+End-to-end smoke test — Playwright drives the **built** web bundle, so the API URL is baked in at export time:
 
 ```bash
-cd frontend && npm run e2e        # or: make frontend-e2e from the repo root
+make frontend-e2e                 # builds the bundle, then runs the spec
 ```
+
+`make frontend-e2e` builds first, so it always tests the current code. The API the bundle targets is `EXPO_PUBLIC_API_URL` (the shell value wins over `frontend/.env.local`), so a run against a local backend is `EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e`. CI runs the same flow in `.github/workflows/e2e.yml`.
 
 Reserved for native-only changes and pre-release checks:
 

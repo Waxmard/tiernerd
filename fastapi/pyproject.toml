@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "ranking-app"
 version = "0.1.0"
 description = "A ranking app backend that uses binary comparisons to eliminate rating bias"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 authors = [
     {name = "Your Name", email = "your.email@example.com"},
 ]
@@ -46,7 +46,7 @@ dev = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "PL", "S"]
@@ -83,7 +83,7 @@ extend-immutable-calls = [
 ]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.14"
 strict = true
 ignore_missing_imports = true
 # FastAPI / SQLAlchemy decorators are dynamically typed; strict's

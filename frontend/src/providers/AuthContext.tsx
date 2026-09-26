@@ -59,7 +59,7 @@ const USER_DATA_KEY = 'userData';
 const toLocalUser = (apiUser: ApiUser): User => ({
   id: apiUser.user_id,
   email: apiUser.email,
-  displayName: apiUser.username || apiUser.email.split('@')[0],
+  displayName: apiUser.username || apiUser.email.split('@')[0] || apiUser.email,
   photoUrl: undefined,
 });
 
@@ -136,7 +136,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const mockUser: User = {
             id: '123456789',
             email: email,
-            displayName: email.split('@')[0],
+            displayName: email.split('@')[0] || email,
             photoUrl: undefined,
           };
           await saveAuthState('mock-auth-token', mockUser);

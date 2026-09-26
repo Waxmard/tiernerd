@@ -1,5 +1,5 @@
 {
-  "name": "rinking-epp",
+  "name": "tiernerd-dev",
   "private": true,
   "scripts": {
     "prepare": "lefthook install"

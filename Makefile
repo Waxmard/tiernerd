@@ -13,10 +13,10 @@ help:
 	@echo "  fix              - Lint + autofix backend + frontend"
 	@echo "  typecheck        - Typecheck backend + frontend"
 	@echo "  test             - Run backend tests with coverage"
-	@echo "  ci               - lint + typecheck + test + docs-check"
+	@echo "  ci               - lint + typecheck + test + docs-check + line-limit"
 	@echo ""
 	@echo "Docs (rendered from docs/src):"
-	@echo "  docs-build       - Render docs/src → README.md, CLAUDE.md, AGENTS.md, sub-READMEs"
+	@echo "  docs-build       - Render docs/src → README.md, sub-READMEs"
 	@echo "  docs-check       - Fail if generated docs are stale"
 	@echo ""
 	@echo "Backend (delegates to fastapi/Makefile):"
@@ -36,12 +36,17 @@ setup:
 
 # ----- Aggregate -----
 
-.PHONY: lint fix typecheck test ci
+.PHONY: lint fix typecheck test ci line-limit
 lint:      backend-lint frontend-lint
 fix:       backend-fix frontend-fix
 typecheck: backend-typecheck frontend-typecheck
 test:      backend-test
-ci:        backend-ci frontend-lint frontend-typecheck docs-check
+ci:        backend-ci frontend-lint frontend-typecheck docs-check line-limit
+
+# ----- Source hygiene -----
+
+line-limit:
+	@bash scripts/check-line-limit.sh
 
 # ----- Docs (generated from docs/src) -----
 
@@ -70,7 +75,8 @@ frontend-typecheck:
 	cd frontend && npm run typecheck
 
 frontend-e2e:
-	@if [ -z "$$EXPO_PUBLIC_API_URL" ]; then \
-		curl -sf http://localhost:8000/health >/dev/null || { echo "backend not running — run: cd fastapi && make dev DETACHED=1, or set EXPO_PUBLIC_API_URL to a deployed API"; exit 1; }; \
+	@if [ ! -f frontend/.env.local ] && [ -z "$$EXPO_PUBLIC_API_URL" ]; then \
+		curl -sf http://localhost:8000/health >/dev/null || { echo "no EXPO_PUBLIC_API_URL (shell or frontend/.env.local) and no backend on :8000 — run: cd fastapi && make dev DETACHED=1"; exit 1; }; \
 	fi
+	cd frontend && npm run build:web
 	cd frontend && npm run e2e

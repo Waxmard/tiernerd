@@ -32,9 +32,8 @@ const groupItemsByTier = (items: Item[]): Record<string, Item[]> => {
     grouped[tier] = [];
   }
   for (const item of items) {
-    if (item.tier && grouped[item.tier]) {
-      grouped[item.tier].push(item);
-    }
+    const bucket = item.tier ? grouped[item.tier] : undefined;
+    bucket?.push(item);
   }
   return grouped;
 };
@@ -214,7 +213,11 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     return (
       <View style={styles.tierContainer}>
         {TIER_ORDER.map((tier) => (
-          <TierRow key={tier} tier={tier} tierItems={groupedItems[tier]} />
+          <TierRow
+            key={tier}
+            tier={tier}
+            tierItems={groupedItems[tier] ?? []}
+          />
         ))}
       </View>
     );

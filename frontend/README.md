@@ -75,11 +75,13 @@ ipconfig getifaddr en0            # e.g. 192.168.1.50
 
 Open `http://<ip>:8081` in Safari. The API base URL follows the host that served the app, so the phone reaches the backend on the same LAN IP.
 
-End-to-end smoke test (backend must be running):
+End-to-end smoke test — Playwright drives the **built** web bundle, so the API URL is baked in at export time:
 
 ```bash
-cd frontend && npm run e2e        # or: make frontend-e2e from the repo root
+make frontend-e2e                 # builds the bundle, then runs the spec
 ```
+
+`make frontend-e2e` builds first, so it always tests the current code. The API the bundle targets is `EXPO_PUBLIC_API_URL` (the shell value wins over `frontend/.env.local`), so a run against a local backend is `EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e`. CI runs the same flow in `.github/workflows/e2e.yml`.
 
 Reserved for native-only changes and pre-release checks:
 
@@ -174,11 +176,13 @@ src/
 
 ## Documentation Automation
 
-`README.md`, `CLAUDE.md`, `AGENTS.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
+`README.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
 
 ```bash
 make docs-build    # render templates → generated files
-make docs-check    # CI check: fail if generated docs are stale
+make docs-check    # fail if generated docs are stale
 ```
 
-Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives. `CLAUDE.md` and `AGENTS.md` share a single template (`docs/src/CLAUDE.md`) and are rendered to both paths.
+Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives.
+
+`AGENTS.md` is hand-maintained, not generated — it is the source of truth for agent-facing guidance.

@@ -34,7 +34,7 @@ Testing against the deployed API:
 cd frontend && EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run e2e
 ```
 
-Playwright reuses a server already listening on 8081, so stop any Metro started without `EXPO_PUBLIC_API_URL` first, or the spec will exercise the wrong backend.
+The URL is baked into the bundle at export time, so run `npm run build:web` first if the code changed. Playwright starts its own preview server on 8081 and never reuses an existing one, so stop any Metro dev server on that port — otherwise the spec fails on a port conflict instead of silently testing the dev-server bundle.
 
 Local containers are now optional. The fallback loop is unchanged — `cd fastapi && make dev DETACHED=1` — except its Postgres publishes on host port 55432, not 5432:
 

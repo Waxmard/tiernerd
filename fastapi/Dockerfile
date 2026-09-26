@@ -1,5 +1,5 @@
 # Multi-stage build for optimized image size
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -18,13 +18,13 @@ ENV UV_PYTHON=/usr/local/bin/python3
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
 
-# Use uv sync to create venv and install dependencies
-RUN uv sync
+# Install locked dependencies only; the project itself is copied below
+RUN uv sync --frozen --no-dev --no-install-project
 
 # Production stage
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 # Install runtime dependencies and create non-root user
 RUN apt-get update && apt-get install -y \

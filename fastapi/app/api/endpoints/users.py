@@ -36,7 +36,7 @@ from app.services.auth import (
     get_current_user,
 )
 from app.services.google_auth import verify_google_id_token
-from app.settings import settings
+from app.settings import get_settings
 
 router = APIRouter()
 
@@ -75,7 +75,7 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=get_settings().ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
         "access_token": create_access_token(
             user.user_id, expires_delta=access_token_expires
@@ -91,7 +91,7 @@ async def login_with_google(
     """
     Exchange a Google ID token for an application access token.
     """
-    if not settings.GOOGLE_CLIENT_ID:
+    if not get_settings().GOOGLE_CLIENT_ID:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=GOOGLE_AUTH_NOT_CONFIGURED_ERROR,

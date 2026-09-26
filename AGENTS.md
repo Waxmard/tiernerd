@@ -1,8 +1,6 @@
-<!-- Generated from docs/src. Run `make docs-build` to update. Do not edit directly. -->
-
 # Repository Guidelines
 
-This file provides guidance to AI coding agents (Claude Code, Codex, Cursor, etc.) working in this repository. It is the source of truth for both `CLAUDE.md` and `AGENTS.md`.
+This file provides guidance to AI agents working in this repository.
 
 ## Project Overview
 
@@ -46,7 +44,7 @@ make fix           # autofix both
 make typecheck     # mypy + tsc
 make test          # backend pytest w/ coverage
 make ci            # lint + typecheck + boundaries + test + docs-check
-make docs-build    # render docs/src → README.md, CLAUDE.md, AGENTS.md, sub-READMEs
+make docs-build    # render docs/src → README.md, sub-READMEs
 make docs-check    # fail if generated docs are stale
 make backend-<X>   # delegates to fastapi/Makefile target X (e.g. backend-logs, backend-health, backend-lint)
 ```
@@ -119,11 +117,13 @@ ipconfig getifaddr en0            # e.g. 192.168.1.50
 
 Open `http://<ip>:8081` in Safari. The API base URL follows the host that served the app, so the phone reaches the backend on the same LAN IP.
 
-End-to-end smoke test (backend must be running):
+End-to-end smoke test — Playwright drives the **built** web bundle, so the API URL is baked in at export time:
 
 ```bash
-cd frontend && npm run e2e        # or: make frontend-e2e from the repo root
+make frontend-e2e                 # builds the bundle, then runs the spec
 ```
+
+`make frontend-e2e` builds first, so it always tests the current code. The API the bundle targets is `EXPO_PUBLIC_API_URL` (the shell value wins over `frontend/.env.local`), so a run against a local backend is `EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e`. CI runs the same flow in `.github/workflows/e2e.yml`.
 
 Reserved for native-only changes and pre-release checks:
 
@@ -181,7 +181,7 @@ Testing against the deployed API:
 cd frontend && EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run e2e
 ```
 
-Playwright reuses a server already listening on 8081, so stop any Metro started without `EXPO_PUBLIC_API_URL` first, or the spec will exercise the wrong backend.
+The URL is baked into the bundle at export time, so run `npm run build:web` first if the code changed. Playwright starts its own preview server on 8081 and never reuses an existing one, so stop any Metro dev server on that port — otherwise the spec fails on a port conflict instead of silently testing the dev-server bundle.
 
 Local containers are now optional. The fallback loop is unchanged — `cd fastapi && make dev DETACHED=1` — except its Postgres publishes on host port 55432, not 5432:
 
@@ -244,18 +244,20 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 - The browser target (`npm run web`, served at `http://localhost:8081`) is the primary frontend loop. If it is already serving, use it to verify UI changes instead of asking for a simulator run.
 - The deployed dev API is the default backend for frontend work; point `npm run web` at it with `EXPO_PUBLIC_API_URL` instead of starting containers locally.
 - Do **not** run `make cloud-deploy` unless asked — it mutates shared cloud state.
-- Run `make frontend-e2e` after changing frontend behavior (the backend must be running).
+- Run `make frontend-e2e` after changing frontend behavior — it builds the web bundle first, then drives it with Playwright, so it needs an API to talk to (a local backend, or the deployed dev API via `frontend/.env.local`).
 - Do **not** run `git commit`, `git add`, or `git push` — the user handles staging, committing, and pushing.
 - Do **not** run `make clean`, `make dev`, `make fresh`, `make restart`, or `make reset` — the user runs these themselves.
 - Backend package management: use `uv`, not `pip`.
 
 ## Documentation Automation
 
-`README.md`, `CLAUDE.md`, `AGENTS.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
+`README.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
 
 ```bash
 make docs-build    # render templates → generated files
-make docs-check    # CI check: fail if generated docs are stale
+make docs-check    # fail if generated docs are stale
 ```
 
-Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives. `CLAUDE.md` and `AGENTS.md` share a single template (`docs/src/CLAUDE.md`) and are rendered to both paths.
+Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives.
+
+`AGENTS.md` is **not** generated — it is the hand-maintained source for agent guidance. The partials it inlines are shared with the generated READMEs, so a partial edit can leave this file stale; when you change a shared partial, update `AGENTS.md` by hand to match.
