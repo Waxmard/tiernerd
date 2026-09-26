@@ -1,0 +1,15 @@
+name: Line limit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  line-limit:
+    name: Line limit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash scripts/check-line-limit.sh

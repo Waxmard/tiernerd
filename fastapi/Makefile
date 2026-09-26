@@ -169,3 +169,42 @@ reset:
 	else \
 		docker-compose run --rm backend python scripts/seed.py --clear; \
 	fi
+
+# --- Cloud Run ---------------------------------------------------------------
+# GCLOUD_CONFIG keeps every cloud command on the tiernerd gcloud configuration,
+# independent of which configuration is active in the caller's shell.
+GCLOUD_CONFIG ?= tiernerd
+GCLOUD := CLOUDSDK_ACTIVE_CONFIG_NAME=$(GCLOUD_CONFIG) gcloud
+
+# CLOUD_ENV=dev (default) or prod. Selects the service, env file and secrets.
+CLOUD_ENV ?= dev
+GCP_PROJECT ?= tiernerd-dev
+GCP_REGION ?= us-east1
+CLOUD_SERVICE ?= tiernerd-api-$(CLOUD_ENV)
+CLOUD_ENV_FILE := cloud/env.$(CLOUD_ENV).yaml
+CLOUD_SECRET_PREFIX ?= tiernerd-$(CLOUD_ENV)
+
+.PHONY: cloud-deploy cloud-url cloud-health cloud-logs
+cloud-deploy:
+	$(GCLOUD) run deploy $(CLOUD_SERVICE) \
+		--source . \
+		--project $(GCP_PROJECT) \
+		--region $(GCP_REGION) \
+		--allow-unauthenticated \
+		--port 8000 \
+		--cpu 1 --memory 512Mi \
+		--min-instances 0 --max-instances 1 \
+		--env-vars-file $(CLOUD_ENV_FILE) \
+		--set-secrets SECRET_KEY=$(CLOUD_SECRET_PREFIX)-secret-key:latest,DATABASE_URL=$(CLOUD_SECRET_PREFIX)-database-url:latest
+
+cloud-url:
+	@$(GCLOUD) run services describe $(CLOUD_SERVICE) --project $(GCP_PROJECT) \
+		--region $(GCP_REGION) --format='value(status.url)'
+
+cloud-health:
+	@curl -sf "$$($(GCLOUD) run services describe $(CLOUD_SERVICE) --project $(GCP_PROJECT) \
+		--region $(GCP_REGION) --format='value(status.url)')/health" || echo "not healthy"
+
+cloud-logs:
+	$(GCLOUD) run services logs read $(CLOUD_SERVICE) --project $(GCP_PROJECT) \
+		--region $(GCP_REGION) --limit 50

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # Shared properties
@@ -17,6 +17,12 @@ class UserCreate(UserBase):
     """Schema for user creation."""
 
     password: str = Field(..., min_length=8)
+
+
+class GoogleLogin(BaseModel):
+    """Schema for Google ID token login."""
+
+    id_token: str
 
 
 # Properties to receive via API on update
@@ -37,10 +43,7 @@ class User(UserBase):
     updated_at: datetime
     is_admin: bool
 
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Public user info (no sensitive data)
@@ -52,10 +55,7 @@ class UserPublic(BaseModel):
     username: str | None = None
     created_at: datetime
 
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Properties stored in token

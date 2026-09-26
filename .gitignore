@@ -9,3 +9,6 @@ htmlcov/
 *.dot
 
 .husky/
+.neon
+.env.local
+node_modules/

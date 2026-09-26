@@ -12,7 +12,7 @@ from app.crud.crud_user import get_user_by_email, get_user_by_id, get_user_by_us
 from app.db.database import get_db
 from app.db.models import User as UserModel
 from app.schemas.user import TokenPayload
-from app.settings import settings
+from app.settings import get_settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/token")
 
@@ -41,6 +41,7 @@ def create_access_token(
     subject: UUID | str, expires_delta: timedelta | None = None
 ) -> str:
     """Create a JWT access token."""
+    settings = get_settings()
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
@@ -58,6 +59,7 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)
 ) -> UserModel:
     """Get the current authenticated user."""
+    settings = get_settings()
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=INVALID_CREDENTIALS_ERROR,

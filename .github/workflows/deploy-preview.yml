@@ -1,0 +1,48 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    name: Deploy Preview
+    if: contains(github.event.pull_request.labels.*.name, 'deploy-preview')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Build web bundle
+        run: |
+          if [ -z "$EXPO_PUBLIC_API_URL" ]; then
+            echo '::error::EXPO_PUBLIC_API_URL is not configured; refusing to deploy a bundle with no API.'
+            exit 1
+          fi
+          npm run build:web
+        env:
+          EXPO_PUBLIC_API_URL: https://tiernerd-api-dev-1015723670625.us-east1.run.app
+          EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      - uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4
+        id: deploy
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: frontend
+          command: pages deploy dist --project-name=tiernerd --branch=preview
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3
+        with:
+          header: deploy-preview
+          message: |
+            Preview deployed: ${{ steps.deploy.outputs.pages-deployment-alias-url }}

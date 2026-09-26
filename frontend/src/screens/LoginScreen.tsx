@@ -27,7 +27,8 @@ import { useAuth } from '../providers/AuthContext';
 type LoginScreenProps = RootStackScreenProps<'Login'>;
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { signIn, signInWithGoogle, isLoading, error } = useAuth();
+  const { signIn, signInWithGoogle, googleAvailable, isLoading, error } =
+    useAuth();
 
   // Form state
   const [email, setEmail] = useState('');
@@ -156,35 +157,41 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   style={styles.loginButton}
                 />
 
-                {/* Divider */}
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>OR</Text>
-                  <View style={styles.dividerLine} />
-                </View>
+                {googleAvailable && (
+                  <>
+                    {/* Divider */}
+                    <View style={styles.divider}>
+                      <View style={styles.dividerLine} />
+                      <Text style={styles.dividerText}>OR</Text>
+                      <View style={styles.dividerLine} />
+                    </View>
 
-                {/* Google Sign In */}
-                <TouchableOpacity
-                  style={styles.googleButton}
-                  onPress={handleGoogleSignIn}
-                  disabled={isLoading}
-                  activeOpacity={0.8}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color={AppColors.secondary.primary} />
-                  ) : (
-                    <>
-                      <Image
-                        source={require('../../assets/google-logo.png')}
-                        style={styles.googleIcon}
-                      />
-                      <Text style={styles.googleButtonText}>
-                        Sign in with Google
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                    {/* Google Sign In */}
+                    <TouchableOpacity
+                      style={styles.googleButton}
+                      onPress={handleGoogleSignIn}
+                      disabled={isLoading}
+                      activeOpacity={0.8}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator
+                          color={AppColors.secondary.primary}
+                        />
+                      ) : (
+                        <>
+                          <Image
+                            source={require('../../assets/google-logo.png')}
+                            style={styles.googleIcon}
+                          />
+                          <Text style={styles.googleButtonText}>
+                            Sign in with Google
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                )}
 
                 {/* Sign up link */}
                 <View style={styles.signUpContainer}>
