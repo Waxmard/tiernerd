@@ -19,6 +19,12 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
 
 
+class GoogleLogin(BaseModel):
+    """Schema for Google ID token login."""
+
+    id_token: str
+
+
 # Properties to receive via API on update
 class UserUpdate(BaseModel):
     """Schema for user update."""

@@ -1,3 +1,5 @@
+import asyncio
+import secrets
 from datetime import timedelta
 from typing import Any
 
@@ -6,7 +8,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import INCORRECT_LOGIN_ERROR, USER_ALREADY_EXISTS_ERROR
+from app.core.constants import (
+    GOOGLE_AUTH_NOT_CONFIGURED_ERROR,
+    INCORRECT_LOGIN_ERROR,
+    INVALID_GOOGLE_TOKEN_ERROR,
+    USER_ALREADY_EXISTS_ERROR,
+)
 from app.crud.crud_user import (
     create_user as crud_create_user,
     get_user_by_email,
@@ -14,13 +21,21 @@ from app.crud.crud_user import (
 )
 from app.db.database import get_db
 from app.db.models import User as UserModel
-from app.schemas.user import Token, User, UserCreate, UserPublic, UserUpdate
+from app.schemas.user import (
+    GoogleLogin,
+    Token,
+    User,
+    UserCreate,
+    UserPublic,
+    UserUpdate,
+)
 from app.services.auth import (
     authenticate_user,
     create_access_token,
     get_current_admin_user,
     get_current_user,
 )
+from app.services.google_auth import verify_google_id_token
 from app.settings import settings
 
 router = APIRouter()
@@ -65,6 +80,51 @@ async def login_for_access_token(
         "access_token": create_access_token(
             user.user_id, expires_delta=access_token_expires
         ),
+        "token_type": "bearer",
+    }
+
+
+@router.post("/google", response_model=Token)
+async def login_with_google(
+    payload: GoogleLogin, db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Exchange a Google ID token for an application access token.
+    """
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=GOOGLE_AUTH_NOT_CONFIGURED_ERROR,
+        )
+
+    try:
+        claims = await asyncio.to_thread(verify_google_id_token, payload.id_token)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=INVALID_GOOGLE_TOKEN_ERROR,
+        ) from None
+
+    email = claims.get("email")
+    if not email or not claims.get("email_verified"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=INVALID_GOOGLE_TOKEN_ERROR,
+        )
+
+    user = await get_user_by_email(db, email)
+    if user is None:
+        # Google-only accounts still need a password_hash: the column is NOT
+        # NULL and `authenticate_user` runs passlib against it unconditionally.
+        # An unguessable random password keeps password login working (it always
+        # fails) without touching verify_password or the user schema.
+        user = await crud_create_user(
+            db,
+            UserCreate(email=email, username=None, password=secrets.token_urlsafe(32)),
+        )
+
+    return {
+        "access_token": create_access_token(user.user_id),
         "token_type": "bearer",
     }
 

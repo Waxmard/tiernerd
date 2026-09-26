@@ -2,6 +2,7 @@ import sys
 import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -10,12 +11,15 @@ from app.db.models import Base, Item, List, User
 from app.settings import settings
 
 # Create async engine with connection pool settings for production
-connect_args = {}
+connect_args: dict[str, Any] = {}
+pool_kwargs: dict[str, Any] = {}
 if settings.APP_ENV == "production":
-    # Production connection pool settings
+    # connect_args reach asyncpg.connect(); pool sizing belongs to the engine.
     connect_args = {
         "server_settings": {"jit": "off"},
         "command_timeout": 60,
+    }
+    pool_kwargs = {
         "pool_size": 20,
         "max_overflow": 40,
     }
@@ -26,6 +30,7 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_recycle=3600,
     connect_args=connect_args,
+    **pool_kwargs,
 )
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 

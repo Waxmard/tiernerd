@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # Database - allow string for test mode (SQLite)
     DATABASE_URL: PostgresDsn | str
 
+    # Google sign-in: the public OAuth Web client ID the ID token must be minted for.
+    GOOGLE_CLIENT_ID: str = ""
+
     # CORS - stored as comma-separated string, parsed via computed_field
     CORS_ORIGINS_STR: str = ""
     # Optional regex for origins that can't be listed (e.g. LAN IPs in dev)

@@ -30,3 +30,6 @@ export const API_BASE_URL = getApiBaseUrl();
 // Set EXPO_PUBLIC_USE_MOCK_AUTH=true to use mock auth instead of real backend
 // Useful for frontend development without running the backend
 export const USE_MOCK_AUTH = process.env.EXPO_PUBLIC_USE_MOCK_AUTH === 'true';
+
+// Public OAuth Web client ID; must match GOOGLE_CLIENT_ID on the backend.
+export const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? '';
