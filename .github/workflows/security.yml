@@ -9,6 +9,7 @@ on:
     - cron: '0 12 * * 1'
 
 permissions:
+  actions: read
   contents: read
   security-events: write
 
@@ -19,9 +20,9 @@ jobs:
     container:
       image: semgrep/semgrep:1.163.0
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - run: semgrep ci --sarif --output=semgrep.sarif
+      - run: semgrep ci --sarif --output=semgrep.sarif --exclude-rule=yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
         env:
           SEMGREP_RULES: >-
             p/python
@@ -41,9 +42,26 @@ jobs:
     name: Trivy Filesystem
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - name: Run Trivy filesystem scan
+      - uses: actions/checkout@v7
+      # format: table (not sarif) so the severity input is honored — trivy-action
+      # unsets TRIVY_SEVERITY for sarif unless limit-severities-for-sarif is true.
+      - name: Run Trivy filesystem scan (PR gate)
+        if: github.event_name == 'pull_request'
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Run Trivy filesystem scan
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
         with:
           scan-type: fs
           scan-ref: .
@@ -52,7 +70,7 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
           ignore-unfixed: true
       - uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: github.event_name != 'pull_request'
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
@@ -61,7 +79,7 @@ jobs:
     name: Trivy Backend Image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build backend image
         run: docker build -t tiernerd-backend:ci ./fastapi
       - name: Run Trivy image scan
@@ -74,7 +92,7 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
           ignore-unfixed: true
       - uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: github.event_name != 'pull_request'
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image

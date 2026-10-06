@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Dimensions,
   FlatList,
@@ -35,6 +35,7 @@ import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import type { Item } from '../services/itemsService';
 import { type ListSimple, listsService } from '../services/listsService';
+import { confirmDestructive, notifyError } from '../utils/confirm';
 
 type ModalStep = 'create' | 'addItem' | null;
 
@@ -90,9 +91,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchLists();
-  }, [fetchLists]);
+  // Refetch on focus (including first mount) so deletes made on the detail
+  // screen drop off the grid.
+  useFocusEffect(
+    useCallback(() => {
+      fetchLists();
+    }, [fetchLists])
+  );
 
   useEffect(() => {
     Animated.parallel([
@@ -138,31 +143,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     });
   };
 
-  const handleListLongPress = (list: TierList) => {
-    Alert.alert(
+  const handleListLongPress = async (list: TierList) => {
+    const confirmed = await confirmDestructive(
       'Delete List',
       'Are you sure you want to delete this list? All items will be permanently deleted.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            if (!token) return;
-            try {
-              await listsService.deleteList(list.id, token);
-              setLists((prev) => prev.filter((l) => l.id !== list.id));
-            } catch (err: unknown) {
-              console.error('Error deleting list:', err);
-              Alert.alert(
-                'Error',
-                err instanceof Error ? err.message : 'Failed to delete list'
-              );
-            }
-          },
-        },
-      ]
+      'Delete'
     );
+    if (!confirmed) return;
+    if (!token) return;
+    try {
+      await listsService.deleteList(list.id, token);
+      setLists((prev) => prev.filter((l) => l.id !== list.id));
+    } catch (err: unknown) {
+      console.error('Error deleting list:', err);
+      notifyError(
+        'Error',
+        err instanceof Error ? err.message : 'Failed to delete list'
+      );
+    }
   };
 
   const handleListCreated = (list: CreatedList) => {
@@ -323,7 +321,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           {renderContent()}
         </Animated.View>
 
-        <FAB onPress={handleCreatePress} />
+        <FAB onPress={handleCreatePress} testID="fab-create" />
 
         <Modal
           visible={modalStep !== null}

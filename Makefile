@@ -13,10 +13,10 @@ help:
 	@echo "  fix              - Lint + autofix backend + frontend"
 	@echo "  typecheck        - Typecheck backend + frontend"
 	@echo "  test             - Run backend tests with coverage"
-	@echo "  ci               - lint + typecheck + test + docs-check"
+	@echo "  ci               - lint + typecheck + test + docs-check + line-limit"
 	@echo ""
 	@echo "Docs (rendered from docs/src):"
-	@echo "  docs-build       - Render docs/src → README.md, CLAUDE.md, AGENTS.md, sub-READMEs"
+	@echo "  docs-build       - Render docs/src → README.md, sub-READMEs"
 	@echo "  docs-check       - Fail if generated docs are stale"
 	@echo ""
 	@echo "Backend (delegates to fastapi/Makefile):"
@@ -24,6 +24,7 @@ help:
 	@echo ""
 	@echo "Frontend (delegates to frontend/package.json scripts):"
 	@echo "  frontend-lint frontend-fix frontend-typecheck"
+	@echo "  frontend-e2e     - Playwright smoke spec against the web bundle"
 
 # ----- Setup -----
 
@@ -35,12 +36,17 @@ setup:
 
 # ----- Aggregate -----
 
-.PHONY: lint fix typecheck test ci
+.PHONY: lint fix typecheck test ci line-limit
 lint:      backend-lint frontend-lint
 fix:       backend-fix frontend-fix
 typecheck: backend-typecheck frontend-typecheck
 test:      backend-test
-ci:        backend-ci frontend-lint frontend-typecheck docs-check
+ci:        backend-ci frontend-lint frontend-typecheck docs-check line-limit
+
+# ----- Source hygiene -----
+
+line-limit:
+	@bash scripts/check-line-limit.sh
 
 # ----- Docs (generated from docs/src) -----
 
@@ -58,7 +64,7 @@ backend-%:
 
 # ----- Frontend -----
 
-.PHONY: frontend-lint frontend-fix frontend-typecheck
+.PHONY: frontend-lint frontend-fix frontend-typecheck frontend-e2e
 frontend-lint:
 	cd frontend && npm run lint && npm run format:check
 
@@ -67,3 +73,10 @@ frontend-fix:
 
 frontend-typecheck:
 	cd frontend && npm run typecheck
+
+frontend-e2e:
+	@if [ ! -f frontend/.env.local ] && [ -z "$$EXPO_PUBLIC_API_URL" ]; then \
+		curl -sf http://localhost:8000/health >/dev/null || { echo "no EXPO_PUBLIC_API_URL (shell or frontend/.env.local) and no backend on :8000 — run: cd fastapi && make dev DETACHED=1"; exit 1; }; \
+	fi
+	cd frontend && npm run build:web
+	cd frontend && npm run e2e

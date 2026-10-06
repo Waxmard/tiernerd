@@ -104,6 +104,40 @@ export const authService = {
   },
 
   /**
+   * Login with a Google ID token
+   * POST /api/users/google
+   */
+  async loginWithGoogle(idToken: string): Promise<AuthResult> {
+    try {
+      const tokenResponse = await api.post<TokenResponse>('/api/users/google', {
+        id_token: idToken,
+      });
+
+      const user = await authService.getCurrentUser(tokenResponse.access_token);
+      if (!user) {
+        return { success: false, error: 'Failed to fetch user info' };
+      }
+
+      return {
+        success: true,
+        user,
+        token: tokenResponse.access_token,
+      };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        let message = 'Google sign-in failed';
+        if (Array.isArray(error.data?.detail)) {
+          message = error.data.detail[0]?.msg || message;
+        } else if (typeof error.data?.detail === 'string') {
+          message = error.data.detail;
+        }
+        return { success: false, error: message };
+      }
+      return { success: false, error: 'Network error' };
+    }
+  },
+
+  /**
    * Get current user info
    * GET /api/users/me
    */

@@ -37,7 +37,7 @@ def event_loop() -> Generator:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_db() -> AsyncGenerator[AsyncSession, None]:
+async def test_db() -> AsyncGenerator[AsyncSession]:
     """Create a test database session."""
     # Create async engine for testing
     engine = create_async_engine(
@@ -67,10 +67,10 @@ async def test_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def client(test_db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def client(test_db: AsyncSession) -> AsyncGenerator[AsyncClient]:
     """Create a test client with overridden database dependency."""
 
-    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+    async def override_get_db() -> AsyncGenerator[AsyncSession]:
         yield test_db
 
     app.dependency_overrides[get_db] = override_get_db

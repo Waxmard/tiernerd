@@ -7,10 +7,16 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.endpoints import users as users_endpoint
+from app.core.constants import (
+    GOOGLE_AUTH_NOT_CONFIGURED_ERROR,
+    INVALID_GOOGLE_TOKEN_ERROR,
+)
 from app.core.security import verify_password
 from app.crud import crud_user
 from app.db.models import User
 from app.schemas.user import UserCreate, UserUpdate
+from app.settings import get_settings
 
 
 @pytest.mark.asyncio
@@ -313,13 +319,13 @@ class TestReadCurrentUser:
 
         from jose import jwt
 
-        from app.settings import settings
+        from app.settings import get_settings
 
         # Create a token without the 'sub' claim
         expire = datetime.now(UTC) + timedelta(minutes=30)
         to_encode = {"exp": expire}  # Missing 'sub' claim
         malformed_token = jwt.encode(
-            to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+            to_encode, get_settings().SECRET_KEY, algorithm=get_settings().ALGORITHM
         )
 
         response = await client.get(
@@ -559,3 +565,139 @@ class TestUpdateCurrentUser:
         data = response.json()
         assert data["email"] == "all@example.com"
         assert data["username"] == "allupdated"
+
+
+@pytest.mark.asyncio
+class TestGoogleLogin:
+    """Tests for Google ID token login."""
+
+    @staticmethod
+    def _patch_verifier(monkeypatch, claims):
+        monkeypatch.setattr(get_settings(), "GOOGLE_CLIENT_ID", "test-client-id")
+
+        def fake_verify(_token: str) -> dict:
+            if isinstance(claims, Exception):
+                raise claims
+            return claims
+
+        monkeypatch.setattr(users_endpoint, "verify_google_id_token", fake_verify)
+
+    async def test_google_login_creates_passwordless_user(
+        self, client: AsyncClient, test_db: AsyncSession, monkeypatch
+    ):
+        """A new Google account is created with an unusable password."""
+        self._patch_verifier(
+            monkeypatch,
+            {"email": "fresh.google@example.com", "email_verified": True},
+        )
+
+        response = await client.post(
+            "/api/users/google", json={"id_token": "google-id-token"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["token_type"] == "bearer"
+        assert data["access_token"]
+
+        me = await client.get(
+            "/api/users/me",
+            headers={"Authorization": f"Bearer {data['access_token']}"},
+        )
+        assert me.json()["email"] == "fresh.google@example.com"
+
+        result = await test_db.execute(
+            select(User).where(User.email == "fresh.google@example.com")
+        )
+        row = result.scalar_one()
+        assert row.username is None
+        assert not verify_password("anything", row.password_hash)
+
+    async def test_google_login_existing_email_signs_into_that_account(
+        self, client: AsyncClient, test_db: AsyncSession, monkeypatch
+    ):
+        """An existing password account with the same email is reused."""
+        existing = await crud_user.create_user(
+            test_db,
+            UserCreate(
+                email="existing.google@example.com",
+                username="existinguser",
+                password="existingpassword123",
+            ),
+        )
+        self._patch_verifier(
+            monkeypatch,
+            {"email": "existing.google@example.com", "email_verified": True},
+        )
+
+        response = await client.post(
+            "/api/users/google", json={"id_token": "google-id-token"}
+        )
+
+        assert response.status_code == 200
+        result = await test_db.execute(
+            select(User).where(User.email == "existing.google@example.com")
+        )
+        rows = result.scalars().all()
+        assert len(rows) == 1
+
+        me = await client.get(
+            "/api/users/me",
+            headers={"Authorization": f"Bearer {response.json()['access_token']}"},
+        )
+        assert me.json()["user_id"] == str(existing.user_id)
+
+    async def test_google_login_unverified_email_rejected(
+        self, client: AsyncClient, monkeypatch
+    ):
+        """An unverified Google email claim is refused."""
+        self._patch_verifier(
+            monkeypatch,
+            {"email": "unverified@example.com", "email_verified": False},
+        )
+
+        response = await client.post(
+            "/api/users/google", json={"id_token": "google-id-token"}
+        )
+
+        assert response.status_code == 401
+        assert response.json()["detail"] == INVALID_GOOGLE_TOKEN_ERROR
+
+    async def test_google_login_missing_email_rejected(
+        self, client: AsyncClient, monkeypatch
+    ):
+        """A token without an email claim is refused."""
+        self._patch_verifier(monkeypatch, {"email_verified": True})
+
+        response = await client.post(
+            "/api/users/google", json={"id_token": "google-id-token"}
+        )
+
+        assert response.status_code == 401
+        assert response.json()["detail"] == INVALID_GOOGLE_TOKEN_ERROR
+
+    async def test_google_login_invalid_token_rejected(
+        self, client: AsyncClient, monkeypatch
+    ):
+        """A token google-auth rejects yields 401, not 500."""
+        self._patch_verifier(monkeypatch, ValueError("Token has wrong audience"))
+
+        response = await client.post(
+            "/api/users/google", json={"id_token": "google-id-token"}
+        )
+
+        assert response.status_code == 401
+        assert response.json()["detail"] == INVALID_GOOGLE_TOKEN_ERROR
+
+    async def test_google_login_unconfigured_client_id(
+        self, client: AsyncClient, monkeypatch
+    ):
+        """Without a configured client ID the endpoint refuses to verify."""
+        monkeypatch.setattr(get_settings(), "GOOGLE_CLIENT_ID", "")
+
+        response = await client.post(
+            "/api/users/google", json={"id_token": "google-id-token"}
+        )
+
+        assert response.status_code == 503
+        assert response.json()["detail"] == GOOGLE_AUTH_NOT_CONFIGURED_ERROR

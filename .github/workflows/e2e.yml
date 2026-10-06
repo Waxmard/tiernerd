@@ -1,0 +1,75 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+    paths: ["fastapi/**", "frontend/**", ".github/workflows/e2e.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["fastapi/**", "frontend/**", ".github/workflows/e2e.yml"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  smoke:
+    name: E2E Smoke
+    runs-on: ubuntu-latest
+    env:
+      # The bundle bakes this in at export time; the spec then drives the built app.
+      EXPO_PUBLIC_API_URL: http://localhost:8000
+    steps:
+      - uses: actions/checkout@v7
+
+      # Backend: SQLite + auto-seeded dev users (APP_ENV=development), same as local dev.
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "fastapi/uv.lock"
+      - name: Start backend
+        working-directory: fastapi
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci.db
+          APP_ENV: development
+          SECRET_KEY: ci-e2e-secret
+          CORS_ORIGINS_STR: http://localhost:8081
+        run: |
+          uv sync --extra dev --group dev
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:8000/health >/dev/null && exit 0
+            sleep 1
+          done
+          echo "backend did not become healthy on :8000" >&2
+          exit 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - run: npm run build:web
+        working-directory: frontend
+      - run: npm run e2e
+        working-directory: frontend
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-traces
+          path: frontend/test-results
+          if-no-files-found: ignore

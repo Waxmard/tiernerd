@@ -2,35 +2,40 @@ import sys
 import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.models import Base, Item, List, User
-from app.settings import settings
+from app.settings import get_settings
 
 # Create async engine with connection pool settings for production
-connect_args = {}
-if settings.APP_ENV == "production":
-    # Production connection pool settings
+connect_args: dict[str, Any] = {}
+pool_kwargs: dict[str, Any] = {}
+if get_settings().APP_ENV == "production":
+    # connect_args reach asyncpg.connect(); pool sizing belongs to the engine.
     connect_args = {
         "server_settings": {"jit": "off"},
         "command_timeout": 60,
+    }
+    pool_kwargs = {
         "pool_size": 20,
         "max_overflow": 40,
     }
 
 engine = create_async_engine(
-    str(settings.DATABASE_URL),
+    str(get_settings().DATABASE_URL),
     echo=False,
     pool_pre_ping=True,
     pool_recycle=3600,
     connect_args=connect_args,
+    **pool_kwargs,
 )
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[AsyncSession]:
     """
     Dependency function that yields db sessions.
 
@@ -57,7 +62,7 @@ async def create_tables() -> None:
 
     # Auto-seed dev users in development. `scripts/` lives outside the `app`
     # package and is dev-only, so the import stays lazy + scoped here.
-    if settings.APP_ENV == "development":
+    if get_settings().APP_ENV == "development":
         sys.path.insert(0, str(Path(__file__).parent.parent.parent))
         from scripts.seed import seed_users  # noqa: PLC0415
 

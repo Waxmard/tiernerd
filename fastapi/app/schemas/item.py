@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 # Tier ranking enum
@@ -71,10 +71,7 @@ class Item(ItemBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Schema for comparison
@@ -89,10 +86,7 @@ class Comparison(BaseModel):
     is_winner: bool | None = None
     done: bool = False
 
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Schema for comparison
@@ -110,10 +104,7 @@ class ComparisonSession(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ComparisonResultRequest(BaseModel):
@@ -121,7 +112,4 @@ class ComparisonResultRequest(BaseModel):
 
     result: ComparisonResult
 
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

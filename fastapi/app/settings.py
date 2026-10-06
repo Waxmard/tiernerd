@@ -1,3 +1,5 @@
+import functools
+
 from pydantic import PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,8 +17,13 @@ class Settings(BaseSettings):
     # Database - allow string for test mode (SQLite)
     DATABASE_URL: PostgresDsn | str
 
+    # Google sign-in: the public OAuth Web client ID the ID token must be minted for.
+    GOOGLE_CLIENT_ID: str = ""
+
     # CORS - stored as comma-separated string, parsed via computed_field
     CORS_ORIGINS_STR: str = ""
+    # Optional regex for origins that can't be listed (e.g. LAN IPs in dev)
+    CORS_ORIGIN_REGEX: str = ""
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -37,4 +44,7 @@ class Settings(BaseSettings):
     )
 
 
-settings = Settings()  # type: ignore[call-arg]
+@functools.lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Read application settings once and share the instance."""
+    return Settings()  # type: ignore[call-arg]

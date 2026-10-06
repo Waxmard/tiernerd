@@ -22,10 +22,9 @@ GENERATED_HEADER = (
 INCLUDE_RE = re.compile(r"{{\s*include:([^}]+)\s*}}")
 
 # Template path (relative to DOCS_SRC) -> output path (relative to repo root).
-# A single template may render to multiple outputs (CLAUDE.md → AGENTS.md).
+# AGENTS.md is hand-maintained and deliberately not rendered here.
 TEMPLATES: dict[Path, tuple[Path, ...]] = {
     Path("README.md"): (Path("README.md"),),
-    Path("CLAUDE.md"): (Path("CLAUDE.md"), Path("AGENTS.md")),
     Path("fastapi/README.md"): (Path("fastapi/README.md"),),
     Path("frontend/README.md"): (Path("frontend/README.md"),),
 }

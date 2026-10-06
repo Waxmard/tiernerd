@@ -33,7 +33,7 @@ class User(Base):
     )
 
     # Relationships
-    lists: Mapped[list["List"]] = relationship(
+    lists: Mapped[list[List]] = relationship(
         "List", back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -58,7 +58,7 @@ class List(Base):
 
     # Relationships
     user: Mapped[User] = relationship("User", back_populates="lists")
-    items: Mapped[list["Item"]] = relationship(
+    items: Mapped[list[Item]] = relationship(
         "Item", back_populates="list", cascade="all, delete-orphan"
     )
 

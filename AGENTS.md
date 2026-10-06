@@ -1,8 +1,6 @@
-<!-- Generated from docs/src. Run `make docs-build` to update. Do not edit directly. -->
-
 # Repository Guidelines
 
-This file provides guidance to AI coding agents (Claude Code, Codex, Cursor, etc.) working in this repository. It is the source of truth for both `CLAUDE.md` and `AGENTS.md`.
+This file provides guidance to AI agents working in this repository.
 
 ## Project Overview
 
@@ -46,7 +44,7 @@ make fix           # autofix both
 make typecheck     # mypy + tsc
 make test          # backend pytest w/ coverage
 make ci            # lint + typecheck + boundaries + test + docs-check
-make docs-build    # render docs/src → README.md, CLAUDE.md, AGENTS.md, sub-READMEs
+make docs-build    # render docs/src → README.md, sub-READMEs
 make docs-check    # fail if generated docs are stale
 make backend-<X>   # delegates to fastapi/Makefile target X (e.g. backend-logs, backend-health, backend-lint)
 ```
@@ -93,14 +91,51 @@ uv run pytest --cov=app --cov-report=term-missing   # Run with coverage
 
 ### Frontend (frontend/)
 
+Day-to-day UI work happens in the browser — no Xcode or simulator needed.
+
+Terminal A (backend, once):
+
+```bash
+cd fastapi && make dev DETACHED=1
+```
+
+Terminal B (web bundle):
+
 ```bash
 cd frontend
-npm install                       # Install dependencies
+npm run web                       # http://localhost:8081
+EXPO_PUBLIC_API_URL=https://<cloud-run-url> npm run web   # target the deployed dev API
+```
+
+Open `http://localhost:8081`. Chrome DevTools' device toolbar gives a phone-sized layout, and Fast Refresh applies edits without a rebuild.
+
+To check on your iPhone (no Xcode):
+
+```bash
+ipconfig getifaddr en0            # e.g. 192.168.1.50
+```
+
+Open `http://<ip>:8081` in Safari. The API base URL follows the host that served the app, so the phone reaches the backend on the same LAN IP.
+
+End-to-end smoke test — Playwright drives the **built** web bundle, so the API URL is baked in at export time:
+
+```bash
+make frontend-e2e                 # builds the bundle, then runs the spec
+```
+
+`make frontend-e2e` builds first, so it always tests the current code. The API the bundle targets is `EXPO_PUBLIC_API_URL` (the shell value wins over `frontend/.env.local`), so a run against a local backend is `EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e`. CI runs the same flow in `.github/workflows/e2e.yml`.
+
+Reserved for native-only changes and pre-release checks:
+
+```bash
 npm run ios                       # Run on iOS simulator
 npm run android                   # Run on Android emulator
-npm run web                       # Run web version
+npx expo start --go               # Expo Go on a physical phone, no simulator
+```
 
-# Code quality (Biome — single tool for lint + format)
+Code quality (Biome — single tool for lint + format):
+
+```bash
 npm run lint                      # Lint with Biome
 npm run lint:fix                  # Fix lint errors
 npm run format                    # Format with Biome
@@ -108,6 +143,50 @@ npm run format:check              # Check formatting
 npm run check                     # Lint + format + import sort (combined)
 npm run check:fix                 # Apply all safe fixes
 npm run typecheck                 # TypeScript check
+```
+
+### Cloud Dev Loop (Cloud Run + Neon)
+
+The default backend for frontend work is a deployed dev API — no local containers.
+
+```bash
+cd frontend
+EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run web
+```
+
+Open `http://localhost:8081` and log in with the seeded dev credentials. `EXPO_PUBLIC_API_URL` also goes in `frontend/.env.local` to make it the default for every `npm run web`. Unset it to fall back to a backend on `localhost:8000`.
+
+Deploy (from `fastapi/`):
+
+```bash
+make cloud-deploy          # GCP_PROJECT/tiernerd-api-dev, CLOUD_ENV=dev
+make cloud-url             # print the service URL
+make cloud-health          # curl the deployed /health
+make cloud-logs            # recent service logs
+```
+
+`CLOUD_ENV` selects the service, env file and secrets (`cloud/env.<env>.yaml`, `tiernerd-<env>-*`). Deploying a second environment needs its own secrets and env file and nothing else:
+
+```bash
+make cloud-deploy CLOUD_ENV=prod GCP_PROJECT=<prod-project>
+```
+
+Config lives in `fastapi/cloud/env.dev.yaml` (non-secret) and Secret Manager (`SECRET_KEY`, `DATABASE_URL`). `APP_ENV=development` is what makes the container create its tables and seed the dev users on startup; setting it to `production` disables that seeding and switches the SQLAlchemy pool settings in `app/db/database.py`.
+
+`DATABASE_URL` must be `postgresql+asyncpg://…?ssl=require`. A Neon string's `?sslmode=require&channel_binding=require` crashes asyncpg (`unexpected keyword argument`), because SQLAlchemy forwards DSN query parameters to the driver as keyword arguments.
+
+Testing against the deployed API:
+
+```bash
+cd frontend && EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run e2e
+```
+
+The URL is baked into the bundle at export time, so run `npm run build:web` first if the code changed. Playwright starts its own preview server on 8081 and never reuses an existing one, so stop any Metro dev server on that port — otherwise the spec fails on a port conflict instead of silently testing the dev-server bundle.
+
+Local containers are now optional. The fallback loop is unchanged — `cd fastapi && make dev DETACHED=1` — except its Postgres publishes on host port 55432, not 5432:
+
+```bash
+psql -h localhost -p 55432 -U tiernerd tiernerd
 ```
 
 ### Git Hooks
@@ -158,21 +237,27 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 ## Development Notes for AI Agents
 
 - Check for TypeScript errors after frontend changes.
-- Frontend uses mock Google OAuth in development (not connected to backend yet).
+- Google sign-in is real: the web client obtains a Google ID token and exchanges it at `POST /api/users/google`. Setting `EXPO_PUBLIC_USE_MOCK_AUTH=true` switches auth to mocks for frontend-only work.
 - Comparison sessions are stored in-memory (not persistent).
 - API endpoints are prefixed with `/api/`.
 - Do **not** run `npm run ios`, `npm run android`, or `npx expo start` — the user runs these in a separate terminal.
+- The browser target (`npm run web`, served at `http://localhost:8081`) is the primary frontend loop. If it is already serving, use it to verify UI changes instead of asking for a simulator run.
+- The deployed dev API is the default backend for frontend work; point `npm run web` at it with `EXPO_PUBLIC_API_URL` instead of starting containers locally.
+- Do **not** run `make cloud-deploy` unless asked — it mutates shared cloud state.
+- Run `make frontend-e2e` after changing frontend behavior — it builds the web bundle first, then drives it with Playwright, so it needs an API to talk to (a local backend, or the deployed dev API via `frontend/.env.local`).
 - Do **not** run `git commit`, `git add`, or `git push` — the user handles staging, committing, and pushing.
 - Do **not** run `make clean`, `make dev`, `make fresh`, `make restart`, or `make reset` — the user runs these themselves.
 - Backend package management: use `uv`, not `pip`.
 
 ## Documentation Automation
 
-`README.md`, `CLAUDE.md`, `AGENTS.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
+`README.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
 
 ```bash
 make docs-build    # render templates → generated files
-make docs-check    # CI check: fail if generated docs are stale
+make docs-check    # fail if generated docs are stale
 ```
 
-Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives. `CLAUDE.md` and `AGENTS.md` share a single template (`docs/src/CLAUDE.md`) and are rendered to both paths.
+Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives.
+
+`AGENTS.md` is **not** generated — it is the hand-maintained source for agent guidance. The partials it inlines are shared with the generated READMEs, so a partial edit can leave this file stale; when you change a shared partial, update `AGENTS.md` by hand to match.
