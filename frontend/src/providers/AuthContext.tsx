@@ -71,9 +71,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Google sign-in exists only in the browser build: useIdTokenAuthRequest
   // requests response_type=id_token on web and falls back to a code exchange
-  // (with no client secret configured) on native.
+  // (with no client secret configured) on native. It resolves its client ID as
+  // `config[Platform.select(...)] ?? config.clientId` and throws on native when
+  // both are undefined, so the fallback below keeps the hook from crashing the
+  // app on iOS/Android even though googleAvailable is false there.
   const [googleRequest, , promptGoogle] = useIdTokenAuthRequest({
     webClientId: GOOGLE_CLIENT_ID,
+    clientId: GOOGLE_CLIENT_ID,
   });
   const googleAvailable = Platform.OS === 'web';
 

@@ -9,21 +9,21 @@ export function confirmDestructive(
   if (Platform.OS === 'web') {
     return Promise.resolve(window.confirm(`${title}\n\n${message}`));
   }
-  const { promise, resolve } = Promise.withResolvers<boolean>();
-  Alert.alert(
-    title,
-    message,
-    [
-      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-      {
-        text: confirmLabel,
-        style: 'destructive',
-        onPress: () => resolve(true),
-      },
-    ],
-    { cancelable: true, onDismiss: () => resolve(false) }
-  );
-  return promise;
+  return new Promise<boolean>((resolve) => {
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        {
+          text: confirmLabel,
+          style: 'destructive',
+          onPress: () => resolve(true),
+        },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) }
+    );
+  });
 }
 
 export function notifyError(title: string, message: string): void {
