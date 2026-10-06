@@ -43,7 +43,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # format: table (not sarif) so the severity input is honored — trivy-action
+      # unsets TRIVY_SEVERITY for sarif unless limit-severities-for-sarif is true.
+      - name: Run Trivy filesystem scan (PR gate)
+        if: github.event_name == 'pull_request'
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
       - name: Run Trivy filesystem scan
+        if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@v0.36.0
         env:
           TRIVY_INCLUDE_DEV_DEPS: 'true'
@@ -52,9 +67,8 @@ jobs:
           scan-ref: .
           format: sarif
           output: trivy-fs.sarif
-          severity: ${{ github.event_name == 'pull_request' && 'CRITICAL' || 'CRITICAL,HIGH,MEDIUM' }}
+          severity: CRITICAL,HIGH,MEDIUM
           ignore-unfixed: true
-          exit-code: ${{ github.event_name == 'pull_request' && '1' || '0' }}
       - uses: github/codeql-action/upload-sarif@v4
         if: github.event_name != 'pull_request'
         with:
