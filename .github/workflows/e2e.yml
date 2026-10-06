@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v7
 
       # Backend: SQLite + auto-seeded dev users (APP_ENV=development), same as local dev.
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
