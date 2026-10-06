@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/Waxmard/tiernerd/compare/v0.2.0...v0.3.0) (2026-10-06)
+
+
+### Features
+
+* add Google OAuth sign-in and web deployment workflows ([#77](https://github.com/Waxmard/tiernerd/issues/77)) ([3b85a78](https://github.com/Waxmard/tiernerd/commit/3b85a78988e7afde846fe27d0ab69888a9be7999))
+
 ## [0.2.0](https://github.com/Waxmard/rinking-epp/compare/v0.1.0...v0.2.0) (2026-05-13)
 
 
