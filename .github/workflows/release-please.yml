@@ -26,7 +26,7 @@ jobs:
             --json number \
             --jq '.[0].number')
           if [ -n "$PR_NUMBER" ]; then
-            gh pr merge --rebase --auto --repo "${{ github.repository }}" "$PR_NUMBER"
+            gh pr merge --rebase --repo "${{ github.repository }}" "$PR_NUMBER"
           fi
         env:
           GH_TOKEN: ${{ secrets.RINKING_EPP_RELEASE_PLEASE_TOKEN }}

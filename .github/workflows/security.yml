@@ -52,10 +52,11 @@ jobs:
           scan-ref: .
           format: sarif
           output: trivy-fs.sarif
-          severity: CRITICAL,HIGH,MEDIUM
+          severity: ${{ github.event_name == 'pull_request' && 'CRITICAL' || 'CRITICAL,HIGH,MEDIUM' }}
           ignore-unfixed: true
+          exit-code: ${{ github.event_name == 'pull_request' && '1' || '0' }}
       - uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: github.event_name != 'pull_request'
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
@@ -77,7 +78,7 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
           ignore-unfixed: true
       - uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: github.event_name != 'pull_request'
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image
