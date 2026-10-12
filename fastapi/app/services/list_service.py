@@ -19,9 +19,12 @@ def get_items_best_first(items: list[ItemModel]) -> list[ItemModel]:
     """
     ranked = [i for i in items if i.position is not None]
     unranked = [i for i in items if i.position is None]
-    ranked.sort(key=lambda i: i.position or "", reverse=True)
     ranked.sort(
-        key=lambda i: SCORE_BANDS.get(i.tier_set or "", (0.0, 0.0))[0], reverse=True
+        key=lambda i: (
+            SCORE_BANDS.get(i.tier_set or "", (0.0, 0.0))[0],
+            i.position or "",
+        ),
+        reverse=True,
     )
     return ranked + unranked
 

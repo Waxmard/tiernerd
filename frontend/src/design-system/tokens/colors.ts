@@ -36,7 +36,7 @@ export const AppColors = {
   surfaceDark: '#F3F4F6',
 
   // Semantic colors
-  error: '#EF4444',
+  error: '#DC2626',
   success: '#10B981',
   warning: '#F59E0B',
   info: '#3B82F6',

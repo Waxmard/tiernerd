@@ -2,6 +2,10 @@
 
 {{ include:partials/overview.md }}
 
+```text
+your items ──1v1 comparisons──▶ TierNerd ──▶ ranked list, scored out of 10
+```
+
 ## Key Features
 
 - Create custom lists on any topic
@@ -41,6 +45,16 @@ make dev                          # Start with Docker (auto-seeds dev user)
 ```
 
 See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/README.md) for detailed setup instructions.
+
+## Layout
+
+|Path|What|
+|---|---|
+|`fastapi/`|FastAPI backend — async SQLAlchemy on PostgreSQL, with the comparison and ranking services|
+|`frontend/`|Expo / React Native app (iOS, Android, web)|
+|`docs/src/`|Templates and partials that generate this README and the sub-READMEs|
+|`scripts/`|Repo-wide tooling — docs build, line-limit check, e2e backend|
+|`screenshots/`|Screenshots referenced above|
 
 {{ include:partials/tier_system.md }}
 

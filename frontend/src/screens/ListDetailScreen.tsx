@@ -3,8 +3,8 @@ import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Image,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -39,21 +39,24 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const [showAddModal, setShowAddModal] = useState(promptAddItem ?? false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
 
-  const fetchItems = useCallback(async () => {
-    if (!token) return;
-    try {
-      setIsLoading(true);
-      setItems(await listsService.getListItems(listId, token));
-    } catch (err) {
-      console.error('Error fetching items:', err);
-      notifyError(
-        'Error',
-        'Unable to refresh items. Reopen the list to try again.'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [listId, token]);
+  const fetchItems = useCallback(
+    async (silent = false) => {
+      if (!token) return;
+      try {
+        if (!silent) setIsLoading(true);
+        setItems(await listsService.getListItems(listId, token));
+      } catch (err) {
+        console.error('Error fetching items:', err);
+        notifyError(
+          'Error',
+          'Unable to refresh items. Reopen the list to try again.'
+        );
+      } finally {
+        if (!silent) setIsLoading(false);
+      }
+    },
+    [listId, token]
+  );
 
   useEffect(() => {
     void fetchItems();
@@ -87,10 +90,20 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setShowAddModal(true);
   };
 
-  const handleItemsChanged = () => {
+  const handleItemsChanged = (item?: Item) => {
     setShowAddModal(false);
     setEditingItem(null);
-    void fetchItems();
+    if (!item) {
+      void fetchItems(true);
+      return;
+    }
+    setItems((prev) =>
+      prev.some((existing) => existing.item_id === item.item_id)
+        ? prev.map((existing) =>
+            existing.item_id === item.item_id ? item : existing
+          )
+        : [...prev, item]
+    );
   };
 
   const handleModalClose = () => {
@@ -106,6 +119,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     <View style={styles.header}>
       <TouchableOpacity
         onPress={handleBack}
+        accessibilityRole="button"
+        accessibilityLabel="Back"
         style={styles.backButton}
         activeOpacity={0.7}
       >
@@ -120,6 +135,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       </Text>
       <TouchableOpacity
         onPress={handleDelete}
+        accessibilityRole="button"
+        accessibilityLabel="Delete list"
         style={styles.deleteButton}
         activeOpacity={0.7}
         testID="delete-list"
@@ -155,30 +172,42 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       return renderEmptyState();
     }
 
-    const rankedItems = items.filter((item) => item.rating !== null);
-    if (rankedItems.length === 0) {
-      return renderEmptyState();
-    }
-
     return (
-      <ScrollView contentContainerStyle={styles.listContainer}>
-        {rankedItems.map((item) => (
-          <TouchableOpacity
-            key={item.item_id}
-            accessibilityRole="button"
-            testID="ranked-item"
-            onPress={() => handleItemPress(item)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.itemRow}>
-              <Text style={styles.itemScore}>{item.rating?.toFixed(1)}</Text>
-              <Text style={styles.itemName} numberOfLines={2}>
-                {item.name}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <FlatList
+        data={items}
+        keyExtractor={(item) => item.item_id}
+        contentContainerStyle={styles.listContainer}
+        renderItem={({ item }) => {
+          const isRanked = item.rating !== null;
+          return (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={
+                isRanked
+                  ? `${item.name}, score ${item.rating?.toFixed(1)}`
+                  : `${item.name}, not ranked yet`
+              }
+              testID={isRanked ? 'ranked-item' : 'unranked-item'}
+              onPress={() => handleItemPress(item)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.itemRow}>
+                <Text style={styles.itemScore}>
+                  {isRanked ? item.rating?.toFixed(1) : '—'}
+                </Text>
+                <View style={styles.itemDetails}>
+                  <Text style={styles.itemName} numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                  {!isRanked && (
+                    <Text style={styles.itemUnranked}>Not ranked yet</Text>
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
+      />
     );
   };
 
@@ -265,7 +294,14 @@ const styles = StyleSheet.create({
     ...AppTypography.bodyLarge,
     color: AppColors.secondary.emphasis,
     fontWeight: '500',
+  },
+  itemDetails: {
     flex: 1,
+  },
+  itemUnranked: {
+    ...AppTypography.labelSmall,
+    color: AppColors.secondary.muted,
+    marginTop: 2,
   },
   emptyState: {
     flex: 1,

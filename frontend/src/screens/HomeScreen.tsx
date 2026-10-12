@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   },
   updatedAt: {
     ...AppTypography.labelSmall,
-    color: AppColors.neutral[400],
+    color: AppColors.secondary.muted,
   },
   emptyState: {
     flex: 1,

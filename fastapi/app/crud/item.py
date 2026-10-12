@@ -85,7 +85,10 @@ async def update(
 
 
 async def delete(db: AsyncSession, item: ItemModel) -> None:
-    """Delete an item."""
+    """Delete an item and every comparison session that references it.
+
+    comparison_sessions holds non-cascading FKs to items, so those rows go first.
+    """
     await db.execute(
         sql_delete(ComparisonSessionModel).where(
             (ComparisonSessionModel.new_item_id == item.item_id)

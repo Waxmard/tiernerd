@@ -1,1 +1,1 @@
-TierNerd is a cross-platform mobile app for ranking items through 1v1 comparisons and displaying scores out of 10. Pick a starting range, then compare items to establish their order within that range. Ranked items receive a score based on their position and appear best first.
+TierNerd is a cross-platform mobile app for ranking items through 1v1 comparisons and displaying scores out of 10. Pick a starting range, then compare items to establish their order within it; each item's score follows from its position, and the highest scores come first.

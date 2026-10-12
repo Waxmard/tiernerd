@@ -79,7 +79,9 @@ export const Button: React.FC<ButtonProps> = ({
       ) : (
         <View style={styles.content}>
           {icon && <View style={styles.icon}>{icon}</View>}
-          <Text style={textStyles}>{title}</Text>
+          <Text style={textStyles} numberOfLines={2}>
+            {title}
+          </Text>
         </View>
       )}
     </TouchableOpacity>

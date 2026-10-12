@@ -166,7 +166,8 @@ export const authService = {
           tokenRejected: true,
         };
       }
-      return { success: false, error: 'Could not reach the server' };
+      const detail = error instanceof ApiError ? ` (HTTP ${error.status})` : '';
+      return { success: false, error: `Could not reach the server${detail}` };
     }
   },
 };

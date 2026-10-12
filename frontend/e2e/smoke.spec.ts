@@ -19,7 +19,7 @@ test('create list, add great item, delete the list', async ({ page }) => {
   // HomeScreen chains a successful create straight into the add-item step.
   await expect(page.getByText('Add Item')).toBeVisible();
   await page.getByPlaceholder('Enter item name').fill(itemName);
-  await page.getByText('Great (7–10)').click();
+  await page.getByText('Great (7.0–10.0)').click();
   await page.getByText('Add', { exact: true }).click();
 
   const row = page.getByTestId('ranked-item').filter({ hasText: itemName });

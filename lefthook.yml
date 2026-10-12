@@ -9,13 +9,13 @@ pre-commit:
 
     ruff-lint:
       root: fastapi/
-      glob: "**/*.py"
+      glob: "*.py"
       run: uv run ruff check --fix {staged_files}
       stage_fixed: true
 
     ruff-format:
       root: fastapi/
-      glob: "**/*.py"
+      glob: "*.py"
       run: uv run ruff format {staged_files}
       stage_fixed: true
 

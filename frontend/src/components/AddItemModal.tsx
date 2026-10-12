@@ -21,7 +21,7 @@ import { confirmDestructive } from '../utils/confirm';
 
 interface AddItemContentProps {
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (item?: Item) => void;
   listTitle: string;
   editingItem?: Item;
 }
@@ -36,9 +36,9 @@ interface TierOption {
 }
 
 const TIER_OPTIONS: TierOption[] = [
-  { label: 'Great (7–10)', value: 'good' },
-  { label: 'Okay (4–7)', value: 'mid' },
-  { label: 'Bad (1–4)', value: 'bad' },
+  { label: 'Great (7.0–10.0)', value: 'good' },
+  { label: 'Okay (4.0–6.9)', value: 'mid' },
+  { label: 'Bad (1.0–3.9)', value: 'bad' },
 ];
 
 const MAX_NAME_LENGTH = 100;
@@ -111,7 +111,7 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
       setError(null);
 
       if (isEditMode && editingItem) {
-        await itemsService.updateItem(
+        const updated = await itemsService.updateItem(
           editingItem.item_id,
           {
             name: trimmedName,
@@ -120,7 +120,7 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
           token
         );
         resetForm();
-        onSuccess();
+        onSuccess(updated);
       } else {
         if (!tierSet) {
           setError('Please pick a range');
@@ -140,7 +140,7 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
           setComparisonSession(response);
         } else {
           resetForm();
-          onSuccess();
+          onSuccess(response);
         }
       }
     } catch (err) {
@@ -286,6 +286,8 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
             {TIER_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: tierSet === option.value }}
                 style={[
                   styles.tierOption,
                   tierSet === option.value && styles.tierOptionSelected,
@@ -368,7 +370,7 @@ const styles = StyleSheet.create({
     marginBottom: AppSpacing.sm,
   },
   tierOptions: {
-    gap: AppSpacing.xs,
+    gap: AppSpacing.sm,
   },
   tierOption: {
     paddingVertical: AppSpacing.sm,
@@ -388,7 +390,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tierOptionTextSelected: {
-    color: AppColors.accent.primary,
+    color: AppColors.secondary.emphasis,
     fontWeight: '600',
   },
   descriptionInput: {

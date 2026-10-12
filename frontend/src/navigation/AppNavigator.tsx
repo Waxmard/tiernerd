@@ -1,8 +1,8 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import type React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { AppColors } from '../design-system/tokens';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { AppColors, AppSpacing, AppTypography } from '../design-system/tokens';
 import { useAuth } from '../providers/AuthContext';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ListDetailScreen } from '../screens/ListDetailScreen';
@@ -21,6 +21,9 @@ export const AppNavigator: React.FC = () => {
     return (
       <View style={styles.splash}>
         <ActivityIndicator size="large" color={AppColors.accent.primary} />
+        <Text accessibilityLiveRegion="polite" style={styles.splashText}>
+          Loading your session…
+        </Text>
       </View>
     );
   }
@@ -52,5 +55,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: AppColors.dominant.primary,
+  },
+  splashText: {
+    ...AppTypography.bodyMedium,
+    color: AppColors.secondary.muted,
+    marginTop: AppSpacing.md,
   },
 });

@@ -12,7 +12,7 @@ help:
 	@echo "  lint             - Lint backend + frontend"
 	@echo "  fix              - Lint + autofix backend + frontend"
 	@echo "  typecheck        - Typecheck backend + frontend"
-	@echo "  test             - Run backend tests with coverage"
+	@echo "  test             - Run backend tests with coverage + frontend unit tests"
 	@echo "  ci               - lint + typecheck + test + docs-check + line-limit"
 	@echo ""
 	@echo "Docs (rendered from docs/src):"
@@ -40,8 +40,8 @@ setup:
 lint:      backend-lint frontend-lint
 fix:       backend-fix frontend-fix
 typecheck: backend-typecheck frontend-typecheck
-test:      backend-test
-ci:        backend-ci frontend-lint frontend-typecheck docs-check line-limit
+test:      backend-test frontend-unit
+ci:        backend-ci frontend-lint frontend-typecheck frontend-unit docs-check line-limit
 
 # ----- Source hygiene -----
 
@@ -64,7 +64,7 @@ backend-%:
 
 # ----- Frontend -----
 
-.PHONY: frontend-lint frontend-fix frontend-typecheck frontend-e2e
+.PHONY: frontend-lint frontend-fix frontend-typecheck frontend-unit frontend-e2e
 frontend-lint:
 	cd frontend && npm run lint && npm run format:check
 
@@ -73,6 +73,9 @@ frontend-fix:
 
 frontend-typecheck:
 	cd frontend && npm run typecheck
+
+frontend-unit:
+	cd frontend && npm run test:unit
 
 frontend-e2e:
 	@if [ -n "$$EXPO_PUBLIC_API_URL" ]; then \

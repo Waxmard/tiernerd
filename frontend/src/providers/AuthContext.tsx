@@ -36,7 +36,7 @@ interface AuthContextType {
     password: string,
     username?: string
   ) => Promise<boolean>;
-  signInWithGoogle: () => Promise<boolean>;
+  signInWithGoogle: () => Promise<void>;
   googleAvailable: boolean;
   signOut: () => Promise<void>;
 }
@@ -74,8 +74,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isRestoring, setIsRestoring] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const googleAvailable = googleSignInAvailable;
-
   // Helper to persist auth state to storage and update state
   const saveAuthState = useCallback(async (newToken: string, newUser: User) => {
     await AsyncStorage.setItem(AUTH_TOKEN_KEY, newToken);
@@ -108,6 +106,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (result.tokenRejected) {
         await clearAuthState();
         return;
+      }
+      if (result.error) {
+        console.warn('Session revalidation failed:', result.error);
       }
       if (result.user) {
         const localUser = toLocalUser(result.user);
@@ -251,22 +252,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     [signIn, saveAuthState]
   );
 
-  const signInWithGoogle = useCallback(async (): Promise<boolean> => {
+  const signInWithGoogle = useCallback(async (): Promise<void> => {
     if (USE_MOCK_AUTH) {
-      return signIn('google.user@tiernerd.com', 'mock-google-password');
+      await signIn('google.user@tiernerd.com', 'mock-google-password');
+      return;
     }
     if (!googleSignInAvailable) {
       setError('Google sign-in is not configured');
-      return false;
+      return;
     }
     try {
       await startGoogleRedirect();
-      return true;
     } catch (error: unknown) {
       setError(
         error instanceof Error ? error.message : 'Google sign-in failed'
       );
-      return false;
     }
   }, [signIn]);
 
@@ -291,7 +291,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       signIn,
       register,
       signInWithGoogle,
-      googleAvailable,
+      googleAvailable: googleSignInAvailable,
       signOut,
     }),
     [
