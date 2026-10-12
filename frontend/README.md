@@ -78,10 +78,15 @@ Open `http://<ip>:8081` in Safari. The API base URL follows the host that served
 End-to-end smoke test — Playwright drives the **built** web bundle, so the API URL is baked in at export time:
 
 ```bash
-make frontend-e2e                 # builds the bundle, then runs the spec
+make frontend-e2e                 # boots a throwaway backend, builds the bundle, runs the spec
 ```
 
-`make frontend-e2e` builds first, so it always tests the current code. The API the bundle targets is `EXPO_PUBLIC_API_URL` (the shell value wins over `frontend/.env.local`), so a run against a local backend is `EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e`. CI runs the same flow in `.github/workflows/e2e.yml`.
+`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. Set `EXPO_PUBLIC_API_URL` to target something else instead; the shell value wins over `frontend/.env.local`:
+
+```bash
+EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-…run.app make frontend-e2e   # deployed dev API
+EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e               # a running container
+```
 
 Reserved for native-only changes and pre-release checks:
 

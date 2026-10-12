@@ -122,10 +122,15 @@ Open `http://<ip>:8081` in Safari. The API base URL follows the host that served
 End-to-end smoke test — Playwright drives the **built** web bundle, so the API URL is baked in at export time:
 
 ```bash
-make frontend-e2e                 # builds the bundle, then runs the spec
+make frontend-e2e                 # boots a throwaway backend, builds the bundle, runs the spec
 ```
 
-`make frontend-e2e` builds first, so it always tests the current code. The API the bundle targets is `EXPO_PUBLIC_API_URL` (the shell value wins over `frontend/.env.local`), so a run against a local backend is `EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e`. CI runs the same flow in `.github/workflows/e2e.yml`.
+`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. Set `EXPO_PUBLIC_API_URL` to target something else instead; the shell value wins over `frontend/.env.local`:
+
+```bash
+EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-…run.app make frontend-e2e   # deployed dev API
+EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e               # a running container
+```
 
 Reserved for native-only changes and pre-release checks:
 
@@ -246,7 +251,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 - The browser target (`npm run web`, served at `http://localhost:8081`) is the primary frontend loop. If it is already serving, use it to verify UI changes instead of asking for a simulator run.
 - The deployed dev API is the default backend for frontend work; point `npm run web` at it with `EXPO_PUBLIC_API_URL` instead of starting containers locally.
 - Do **not** run `make cloud-deploy` unless asked — it mutates shared cloud state.
-- Run `make frontend-e2e` after changing frontend behavior — it builds the web bundle first, then drives it with Playwright, so it needs an API to talk to (a local backend, or the deployed dev API via `frontend/.env.local`).
+- Run `make frontend-e2e` after changing frontend behavior — it boots a throwaway SQLite backend, builds the web bundle, then drives it with Playwright, so it needs neither a local container nor a deployed API (pass `EXPO_PUBLIC_API_URL` to target the deployed dev API instead).
 - Do **not** run `git commit`, `git add`, or `git push` — the user handles staging, committing, and pushing.
 - Do **not** run `make clean`, `make dev`, `make fresh`, `make restart`, or `make reset` — the user runs these themselves.
 - Backend package management: use `uv`, not `pip`.

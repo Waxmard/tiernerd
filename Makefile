@@ -24,7 +24,7 @@ help:
 	@echo ""
 	@echo "Frontend (delegates to frontend/package.json scripts):"
 	@echo "  frontend-lint frontend-fix frontend-typecheck"
-	@echo "  frontend-e2e     - Playwright smoke spec against the web bundle"
+	@echo "  frontend-e2e     - Playwright smoke spec against the built web bundle"
 
 # ----- Setup -----
 
@@ -75,8 +75,9 @@ frontend-typecheck:
 	cd frontend && npm run typecheck
 
 frontend-e2e:
-	@if [ ! -f frontend/.env.local ] && [ -z "$$EXPO_PUBLIC_API_URL" ]; then \
-		curl -sf http://localhost:8000/health >/dev/null || { echo "no EXPO_PUBLIC_API_URL (shell or frontend/.env.local) and no backend on :8000 — run: cd fastapi && make dev DETACHED=1"; exit 1; }; \
+	@if [ -n "$$EXPO_PUBLIC_API_URL" ]; then \
+		echo "frontend-e2e: against $$EXPO_PUBLIC_API_URL"; \
+		cd frontend && npm run build:web && npm run e2e; \
+	else \
+		scripts/e2e_backend.sh; \
 	fi
-	cd frontend && npm run build:web
-	cd frontend && npm run e2e
