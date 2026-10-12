@@ -54,6 +54,8 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading }}
       style={buttonStyles}
       onPress={() => {
         console.log('Button pressed:', title); // Debug log

@@ -143,7 +143,6 @@ class TestComparisonCRUD:
             image_url=None,
             position="a1",
             rating=None,
-            tier="A",
             tier_set="good",
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -277,7 +276,6 @@ class TestItemCRUD:
             image_url="https://example.com/crud.jpg",
             position="a0",
             rating=None,
-            tier="B",
             tier_set="good",
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -324,7 +322,6 @@ class TestItemCRUD:
             image_url=None,
             position="a0",
             rating=None,
-            tier="A",
             tier_set="good",
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -401,7 +398,6 @@ class TestListCRUD:
         """Test getting lists with stats for a user."""
         result = await list_crud.get_by_user_with_stats(test_db, test_user.user_id)
         assert len(result) >= 1
-        # Result should be tuples with (ListModel, item_count, tier stats...)
         list_obj = result[0][0]
         assert list_obj.user_id == test_user.user_id
 
@@ -457,23 +453,40 @@ class TestListCRUD:
 
         assert result.title == "CRUD Updated Title"
 
-    async def test_delete_list(self, test_db: AsyncSession, test_user: User):
-        """Test deleting a list."""
-        # Create a list to delete
+    async def test_delete_list(
+        self, test_db: AsyncSession, test_user: User, multiple_items: list[ItemModel]
+    ):
         list_obj = ListModel(
             list_id=uuid.uuid4(),
             user_id=test_user.user_id,
             title="To Delete List",
-            description="Will be deleted",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
         test_db.add(list_obj)
+        await test_db.flush()
+        new_item = ItemModel(list_id=list_obj.list_id, name="New", position="a1")
+        target_item = ItemModel(list_id=list_obj.list_id, name="Target", position="a0")
+        test_db.add_all([new_item, target_item])
+        await test_db.flush()
+        related = ComparisonSessionModel(
+            list_id=list_obj.list_id,
+            new_item_id=new_item.item_id,
+            target_item_id=target_item.item_id,
+            tier_set="good",
+            is_complete=True,
+        )
+        unrelated = ComparisonSessionModel(
+            list_id=multiple_items[0].list_id,
+            new_item_id=multiple_items[0].item_id,
+            target_item_id=multiple_items[1].item_id,
+            tier_set="good",
+        )
+        test_db.add_all([related, unrelated])
         await test_db.commit()
 
         list_id = list_obj.list_id
         await list_crud.delete(test_db, list_obj)
 
-        # Verify deleted
-        result = await list_crud.get_by_id(test_db, list_id)
-        assert result is None
+        assert await list_crud.get_by_id(test_db, list_id) is None
+        assert await item_crud.get_by_id(test_db, new_item.item_id) is None
+        sessions = await test_db.execute(select(ComparisonSessionModel.session_id))
+        assert list(sessions.scalars()) == [unrelated.session_id]

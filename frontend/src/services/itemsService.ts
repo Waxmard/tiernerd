@@ -8,8 +8,9 @@ export interface Item {
   name: string;
   description: string | null;
   image_url: string | null;
-  tier: string | null;
-  rank: number | null;
+  rating: number | null;
+  position: string | null;
+  tier_set: TierSet | null;
   created_at: string;
   updated_at: string;
 }
@@ -17,8 +18,12 @@ export interface Item {
 export interface ComparisonSession {
   session_id: string;
   list_id: string;
-  item_a: Item;
-  item_b: Item;
+  item_id: string;
+  current_comparison: {
+    reference_item: Item;
+    target_item: Item;
+  } | null;
+  is_complete: boolean;
 }
 
 export interface CreateItemRequest {
@@ -35,14 +40,9 @@ export interface UpdateItemRequest {
 
 export type CreateItemResponse = Item | ComparisonSession;
 
-// Type guard to check if response is a ComparisonSession
 export const isComparisonSession = (
   response: CreateItemResponse
-): response is ComparisonSession => {
-  return (
-    'session_id' in response && 'item_a' in response && 'item_b' in response
-  );
-};
+): response is ComparisonSession => 'session_id' in response;
 
 export const itemsService = {
   createItem: (
@@ -62,4 +62,18 @@ export const itemsService = {
     token: string
   ): Promise<Item> =>
     api.put<Item>(`/api/items/items/${itemId}`, itemData, token),
+
+  submitComparison: (
+    sessionId: string,
+    result: 'better' | 'worse',
+    token: string
+  ): Promise<ComparisonSession | null> =>
+    api.post<ComparisonSession | null>(
+      `/api/items/comparison/result?session_id=${encodeURIComponent(sessionId)}`,
+      { result },
+      token
+    ),
+
+  deleteItem: (itemId: string, token: string): Promise<void> =>
+    api.delete<void>(`/api/items/items/${itemId}`, token),
 };

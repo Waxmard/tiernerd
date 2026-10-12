@@ -1,10 +1,14 @@
 import uuid
 from typing import Any
 
-from sqlalchemy import case, func, select
+from sqlalchemy import delete as sql_delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Item as ItemModel, List as ListModel
+from app.db.models import (
+    ComparisonSession as ComparisonSessionModel,
+    Item as ItemModel,
+    List as ListModel,
+)
 
 
 async def get_by_id(db: AsyncSession, list_id: uuid.UUID) -> ListModel | None:
@@ -42,17 +46,11 @@ async def get_by_title_and_user(
 async def get_by_user_with_stats(
     db: AsyncSession, user_id: uuid.UUID, skip: int = 0, limit: int = 100
 ) -> list[tuple[Any, ...]]:
-    """Get all lists for a user with item counts and tier distribution."""
+    """Get all lists for a user with item counts."""
     query = (
         select(
             ListModel,
             func.count(ItemModel.item_id).label("item_count"),
-            func.sum(case((ItemModel.tier == "S", 1), else_=0)).label("tier_s"),
-            func.sum(case((ItemModel.tier == "A", 1), else_=0)).label("tier_a"),
-            func.sum(case((ItemModel.tier == "B", 1), else_=0)).label("tier_b"),
-            func.sum(case((ItemModel.tier == "C", 1), else_=0)).label("tier_c"),
-            func.sum(case((ItemModel.tier == "D", 1), else_=0)).label("tier_d"),
-            func.sum(case((ItemModel.tier == "F", 1), else_=0)).label("tier_f"),
         )
         .outerjoin(ItemModel)
         .where(ListModel.user_id == user_id)
@@ -61,7 +59,7 @@ async def get_by_user_with_stats(
         .limit(limit)
     )
     result = await db.execute(query)
-    return list(result.all())
+    return list(result.tuples().all())
 
 
 async def create(db: AsyncSession, list_obj: ListModel) -> ListModel:
@@ -86,5 +84,10 @@ async def update(
 
 async def delete(db: AsyncSession, list_obj: ListModel) -> None:
     """Delete a list (items cascade deleted via relationship)."""
+    await db.execute(
+        sql_delete(ComparisonSessionModel).where(
+            ComparisonSessionModel.list_id == list_obj.list_id
+        )
+    )
     await db.delete(list_obj)
     await db.commit()

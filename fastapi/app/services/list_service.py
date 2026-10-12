@@ -3,55 +3,27 @@
 from typing import Any
 
 from app.db.models import Item as ItemModel
-from app.utils.helper import sort_items_by_position
+from app.services.ranking import SCORE_BANDS
 
 
-def group_items_by_tier_set(
-    items: list[ItemModel],
-) -> dict[str | None, list[ItemModel]]:
+def get_items_best_first(items: list[ItemModel]) -> list[ItemModel]:
     """
-    Group items by their tier_set value.
+    Order items best first: bands good, mid, bad, best position first within a
+    band, then unranked items.
 
     Args:
-        items: List of items to group
+        items: List of items to order
 
     Returns:
-        Dictionary mapping tier_set to list of items
+        List of items, best first, unranked last
     """
-    groups: dict[str | None, list[ItemModel]] = {}
-    for item in items:
-        tier_set = item.tier_set
-        if tier_set not in groups:
-            groups[tier_set] = []
-        groups[tier_set].append(item)
-    return groups
-
-
-def get_items_sorted_by_tier_set(items: list[ItemModel]) -> list[ItemModel]:
-    """
-    Sort items by their tier_set's position order.
-    Each tier_set has its own position ordering, so we sort each group separately
-    and then combine them.
-
-    Args:
-        items: List of items to sort
-
-    Returns:
-        List of items sorted by tier_set position order
-    """
-    if not items:
-        return []
-
-    # Group items by tier_set since each tier_set has its own ordering
-    tier_set_groups = group_items_by_tier_set(items)
-
-    # Sort each tier_set's items by position, then combine
-    all_sorted: list[ItemModel] = []
-    for _tier_set, group_items in tier_set_groups.items():
-        sorted_group = sort_items_by_position(group_items)
-        all_sorted.extend(sorted_group)
-
-    return all_sorted
+    ranked = [i for i in items if i.position is not None]
+    unranked = [i for i in items if i.position is None]
+    ranked.sort(key=lambda i: i.position or "", reverse=True)
+    ranked.sort(
+        key=lambda i: SCORE_BANDS.get(i.tier_set or "", (0.0, 0.0))[0], reverse=True
+    )
+    return ranked + unranked
 
 
 def build_list_response(
@@ -85,22 +57,13 @@ def build_list_simple_response(row: tuple[Any, ...]) -> dict[str, Any]:
     Build a ListSimple response from a database row with stats.
 
     Args:
-        row: Tuple of (ListModel, item_count, tier_s, tier_a, tier_b, tier_c,
-            tier_d, tier_f)
+        row: Tuple of (ListModel, item_count)
 
     Returns:
         Dictionary with list data and statistics
     """
     list_obj = row[0]
     item_count = row[1] or 0
-    tier_distribution = {
-        "S": row[2] or 0,
-        "A": row[3] or 0,
-        "B": row[4] or 0,
-        "C": row[5] or 0,
-        "D": row[6] or 0,
-        "F": row[7] or 0,
-    }
     return {
         "list_id": list_obj.list_id,
         "user_id": list_obj.user_id,
@@ -109,5 +72,4 @@ def build_list_simple_response(row: tuple[Any, ...]) -> dict[str, Any]:
         "created_at": list_obj.created_at,
         "updated_at": list_obj.updated_at,
         "item_count": item_count,
-        "tier_distribution": tier_distribution,
     }

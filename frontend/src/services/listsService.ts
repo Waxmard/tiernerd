@@ -1,4 +1,3 @@
-import type { TierDistribution } from '../components/TierDistributionBar';
 import { api } from './api';
 import type { Item } from './itemsService';
 
@@ -9,7 +8,6 @@ export interface ListSimple {
   created_at: string;
   updated_at: string;
   item_count: number;
-  tier_distribution: TierDistribution;
 }
 
 export const listsService = {

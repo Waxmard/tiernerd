@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -24,20 +25,6 @@ import type { Item } from '../services/itemsService';
 import { listsService } from '../services/listsService';
 import { confirmDestructive, notifyError } from '../utils/confirm';
 
-const TIER_ORDER = ['S', 'A', 'B', 'C', 'D', 'F'] as const;
-
-const groupItemsByTier = (items: Item[]): Record<string, Item[]> => {
-  const grouped: Record<string, Item[]> = {};
-  for (const tier of TIER_ORDER) {
-    grouped[tier] = [];
-  }
-  for (const item of items) {
-    const bucket = item.tier ? grouped[item.tier] : undefined;
-    bucket?.push(item);
-  }
-  return grouped;
-};
-
 type ListDetailScreenProps = RootStackScreenProps<'ListDetail'>;
 
 export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
@@ -52,21 +39,25 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const [showAddModal, setShowAddModal] = useState(promptAddItem ?? false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
 
-  useEffect(() => {
-    const fetchItems = async () => {
-      if (!token) return;
-      try {
-        setIsLoading(true);
-        const fetchedItems = await listsService.getListItems(listId, token);
-        setItems(fetchedItems);
-      } catch (err) {
-        console.error('Error fetching items:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchItems();
+  const fetchItems = useCallback(async () => {
+    if (!token) return;
+    try {
+      setIsLoading(true);
+      setItems(await listsService.getListItems(listId, token));
+    } catch (err) {
+      console.error('Error fetching items:', err);
+      notifyError(
+        'Error',
+        'Unable to refresh items. Reopen the list to try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }, [listId, token]);
+
+  useEffect(() => {
+    void fetchItems();
+  }, [fetchItems]);
 
   const handleBack = () => {
     navigation.goBack();
@@ -96,16 +87,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setShowAddModal(true);
   };
 
-  const handleItemCreated = (item: Item) => {
-    setItems((prev) => [...prev, item]);
+  const handleItemsChanged = () => {
     setShowAddModal(false);
-  };
-
-  const handleItemUpdated = (item: Item) => {
-    setItems((prev) =>
-      prev.map((i) => (i.item_id === item.item_id ? item : i))
-    );
     setEditingItem(null);
+    void fetchItems();
   };
 
   const handleModalClose = () => {
@@ -157,44 +142,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     </View>
   );
 
-  const TierRow = ({
-    tier,
-    tierItems,
-  }: {
-    tier: string;
-    tierItems: Item[];
-  }) => (
-    <View style={styles.tierRow}>
-      <View
-        style={[
-          styles.tierLabel,
-          { backgroundColor: AppColors.getTierColor(tier) },
-        ]}
-      >
-        <Text style={styles.tierLabelText}>{tier}</Text>
-      </View>
-      <View style={styles.tierItemsContainer}>
-        {tierItems.length === 0 ? (
-          <Text style={styles.emptyTierPlaceholder}>No items</Text>
-        ) : (
-          tierItems.map((item) => (
-            <TouchableOpacity
-              key={item.item_id}
-              onPress={() => handleItemPress(item)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.compactItemCard}>
-                <Text style={styles.compactItemName} numberOfLines={2}>
-                  {item.name}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
-    </View>
-  );
-
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -208,18 +155,30 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       return renderEmptyState();
     }
 
-    const groupedItems = groupItemsByTier(items);
+    const rankedItems = items.filter((item) => item.rating !== null);
+    if (rankedItems.length === 0) {
+      return renderEmptyState();
+    }
 
     return (
-      <View style={styles.tierContainer}>
-        {TIER_ORDER.map((tier) => (
-          <TierRow
-            key={tier}
-            tier={tier}
-            tierItems={groupedItems[tier] ?? []}
-          />
+      <ScrollView contentContainerStyle={styles.listContainer}>
+        {rankedItems.map((item) => (
+          <TouchableOpacity
+            key={item.item_id}
+            accessibilityRole="button"
+            testID="ranked-item"
+            onPress={() => handleItemPress(item)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.itemRow}>
+              <Text style={styles.itemScore}>{item.rating?.toFixed(1)}</Text>
+              <Text style={styles.itemName} numberOfLines={2}>
+                {item.name}
+              </Text>
+            </View>
+          </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
     );
   };
 
@@ -234,7 +193,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         <AddItemModal
           visible={showAddModal || !!editingItem}
           onClose={handleModalClose}
-          onSuccess={editingItem ? handleItemUpdated : handleItemCreated}
+          onSuccess={handleItemsChanged}
           listTitle={listTitle}
           editingItem={editingItem ?? undefined}
         />
@@ -282,60 +241,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: -AppSpacing.sm,
   },
-  tierContainer: {
-    flex: 1,
+  listContainer: {
     padding: AppSpacing.md,
     paddingBottom: AppSpacing.xxxl + 56,
   },
-  tierRow: {
-    flex: 1,
+  itemRow: {
     flexDirection: 'row',
-    marginBottom: AppSpacing.xs,
-    backgroundColor: AppColors.neutral[100],
-    borderRadius: AppBorders.radiusSm,
-    overflow: 'hidden',
-  },
-  tierLabel: {
-    width: 44,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tierLabelText: {
-    ...AppTypography.headlineSmall,
-    color: AppColors.textOnPrimary,
-    fontWeight: '700',
-  },
-  tierItemsContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    alignContent: 'flex-start',
-    padding: AppSpacing.xs,
-    gap: AppSpacing.xs,
-  },
-  compactItemCard: {
     backgroundColor: AppColors.dominant.primary,
     borderRadius: AppBorders.radiusSm,
-    paddingHorizontal: AppSpacing.sm,
-    paddingVertical: AppSpacing.xs,
-    maxWidth: 120,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    paddingHorizontal: AppSpacing.md,
+    paddingVertical: AppSpacing.sm,
+    marginBottom: AppSpacing.xs,
   },
-  compactItemName: {
-    ...AppTypography.bodySmall,
+  itemScore: {
+    ...AppTypography.headlineSmall,
+    color: AppColors.accent.primary,
+    fontWeight: '700',
+    width: 56,
+    fontVariant: ['tabular-nums'],
+  },
+  itemName: {
+    ...AppTypography.bodyLarge,
     color: AppColors.secondary.emphasis,
     fontWeight: '500',
-  },
-  emptyTierPlaceholder: {
-    ...AppTypography.bodySmall,
-    color: AppColors.neutral[400],
-    fontStyle: 'italic',
-    paddingHorizontal: AppSpacing.sm,
+    flex: 1,
   },
   emptyState: {
     flex: 1,

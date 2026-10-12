@@ -8,8 +8,8 @@
 - Add items with descriptions and images
 - Rank items through simple better/worse comparisons
 - Eliminate arbitrary rating bias
-- View results as both ordered lists and intuitive tier rankings (S–F)
-- Understand at a glance which items are top-tier (S) vs lower tiers
+- View ranked items best first with scores out of 10
+- Choose a starting range: Great (7–10), Okay (4–7), or Bad (1–4)
 
 ## Screenshots
 

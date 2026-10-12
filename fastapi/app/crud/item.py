@@ -1,10 +1,14 @@
 import uuid
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Item as ItemModel, List as ListModel
+from app.db.models import (
+    ComparisonSession as ComparisonSessionModel,
+    Item as ItemModel,
+    List as ListModel,
+)
 
 
 async def get_by_id(db: AsyncSession, item_id: uuid.UUID) -> ItemModel | None:
@@ -45,17 +49,18 @@ async def get_by_list_and_tier_set(
     return list(result.scalars().all())
 
 
-async def get_by_list_and_tier_set_sorted(
+async def get_ranked_by_list_and_tier_set(
     db: AsyncSession, list_id: uuid.UUID, tier_set: str
 ) -> list[ItemModel]:
-    """Get all items in a list with a specific tier_set, sorted by position."""
+    """Get ranked items in a list with a specific tier_set, sorted by position."""
     result = await db.execute(
         select(ItemModel)
         .where(
             ItemModel.list_id == list_id,
             ItemModel.tier_set == tier_set,
+            ItemModel.position.isnot(None),
         )
-        .order_by(ItemModel.position.nulls_last())
+        .order_by(ItemModel.position)
     )
     return list(result.scalars().all())
 
@@ -81,6 +86,12 @@ async def update(
 
 async def delete(db: AsyncSession, item: ItemModel) -> None:
     """Delete an item."""
+    await db.execute(
+        sql_delete(ComparisonSessionModel).where(
+            (ComparisonSessionModel.new_item_id == item.item_id)
+            | (ComparisonSessionModel.target_item_id == item.item_id)
+        )
+    )
     await db.delete(item)
 
 

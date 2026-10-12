@@ -36,13 +36,6 @@ class TestReadLists:
         assert "title" in list_data
         assert "description" in list_data
         assert "item_count" in list_data
-        assert "tier_distribution" in list_data
-        assert list_data["tier_distribution"]["S"] >= 0
-        assert list_data["tier_distribution"]["A"] >= 0
-        assert list_data["tier_distribution"]["B"] >= 0
-        assert list_data["tier_distribution"]["C"] >= 0
-        assert list_data["tier_distribution"]["D"] >= 0
-        assert list_data["tier_distribution"]["F"] >= 0
 
         # Verify data matches database
         result = await test_db.execute(
@@ -417,7 +410,6 @@ class TestDeleteList:
                 image_url=f"https://example.com/img{i}.jpg",
                 position=f"a{i}",
                 rating=None,
-                tier="A",
                 tier_set="good",
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
@@ -493,7 +485,6 @@ class TestReadListItems:
             image_url="https://example.com/good.jpg",
             position="a0",
             rating=None,
-            tier="A",
             tier_set="good",
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -506,7 +497,6 @@ class TestReadListItems:
             image_url="https://example.com/mid.jpg",
             position="a0",
             rating=None,
-            tier="C",
             tier_set="mid",
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -561,53 +551,7 @@ class TestReadListItems:
 
 @pytest.mark.asyncio
 class TestReadListsWithStats:
-    """Tests for reading lists with tier distribution stats."""
-
-    async def test_read_lists_tier_distribution(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        """Test that tier distribution is calculated correctly."""
-        # Create items with various tiers
-        tiers = ["S", "S", "A", "A", "A", "B", "C", "D", "F"]
-        for i, tier in enumerate(tiers):
-            item = ItemModel(
-                item_id=uuid.uuid4(),
-                list_id=test_list.list_id,
-                name=f"Item {i}",
-                description=f"Tier {tier} item",
-                image_url=f"https://example.com/img{i}.jpg",
-                position=f"a{i}",
-                rating=None,
-                tier=tier,
-                tier_set="good",
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-            )
-            test_db.add(item)
-        await test_db.commit()
-
-        response = await client.get("/api/lists/", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-
-        # Find our test list
-        list_data = next(
-            (lst for lst in data if str(lst["list_id"]) == str(test_list.list_id)), None
-        )
-        assert list_data is not None
-
-        # Verify counts
-        assert list_data["item_count"] == 9
-        assert list_data["tier_distribution"]["S"] == 2
-        assert list_data["tier_distribution"]["A"] == 3
-        assert list_data["tier_distribution"]["B"] == 1
-        assert list_data["tier_distribution"]["C"] == 1
-        assert list_data["tier_distribution"]["D"] == 1
-        assert list_data["tier_distribution"]["F"] == 1
+    """Tests for reading lists with stats."""
 
     async def test_read_lists_pagination_multiple_lists(
         self,

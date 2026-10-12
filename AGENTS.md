@@ -4,7 +4,7 @@ This file provides guidance to AI agents working in this repository.
 
 ## Project Overview
 
-TierNerd is a cross-platform mobile app for creating ranked tier lists (S–F) through 1v1 comparisons. Rather than asking users to assign subjective numerical scores, the app presents pairs of items and asks which is better. Through a series of binary choices, each item finds its proper place and receives a numeric rating that is then mapped to an intuitive tier (S, A, B, C, D, F).
+TierNerd is a cross-platform mobile app for ranking items through 1v1 comparisons and displaying scores out of 10. Pick a starting range, then compare items to establish their order within that range. Ranked items receive a score based on their position and appear best first.
 
 Monorepo with React Native/Expo frontend and FastAPI backend.
 

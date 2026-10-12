@@ -199,7 +199,6 @@ async def test_item(test_db: AsyncSession, test_list: ListModel) -> ItemModel:
         image_url="https://example.com/image.jpg",
         position="a0",
         rating=None,
-        tier="A",
         tier_set="good",
         created_at=datetime.now(),
         updated_at=datetime.now(),
@@ -229,7 +228,6 @@ async def multiple_items(
             image_url=f"https://example.com/image{i + 1}.jpg",
             position=positions[i],
             rating=None,
-            tier="A" if i < 3 else "S",
             tier_set="good",
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -251,7 +249,6 @@ def item_factory(test_list: ListModel):
 
     def _create_item(
         name: str = "Test Item",
-        tier: str | None = "A",
         tier_set: str = "good",
         description: str = "",
         image_url: str | None = None,
@@ -267,7 +264,6 @@ def item_factory(test_list: ListModel):
             image_url=image_url,
             position=position,
             rating=rating,
-            tier=tier,
             tier_set=tier_set,
             created_at=datetime.now(),
             updated_at=datetime.now(),

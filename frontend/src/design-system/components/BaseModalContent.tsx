@@ -20,7 +20,7 @@ interface BaseModalContentProps {
   submitText?: string;
   submitDisabled?: boolean;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit?: () => void;
   contentStyle?: ViewStyle;
 }
 
@@ -48,7 +48,11 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
 
               {children}
 
-              {error && <Text style={styles.error}>{error}</Text>}
+              {error && (
+                <Text style={styles.error} accessibilityRole="alert">
+                  {error}
+                </Text>
+              )}
 
               <View style={styles.buttonRow}>
                 <Button
@@ -58,13 +62,15 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
                   disabled={isLoading}
                   style={styles.cancelButton}
                 />
-                <Button
-                  title={submitText}
-                  onPress={onSubmit}
-                  loading={isLoading}
-                  disabled={submitDisabled}
-                  style={styles.submitButton}
-                />
+                {onSubmit && (
+                  <Button
+                    title={submitText}
+                    onPress={onSubmit}
+                    loading={isLoading}
+                    disabled={submitDisabled}
+                    style={styles.submitButton}
+                  />
+                )}
               </View>
             </View>
           </TouchableWithoutFeedback>

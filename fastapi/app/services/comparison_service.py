@@ -1,6 +1,5 @@
 """Comparison session business logic."""
 
-import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -11,10 +10,8 @@ from app.core.fractional_index import generate_key_between
 from app.crud import comparison as comparison_crud, item as item_crud
 from app.db.models import ComparisonSession as ComparisonSessionModel, Item as ItemModel
 from app.schemas.item import Comparison, ComparisonSession
-from app.services.ranking import assign_tiers_for_set
+from app.services.ranking import assign_scores_for_set
 from app.utils.helper import sort_items_by_position
-
-logger = logging.getLogger(__name__)
 
 
 async def start_comparison(
@@ -144,7 +141,7 @@ async def finalize_comparison(
     tier_set: str,
 ) -> None:
     """
-    Finalize a comparison by setting item position and recalculating tiers.
+    Finalize a comparison by setting item position and recalculating scores.
 
     Args:
         db: Database session
@@ -187,17 +184,8 @@ async def finalize_comparison(
     db.add(new_item)
     await db.flush()
 
-    # Fetch items only for tier calculation (separate concern)
-    all_items = await item_crud.get_by_list_and_tier_set_sorted(db, list_id, tier_set)
-    try:
-        assign_tiers_for_set(all_items, tier_set)
-    except ValueError as e:
-        logger.warning(
-            "Failed to assign tiers for list_id=%s, tier_set=%s: %s",
-            list_id,
-            tier_set,
-            str(e),
-        )
+    ranked = await item_crud.get_ranked_by_list_and_tier_set(db, list_id, tier_set)
+    assign_scores_for_set(ranked, tier_set)
 
     # Mark session as complete
     await comparison_crud.mark_complete(db, db_session)

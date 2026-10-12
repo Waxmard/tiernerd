@@ -1,54 +1,31 @@
-"""Ranking and tier assignment business logic."""
+"""Ranking and score assignment business logic."""
 
 import uuid
 
 from app.db.models import Item as ItemModel
 
-# Tier assignment mapping: tier_set -> (high_tier, low_tier)
-TIER_SET_MAP = {
-    "good": ("S", "A"),
-    "mid": ("B", "C"),
-    "bad": ("D", "F"),
-}
-
-# Initial tier for first item in each tier_set (lower tier)
-INITIAL_TIER_MAP = {
-    "good": "A",
-    "mid": "C",
-    "bad": "F",
+SCORE_BANDS: dict[str, tuple[float, float]] = {
+    "good": (7.0, 10.0),
+    "mid": (4.0, 7.0),
+    "bad": (1.0, 4.0),
 }
 
 
-def get_initial_tier(tier_set: str) -> str:
-    """Get the initial tier for the first item in a tier_set."""
-    return INITIAL_TIER_MAP.get(tier_set, "C")
-
-
-def assign_tiers_for_set(sorted_items: list[ItemModel], tier_set: str) -> None:
+def assign_scores_for_set(sorted_items: list[ItemModel], tier_set: str) -> None:
     """
-    Assign tiers to items in a sorted list based on their position.
-    Top 50% gets the higher tier, bottom 50% gets the lower tier.
+    Assign each ranked item a score within its tier_set's band, by rank.
 
     Args:
-        sorted_items: Items sorted from lowest to highest rank
+        sorted_items: Ranked items sorted from lowest to highest position
         tier_set: The tier set (good, mid, bad)
     """
-    if not sorted_items or tier_set not in TIER_SET_MAP:
+    band = SCORE_BANDS.get(tier_set)
+    if not sorted_items or band is None:
         return
-
-    high_tier, low_tier = TIER_SET_MAP[tier_set]
+    low, high = band
     total = len(sorted_items)
-
-    # Items are sorted from lowest to highest
-    # Bottom half (first half of list) gets low tier
-    # Top half (second half of list) gets high tier
-    midpoint = total // 2
-
     for i, item in enumerate(sorted_items):
-        if i < midpoint:
-            item.tier = low_tier
-        else:
-            item.tier = high_tier
+        item.rating = round(low + (high - low) * (i + 0.5) / total, 1)
 
 
 def filter_ranked_items(

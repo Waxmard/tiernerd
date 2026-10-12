@@ -54,24 +54,6 @@ export const AppColors = {
     800: '#1F2937',
     900: '#111827',
   },
-
-  // Tier colors - monochrome purple gradient (dark = best, light = worst)
-  tierColors: {
-    S: '#4C1D95', // Deep purple - elite/premium feel
-    A: '#5B21B6', // Dark purple
-    B: '#7C3AED', // Purple - matches accent.dark
-    C: '#8B5CF6', // Medium purple - matches accent.primary
-    D: '#A78BFA', // Light purple - matches accent.light
-    F: '#C4B5FD', // Lavender - washed out for lowest tier
-  },
-
-  // Get tier color helper
-  getTierColor: (tier: string): string => {
-    return (
-      AppColors.tierColors[tier as keyof typeof AppColors.tierColors] ||
-      AppColors.neutral[500]
-    );
-  },
 };
 
 // Gradient definitions - using subtle gray gradients
