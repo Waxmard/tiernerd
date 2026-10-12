@@ -1,6 +1,8 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import type React from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { AppColors } from '../design-system/tokens';
 import { useAuth } from '../providers/AuthContext';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ListDetailScreen } from '../screens/ListDetailScreen';
@@ -13,7 +15,15 @@ import type { RootStackParamList } from './types';
 const Stack = createStackNavigator<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isRestoring } = useAuth();
+
+  if (isRestoring) {
+    return (
+      <View style={styles.splash}>
+        <ActivityIndicator size="large" color={AppColors.accent.primary} />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
@@ -35,3 +45,12 @@ export const AppNavigator: React.FC = () => {
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  splash: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AppColors.dominant.primary,
+  },
+});

@@ -25,6 +25,7 @@ export interface AuthResult {
   user?: User;
   token?: string;
   error?: string;
+  tokenRejected?: boolean;
 }
 
 export const authService = {
@@ -154,10 +155,18 @@ export const authService = {
    * Validate a stored token by fetching user info
    */
   async validateToken(token: string): Promise<AuthResult> {
-    const user = await authService.getCurrentUser(token);
-    if (user) {
+    try {
+      const user = await api.get<User>('/api/users/me', token);
       return { success: true, user, token };
+    } catch (error) {
+      if (error instanceof ApiError && [401, 403].includes(error.status)) {
+        return {
+          success: false,
+          error: 'Invalid or expired token',
+          tokenRejected: true,
+        };
+      }
+      return { success: false, error: 'Could not reach the server' };
     }
-    return { success: false, error: 'Invalid or expired token' };
   },
 };
