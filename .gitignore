@@ -1,5 +1,6 @@
 **/.claude/settings.local.json
 !CLAUDE.md
+!fastapi/.python-version
 
 .coverage
 .coverage.*
