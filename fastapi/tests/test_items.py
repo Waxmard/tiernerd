@@ -8,7 +8,11 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Item as ItemModel, List as ListModel
+from app.db.models import (
+    ComparisonSession as ComparisonSessionModel,
+    Item as ItemModel,
+    List as ListModel,
+)
 
 
 @pytest.mark.asyncio
@@ -40,7 +44,7 @@ class TestCreateItem:
         assert data["description"] == "The first item"
         assert "item_id" in data
         assert data["tier_set"] == "good"
-        assert data["tier"] == "A"  # First item gets lower tier
+        assert data["rating"] == 8.5
 
         # Verify item was created in database
         result = await test_db.execute(
@@ -473,6 +477,53 @@ class TestDeleteItem:
         response = await client.get(f"/api/items/items/{item_id}", headers=auth_headers)
         assert response.status_code == 404
 
+    async def test_delete_ranked_item_rescores_band(
+        self,
+        client: AsyncClient,
+        multiple_items: list[ItemModel],
+        auth_headers: dict,
+        test_db: AsyncSession,
+    ):
+        list_id = multiple_items[0].list_id
+        victim = multiple_items[2]
+        unranked = ItemModel(list_id=list_id, name="Abandoned", tier_set="good")
+        new_reference = ComparisonSessionModel(
+            list_id=list_id,
+            new_item_id=victim.item_id,
+            target_item_id=multiple_items[0].item_id,
+            tier_set="good",
+            is_complete=True,
+        )
+        target_reference = ComparisonSessionModel(
+            list_id=list_id,
+            new_item_id=multiple_items[3].item_id,
+            target_item_id=victim.item_id,
+            tier_set="good",
+        )
+        unrelated = ComparisonSessionModel(
+            list_id=list_id,
+            new_item_id=multiple_items[0].item_id,
+            target_item_id=multiple_items[1].item_id,
+            tier_set="good",
+        )
+        test_db.add_all([unranked, new_reference, target_reference, unrelated])
+        await test_db.commit()
+        response = await client.delete(
+            f"/api/items/items/{multiple_items[2].item_id}", headers=auth_headers
+        )
+        assert response.status_code == 204
+
+        result = await test_db.execute(
+            select(ItemModel.rating)
+            .where(ItemModel.list_id == list_id, ItemModel.position.isnot(None))
+            .order_by(ItemModel.position)
+        )
+        assert list(result.scalars().all()) == [7.4, 8.1, 8.9, 9.6]
+        sessions = await test_db.execute(select(ComparisonSessionModel.session_id))
+        assert list(sessions.scalars()) == [unrelated.session_id]
+        await test_db.refresh(unranked)
+        assert unranked.rating is None
+
     async def test_delete_item_unauthenticated(
         self, client: AsyncClient, test_item: ItemModel
     ):
@@ -527,7 +578,7 @@ class TestCreateItemTierSets:
         data = response.json()
         assert data["name"] == "Mid Item"
         assert data["tier_set"] == "mid"
-        assert data["tier"] == "C"  # Mid tier_set starts with C
+        assert data["rating"] == 5.5
 
     async def test_create_first_item_bad_tier_set(
         self,
@@ -552,7 +603,7 @@ class TestCreateItemTierSets:
         data = response.json()
         assert data["name"] == "Bad Item"
         assert data["tier_set"] == "bad"
-        assert data["tier"] == "F"  # Bad tier_set starts with F
+        assert data["rating"] == 2.5
 
     async def test_create_items_in_different_tier_sets(
         self,
@@ -635,14 +686,11 @@ class TestComparisonFlowComplete:
         # Response could be 200 (comparison done) or another session
         assert response.status_code == 200
 
-        # Verify both items now have tiers
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == test_list.list_id)
         )
-        items = result.scalars().all()
-        assert len(items) == 2
-        for item in items:
-            assert item.tier is not None
+        ratings = {item.name: item.rating for item in result.scalars().all()}
+        assert ratings == {"Second Item": 9.2, "Test Item": 7.8}
 
     async def test_comparison_wrong_session_owner(
         self,
@@ -758,7 +806,6 @@ class TestCreateItemWithExistingPositionedItems:
             image_url="https://example.com/existing.jpg",
             position="a0",
             rating=None,
-            tier="A",
             tier_set="good",
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -837,7 +884,6 @@ class TestItemOwnership:
             image_url="https://example.com/user2.jpg",
             position="a0",
             rating=None,
-            tier="A",
             tier_set="good",
             created_at=datetime.now(),
             updated_at=datetime.now(),

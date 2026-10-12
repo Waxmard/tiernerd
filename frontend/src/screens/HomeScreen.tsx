@@ -20,10 +20,6 @@ import {
   type CreatedList,
   CreateListContent,
 } from '../components/CreateListModal';
-import {
-  type TierDistribution,
-  TierDistributionBar,
-} from '../components/TierDistributionBar';
 import { Card, FAB } from '../design-system/components';
 import {
   AppBorders,
@@ -33,7 +29,6 @@ import {
 } from '../design-system/tokens';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
-import type { Item } from '../services/itemsService';
 import { type ListSimple, listsService } from '../services/listsService';
 import { confirmDestructive, notifyError } from '../utils/confirm';
 
@@ -49,7 +44,6 @@ interface TierList {
   title: string;
   itemCount: number;
   updatedAt: Date;
-  tierDistribution: TierDistribution;
 }
 
 type HomeScreenProps = RootStackScreenProps<'Main'>;
@@ -60,7 +54,6 @@ const toTierList = (apiList: ListSimple): TierList => ({
   title: apiList.title,
   itemCount: apiList.item_count,
   updatedAt: new Date(apiList.updated_at),
-  tierDistribution: apiList.tier_distribution,
 });
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
@@ -169,7 +162,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setModalStep('addItem');
   };
 
-  const handleItemCreated = (_item: Item) => {
+  const handleItemCreated = () => {
     if (pendingList) {
       navigation.navigate('ListDetail', {
         listId: pendingList.listId,
@@ -204,10 +197,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             {item.title}
           </Text>
           <Text style={styles.itemCount}>{item.itemCount} items</Text>
-          <TierDistributionBar
-            distribution={item.tierDistribution}
-            style={styles.tierBar}
-          />
           <Text style={styles.updatedAt}>
             Modified {formatDate(item.updatedAt)}
           </Text>
@@ -447,12 +436,9 @@ const styles = StyleSheet.create({
     color: AppColors.textSecondary,
     marginBottom: AppSpacing.sm,
   },
-  tierBar: {
-    marginBottom: AppSpacing.sm,
-  },
   updatedAt: {
     ...AppTypography.labelSmall,
-    color: AppColors.neutral[400],
+    color: AppColors.secondary.muted,
   },
   emptyState: {
     flex: 1,

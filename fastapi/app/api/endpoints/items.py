@@ -29,7 +29,7 @@ from app.services.comparison_service import (
     process_comparison_result,
     start_comparison,
 )
-from app.services.ranking import filter_ranked_items, get_initial_tier
+from app.services.ranking import assign_scores_for_set, filter_ranked_items
 from app.utils.helper import sort_items_by_position
 
 router = APIRouter()
@@ -64,7 +64,6 @@ async def create_item(
         image_url=str(item_in.image_url) if item_in.image_url else None,
         position=None,
         rating=None,
-        tier=None,
         tier_set=item_in.tier_set.value,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
@@ -80,8 +79,8 @@ async def create_item(
 
     # If no ranked items exist in this set, this is the first item
     if not ranked_items:
-        item_obj.tier = get_initial_tier(item_in.tier_set.value)
         item_obj.position = generate_key_between(None, None)  # Initial position
+        assign_scores_for_set([item_obj], item_in.tier_set.value)
         await item_crud.create(db, item_obj)
         await db.commit()
         await db.refresh(item_obj)
@@ -91,8 +90,8 @@ async def create_item(
     sorted_ranked = sort_items_by_position(ranked_items)
     if not sorted_ranked:
         # No valid ranked items, treat as first item
-        item_obj.tier = get_initial_tier(item_in.tier_set.value)
         item_obj.position = generate_key_between(None, None)
+        assign_scores_for_set([item_obj], item_in.tier_set.value)
         await item_crud.create(db, item_obj)
         await db.commit()
         await db.refresh(item_obj)
@@ -197,7 +196,6 @@ async def submit_comparison_result(
     )
 
     if comparison.done:
-        # Finalize the comparison (set position and tiers)
         await finalize_comparison(
             db,
             db_session,
@@ -296,7 +294,17 @@ async def delete_item(
             detail=ITEM_NOT_FOUND_ERROR,
         )
 
+    list_id = item_obj.list_id
+    tier_set = item_obj.tier_set
+    was_ranked = item_obj.position is not None
+
     await item_crud.delete(db, item_obj)
+    if was_ranked and tier_set:
+        await db.flush()
+        assign_scores_for_set(
+            await item_crud.get_ranked_by_list_and_tier_set(db, list_id, tier_set),
+            tier_set,
+        )
     await db.commit()
 
 

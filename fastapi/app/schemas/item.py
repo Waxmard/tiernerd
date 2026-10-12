@@ -6,25 +6,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
-# Tier ranking enum
-class TierRank(StrEnum):
-    """Enum for tier rankings."""
-
-    S = "S"
-    A = "A"
-    B = "B"
-    C = "C"
-    D = "D"
-    F = "F"
-
-
-# Tier set enum - determines which tier pair an item can be ranked into
 class TierSet(StrEnum):
-    """Enum for tier sets. Each set maps to a pair of tiers."""
+    """Enum for tier sets. Each set maps to a score band."""
 
-    GOOD = "good"  # S or A
-    MID = "mid"  # B or C
-    BAD = "bad"  # D or F
+    GOOD = "good"
+    MID = "mid"
+    BAD = "bad"
 
 
 # Shared properties
@@ -43,7 +30,7 @@ class ItemCreate(ItemBase):
     name: str
     description: str | None = None
     image_url: HttpUrl | None = None
-    tier_set: TierSet  # Required - determines which tier pair (S/A, B/C, D/F)
+    tier_set: TierSet
 
 
 # Properties to receive via API on update
@@ -66,7 +53,6 @@ class Item(ItemBase):
     image_url: HttpUrl | None = None
     position: str | None = None
     rating: float | None = None
-    tier: TierRank | None = None
     tier_set: TierSet | None = None
     created_at: datetime
     updated_at: datetime

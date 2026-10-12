@@ -18,16 +18,11 @@ from app.services.comparison_service import (
     finalize_comparison,
     start_comparison,
 )
-from app.services.ranking import (
-    assign_tiers_for_set,
-    filter_ranked_items,
-    get_initial_tier,
-)
+from app.services.ranking import assign_scores_for_set, filter_ranked_items
 
 
 def create_test_item(
     name: str = "Test Item",
-    tier: str | None = "A",
     tier_set: str = "good",
     list_id: uuid.UUID | None = None,
     item_id: uuid.UUID | None = None,
@@ -42,7 +37,6 @@ def create_test_item(
         image_url=None,
         position=position,
         rating=None,
-        tier=tier,
         tier_set=tier_set,
         created_at=datetime.now(),
         updated_at=datetime.now(),
@@ -113,7 +107,7 @@ class TestComparisonService:
         await test_db.commit()
 
         # Create new item to rank
-        new_item = item_factory(name="New Item", tier=None, position=None)
+        new_item = item_factory(name="New Item", position=None)
         test_db.add(new_item)
         await test_db.commit()
 
@@ -188,7 +182,7 @@ class TestComparisonService:
         await test_db.commit()
 
         # Create new item
-        new_item = item_factory(name="New Item", tier=None, position=None)
+        new_item = item_factory(name="New Item", position=None)
         test_db.add(new_item)
         await test_db.commit()
 
@@ -240,7 +234,7 @@ class TestComparisonService:
         await test_db.commit()
 
         # Create new item
-        new_item = item_factory(name="New Item", tier=None, position=None)
+        new_item = item_factory(name="New Item", position=None)
         test_db.add(new_item)
         await test_db.commit()
 
@@ -291,7 +285,7 @@ class TestComparisonService:
         test_db.add(target_item)
         await test_db.commit()
 
-        new_item = item_factory(name="New Item", tier=None, position=None)
+        new_item = item_factory(name="New Item", position=None)
         test_db.add(new_item)
         await test_db.commit()
 
@@ -333,23 +327,6 @@ class TestComparisonService:
 class TestRankingService:
     """Tests for ranking service functions."""
 
-    def test_get_initial_tier_good(self):
-        """Test initial tier for 'good' tier_set."""
-        assert get_initial_tier("good") == "A"
-
-    def test_get_initial_tier_mid(self):
-        """Test initial tier for 'mid' tier_set."""
-        assert get_initial_tier("mid") == "C"
-
-    def test_get_initial_tier_bad(self):
-        """Test initial tier for 'bad' tier_set."""
-        assert get_initial_tier("bad") == "F"
-
-    def test_get_initial_tier_unknown(self):
-        """Test initial tier for unknown tier_set."""
-        # Should default to "C" for unknown tier_sets
-        assert get_initial_tier("unknown") == "C"
-
     def test_filter_ranked_items_empty(self):
         """Test filtering empty list."""
         result = filter_ranked_items([])
@@ -382,75 +359,41 @@ class TestRankingService:
         assert len(result) == 1
         assert result[0].item_id != exclude_id
 
-    def test_assign_tiers_for_set_good(self):
-        """Test tier assignment for 'good' tier_set."""
-        list_id = uuid.uuid4()
-        items = [
-            create_test_item(name=f"Item {i}", list_id=list_id, position=f"a{i}")
-            for i in range(4)
-        ]
+    def test_assign_scores_for_set_good(self):
+        """Test score assignment spreads ranked items across the good band."""
+        items = [create_test_item(name=f"Item {i}", position=f"a{i}") for i in range(4)]
 
-        assign_tiers_for_set(items, "good")
+        assign_scores_for_set(items, "good")
 
-        # All items should have tiers (S or A for good tier_set)
-        for item in items:
-            assert item.tier in ["S", "A"]
+        assert [item.rating for item in items] == [7.4, 8.1, 8.9, 9.6]
 
-    def test_assign_tiers_for_set_mid(self):
-        """Test tier assignment for 'mid' tier_set."""
-        list_id = uuid.uuid4()
-        items = [
-            create_test_item(
-                name=f"Item {i}",
-                tier="C",
-                tier_set="mid",
-                list_id=list_id,
-                position=f"a{i}",
-            )
-            for i in range(4)
-        ]
+    def test_assign_scores_for_set_mid(self):
+        """Test a lone mid item scores the middle of its band."""
+        item = create_test_item(name="Item", tier_set="mid")
 
-        assign_tiers_for_set(items, "mid")
+        assign_scores_for_set([item], "mid")
 
-        # All items should have tiers (B, C, D for mid tier_set)
-        for item in items:
-            assert item.tier in ["B", "C", "D"]
+        assert item.rating == 5.5
 
-    def test_assign_tiers_for_set_bad(self):
-        """Test tier assignment for 'bad' tier_set."""
-        list_id = uuid.uuid4()
-        items = [
-            create_test_item(
-                name=f"Item {i}",
-                tier="F",
-                tier_set="bad",
-                list_id=list_id,
-                position=f"a{i}",
-            )
-            for i in range(2)
-        ]
+    def test_assign_scores_for_set_bad(self):
+        """Test a lone bad item scores the middle of its band."""
+        item = create_test_item(name="Item", tier_set="bad")
 
-        assign_tiers_for_set(items, "bad")
+        assign_scores_for_set([item], "bad")
 
-        # All items should have tiers (D, F for bad tier_set)
-        for item in items:
-            assert item.tier in ["D", "F"]
+        assert item.rating == 2.5
 
-    def test_assign_tiers_for_set_empty(self):
-        """Test tier assignment with empty list returns early."""
-        # Should not raise any exception
-        assign_tiers_for_set([], "good")
+    def test_assign_scores_for_set_empty(self):
+        """Test score assignment with empty list is a no-op."""
+        assign_scores_for_set([], "good")
 
-    def test_assign_tiers_for_set_unknown_tier_set(self):
-        """Test tier assignment with unknown tier_set returns early."""
+    def test_assign_scores_for_set_unknown_tier_set(self):
+        """Test score assignment with unknown tier_set leaves rating unchanged."""
         item = create_test_item(name="Item", tier_set="unknown")
-        original_tier = item.tier
 
-        # Should return early without modifying items
-        assign_tiers_for_set([item], "unknown")
+        assign_scores_for_set([item], "unknown")
 
-        # Tier should remain unchanged
-        assert item.tier == original_tier
+        assert item.rating is None
 
 
 class TestHelperFunctions:

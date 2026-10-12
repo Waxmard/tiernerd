@@ -16,7 +16,7 @@ from app.services.auth import get_current_user
 from app.services.list_service import (
     build_list_response,
     build_list_simple_response,
-    get_items_sorted_by_tier_set,
+    get_items_best_first,
 )
 
 router = APIRouter()
@@ -94,7 +94,7 @@ async def read_list_items(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """
-    Get all items for a list, ordered by tier then by linked list position.
+    Get all items for a list, best first; unranked items last.
     """
     # Verify list exists and belongs to current user
     list_obj = await list_crud.get_by_id_and_user(db, list_id, current_user.user_id)
@@ -107,7 +107,7 @@ async def read_list_items(
     if not items:
         return []
 
-    return get_items_sorted_by_tier_set(items)
+    return get_items_best_first(items)
 
 
 @router.put("/{list_id}", response_model=List)

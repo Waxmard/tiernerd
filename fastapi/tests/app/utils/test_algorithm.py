@@ -21,7 +21,6 @@ def create_test_item(name: str, item_id: int | None = None) -> Item:
         image_url="https://example.com/image.jpg",
         position="a0",
         rating=None,
-        tier=None,
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )

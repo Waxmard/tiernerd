@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('create list, add top-tier item, delete the list', async ({ page }) => {
+test('create list, add great item, delete the list', async ({ page }) => {
   const stamp = Date.now();
   const listTitle = `E2E ${stamp}`;
   const itemName = `Item ${stamp}`;
@@ -19,13 +19,11 @@ test('create list, add top-tier item, delete the list', async ({ page }) => {
   // HomeScreen chains a successful create straight into the add-item step.
   await expect(page.getByText('Add Item')).toBeVisible();
   await page.getByPlaceholder('Enter item name').fill(itemName);
-  await page.getByText('Top tier (S/A)').click();
+  await page.getByText('Great (7.0–10.0)').click();
   await page.getByText('Add', { exact: true }).click();
 
-  await expect(page.getByText(itemName)).toBeVisible();
-  // First item of a "good" set gets tier A (fastapi/app/services/ranking.py).
-  const tierARow = page.getByText('A', { exact: true }).locator('xpath=../..');
-  await expect(tierARow.getByText(itemName)).toBeVisible();
+  const row = page.getByTestId('ranked-item').filter({ hasText: itemName });
+  await expect(row).toContainText('8.5');
 
   // Regression guard: react-native-web's Alert is a no-op stub, so the delete
   // confirmation must open a real browser dialog.

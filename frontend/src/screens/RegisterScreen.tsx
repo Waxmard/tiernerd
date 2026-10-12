@@ -55,14 +55,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     }).start();
   }, [fadeAnim]);
 
-  const handleGoogleSignUp = async () => {
-    console.log('Google sign up initiated');
-    const success = await signInWithGoogle();
-    if (success) {
-      console.log('Sign up successful - navigation will happen automatically');
-    }
-  };
-
   const handleRegister = async () => {
     if (!canSubmit) return;
 
@@ -202,7 +194,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     {/* Google Sign Up */}
                     <TouchableOpacity
                       style={styles.googleButton}
-                      onPress={handleGoogleSignUp}
+                      onPress={signInWithGoogle}
                       disabled={isLoading}
                       activeOpacity={0.8}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

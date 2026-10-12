@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BaseModalContent, Input } from '../design-system/components';
+import { BaseModalContent, Button, Input } from '../design-system/components';
 import {
   AppBorders,
   AppColors,
@@ -11,15 +11,17 @@ import {
 import { useAuth } from '../providers/AuthContext';
 import { ApiError } from '../services/api';
 import {
+  type ComparisonSession,
   type Item,
   isComparisonSession,
   itemsService,
   type TierSet,
 } from '../services/itemsService';
+import { confirmDestructive } from '../utils/confirm';
 
 interface AddItemContentProps {
   onClose: () => void;
-  onSuccess: (item: Item) => void;
+  onSuccess: (item?: Item) => void;
   listTitle: string;
   editingItem?: Item;
 }
@@ -34,9 +36,9 @@ interface TierOption {
 }
 
 const TIER_OPTIONS: TierOption[] = [
-  { label: 'Top tier (S/A)', value: 'good' },
-  { label: 'Middle tier (B/C)', value: 'mid' },
-  { label: 'Bottom tier (D/F)', value: 'bad' },
+  { label: 'Great (7.0–10.0)', value: 'good' },
+  { label: 'Okay (4.0–6.9)', value: 'mid' },
+  { label: 'Bad (1.0–3.9)', value: 'bad' },
 ];
 
 const MAX_NAME_LENGTH = 100;
@@ -54,6 +56,8 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [comparisonSession, setComparisonSession] =
+    useState<ComparisonSession | null>(null);
 
   const isEditMode = !!editingItem;
 
@@ -70,9 +74,11 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
     setTierSet(null);
     setDescription('');
     setError(null);
+    setComparisonSession(null);
   };
 
   const handleClose = () => {
+    if (isLoading) return;
     resetForm();
     onClose();
   };
@@ -91,7 +97,7 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
     }
 
     if (!isEditMode && !tierSet) {
-      setError('Please select a tier');
+      setError('Please pick a range');
       return;
     }
 
@@ -105,7 +111,7 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
       setError(null);
 
       if (isEditMode && editingItem) {
-        const updatedItem = await itemsService.updateItem(
+        const updated = await itemsService.updateItem(
           editingItem.item_id,
           {
             name: trimmedName,
@@ -114,10 +120,10 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
           token
         );
         resetForm();
-        onSuccess(updatedItem);
+        onSuccess(updated);
       } else {
         if (!tierSet) {
-          setError('Please select a tier');
+          setError('Please pick a range');
           return;
         }
         const response = await itemsService.createItem(
@@ -131,10 +137,7 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
         );
 
         if (isComparisonSession(response)) {
-          // TODO: Handle comparison session flow
-          // For now, close the modal - comparison flow will be added later
-          resetForm();
-          onClose();
+          setComparisonSession(response);
         } else {
           resetForm();
           onSuccess(response);
@@ -175,6 +178,85 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
     }
   };
 
+  const handleComparisonResult = async (result: 'better' | 'worse') => {
+    if (!token || !comparisonSession || isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const next = await itemsService.submitComparison(
+        comparisonSession.session_id,
+        result,
+        token
+      );
+      if (next === null || next.is_complete) {
+        resetForm();
+        onSuccess();
+      } else {
+        setComparisonSession(next);
+      }
+    } catch (err) {
+      setError(
+        err instanceof ApiError && typeof err.data?.detail === 'string'
+          ? err.data.detail
+          : 'Unable to save your choice. Try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!token || !editingItem || isLoading) return;
+    const confirmed = await confirmDestructive(
+      'Delete Item',
+      `Delete "${editingItem.name}"? This cannot be undone.`,
+      'Delete Item'
+    );
+    if (!confirmed) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      await itemsService.deleteItem(editingItem.item_id, token);
+      resetForm();
+      onSuccess();
+    } catch (err) {
+      setError(
+        err instanceof ApiError && typeof err.data?.detail === 'string'
+          ? err.data.detail
+          : 'Unable to delete this item. Try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const comparison = comparisonSession?.current_comparison;
+  if (comparison) {
+    return (
+      <BaseModalContent
+        title="Which is better?"
+        error={error}
+        isLoading={isLoading}
+        onClose={handleClose}
+      >
+        <View style={styles.tierOptions}>
+          <Button
+            title={`Choose ${comparison.reference_item.name}`}
+            onPress={() => handleComparisonResult('better')}
+            disabled={isLoading}
+            fullWidth
+          />
+          <Button
+            title={`Choose ${comparison.target_item.name}`}
+            onPress={() => handleComparisonResult('worse')}
+            disabled={isLoading}
+            fullWidth
+          />
+        </View>
+      </BaseModalContent>
+    );
+  }
+
   return (
     <BaseModalContent
       title={isEditMode ? 'Edit Item' : 'Add Item'}
@@ -199,11 +281,13 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
 
       {!isEditMode && (
         <View style={styles.tierSection}>
-          <Text style={styles.tierLabel}>Tier</Text>
+          <Text style={styles.tierLabel}>Starting range</Text>
           <View style={styles.tierOptions}>
             {TIER_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: tierSet === option.value }}
                 style={[
                   styles.tierOption,
                   tierSet === option.value && styles.tierOptionSelected,
@@ -237,6 +321,15 @@ export const AddItemContent: React.FC<AddItemContentProps> = ({
         numberOfLines={3}
         inputStyle={styles.descriptionInput}
       />
+      {isEditMode && (
+        <Button
+          title="Delete Item"
+          variant="text"
+          onPress={handleDelete}
+          disabled={isLoading}
+          textStyle={{ color: AppColors.error }}
+        />
+      )}
     </BaseModalContent>
   );
 };
@@ -255,12 +348,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     animationType="fade"
     onRequestClose={onClose}
   >
-    <AddItemContent
-      onClose={onClose}
-      onSuccess={onSuccess}
-      listTitle={listTitle}
-      editingItem={editingItem}
-    />
+    {visible && (
+      <AddItemContent
+        onClose={onClose}
+        onSuccess={onSuccess}
+        listTitle={listTitle}
+        editingItem={editingItem}
+      />
+    )}
   </Modal>
 );
 
@@ -275,7 +370,7 @@ const styles = StyleSheet.create({
     marginBottom: AppSpacing.sm,
   },
   tierOptions: {
-    gap: AppSpacing.xs,
+    gap: AppSpacing.sm,
   },
   tierOption: {
     paddingVertical: AppSpacing.sm,
@@ -295,7 +390,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tierOptionTextSelected: {
-    color: AppColors.accent.primary,
+    color: AppColors.secondary.emphasis,
     fontWeight: '600',
   },
   descriptionInput: {

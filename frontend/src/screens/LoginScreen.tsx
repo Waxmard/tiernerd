@@ -46,15 +46,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     }).start();
   }, [fadeAnim]);
 
-  const handleGoogleSignIn = async () => {
-    console.log('Google sign in initiated'); // Debug log
-    const success = await signInWithGoogle();
-    if (success) {
-      console.log('Sign in successful - navigation will happen automatically'); // Debug log
-      // Navigation happens automatically when user state changes
-    }
-  };
-
   const handleEmailSignIn = async () => {
     if (!email || !password) return;
 
@@ -169,7 +160,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                     {/* Google Sign In */}
                     <TouchableOpacity
                       style={styles.googleButton}
-                      onPress={handleGoogleSignIn}
+                      onPress={signInWithGoogle}
                       disabled={isLoading}
                       activeOpacity={0.8}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

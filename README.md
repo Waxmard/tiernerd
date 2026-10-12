@@ -2,7 +2,11 @@
 
 # TierNerd
 
-TierNerd is a cross-platform mobile app for creating ranked tier lists (S–F) through 1v1 comparisons. Rather than asking users to assign subjective numerical scores, the app presents pairs of items and asks which is better. Through a series of binary choices, each item finds its proper place and receives a numeric rating that is then mapped to an intuitive tier (S, A, B, C, D, F).
+TierNerd is a cross-platform mobile app for ranking items through 1v1 comparisons and displaying scores out of 10. Pick a starting range, then compare items to establish their order within it; each item's score follows from its position, and the highest scores come first.
+
+```text
+your items ──1v1 comparisons──▶ TierNerd ──▶ ranked list, scored out of 10
+```
 
 ## Key Features
 
@@ -10,8 +14,8 @@ TierNerd is a cross-platform mobile app for creating ranked tier lists (S–F) t
 - Add items with descriptions and images
 - Rank items through simple better/worse comparisons
 - Eliminate arbitrary rating bias
-- View results as both ordered lists and intuitive tier rankings (S–F)
-- Understand at a glance which items are top-tier (S) vs lower tiers
+- View ranked items best first with scores out of 10
+- Choose a starting range: Great (7–10), Okay (4–7), or Bad (1–4)
 
 ## Screenshots
 
@@ -49,18 +53,33 @@ make dev                          # Start with Docker (auto-seeds dev user)
 
 See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/README.md) for detailed setup instructions.
 
-## Tier Ranking System
+## Layout
 
-TierNerd uses a standardized tier ranking system common in gaming and competitive communities:
+|Path|What|
+|---|---|
+|`fastapi/`|FastAPI backend — async SQLAlchemy on PostgreSQL, with the comparison and ranking services|
+|`frontend/`|Expo / React Native app (iOS, Android, web)|
+|`docs/src/`|Templates and partials that generate this README and the sub-READMEs|
+|`scripts/`|Repo-wide tooling — docs build, line-limit check, e2e backend|
+|`screenshots/`|Screenshots referenced above|
 
-- **S Tier**: The absolute best items (exceptional)
-- **A Tier**: Excellent items (above average)
-- **B Tier**: Good items (slightly above average)
-- **C Tier**: Average items (balanced)
-- **D Tier**: Below average items
-- **F Tier**: The lowest ranked items
+## Scores out of 10
 
-While the underlying algorithm assigns numeric values, users interact with this intuitive tier system for easier comprehension and comparison.
+Each starting range defines a score band:
+
+- **Great** (`good`): 7.0–10.0
+- **Okay** (`mid`): 4.0–6.9
+- **Bad** (`bad`): 1.0–3.9
+
+When adding another item in the same range, choose the better item in each comparison until ranking finishes. The list then reloads its scores and order. Select an item to edit it or choose **Delete Item**; confirm deletion to remove it and recalculate the remaining scores.
+
+Deleting an item or list also discards its related active and completed comparison sessions. Sessions unrelated to the deleted item or list remain unchanged.
+
+Within a band, comparisons order items from lowest to highest. Item `i` of `n` ranked items receives `round(low + (high - low) * (i + 0.5) / n, 1)`, where `i` starts at zero. A single Great item scores 8.5; two Great items score 7.8 and 9.2. Scores are relative to the ranked items in each band, not user-entered ratings.
+
+The API stores scores in `rating`. An item without a position has a null score and is shown as **Not ranked yet** until its band is rescored; select it to rename or delete it. Adding a ranked item or deleting one recalculates the band's scores. Lists display ranked items best first, with unranked items last.
+
+Existing development items with null ratings appear as not ranked until their band is rescored. Removing the old `tier` model field does not require a database wipe: existing nullable columns are ignored.
 
 ## Project Status
 

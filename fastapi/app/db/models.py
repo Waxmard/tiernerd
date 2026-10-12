@@ -77,7 +77,6 @@ class Item(Base):
     image_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     position: Mapped[str | None] = mapped_column(String(255), nullable=True)
     rating: Mapped[float | None] = mapped_column(nullable=True)
-    tier: Mapped[str | None] = mapped_column(String(1), nullable=True)
     tier_set: Mapped[str | None] = mapped_column(String(10), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

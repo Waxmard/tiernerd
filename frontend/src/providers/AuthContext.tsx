@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useIdTokenAuthRequest } from 'expo-auth-session/providers/google';
 import type React from 'react';
 import {
   createContext,
@@ -10,9 +9,13 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { Platform } from 'react-native';
-import { GOOGLE_CLIENT_ID, USE_MOCK_AUTH } from '../config/api';
+import { USE_MOCK_AUTH } from '../config/api';
 import { type User as ApiUser, authService } from '../services/authService';
+import {
+  consumeGoogleRedirect,
+  googleSignInAvailable,
+  startGoogleRedirect,
+} from '../services/googleSignIn';
 
 interface User {
   id: string;
@@ -25,6 +28,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  isRestoring: boolean;
   error: string | null;
   signIn: (email: string, password: string) => Promise<boolean>;
   register: (
@@ -32,7 +36,7 @@ interface AuthContextType {
     password: string,
     username?: string
   ) => Promise<boolean>;
-  signInWithGoogle: () => Promise<boolean>;
+  signInWithGoogle: () => Promise<void>;
   googleAvailable: boolean;
   signOut: () => Promise<void>;
 }
@@ -67,19 +71,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRestoring, setIsRestoring] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Google sign-in exists only in the browser build: useIdTokenAuthRequest
-  // requests response_type=id_token on web and falls back to a code exchange
-  // (with no client secret configured) on native. It resolves its client ID as
-  // `config[Platform.select(...)] ?? config.clientId` and throws on native when
-  // both are undefined, so the fallback below keeps the hook from crashing the
-  // app on iOS/Android even though googleAvailable is false there.
-  const [googleRequest, , promptGoogle] = useIdTokenAuthRequest({
-    webClientId: GOOGLE_CLIENT_ID,
-    clientId: GOOGLE_CLIENT_ID,
-  });
-  const googleAvailable = Platform.OS === 'web';
 
   // Helper to persist auth state to storage and update state
   const saveAuthState = useCallback(async (newToken: string, newUser: User) => {
@@ -89,44 +82,95 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setToken(newToken);
   }, []);
 
-  const checkAuthState = useCallback(async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      const userData = await AsyncStorage.getItem(USER_DATA_KEY);
-
-      if (storedToken && userData) {
-        if (USE_MOCK_AUTH) {
-          // Mock mode: trust stored data
-          setUser(JSON.parse(userData));
-          setToken(storedToken);
-        } else {
-          // Real mode: validate token with backend
-          const result = await authService.validateToken(storedToken);
-          if (result.success && result.user) {
-            const localUser = toLocalUser(result.user);
-            setUser(localUser);
-            setToken(storedToken);
-            await AsyncStorage.setItem(
-              USER_DATA_KEY,
-              JSON.stringify(localUser)
-            );
-          } else {
-            // Token invalid, clear storage
-            await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-            await AsyncStorage.removeItem(USER_DATA_KEY);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking auth state:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const clearAuthState = useCallback(async () => {
+    await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, USER_DATA_KEY]);
+    setUser(null);
+    setToken(null);
   }, []);
 
   useEffect(() => {
-    checkAuthState();
-  }, [checkAuthState]);
+    let cancelled = false;
+
+    // `isLoading` gates the login/register buttons, so it must start false once
+    // the boot read settles or the button spins forever.
+    const settle = () => {
+      setIsLoading(false);
+      setIsRestoring(false);
+    };
+
+    const revalidate = async (storedToken: string) => {
+      const result = await authService.validateToken(storedToken);
+      if (cancelled) {
+        return;
+      }
+      if (result.tokenRejected) {
+        await clearAuthState();
+        return;
+      }
+      if (result.error) {
+        console.warn('Session revalidation failed:', result.error);
+      }
+      if (result.user) {
+        const localUser = toLocalUser(result.user);
+        setUser(localUser);
+        await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(localUser));
+      }
+    };
+
+    const restore = async () => {
+      const redirect = await consumeGoogleRedirect();
+      if (cancelled) {
+        return;
+      }
+      if (redirect.status === 'error') {
+        setError(redirect.error);
+        settle();
+        return;
+      }
+      if (redirect.status === 'token') {
+        const result = await authService.loginWithGoogle(redirect.idToken);
+        if (cancelled) {
+          return;
+        }
+        if (result.success && result.user && result.token) {
+          await saveAuthState(result.token, toLocalUser(result.user));
+        } else {
+          setError(result.error ?? 'Google sign-in failed');
+        }
+        settle();
+        return;
+      }
+
+      const [storedToken, storedUser] = await Promise.all([
+        AsyncStorage.getItem(AUTH_TOKEN_KEY),
+        AsyncStorage.getItem(USER_DATA_KEY),
+      ]);
+      if (cancelled) {
+        return;
+      }
+      if (storedToken && storedUser) {
+        try {
+          setUser(JSON.parse(storedUser) as User);
+          setToken(storedToken);
+        } catch {
+          await clearAuthState();
+          settle();
+          return;
+        }
+        settle();
+        if (!USE_MOCK_AUTH) {
+          void revalidate(storedToken);
+        }
+        return;
+      }
+      settle();
+    };
+
+    void restore();
+    return () => {
+      cancelled = true;
+    };
+  }, [clearAuthState, saveAuthState]);
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<boolean> => {
@@ -208,83 +252,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     [signIn, saveAuthState]
   );
 
-  const signInWithGoogle = useCallback(async (): Promise<boolean> => {
+  const signInWithGoogle = useCallback(async (): Promise<void> => {
+    if (USE_MOCK_AUTH) {
+      await signIn('google.user@tiernerd.com', 'mock-google-password');
+      return;
+    }
+    if (!googleSignInAvailable) {
+      setError('Google sign-in is not configured');
+      return;
+    }
     try {
-      setIsLoading(true);
-      setError(null);
-
-      if (USE_MOCK_AUTH) {
-        // Mock mode has no backend to exchange a token with.
-        return signIn('google.user@tiernerd.com', 'mock-google-password');
-      }
-
-      if (!GOOGLE_CLIENT_ID || !googleRequest) {
-        setError('Google sign-in is not configured');
-        return false;
-      }
-
-      const result = await promptGoogle();
-      const idToken =
-        result?.type === 'success' ? result.params.id_token : undefined;
-      if (!idToken) {
-        if (result?.type !== 'dismiss' && result?.type !== 'cancel') {
-          setError('Google sign-in was cancelled or blocked');
-        }
-        return false;
-      }
-
-      const authResult = await authService.loginWithGoogle(idToken);
-      if (authResult.success && authResult.user && authResult.token) {
-        await saveAuthState(authResult.token, toLocalUser(authResult.user));
-        return true;
-      }
-      setError(authResult.error || 'Google sign-in failed');
-      return false;
+      await startGoogleRedirect();
     } catch (error: unknown) {
       setError(
         error instanceof Error ? error.message : 'Google sign-in failed'
       );
-      return false;
-    } finally {
-      setIsLoading(false);
     }
-  }, [googleRequest, promptGoogle, saveAuthState, signIn]);
+  }, [signIn]);
 
   const signOut = useCallback(async () => {
     try {
       setIsLoading(true);
-      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-      await AsyncStorage.removeItem(USER_DATA_KEY);
-      setUser(null);
-      setToken(null);
+      await clearAuthState();
     } catch (error) {
       console.error('Error signing out:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [clearAuthState]);
 
   const contextValue = useMemo(
     () => ({
       user,
       token,
       isLoading,
+      isRestoring,
       error,
       signIn,
       register,
       signInWithGoogle,
-      googleAvailable,
+      googleAvailable: googleSignInAvailable,
       signOut,
     }),
     [
       user,
       token,
       isLoading,
+      isRestoring,
       error,
       signIn,
       register,
       signInWithGoogle,
-      googleAvailable,
       signOut,
     ]
   );
