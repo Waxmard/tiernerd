@@ -1,7 +1,8 @@
 #!/bin/bash
-# Boots a throwaway SQLite backend and runs a command against it, mirroring the
-# E2E job in .github/workflows/e2e.yml. With no arguments it builds the web
-# bundle and runs the frontend smoke spec against that backend.
+# Boots a throwaway SQLite backend and runs a command against it. This is the
+# backend the E2E job in .github/workflows/e2e.yml uses, and the one
+# `make frontend-e2e` uses. With no arguments it builds the web bundle and runs
+# the frontend smoke spec against that backend.
 #
 # Usage:
 #   scripts/e2e_backend.sh                # build web bundle + run the e2e spec
@@ -13,6 +14,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 port="${E2E_BACKEND_PORT:-$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')}"
 api_url="http://localhost:$port"
+health_url="http://127.0.0.1:$port"
 db_dir="$(mktemp -d)"
 backend_pid=""
 
@@ -23,6 +25,7 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$root/fastapi"
+uv sync --extra dev --group dev
 DATABASE_URL="sqlite+aiosqlite:///$db_dir/e2e.db" \
   APP_ENV=development \
   SECRET_KEY=e2e-backend-secret \
@@ -31,15 +34,15 @@ DATABASE_URL="sqlite+aiosqlite:///$db_dir/e2e.db" \
 backend_pid=$!
 
 for _ in $(seq 1 60); do
-  curl -sf "$api_url/health" >/dev/null && break
+  curl -sf "$health_url/health" >/dev/null && break
   kill -0 "$backend_pid" 2>/dev/null || {
     echo "backend exited before becoming healthy" >&2
     exit 1
   }
   sleep 1
 done
-curl -sf "$api_url/health" >/dev/null || {
-  echo "backend did not become healthy on $api_url" >&2
+curl -sf "$health_url/health" >/dev/null || {
+  echo "backend did not become healthy on $health_url" >&2
   exit 1
 }
 
