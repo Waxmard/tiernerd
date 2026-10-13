@@ -20,6 +20,7 @@ import { AddItemContent } from '../components/AddItemContent';
 import {
   type CreatedList,
   CreateListContent,
+  type CreateListContentHandle,
 } from '../components/CreateListModal';
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
@@ -45,7 +46,6 @@ interface TierList {
   updatedAt: Date;
 }
 type HomeScreenProps = RootStackScreenProps<'Main'>;
-type CreateListContentHandle = { requestClose: () => Promise<boolean> };
 const toTierList = (list: ListSimple): TierList => ({
   id: list.list_id,
   title: list.title,
