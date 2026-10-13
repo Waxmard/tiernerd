@@ -160,7 +160,9 @@ async def delete_list(
     """
     Delete a list.
     """
-    list_obj = await list_crud.get_by_id_and_user(db, list_id, current_user.user_id)
+    list_obj = await list_crud.get_by_id_and_user(
+        db, list_id, current_user.user_id, for_update=True
+    )
     if not list_obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=LIST_NOT_FOUND_ERROR

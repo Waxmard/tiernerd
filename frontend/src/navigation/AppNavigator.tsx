@@ -6,7 +6,6 @@ import { AppColors, AppSpacing, AppTypography } from '../design-system/tokens';
 import { useAuth } from '../providers/AuthContext';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ListDetailScreen } from '../screens/ListDetailScreen';
-import { ListsScreen } from '../screens/ListsScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
@@ -34,7 +33,6 @@ export const AppNavigator: React.FC = () => {
         {user ? (
           <>
             <Stack.Screen name="Main" component={HomeScreen} />
-            <Stack.Screen name="Lists" component={ListsScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="ListDetail" component={ListDetailScreen} />
           </>

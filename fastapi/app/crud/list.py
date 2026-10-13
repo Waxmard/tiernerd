@@ -11,22 +11,29 @@ from app.db.models import (
 )
 
 
-async def get_by_id(db: AsyncSession, list_id: uuid.UUID) -> ListModel | None:
-    """Get a list by ID."""
-    result = await db.execute(select(ListModel).where(ListModel.list_id == list_id))
+async def get_by_id(
+    db: AsyncSession, list_id: uuid.UUID, *, populate_existing: bool = False
+) -> ListModel | None:
+    query = select(ListModel).where(ListModel.list_id == list_id)
+    if populate_existing:
+        query = query.execution_options(populate_existing=True)
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 
 async def get_by_id_and_user(
-    db: AsyncSession, list_id: uuid.UUID, user_id: uuid.UUID
+    db: AsyncSession,
+    list_id: uuid.UUID,
+    user_id: uuid.UUID,
+    *,
+    for_update: bool = False,
 ) -> ListModel | None:
-    """Get a list by ID, verifying user ownership."""
-    result = await db.execute(
-        select(ListModel).where(
-            ListModel.list_id == list_id,
-            ListModel.user_id == user_id,
-        )
+    query = select(ListModel).where(
+        ListModel.list_id == list_id, ListModel.user_id == user_id
     )
+    if for_update:
+        query = query.with_for_update(of=ListModel)
+    result = await db.execute(query.execution_options(populate_existing=True))
     return result.scalar_one_or_none()
 
 

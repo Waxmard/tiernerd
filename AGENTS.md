@@ -223,7 +223,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 ### Frontend Structure (`frontend/src/`)
 
-- `screens/` — Screen components (Login, Home, Lists, Profile)
+- `screens/` — Screen components (Login, Register, Home, ListDetail, Profile)
 - `navigation/` — React Navigation stack setup
 - `providers/` — Context providers (AuthContext)
 - `design-system/` — Reusable components and design tokens
@@ -239,13 +239,13 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 - PostgreSQL with async (asyncpg)
 - UUID primary keys throughout
-- Schema managed via `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Column type/constraint changes require a volume wipe (`make clean` + `make dev`).
+- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Existing PostgreSQL databases require the explicit, non-destructive `scripts/migrate_ui_ranking.py` upgrade for item identity and ranking drafts; do not wipe application data.
 
 ## Development Notes for AI Agents
 
 - Check for TypeScript errors after frontend changes.
 - Google sign-in is real: the web client obtains a Google ID token and exchanges it at `POST /api/users/google`. Setting `EXPO_PUBLIC_USE_MOCK_AUTH=true` switches auth to mocks for frontend-only work.
-- Comparison sessions are stored in-memory (not persistent).
+- Comparison sessions are persistent database drafts; answers do not change saved ranks until commit.
 - API endpoints are prefixed with `/api/`.
 - Do **not** run `npm run ios`, `npm run android`, or `npx expo start` — the user runs these in a separate terminal.
 - The browser target (`npm run web`, served at `http://localhost:8081`) is the primary frontend loop. If it is already serving, use it to verify UI changes instead of asking for a simulator run.

@@ -21,6 +21,8 @@ interface ButtonProps {
   icon?: React.ReactNode;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  testID?: string;
+  accessibilityLabel?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -34,56 +36,64 @@ export const Button: React.FC<ButtonProps> = ({
   icon,
   style,
   textStyle,
+  testID,
+  accessibilityLabel,
 }) => {
+  const isDisabled = disabled || loading;
   const buttonStyles = [
     styles.base,
     variant === 'text' ? styles.textVariant : styles[variant],
     styles[size],
     fullWidth && styles.fullWidth,
-    disabled && styles.disabled,
     style,
+    isDisabled &&
+      (variant === 'text' ? styles.disabledTextVariant : styles.disabled),
   ];
-
   const textStyles = [
     styles.text,
     styles[`${variant}Text`],
     styles[`${size}Text`],
-    disabled && styles.disabledText,
     textStyle,
+    isDisabled && styles.disabledText,
   ];
 
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      accessibilityState={{ disabled: disabled || loading }}
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      aria-busy={loading}
+      testID={testID}
       style={buttonStyles}
-      onPress={() => {
-        console.log('Button pressed:', title); // Debug log
-        onPress();
-      }}
-      disabled={disabled || loading}
+      onPress={onPress}
+      disabled={isDisabled}
       activeOpacity={0.8}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       delayPressIn={0}
       delayPressOut={0}
     >
-      {loading ? (
-        <ActivityIndicator
-          color={
-            variant === 'primary'
-              ? AppColors.textOnPrimary
-              : AppColors.accent.primary
-          }
-          size="small"
-        />
-      ) : (
-        <View style={styles.content}>
-          {icon && <View style={styles.icon}>{icon}</View>}
-          <Text style={textStyles} numberOfLines={2}>
-            {title}
-          </Text>
-        </View>
-      )}
+      <View style={styles.content}>
+        {icon && (
+          <View accessible={false} style={styles.icon}>
+            {icon}
+          </View>
+        )}
+        <Text style={textStyles} numberOfLines={2}>
+          {title}
+        </Text>
+        {loading && (
+          <ActivityIndicator
+            color={
+              isDisabled
+                ? AppColors.disabledText
+                : variant === 'primary'
+                  ? AppColors.textOnPrimary
+                  : AppColors.accent.dark
+            }
+            size="small"
+            style={styles.loadingIndicator}
+          />
+        )}
+      </View>
     </TouchableOpacity>
   );
 };
@@ -98,65 +108,66 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
   },
   icon: {
     marginRight: AppSpacing.sm,
   },
-
-  // Variants
+  loadingIndicator: {
+    marginLeft: AppSpacing.sm,
+  },
   primary: {
-    backgroundColor: AppColors.accent.primary,
+    backgroundColor: AppColors.accent.dark,
   },
   secondary: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: AppColors.accent.primary,
+    borderColor: AppColors.controlBorder,
   },
   textVariant: {
     backgroundColor: 'transparent',
   },
-
-  // Sizes
   small: {
     paddingHorizontal: AppSpacing.md,
     paddingVertical: AppSpacing.sm,
-    minHeight: 36,
+    minHeight: 44,
   },
   medium: {
-    paddingHorizontal: AppSpacing.lg,
-    paddingVertical: AppSpacing.md,
-    minHeight: 48,
+    paddingHorizontal: AppSpacing.md,
+    paddingVertical: AppSpacing.sm,
+    minHeight: 44,
   },
   large: {
-    paddingHorizontal: AppSpacing.xl,
-    paddingVertical: AppSpacing.lg,
-    minHeight: 56,
+    paddingHorizontal: AppSpacing.md,
+    paddingVertical: 12,
+    minHeight: 48,
   },
-
-  // States
   fullWidth: {
     width: '100%',
   },
   disabled: {
-    opacity: 0.5,
+    backgroundColor: AppColors.disabledSurface,
+    borderWidth: 1,
+    borderColor: AppColors.controlBorder,
   },
-
-  // Text styles
+  disabledTextVariant: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+  },
   text: {
     ...AppTypography.labelLarge,
     fontWeight: '600',
+    flexShrink: 1,
   },
   primaryText: {
     color: AppColors.textOnPrimary,
   },
   secondaryText: {
-    color: AppColors.accent.primary,
+    color: AppColors.secondary.primary,
   },
   textText: {
-    color: AppColors.accent.primary,
+    color: AppColors.accent.dark,
   },
-
-  // Text sizes
   smallText: {
     fontSize: 14,
   },
@@ -166,8 +177,7 @@ const styles = StyleSheet.create({
   largeText: {
     fontSize: 18,
   },
-
   disabledText: {
-    opacity: 0.7,
+    color: AppColors.disabledText,
   },
 });

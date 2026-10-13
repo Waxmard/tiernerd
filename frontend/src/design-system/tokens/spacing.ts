@@ -19,7 +19,16 @@ export const AppSpacing = {
 
   // Input spacing
   inputPadding: {
-    horizontal: 16,
-    vertical: 12,
+    horizontal: 12,
+    vertical: 8,
   },
 };
+
+export const AppLayout = {
+  maxWidth: 1280,
+  desktopBreakpoint: 1024,
+  gutter: 16,
+  columnGap: 16,
+  paneWidth: 360,
+  paneGap: 24,
+} as const;

@@ -1,68 +1,38 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import type React from 'react';
-import { useEffect, useRef } from 'react';
 import {
-  Animated,
   Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card } from '../design-system/components';
 import {
-  AppBorders,
   AppColors,
+  AppLayout,
   AppSpacing,
   AppTypography,
 } from '../design-system/tokens';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 
-// Temporary inline shadows to fix import issue
-const AppShadows = {
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-};
-
 type ProfileScreenProps = RootStackScreenProps<'Profile'>;
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
-
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+  const { width } = useWindowDimensions();
 
   const handleSignOut = async () => {
-    console.log('Signing out...');
     await signOut();
-    // Navigation happens automatically when user state changes
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
-
-  const settingsItems = [
-    { id: 'account', label: 'Account Settings', icon: 'person-outline' },
-    { id: 'preferences', label: 'App Preferences', icon: 'settings-outline' },
-    { id: 'about', label: 'About', icon: 'information-circle-outline' },
-  ];
 
   return (
     <View style={styles.container}>
@@ -71,106 +41,109 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View style={{ opacity: fadeAnim }}>
-            {/* Header with back button */}
+          <View
+            style={[
+              styles.page,
+              {
+                paddingHorizontal:
+                  width >= AppLayout.desktopBreakpoint
+                    ? AppSpacing.lg
+                    : AppSpacing.md,
+              },
+            ]}
+          >
             <View style={styles.header}>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Back"
                 onPress={handleBack}
                 style={styles.backButton}
                 activeOpacity={0.7}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Ionicons
-                  name="arrow-back"
-                  size={24}
+                  name="chevron-back"
+                  size={28}
                   color={AppColors.secondary.primary}
+                  accessible={false}
                 />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Profile</Text>
+              <Text style={styles.headerTitle} accessibilityRole="header">
+                Profile
+              </Text>
               <View style={styles.backButton} />
             </View>
 
-            {/* User Info Card */}
-            <Card style={styles.userCard}>
-              <View style={styles.userInfo}>
-                {user?.photoUrl ? (
-                  <Image
-                    source={{ uri: user.photoUrl }}
-                    style={styles.profileImage}
+            <View style={styles.identityRow}>
+              {user?.photoUrl ? (
+                <Image
+                  source={{ uri: user.photoUrl }}
+                  style={styles.profileImage}
+                  accessibilityLabel={
+                    user?.displayName
+                      ? `${user.displayName} profile photo`
+                      : 'Profile photo'
+                  }
+                />
+              ) : (
+                <View style={styles.profilePlaceholder}>
+                  <Ionicons
+                    name="person"
+                    size={28}
+                    color={AppColors.neutral[600]}
+                    accessible={false}
                   />
-                ) : (
-                  <View style={styles.profilePlaceholder}>
-                    <Ionicons
-                      name="person"
-                      size={40}
-                      color={AppColors.neutral[600]}
-                    />
-                  </View>
-                )}
+                </View>
+              )}
+              <View style={styles.identityText}>
                 <Text style={styles.userName}>
                   {user?.displayName || user?.email?.split('@')[0] || 'User'}
                 </Text>
+                <Text style={styles.identityCaption}>TierNerd account</Text>
+              </View>
+            </View>
+
+            <View style={styles.accountSection}>
+              <Text style={styles.sectionLabel}>Account</Text>
+              <View style={styles.accountRow}>
+                <Text style={styles.accountLabel}>Email address</Text>
                 <Text style={styles.userEmail}>
                   {user?.email || 'No email'}
                 </Text>
               </View>
-            </Card>
-
-            {/* Settings Options */}
-            <View style={styles.settingsSection}>
-              <Text style={styles.sectionTitle}>Settings</Text>
-              <Card style={styles.settingsCard}>
-                {settingsItems.map((item, index) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.settingsItem,
-                      index < settingsItems.length - 1 &&
-                        styles.settingsItemBorder,
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.settingsItemContent}>
-                      <Ionicons
-                        name={item.icon as keyof typeof Ionicons.glyphMap}
-                        size={22}
-                        color={AppColors.secondary.primary}
-                        style={styles.settingsIcon}
-                      />
-                      <Text style={styles.settingsLabel}>{item.label}</Text>
-                    </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color={AppColors.neutral[400]}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </Card>
             </View>
 
-            {/* Sign Out Button */}
-            <View style={styles.signOutSection}>
-              <TouchableOpacity
-                style={styles.signOutButton}
-                onPress={handleSignOut}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="log-out-outline" size={20} color="#DC2626" />
-                <Text style={styles.signOutButtonText}>Sign Out</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Version Info */}
-            <View style={styles.versionContainer}>
-              <Image
-                source={require('../../assets/logo-transparent.png')}
-                style={styles.versionLogo}
-                resizeMode="contain"
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color={AppColors.secondary.primary}
+                accessible={false}
               />
-              <Text style={styles.versionText}>v1.0.0 • Tier Nerd</Text>
+              <Text style={styles.signOutButtonText}>Sign Out</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={AppColors.neutral[500]}
+                accessible={false}
+              />
+            </TouchableOpacity>
+
+            <View style={styles.versionContainer}>
+              <Text style={styles.versionText}>
+                {Constants.expoConfig?.version
+                  ? `${Constants.expoConfig.version} · `
+                  : ''}
+                TierNerd
+              </Text>
             </View>
-          </Animated.View>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -186,8 +159,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: AppSpacing.lg,
-    paddingBottom: AppSpacing.xxxl,
+    width: '100%',
+    flexGrow: 1,
+  },
+  page: {
+    width: '100%',
+    maxWidth: AppLayout.maxWidth,
+    alignSelf: 'center',
+    flexGrow: 1,
+    paddingBottom: AppSpacing.xl,
   },
   header: {
     flexDirection: 'row',
@@ -203,119 +183,98 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    ...AppTypography.headlineMedium,
+    ...AppTypography.headlineSmall,
     color: AppColors.secondary.emphasis,
     fontWeight: '600',
   },
-  userCard: {
-    backgroundColor: AppColors.dominant.primary,
-    borderRadius: AppBorders.radiusLg,
-    padding: AppSpacing.xl,
-    marginBottom: AppSpacing.xl,
-    ...AppShadows.md,
-  },
-  userInfo: {
+  identityRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: AppSpacing.md,
+    marginBottom: AppSpacing.xl,
+  },
+  identityText: {
+    flex: 1,
+    minWidth: 0,
   },
   profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: AppSpacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   profilePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: AppColors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: AppColors.neutral[300],
-    marginBottom: AppSpacing.md,
   },
   userName: {
-    ...AppTypography.headlineSmall,
+    ...AppTypography.titleMedium,
     color: AppColors.secondary.emphasis,
-    fontWeight: '600',
-    marginBottom: AppSpacing.xs,
+    flexShrink: 1,
+  },
+  identityCaption: {
+    ...AppTypography.bodySmall,
+    color: AppColors.textSecondary,
+    marginTop: AppSpacing.xs,
+  },
+  accountSection: {
+    marginBottom: AppSpacing.lg,
+  },
+  sectionLabel: {
+    ...AppTypography.labelMedium,
+    color: AppColors.textSecondary,
+    textTransform: 'uppercase',
+    marginBottom: AppSpacing.sm,
+  },
+  accountRow: {
+    backgroundColor: AppColors.dominant.primary,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: AppColors.neutral[200],
+    paddingVertical: AppSpacing.md,
+    gap: AppSpacing.xs,
+  },
+  accountLabel: {
+    ...AppTypography.labelMedium,
+    color: AppColors.secondary.primary,
   },
   userEmail: {
     ...AppTypography.bodyMedium,
     color: AppColors.textSecondary,
-  },
-  settingsSection: {
-    marginBottom: AppSpacing.xl,
-  },
-  sectionTitle: {
-    ...AppTypography.titleMedium,
-    color: AppColors.secondary.emphasis,
-    fontWeight: '600',
-    marginBottom: AppSpacing.md,
-  },
-  settingsCard: {
-    backgroundColor: AppColors.dominant.primary,
-    borderRadius: AppBorders.radiusLg,
-    ...AppShadows.md,
-  },
-  settingsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: AppSpacing.md,
-    paddingHorizontal: AppSpacing.lg,
-  },
-  settingsItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.neutral[200],
-  },
-  settingsItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingsIcon: {
-    marginRight: AppSpacing.md,
-  },
-  settingsLabel: {
-    ...AppTypography.bodyLarge,
-    color: AppColors.secondary.primary,
-    fontWeight: '500',
-  },
-  signOutSection: {
-    marginBottom: AppSpacing.xl,
+    flexShrink: 1,
   },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: AppColors.surface,
+    justifyContent: 'space-between',
+    minHeight: 48,
+    backgroundColor: AppColors.dominant.primary,
     borderWidth: 1,
-    borderColor: '#DC2626',
-    borderRadius: AppBorders.radiusMd,
+    borderColor: AppColors.neutral[200],
+    borderRadius: 8,
     paddingVertical: AppSpacing.md,
     paddingHorizontal: AppSpacing.lg,
   },
   signOutButtonText: {
     ...AppTypography.labelLarge,
-    color: '#DC2626',
+    color: AppColors.secondary.primary,
     fontWeight: '600',
-    marginLeft: AppSpacing.sm,
+    flex: 1,
+    marginLeft: AppSpacing.md,
   },
   versionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    marginTop: AppSpacing.md,
-  },
-  versionLogo: {
-    width: 16,
-    height: 16,
-    marginRight: AppSpacing.xs,
-    opacity: 0.3,
+    marginTop: 'auto',
+    paddingTop: AppSpacing.xl,
   },
   versionText: {
     ...AppTypography.labelSmall,
     color: AppColors.textSecondary,
-    opacity: 0.5,
   },
 });

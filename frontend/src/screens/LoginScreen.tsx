@@ -1,61 +1,50 @@
 import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  type TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input } from '../design-system/components';
-import {
-  AppBorders,
-  AppColors,
-  AppSpacing,
-  AppTypography,
-} from '../design-system/tokens';
+import { AppColors, AppSpacing, AppTypography } from '../design-system/tokens';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 
 type LoginScreenProps = RootStackScreenProps<'Login'>;
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
   const { signIn, signInWithGoogle, googleAvailable, isLoading, error } =
     useAuth();
-
-  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
-
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+  const [emailError, setEmailError] = useState<string>();
+  const [passwordError, setPasswordError] = useState<string>();
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const handleEmailSignIn = async () => {
-    if (!email || !password) return;
-
-    console.log('Email sign in initiated');
-    const success = await signIn(email, password);
-    if (success) {
-      console.log(
-        'Email sign in successful - navigation will happen automatically'
-      );
+    if (isLoading) return;
+    const nextEmailError = email.trim() ? undefined : 'Email is required';
+    const nextPasswordError = password ? undefined : 'Password is required';
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
+    if (nextEmailError || nextPasswordError) {
+      if (nextEmailError) emailInputRef.current?.focus();
+      else passwordInputRef.current?.focus();
+      return;
     }
+    await signIn(email.trim(), password);
   };
 
   const navigateToRegister = () => {
@@ -70,50 +59,72 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           style={styles.keyboardView}
         >
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              width >= 1024 && styles.desktopScrollContent,
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={false}
           >
-            <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-              {/* Logo */}
+            <View style={styles.content}>
               <View style={styles.logoContainer}>
                 <Image
                   source={require('../../assets/logo-transparent.png')}
                   style={styles.logo}
                   resizeMode="contain"
+                  accessible={false}
                 />
               </View>
-
-              {/* Login form */}
               <View style={styles.formContainer} collapsable={false}>
-                {/* Form Title */}
-                <Text style={styles.formTitle}>TierNerd</Text>
-                <View style={styles.titleDivider} />
+                <Text style={styles.formTitle} accessibilityRole="header">
+                  TierNerd
+                </Text>
                 <Input
                   label="Email"
+                  ref={emailInputRef}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    if (value.trim()) setEmailError(undefined);
+                  }}
+                  error={emailError}
                   placeholder="name@example.com"
                   keyboardType="email-address"
+                  autoComplete="email"
+                  textContentType="emailAddress"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
                   leftIcon={
                     <Ionicons
+                      accessible={false}
                       name="mail-outline"
                       size={20}
                       color={AppColors.neutral[600]}
                     />
                   }
                 />
-
                 <Input
                   label="Password"
+                  ref={passwordInputRef}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(value) => {
+                    setPassword(value);
+                    if (value) setPasswordError(undefined);
+                  }}
+                  error={passwordError}
                   placeholder="••••••••"
                   secureTextEntry={!passwordVisible}
+                  autoComplete="current-password"
+                  textContentType="password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleEmailSignIn}
                   leftIcon={
                     <Ionicons
+                      accessible={false}
                       name="lock-closed-outline"
                       size={20}
                       color={AppColors.neutral[600]}
@@ -121,98 +132,71 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   }
                   rightIcon={
                     <Ionicons
+                      accessible={false}
                       name={passwordVisible ? 'eye-outline' : 'eye-off-outline'}
                       size={20}
                       color={AppColors.neutral[600]}
                     />
                   }
+                  rightIconAccessibilityLabel={
+                    passwordVisible ? 'Hide password' : 'Show password'
+                  }
                   onRightIconPress={() => setPasswordVisible(!passwordVisible)}
                 />
-
-                <TouchableOpacity
-                  style={styles.forgotPassword}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Text style={styles.forgotPasswordText}>
-                    Forgot Password?
-                  </Text>
-                </TouchableOpacity>
-
+                {error && (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText} accessibilityRole="alert">
+                      {error}
+                    </Text>
+                  </View>
+                )}
                 <Button
                   title="Log In"
                   onPress={handleEmailSignIn}
+                  size="large"
                   fullWidth
                   loading={isLoading}
-                  disabled={!email || !password}
                   style={styles.loginButton}
                 />
-
                 {googleAvailable && (
                   <>
-                    {/* Divider */}
                     <View style={styles.divider}>
                       <View style={styles.dividerLine} />
                       <Text style={styles.dividerText}>OR</Text>
                       <View style={styles.dividerLine} />
                     </View>
-
-                    {/* Google Sign In */}
-                    <TouchableOpacity
-                      style={styles.googleButton}
+                    <Button
+                      title="Sign in with Google"
+                      accessibilityLabel="Sign in with Google"
                       onPress={signInWithGoogle}
-                      disabled={isLoading}
-                      activeOpacity={0.8}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      {isLoading ? (
-                        <ActivityIndicator
-                          color={AppColors.secondary.primary}
+                      variant="secondary"
+                      size="large"
+                      fullWidth
+                      loading={isLoading}
+                      icon={
+                        <Image
+                          source={require('../../assets/google-logo.png')}
+                          style={styles.googleIcon}
+                          accessible={false}
                         />
-                      ) : (
-                        <>
-                          <Image
-                            source={require('../../assets/google-logo.png')}
-                            style={styles.googleIcon}
-                          />
-                          <Text style={styles.googleButtonText}>
-                            Sign in with Google
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                      }
+                    />
                   </>
                 )}
-
-                {/* Sign up link */}
                 <View style={styles.signUpContainer}>
                   <Text style={styles.signUpText}>Don't have an account? </Text>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Sign Up"
                     activeOpacity={0.7}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={styles.linkTarget}
                     onPress={navigateToRegister}
                   >
                     <Text style={styles.signUpLink}>Sign Up</Text>
                   </TouchableOpacity>
                 </View>
-
-                {/* Version */}
-                <View style={styles.versionContainer}>
-                  <Image
-                    source={require('../../assets/logo-transparent.png')}
-                    style={styles.versionLogo}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.version}>v1.0.0 • Tier Nerd</Text>
-                </View>
               </View>
-
-              {error && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              )}
-            </Animated.View>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -233,59 +217,42 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: AppSpacing.lg,
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    paddingHorizontal: AppSpacing.md,
+    paddingTop: AppSpacing.lg,
+  },
+  desktopScrollContent: {
+    paddingTop: AppSpacing.xxxl,
   },
   content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingVertical: AppSpacing.xs,
-    paddingTop: AppSpacing.sm,
+    flexGrow: 1,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: AppSpacing.sm,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-  },
-  formTitle: {
-    ...AppTypography.brandTitle,
-    color: AppColors.secondary.emphasis,
-    textAlign: 'center',
     marginBottom: AppSpacing.md,
   },
-  titleDivider: {
-    height: 1,
-    backgroundColor: AppColors.neutral[200],
-    marginBottom: AppSpacing.lg,
+  logo: {
+    width: 48,
+    height: 48,
+  },
+  formTitle: {
+    ...AppTypography.titleLarge,
+    color: AppColors.secondary.emphasis,
+    textAlign: 'left',
+    marginBottom: AppSpacing.md,
   },
   formContainer: {
-    backgroundColor: AppColors.dominant.primary,
-    borderRadius: AppBorders.radiusLg,
-    padding: AppSpacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
+    width: '100%',
   },
   loginButton: {
     marginTop: AppSpacing.md,
-    backgroundColor: AppColors.primary,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: AppSpacing.md,
-  },
-  forgotPasswordText: {
-    ...AppTypography.bodySmall,
-    color: AppColors.primary,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: AppSpacing.lg,
+    marginVertical: AppSpacing.md,
   },
   dividerLine: {
     flex: 1,
@@ -297,34 +264,19 @@ const styles = StyleSheet.create({
     color: AppColors.textSecondary,
     marginHorizontal: AppSpacing.md,
   },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: AppColors.surface,
-    borderWidth: 1,
-    borderColor: AppColors.neutral[300],
-    borderRadius: AppBorders.radiusMd,
-    paddingVertical: AppSpacing.md,
-    paddingHorizontal: AppSpacing.lg,
-  },
   googleIcon: {
-    width: 24,
-    height: 24,
-    marginRight: AppSpacing.sm,
-  },
-  googleButtonText: {
-    ...AppTypography.labelLarge,
-    color: AppColors.textPrimary,
-    fontWeight: '500',
+    width: 20,
+    height: 20,
   },
   signUpContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: AppSpacing.lg,
-    paddingTop: AppSpacing.md,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.neutral[200],
+    marginTop: AppSpacing.md,
+  },
+  linkTarget: {
+    minHeight: 44,
+    justifyContent: 'center',
   },
   signUpText: {
     ...AppTypography.bodyMedium,
@@ -332,32 +284,15 @@ const styles = StyleSheet.create({
   },
   signUpLink: {
     ...AppTypography.bodyMedium,
-    color: AppColors.primary,
-    fontWeight: 'bold',
+    color: AppColors.accent.dark,
+    fontWeight: '600',
     textDecorationLine: 'underline',
-  },
-  versionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: AppSpacing.md,
-  },
-  versionLogo: {
-    width: 16,
-    height: 16,
-    marginRight: AppSpacing.xs,
-    opacity: 0.3,
-  },
-  version: {
-    ...AppTypography.labelSmall,
-    color: AppColors.textSecondary,
-    opacity: 0.5,
   },
   errorContainer: {
     marginTop: AppSpacing.md,
     padding: AppSpacing.md,
     backgroundColor: AppColors.error,
-    borderRadius: AppBorders.radiusMd,
+    borderRadius: AppSpacing.sm,
   },
   errorText: {
     ...AppTypography.bodySmall,

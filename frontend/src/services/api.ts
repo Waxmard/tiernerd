@@ -1,20 +1,5 @@
 import { API_BASE_URL } from '../config/api';
-
-export interface ApiErrorData {
-  detail?: string | { msg?: string }[];
-  [key: string]: unknown;
-}
-
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public statusText: string,
-    public data?: ApiErrorData
-  ) {
-    super(`${status} ${statusText}`);
-    this.name = 'ApiError';
-  }
-}
+import { ApiError, type ApiErrorData } from './apiError';
 
 interface RequestOptions extends RequestInit {
   token?: string;

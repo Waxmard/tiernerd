@@ -17,10 +17,10 @@ test('create list, add great item, delete the list', async ({ page }) => {
   await page.getByText('Create', { exact: true }).click();
 
   // HomeScreen chains a successful create straight into the add-item step.
-  await expect(page.getByText('Add Item')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Add item', exact: true })).toBeVisible();
   await page.getByPlaceholder('Enter item name').fill(itemName);
   await page.getByText('Great (7.0–10.0)').click();
-  await page.getByText('Add', { exact: true }).click();
+  await page.getByRole('button', { name: 'Add item', exact: true }).click();
 
   const row = page.getByTestId('ranked-item').filter({ hasText: itemName });
   await expect(row).toContainText('8.5');

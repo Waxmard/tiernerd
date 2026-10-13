@@ -5,6 +5,7 @@ from datetime import datetime
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import comparison as comparison_crud, item as item_crud, list as list_crud
@@ -18,176 +19,79 @@ from app.db.models import (
 
 @pytest.mark.asyncio
 class TestComparisonCRUD:
-    """Tests for comparison CRUD operations."""
-
-    async def test_get_by_id_exists(
+    async def test_lookup_by_id_and_list_id(
         self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ):
-        """Test getting comparison session by ID that exists."""
-        # Create a comparison session
+    ) -> None:
         session = ComparisonSessionModel(
             session_id=uuid.uuid4(),
             list_id=test_list.list_id,
             new_item_id=test_item.item_id,
             target_item_id=test_item.item_id,
             tier_set="good",
-            min_index=0,
-            max_index=0,
-            comparison_index=0,
-            is_complete=False,
         )
         test_db.add(session)
         await test_db.commit()
 
-        result = await comparison_crud.get_by_id(test_db, session.session_id)
-        assert result is not None
-        assert result.session_id == session.session_id
+        found = await comparison_crud.get_by_id(test_db, session.session_id)
+        assert found is not None and found.session_id == session.session_id
+        assert (
+            await comparison_crud.get_list_id(test_db, session.session_id)
+            == test_list.list_id
+        )
+        assert await comparison_crud.get_by_id(test_db, uuid.uuid4()) is None
 
-    async def test_get_by_id_not_exists(self, test_db: AsyncSession):
-        """Test getting comparison session by ID that doesn't exist."""
-        fake_id = uuid.uuid4()
-        result = await comparison_crud.get_by_id(test_db, fake_id)
-        assert result is None
-
-    async def test_get_active_exists(
-        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ):
-        """Test getting active comparison session."""
-        # Create an active (not complete) session
+    async def test_get_active_by_item(self, test_db, test_list, test_item) -> None:
         session = ComparisonSessionModel(
-            session_id=uuid.uuid4(),
             list_id=test_list.list_id,
             new_item_id=test_item.item_id,
             target_item_id=test_item.item_id,
             tier_set="good",
-            min_index=0,
-            max_index=0,
-            comparison_index=0,
-            is_complete=False,
+            status="ready_to_commit",
         )
         test_db.add(session)
         await test_db.commit()
 
-        result = await comparison_crud.get_active(test_db, session.session_id)
-        assert result is not None
-        assert result.is_complete is False
+        assert await comparison_crud.get_active(test_db, session.session_id) is not None
+        assert (
+            await comparison_crud.get_active(
+                test_db, session.session_id, populate_existing=True
+            )
+            is not None
+        )
+        assert (
+            await comparison_crud.get_active_by_item(test_db, test_item.item_id)
+            is not None
+        )
 
-    async def test_get_active_returns_none_when_complete(
+    async def test_completed_session_is_not_active(
         self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ):
-        """Test get_active returns None for completed sessions."""
-        # Create a completed session
+    ) -> None:
         session = ComparisonSessionModel(
-            session_id=uuid.uuid4(),
             list_id=test_list.list_id,
             new_item_id=test_item.item_id,
-            target_item_id=test_item.item_id,
+            target_item_id=None,
             tier_set="good",
-            min_index=0,
-            max_index=0,
-            comparison_index=0,
-            is_complete=True,
+            status="completed",
         )
         test_db.add(session)
         await test_db.commit()
 
-        result = await comparison_crud.get_active(test_db, session.session_id)
-        assert result is None
+        assert await comparison_crud.get_active(test_db, session.session_id) is None
+        assert (
+            await comparison_crud.get_active_by_item(test_db, test_item.item_id) is None
+        )
 
-    async def test_create_comparison_session(
-        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ):
-        """Test creating a comparison session."""
+    async def test_create_session(self, test_db, test_list, test_item) -> None:
         session = ComparisonSessionModel(
-            session_id=uuid.uuid4(),
             list_id=test_list.list_id,
             new_item_id=test_item.item_id,
             target_item_id=test_item.item_id,
             tier_set="good",
-            min_index=0,
-            max_index=5,
-            comparison_index=2,
-            is_complete=False,
         )
-        result = await comparison_crud.create(test_db, session)
+        created = await comparison_crud.create(test_db, session)
         await test_db.commit()
-
-        assert result.session_id == session.session_id
-        assert result.list_id == test_list.list_id
-
-    async def test_update_comparison_session(
-        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ):
-        """Test updating a comparison session."""
-        # Create a session
-        session = ComparisonSessionModel(
-            session_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            new_item_id=test_item.item_id,
-            target_item_id=test_item.item_id,
-            tier_set="good",
-            min_index=0,
-            max_index=10,
-            comparison_index=5,
-            is_complete=False,
-        )
-        test_db.add(session)
-        await test_db.commit()
-
-        # Create another item to use as new target
-        new_target = ItemModel(
-            item_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            name="New Target",
-            description="New target item",
-            image_url=None,
-            position="a1",
-            rating=None,
-            tier_set="good",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        test_db.add(new_target)
-        await test_db.commit()
-
-        # Update the session
-        result = await comparison_crud.update(
-            test_db,
-            session,
-            target_item_id=new_target.item_id,
-            min_index=3,
-            max_index=10,
-            comparison_index=6,
-        )
-        await test_db.commit()
-
-        assert result.target_item_id == new_target.item_id
-        assert result.min_index == 3
-        assert result.comparison_index == 6
-
-    async def test_mark_complete(
-        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ):
-        """Test marking a comparison session as complete."""
-        session = ComparisonSessionModel(
-            session_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            new_item_id=test_item.item_id,
-            target_item_id=test_item.item_id,
-            tier_set="good",
-            min_index=0,
-            max_index=0,
-            comparison_index=0,
-            is_complete=False,
-        )
-        test_db.add(session)
-        await test_db.commit()
-
-        assert session.is_complete is False
-        result = await comparison_crud.mark_complete(test_db, session)
-        await test_db.commit()
-
-        assert result.is_complete is True
+        assert created.session_id == session.session_id
+        assert created.list_id == test_list.list_id
 
 
 @pytest.mark.asyncio
@@ -337,6 +241,58 @@ class TestItemCRUD:
         result = await item_crud.get_by_id(test_db, item_id)
         assert result is None
 
+    async def test_get_by_normalized_name_and_exclude_self(
+        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
+    ) -> None:
+        found = await item_crud.get_by_name_key(test_db, test_list.list_id, "test item")
+        assert found is not None and found.item_id == test_item.item_id
+        assert (
+            await item_crud.get_by_name_key(
+                test_db, test_list.list_id, "test item", exclude_id=test_item.item_id
+            )
+            is None
+        )
+
+    async def test_sqlite_duplicate_name_error_classification(
+        self, test_db: AsyncSession, test_item: ItemModel
+    ) -> None:
+        duplicate = ItemModel(
+            list_id=test_item.list_id,
+            name="  TEST ITEM  ",
+            tier_set="mid",
+        )
+        with pytest.raises(IntegrityError) as caught:
+            await item_crud.create(test_db, duplicate)
+        assert item_crud.is_duplicate_name_error(caught.value)
+        await test_db.rollback()
+
+        unrelated = IntegrityError("insert", {}, Exception("unique conflict"))
+        assert not item_crud.is_duplicate_name_error(unrelated)
+
+
+def test_postgresql_duplicate_name_error_classification() -> None:
+    class _Diagnostics:
+        constraint_name = "ix_items_list_name_key"
+
+    class _DiagViolation(Exception):
+        diag = _Diagnostics()
+
+    class _AttributeViolation(Exception):
+        constraint_name = "ix_items_list_name_key"
+
+    class _OtherViolation(Exception):
+        constraint_name = "ix_items_list_tier_position"
+
+    assert item_crud.is_duplicate_name_error(
+        IntegrityError("insert", {}, _DiagViolation())
+    )
+    assert item_crud.is_duplicate_name_error(
+        IntegrityError("insert", {}, _AttributeViolation())
+    )
+    assert not item_crud.is_duplicate_name_error(
+        IntegrityError("insert", {}, _OtherViolation())
+    )
+
 
 @pytest.mark.asyncio
 class TestListCRUD:
@@ -472,7 +428,7 @@ class TestListCRUD:
             new_item_id=new_item.item_id,
             target_item_id=target_item.item_id,
             tier_set="good",
-            is_complete=True,
+            status="completed",
         )
         unrelated = ComparisonSessionModel(
             list_id=multiple_items[0].list_id,

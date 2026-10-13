@@ -5,7 +5,7 @@ export const AppTypography = {
   headlineLarge: {
     fontSize: 32,
     lineHeight: 40,
-    fontWeight: '700',
+    fontWeight: '600',
   } as TextStyle,
 
   headlineMedium: {
@@ -22,8 +22,8 @@ export const AppTypography = {
 
   // Title styles
   titleLarge: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 24,
+    lineHeight: 32,
     fontWeight: '600',
   } as TextStyle,
 
@@ -35,7 +35,7 @@ export const AppTypography = {
 
   titleSmall: {
     fontSize: 16,
-    lineHeight: 20,
+    lineHeight: 24,
     fontWeight: '600',
   } as TextStyle,
 

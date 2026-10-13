@@ -1,4 +1,5 @@
-import { ApiError, api } from './api';
+import { api } from './api';
+import { ApiError, getApiErrorMessage } from './apiError';
 
 // Types matching backend schemas
 export interface User {
@@ -49,17 +50,10 @@ export const authService = {
         token: loginResult.token,
       };
     } catch (error) {
-      if (error instanceof ApiError) {
-        let message = 'Registration failed';
-        if (Array.isArray(error.data?.detail)) {
-          // Pydantic validation error - extract first message
-          message = error.data.detail[0]?.msg || message;
-        } else if (typeof error.data?.detail === 'string') {
-          message = error.data.detail;
-        }
-        return { success: false, error: message };
-      }
-      return { success: false, error: 'Network error' };
+      return {
+        success: false,
+        error: getApiErrorMessage(error, 'Registration failed'),
+      };
     }
   },
 
@@ -91,16 +85,10 @@ export const authService = {
         token: tokenResponse.access_token,
       };
     } catch (error) {
-      if (error instanceof ApiError) {
-        let message = 'Login failed';
-        if (Array.isArray(error.data?.detail)) {
-          message = error.data.detail[0]?.msg || message;
-        } else if (typeof error.data?.detail === 'string') {
-          message = error.data.detail;
-        }
-        return { success: false, error: message };
-      }
-      return { success: false, error: 'Network error' };
+      return {
+        success: false,
+        error: getApiErrorMessage(error, 'Login failed'),
+      };
     }
   },
 
@@ -125,16 +113,10 @@ export const authService = {
         token: tokenResponse.access_token,
       };
     } catch (error) {
-      if (error instanceof ApiError) {
-        let message = 'Google sign-in failed';
-        if (Array.isArray(error.data?.detail)) {
-          message = error.data.detail[0]?.msg || message;
-        } else if (typeof error.data?.detail === 'string') {
-          message = error.data.detail;
-        }
-        return { success: false, error: message };
-      }
-      return { success: false, error: 'Network error' };
+      return {
+        success: false,
+        error: getApiErrorMessage(error, 'Google sign-in failed'),
+      };
     }
   },
 
