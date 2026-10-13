@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -32,6 +33,7 @@ import {
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import type { Item } from '../services/itemsService';
+import { listsCacheKey, parseCachedLists } from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
 
 type ModalStep = 'create' | 'addItem' | null;
@@ -77,6 +79,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (requestId !== listsRequestRef.current) return;
         setLists(result.map(toTierList));
         setError(null);
+        if (user)
+          void AsyncStorage.setItem(
+            listsCacheKey(user.id),
+            JSON.stringify(result)
+          ).catch(() => {});
       } catch (err: unknown) {
         if (requestId === listsRequestRef.current)
           setError(err instanceof Error ? err.message : 'Failed to load lists');
@@ -85,8 +92,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (requestId === listsRequestRef.current) setIsLoading(false);
       }
     },
-    [token]
+    [token, user]
   );
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      const raw = await AsyncStorage.getItem(listsCacheKey(user.id)).catch(
+        () => null
+      );
+      if (cancelled) return;
+      const cached = parseCachedLists(raw);
+      if (!cached) return;
+      setLists(cached.map(toTierList));
+      setIsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
   const fetchLists = useCallback(async () => {
     try {
       await refreshLists(true);
@@ -222,7 +246,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View style={styles.center}>
         <ActivityIndicator size="large" color={AppColors.accent.primary} />
       </View>
-    ) : error ? (
+    ) : error && !lists.length ? (
       <View style={styles.center}>
         <Ionicons
           name="alert-circle-outline"
