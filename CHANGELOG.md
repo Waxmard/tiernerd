@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/Waxmard/tiernerd/compare/v0.2.0...v0.3.0) (2026-10-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ranking:** persist comparison drafts and require schema migration ([#91](https://github.com/Waxmard/tiernerd/issues/91))
+* replace letter tiers with 1-to-10 scores and comparison flow ([#84](https://github.com/Waxmard/tiernerd/issues/84))
+
+### Features
+
+* add Google OAuth sign-in and web deployment workflows ([#77](https://github.com/Waxmard/tiernerd/issues/77)) ([3b85a78](https://github.com/Waxmard/tiernerd/commit/3b85a78988e7afde846fe27d0ab69888a9be7999))
+* **ranking:** persist comparison drafts and require schema migration ([#91](https://github.com/Waxmard/tiernerd/issues/91)) ([13ad368](https://github.com/Waxmard/tiernerd/commit/13ad368dbbc089df8967f60299f23433a652efc0))
+* replace letter tiers with 1-to-10 scores and comparison flow ([#84](https://github.com/Waxmard/tiernerd/issues/84)) ([8ce1e7a](https://github.com/Waxmard/tiernerd/commit/8ce1e7aa597f19df0c1022c563184ba363687065))
+
 ## [0.2.0](https://github.com/Waxmard/rinking-epp/compare/v0.1.0...v0.2.0) (2026-05-13)
 
 
