@@ -1,113 +1,235 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import Constants from 'expo-constants';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
-  Dimensions,
   FlatList,
+  type FlatListProps,
   Image,
+  type LayoutChangeEvent,
+  type ListRenderItemInfo,
   Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AddItemContent } from '../components/AddItemModal';
+import { AddItemContent } from '../components/AddItemContent';
 import {
   type CreatedList,
   CreateListContent,
 } from '../components/CreateListModal';
+import { RankingContent } from '../components/RankingContent';
+import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Card, FAB } from '../design-system/components';
 import {
   AppBorders,
   AppColors,
+  AppLayout,
   AppSpacing,
   AppTypography,
 } from '../design-system/tokens';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
+import type { Item } from '../services/itemsService';
 import { type ListSimple, listsService } from '../services/listsService';
-import { confirmDestructive, notifyError } from '../utils/confirm';
 
 type ModalStep = 'create' | 'addItem' | null;
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const COLUMN_GAP = AppSpacing.md;
-const HORIZONTAL_PADDING = AppSpacing.lg;
-const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - COLUMN_GAP) / 2;
 
 interface TierList {
   id: string;
   title: string;
+  description: string | null;
   itemCount: number;
   updatedAt: Date;
 }
 
 type HomeScreenProps = RootStackScreenProps<'Main'>;
+type CreateListContentHandle = { requestClose: () => Promise<boolean> };
 
-// Convert API ListSimple to local TierList format
+const CARD_ROW_ESTIMATE = 160;
+
+const toAnchorId = (item: TierList | TierList[] | undefined): string | null => {
+  if (!item) return null;
+  return Array.isArray(item) ? (item[0]?.id ?? null) : item.id;
+};
+
 const toTierList = (apiList: ListSimple): TierList => ({
   id: apiList.list_id,
   title: apiList.title,
+  description: apiList.description,
   itemCount: apiList.item_count,
   updatedAt: new Date(apiList.updated_at),
 });
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const columns =
+    windowWidth < 360
+      ? 1
+      : windowWidth < AppLayout.desktopBreakpoint
+        ? 2
+        : windowWidth < AppLayout.fourColumnBreakpoint
+          ? 3
+          : 4;
   const [lists, setLists] = useState<TierList[]>([]);
+  const [contentWidth, setContentWidth] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
+  const createListRef = useRef<CreateListContentHandle | null>(null);
+  const listRef = useRef<FlatList<TierList> | null>(null);
+  const anchorRef = useRef<string | null>(null);
+  const rowHeightTotalRef = useRef(0);
+  const rowHeightCountRef = useRef(0);
+  const restoreFrameRef = useRef<number | null>(null);
+  const restoreRef = useRef<() => void>(() => {});
+  const gridWidthRef = useRef(0);
+  const gridLayoutSeenRef = useRef(false);
+  const listsRef = useRef<TierList[]>([]);
+  const previousColumnsRef = useRef(columns);
+  const pendingRestoreRef = useRef<string | null>(null);
+  const bypassBeforeRemoveRef = useRef(false);
+  const closingForNavigationRef = useRef(false);
+  const listsRequestRef = useRef(0);
+  const cardWidth = Math.max(
+    0,
+    (contentWidth - AppLayout.columnGap * (columns - 1)) / columns
+  );
 
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  listsRef.current = lists;
+
+  if (previousColumnsRef.current !== columns) {
+    previousColumnsRef.current = columns;
+    pendingRestoreRef.current = anchorRef.current;
+    rowHeightTotalRef.current = 0;
+    rowHeightCountRef.current = 0;
+    gridLayoutSeenRef.current = false;
+  }
+
+  const refreshLists = useCallback(
+    async (showLoading = false) => {
+      if (!token) return;
+      const requestId = ++listsRequestRef.current;
+      if (showLoading) setIsLoading(true);
+      try {
+        const apiLists = await listsService.getLists(token);
+        if (requestId !== listsRequestRef.current) return;
+        setLists(apiLists.map(toTierList));
+        setError(null);
+      } catch (err: unknown) {
+        if (requestId === listsRequestRef.current) {
+          setError(err instanceof Error ? err.message : 'Failed to load lists');
+        }
+        throw err;
+      } finally {
+        if (requestId === listsRequestRef.current) setIsLoading(false);
+      }
+    },
+    [token]
+  );
 
   const fetchLists = useCallback(async () => {
-    if (!token) return;
-
     try {
-      setIsLoading(true);
-      setError(null);
-      const apiLists = await listsService.getLists(token);
-      setLists(apiLists.map(toTierList));
-    } catch (err: unknown) {
-      console.error('Error fetching lists:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load lists');
-    } finally {
-      setIsLoading(false);
+      await refreshLists(true);
+    } catch {
+      return;
     }
-  }, [token]);
+  }, [refreshLists]);
 
-  // Refetch on focus (including first mount) so deletes made on the detail
-  // screen drop off the grid.
   useFocusEffect(
     useCallback(() => {
-      fetchLists();
+      void fetchLists();
     }, [fetchLists])
   );
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
+  const handleWorkspaceItemsChanged = useCallback(
+    async (item?: Item) => {
+      await refreshLists();
+      if (item && pendingList) {
+        navigation.navigate('ListDetail', {
+          listId: pendingList.listId,
+          listTitle: pendingList.title,
+          completedItemId: item.item_id,
+        });
+      }
+    },
+    [navigation, pendingList, refreshLists]
+  );
+
+  const handleWorkspaceClosed = useCallback(() => {
+    setModalStep(null);
+    setPendingList(null);
+  }, []);
+
+  const workspace = useItemWorkspace({
+    listTitle: pendingList?.title ?? '',
+    token,
+    onItemsChanged: handleWorkspaceItemsChanged,
+    onClosed: handleWorkspaceClosed,
+  });
+
+  const handleListCreated = useCallback(
+    (list: CreatedList) => {
+      void fetchLists();
+      setPendingList(list);
+      workspace.openAdd();
+      setModalStep('addItem');
+    },
+    [fetchLists, workspace.openAdd]
+  );
+
+  const getModalTitle = () => {
+    if (modalStep === 'create') return 'Create New List';
+    if (workspace.mode === 'ranking') {
+      return workspace.session?.status === 'ready_to_commit'
+        ? 'Ready to save'
+        : 'Which is better?';
+    }
+    return 'Add item';
+  };
+
+  useEffect(
+    () =>
+      navigation.addListener('beforeRemove', (event) => {
+        if (bypassBeforeRemoveRef.current) {
+          bypassBeforeRemoveRef.current = false;
+          return;
+        }
+        if (closingForNavigationRef.current) {
+          event.preventDefault();
+          return;
+        }
+        if (!modalStep) return;
+
+        event.preventDefault();
+        closingForNavigationRef.current = true;
+        const action = event.data.action;
+        const close =
+          modalStep === 'create'
+            ? createListRef.current?.requestClose()
+            : workspace.requestClose();
+
+        void Promise.resolve(close)
+          .catch(() => false)
+          .then((canLeave) => {
+            if (canLeave) {
+              bypassBeforeRemoveRef.current = true;
+              navigation.dispatch(action);
+            }
+          })
+          .finally(() => {
+            closingForNavigationRef.current = false;
+          });
       }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    // fadeAnim/scaleAnim are stable refs from useRef; no need to depend.
-  }, [fadeAnim, scaleAnim]);
+    [modalStep, navigation, workspace.requestClose]
+  );
 
   const formatDate = (date: Date): string => {
     const now = new Date();
@@ -121,14 +243,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   };
 
-  const handleProfilePress = () => {
-    navigation.navigate('Profile');
-  };
-
-  const handleCreatePress = () => {
-    setModalStep('create');
-  };
-
   const handleListPress = (list: TierList) => {
     navigation.navigate('ListDetail', {
       listId: list.id,
@@ -136,103 +250,158 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     });
   };
 
-  const handleListLongPress = async (list: TierList) => {
-    const confirmed = await confirmDestructive(
-      'Delete List',
-      'Are you sure you want to delete this list? All items will be permanently deleted.',
-      'Delete'
-    );
-    if (!confirmed) return;
-    if (!token) return;
-    try {
-      await listsService.deleteList(list.id, token);
-      setLists((prev) => prev.filter((l) => l.id !== list.id));
-    } catch (err: unknown) {
-      console.error('Error deleting list:', err);
-      notifyError(
-        'Error',
-        err instanceof Error ? err.message : 'Failed to delete list'
-      );
-    }
-  };
-
-  const handleListCreated = (list: CreatedList) => {
-    fetchLists();
-    setPendingList(list);
-    setModalStep('addItem');
-  };
-
-  const handleItemCreated = () => {
-    if (pendingList) {
-      navigation.navigate('ListDetail', {
-        listId: pendingList.listId,
-        listTitle: pendingList.title,
+  const recordCardLayout = useCallback(
+    (width: number, height: number) => {
+      if (height <= 0) return;
+      if (pendingRestoreRef.current) {
+        if (!gridLayoutSeenRef.current) return;
+        const expectedCardWidth =
+          (gridWidthRef.current - AppLayout.columnGap * (columns - 1)) /
+          columns;
+        if (Math.abs(width - expectedCardWidth) > 2) return;
+      }
+      rowHeightTotalRef.current += height;
+      rowHeightCountRef.current += 1;
+      if (!pendingRestoreRef.current) return;
+      if (restoreFrameRef.current !== null) {
+        cancelAnimationFrame(restoreFrameRef.current);
+      }
+      restoreFrameRef.current = requestAnimationFrame(() => {
+        restoreFrameRef.current = null;
+        restoreRef.current();
       });
-      setModalStep(null);
-      setPendingList(null);
-    }
-  };
+    },
+    [columns]
+  );
 
-  const renderListCard = ({
-    item,
-    index,
-  }: {
-    item: TierList;
-    index: number;
-  }) => {
-    const isLeftColumn = index % 2 === 0;
+  const renderListCard = ({ item }: ListRenderItemInfo<TierList>) => (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={
+        item.description?.trim()
+          ? `${item.title}, ${item.itemCount} items. ${item.description}`
+          : `${item.title}, ${item.itemCount} items`
+      }
+      accessibilityHint="Open tier list"
+      onPress={() => handleListPress(item)}
+      style={[styles.cardWrapper, { width: cardWidth }]}
+      onLayout={(event) =>
+        recordCardLayout(
+          event.nativeEvent.layout.width,
+          event.nativeEvent.layout.height
+        )
+      }
+    >
+      <Card style={styles.listCard}>
+        <Text style={styles.listTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+        {item.description?.trim() ? (
+          <Text style={styles.listDescription} numberOfLines={2}>
+            {item.description}
+          </Text>
+        ) : null}
+        <Text style={styles.itemCount}>{item.itemCount} items</Text>
+        <Text style={styles.updatedAt}>
+          Modified {formatDate(item.updatedAt)}
+        </Text>
+      </Card>
+    </TouchableOpacity>
+  );
 
-    return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => handleListPress(item)}
-        onLongPress={() => handleListLongPress(item)}
-        style={[
-          styles.cardWrapper,
-          isLeftColumn ? styles.cardLeft : styles.cardRight,
-        ]}
-      >
-        <Card style={styles.listCard}>
-          <Text style={styles.listTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <Text style={styles.itemCount}>{item.itemCount} items</Text>
-          <Text style={styles.updatedAt}>
-            Modified {formatDate(item.updatedAt)}
-          </Text>
-        </Card>
-      </TouchableOpacity>
+  const onViewableItemsChanged = useRef<
+    NonNullable<FlatListProps<TierList>['onViewableItemsChanged']>
+  >(({ viewableItems }) => {
+    const firstVisible = viewableItems.find((viewable) => viewable.isViewable);
+    const anchorId = toAnchorId(
+      firstVisible?.item as TierList | TierList[] | undefined
     );
+    if (anchorId) anchorRef.current = anchorId;
+  }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 1 }).current;
+
+  const getRowPitch = useCallback(
+    () =>
+      rowHeightCountRef.current > 0
+        ? rowHeightTotalRef.current / rowHeightCountRef.current +
+          AppLayout.columnGap
+        : CARD_ROW_ESTIMATE,
+    []
+  );
+
+  const getItemLayout = useCallback<
+    NonNullable<FlatListProps<TierList>['getItemLayout']>
+  >(
+    (_data, index) => {
+      const rowHeight = getRowPitch();
+      return { length: rowHeight, offset: rowHeight * index, index };
+    },
+    [getRowPitch]
+  );
+
+  const handleGridLayout = useCallback((event: LayoutChangeEvent) => {
+    gridWidthRef.current = event.nativeEvent.layout.width;
+    gridLayoutSeenRef.current = true;
+  }, []);
+
+  const restoreListPosition = useCallback(() => {
+    const anchorId = pendingRestoreRef.current;
+    if (!anchorId || !listRef.current) return;
+    if (rowHeightCountRef.current === 0) return;
+    if (!gridLayoutSeenRef.current) return;
+    pendingRestoreRef.current = null;
+    const anchorIndex = listsRef.current.findIndex(
+      (list) => list.id === anchorId
+    );
+    if (anchorIndex < 0) return;
+    listRef.current.scrollToOffset({
+      offset: Math.floor(anchorIndex / columns) * getRowPitch(),
+      animated: false,
+    });
+  }, [columns, getRowPitch]);
+
+  restoreRef.current = restoreListPosition;
+
+  const handleContentLayout = (event: LayoutChangeEvent) => {
+    const width = event.nativeEvent.layout.width;
+    if (
+      contentWidth > 0 &&
+      width !== contentWidth &&
+      !pendingRestoreRef.current
+    ) {
+      rowHeightTotalRef.current = 0;
+      rowHeightCountRef.current = 0;
+    }
+    setContentWidth(width);
   };
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <View style={styles.headerRow}>
-        <View style={styles.brandSection}>
-          <Text style={styles.brandText}>TierNerd</Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={handleProfilePress}
-          style={styles.profileButton}
-          activeOpacity={0.7}
-        >
-          {user?.photoUrl ? (
-            <Image
-              source={{ uri: user.photoUrl }}
-              style={styles.profileImage}
+      <Text style={styles.brandText}>TierNerd</Text>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Profile')}
+        style={styles.profileButton}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Open profile"
+      >
+        {user?.photoUrl ? (
+          <Image
+            source={{ uri: user.photoUrl }}
+            style={styles.profileImage}
+            accessible={false}
+          />
+        ) : (
+          <View style={styles.profilePlaceholder}>
+            <Ionicons
+              name="person"
+              size={20}
+              color={AppColors.accent.primary}
             />
-          ) : (
-            <View style={styles.profilePlaceholder}>
-              <Ionicons
-                name="person"
-                size={20}
-                color={AppColors.accent.primary}
-              />
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+          </View>
+        )}
+      </TouchableOpacity>
     </View>
   );
 
@@ -241,6 +410,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <Image
         source={require('../../assets/logo-transparent.png')}
         style={styles.emptyStateImage}
+        accessible={false}
       />
       <Text style={styles.emptyStateTitle}>Welcome to TierNerd!</Text>
       <Text style={styles.emptyStateText}>
@@ -264,79 +434,119 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       />
       <Text style={styles.errorTitle}>Something went wrong</Text>
       <Text style={styles.errorText}>{error}</Text>
-      <TouchableOpacity style={styles.retryButton} onPress={fetchLists}>
+      <TouchableOpacity
+        style={styles.retryButton}
+        onPress={() => void fetchLists()}
+      >
         <Text style={styles.retryButtonText}>Try Again</Text>
       </TouchableOpacity>
     </View>
   );
 
   const renderContent = () => {
-    // Show loading while waiting for token OR while fetching
-    if (!token || isLoading) {
-      return renderLoading();
-    }
-
-    if (error) {
-      return renderError();
-    }
-
-    if (lists.length === 0) {
-      return renderEmptyState();
-    }
+    if (!token || isLoading) return renderLoading();
+    if (error) return renderError();
+    if (lists.length === 0) return renderEmptyState();
 
     return (
       <FlatList
+        style={styles.list}
+        ref={listRef}
+        key={`list-grid-${columns}`}
         data={lists}
         renderItem={renderListCard}
         keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? styles.row : undefined}
         contentContainerStyle={styles.listContent}
+        getItemLayout={getItemLayout}
         showsVerticalScrollIndicator={false}
+        onLayout={handleGridLayout}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
       />
     );
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: windowHeight }]}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <Animated.View
-          style={[
-            styles.animatedContainer,
-            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-          ]}
-        >
-          {renderHeader()}
-          {renderContent()}
-        </Animated.View>
-
-        <FAB onPress={handleCreatePress} testID="fab-create" />
+        <View style={styles.shell}>
+          <View style={styles.shellContent} onLayout={handleContentLayout}>
+            {renderHeader()}
+            {renderContent()}
+            <Text style={styles.footerText}>
+              TierNerd
+              {Constants.expoConfig?.version
+                ? ` · ${Constants.expoConfig.version}`
+                : ''}
+            </Text>
+            <FAB
+              onPress={() => setModalStep('create')}
+              accessibilityLabel="Create new list"
+              testID="fab-create"
+              style={styles.fab}
+            />
+          </View>
+        </View>
 
         <Modal
           visible={modalStep !== null}
           transparent
-          animationType="fade"
+          animationType="none"
+          accessibilityLabel={getModalTitle()}
           onRequestClose={() => {
-            setModalStep(null);
-            setPendingList(null);
+            if (modalStep === 'create') {
+              void createListRef.current?.requestClose().catch(() => false);
+            } else if (modalStep === 'addItem') {
+              void workspace.requestClose().catch(() => false);
+            }
           }}
         >
           {modalStep === 'create' && (
             <CreateListContent
-              onClose={() => setModalStep(null)}
-              onSuccess={handleListCreated}
-            />
-          )}
-          {modalStep === 'addItem' && pendingList && (
-            <AddItemContent
-              listTitle={pendingList.title}
+              ref={createListRef}
               onClose={() => {
                 setModalStep(null);
                 setPendingList(null);
               }}
-              onSuccess={handleItemCreated}
+              onSuccess={handleListCreated}
             />
           )}
+          {modalStep === 'addItem' &&
+            pendingList &&
+            (workspace.mode === 'ranking' && workspace.session ? (
+              <RankingContent
+                listTitle={pendingList.title}
+                session={workspace.session}
+                presentation="modal"
+                isBusy={workspace.isBusy}
+                error={workspace.error}
+                onAnswer={(result) => void workspace.answer(result)}
+                onUndo={() => void workspace.undo()}
+                onCommit={() => void workspace.commit()}
+                onCancel={() =>
+                  void workspace.requestClose().catch(() => false)
+                }
+                onRestart={() => void workspace.restart()}
+                onReload={workspace.reloadSession}
+                onRetryRefresh={workspace.retryRefresh}
+              />
+            ) : workspace.mode === 'add' || workspace.mode === 'edit' ? (
+              <AddItemContent
+                mode={workspace.mode}
+                form={workspace.form}
+                onFormChange={workspace.setForm}
+                onRetryRefresh={workspace.retryRefresh}
+                fieldErrors={workspace.fieldErrors}
+                isBusy={workspace.isBusy}
+                error={workspace.error}
+                onSubmit={() => void workspace.submitMetadata()}
+                onClose={() => void workspace.requestClose().catch(() => false)}
+                presentation="modal"
+                introText={`“${pendingList.title}” created. Add its first item.`}
+              />
+            ) : null)}
         </Modal>
       </SafeAreaView>
     </View>
@@ -345,27 +555,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    minHeight: 0,
     backgroundColor: AppColors.dominant.secondary,
   },
   safeArea: {
+    minHeight: 0,
     flex: 1,
   },
-  animatedContainer: {
+  shell: {
+    width: '100%',
+    maxWidth: AppLayout.maxWidth,
+    alignSelf: 'center',
     flex: 1,
+    minHeight: 0,
+  },
+  shellContent: {
+    flex: 1,
+    minHeight: 0,
+    marginHorizontal: AppLayout.gutter,
   },
   header: {
-    paddingHorizontal: HORIZONTAL_PADDING,
     paddingTop: AppSpacing.md,
     paddingBottom: AppSpacing.lg,
-  },
-  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  brandSection: {
-    flexDirection: 'row',
     alignItems: 'center',
   },
   brandText: {
@@ -398,22 +611,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  list: {
+    flex: 1,
+    minHeight: 0,
+  },
   listContent: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    paddingBottom: AppSpacing.xxxl + 56, // Extra space for FAB
+    paddingBottom: AppSpacing.xxxl + 56,
   },
   row: {
     justifyContent: 'space-between',
   },
   cardWrapper: {
-    width: CARD_WIDTH,
-    marginBottom: COLUMN_GAP,
-  },
-  cardLeft: {
-    marginRight: COLUMN_GAP / 2,
-  },
-  cardRight: {
-    marginLeft: COLUMN_GAP / 2,
+    marginBottom: AppLayout.columnGap,
   },
   listCard: {
     backgroundColor: AppColors.dominant.primary,
@@ -431,6 +640,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: AppSpacing.xs,
   },
+  listDescription: {
+    ...AppTypography.bodySmall,
+    color: AppColors.textSecondary,
+    marginBottom: AppSpacing.sm,
+  },
   itemCount: {
     ...AppTypography.bodySmall,
     color: AppColors.textSecondary,
@@ -444,7 +658,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingHorizontal: AppSpacing.lg,
   },
   emptyStateImage: {
     width: 120,
@@ -473,7 +687,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingHorizontal: AppSpacing.lg,
   },
   errorTitle: {
     ...AppTypography.headlineSmall,
@@ -498,5 +712,16 @@ const styles = StyleSheet.create({
     ...AppTypography.bodyMedium,
     color: AppColors.dominant.primary,
     fontWeight: '600',
+  },
+  footerText: {
+    ...AppTypography.labelSmall,
+    fontSize: 12,
+    color: AppColors.secondary.muted,
+    paddingVertical: AppSpacing.sm,
+    textAlign: 'center',
+  },
+  fab: {
+    right: 0,
+    bottom: AppSpacing.xl,
   },
 });

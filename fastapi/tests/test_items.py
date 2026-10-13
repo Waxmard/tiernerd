@@ -5,9 +5,13 @@ from datetime import datetime
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import func, insert, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.endpoints import items as items_endpoints
+from app.core.constants import ITEM_NAME_ALREADY_EXISTS_ERROR
+from app.crud import item as item_crud
 from app.db.models import (
     ComparisonSession as ComparisonSessionModel,
     Item as ItemModel,
@@ -88,13 +92,14 @@ class TestCreateItem:
         data = response.json()
         # Should return a ComparisonSession
         assert "session_id" in data
-        assert "current_comparison" in data
-        assert data["is_complete"] is False
-        # Verify comparison data
+        assert data["status"] == "active"
+        assert data["discard_on_cancel"] is True
         comparison = data["current_comparison"]
         assert "reference_item" in comparison
         assert "target_item" in comparison
         assert comparison["reference_item"]["name"] == "Second Item"
+        assert data["comparisons_answered"] == 0
+        assert data["revision"] == 0
 
         # Second item is saved to database during comparison (but not yet ranked)
         result = await test_db.execute(
@@ -150,132 +155,6 @@ class TestCreateItem:
                 "tier_set": "good",
             },
             headers=auth_headers_user2,
-        )
-        assert response.status_code == 404
-
-
-@pytest.mark.asyncio
-class TestComparisonFlow:
-    """Tests for comparison workflow."""
-
-    async def test_submit_comparison_result_better(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        test_item: ItemModel,
-        auth_headers: dict,
-    ):
-        """Test submitting comparison result where new item is better."""
-        # Create second item to start comparison
-        create_response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "Better Item",
-                "description": "A better item",
-                "image_url": "https://example.com/better.jpg",
-                "tier_set": "good",
-            },
-            headers=auth_headers,
-        )
-        assert create_response.status_code == 200
-        session_data = create_response.json()
-        session_id = session_data["session_id"]
-
-        # Submit comparison result
-        response = await client.post(
-            "/api/items/comparison/result",
-            params={"session_id": session_id},
-            json={"result": "better"},
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-
-    async def test_submit_comparison_result_worse(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        test_item: ItemModel,
-        auth_headers: dict,
-    ):
-        """Test submitting comparison result where new item is worse."""
-        # Create second item to start comparison
-        create_response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "Worse Item",
-                "description": "A worse item",
-                "image_url": "https://example.com/worse.jpg",
-                "tier_set": "good",
-            },
-            headers=auth_headers,
-        )
-        assert create_response.status_code == 200
-        session_data = create_response.json()
-        session_id = session_data["session_id"]
-
-        # Submit comparison result
-        response = await client.post(
-            "/api/items/comparison/result",
-            params={"session_id": session_id},
-            json={"result": "worse"},
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-
-    async def test_submit_comparison_invalid_session(
-        self, client: AsyncClient, auth_headers: dict
-    ):
-        """Test submitting comparison with invalid session fails."""
-        response = await client.post(
-            "/api/items/comparison/result",
-            params={"session_id": "invalid_session"},
-            json={"result": "better"},
-            headers=auth_headers,
-        )
-        assert response.status_code == 404
-
-    async def test_get_comparison_status(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        test_item: ItemModel,
-        auth_headers: dict,
-    ):
-        """Test getting comparison session status."""
-        # Create second item to start comparison
-        create_response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "New Item",
-                "description": "Description",
-                "image_url": "https://example.com/new.jpg",
-                "tier_set": "good",
-            },
-            headers=auth_headers,
-        )
-        session_data = create_response.json()
-        session_id = session_data["session_id"]
-
-        # Get comparison status
-        response = await client.get(
-            f"/api/items/comparison/{session_id}/status",
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["session_id"] == session_id
-        assert "current_comparison" in data
-
-    async def test_get_comparison_status_invalid_session(
-        self, client: AsyncClient, auth_headers: dict
-    ):
-        """Test getting status for invalid session fails."""
-        response = await client.get(
-            "/api/items/comparison/invalid_session/status",
-            headers=auth_headers,
         )
         assert response.status_code == 404
 
@@ -492,7 +371,7 @@ class TestDeleteItem:
             new_item_id=victim.item_id,
             target_item_id=multiple_items[0].item_id,
             tier_set="good",
-            is_complete=True,
+            status="completed",
         )
         target_reference = ComparisonSessionModel(
             list_id=list_id,
@@ -645,144 +524,6 @@ class TestCreateItemTierSets:
         assert (
             "session_id" not in response2.json()
         )  # No comparison for first in tier_set
-
-
-@pytest.mark.asyncio
-class TestComparisonFlowComplete:
-    """Tests for complete comparison workflow."""
-
-    async def test_complete_comparison_flow(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        test_item: ItemModel,
-        auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        """Test completing a full comparison to rank an item."""
-        # Create second item to start comparison
-        create_response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "Second Item",
-                "description": "Second item description",
-                "image_url": "https://example.com/second.jpg",
-                "tier_set": "good",
-            },
-            headers=auth_headers,
-        )
-        assert create_response.status_code == 200
-        session_data = create_response.json()
-        session_id = session_data["session_id"]
-
-        # Submit comparison result (one comparison should be enough for 2 items)
-        response = await client.post(
-            "/api/items/comparison/result",
-            params={"session_id": session_id},
-            json={"result": "better"},
-            headers=auth_headers,
-        )
-        # Response could be 200 (comparison done) or another session
-        assert response.status_code == 200
-
-        result = await test_db.execute(
-            select(ItemModel).where(ItemModel.list_id == test_list.list_id)
-        )
-        ratings = {item.name: item.rating for item in result.scalars().all()}
-        assert ratings == {"Second Item": 9.2, "Test Item": 7.8}
-
-    async def test_comparison_wrong_session_owner(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        test_item: ItemModel,
-        auth_headers: dict,
-        auth_headers_user2: dict,
-    ):
-        """Test submitting comparison result for another user's session."""
-        # Create second item to start comparison
-        create_response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "New Item",
-                "description": "Description",
-                "image_url": "https://example.com/new.jpg",
-                "tier_set": "good",
-            },
-            headers=auth_headers,
-        )
-        session_data = create_response.json()
-        session_id = session_data["session_id"]
-
-        # Try to submit as different user
-        response = await client.post(
-            "/api/items/comparison/result",
-            params={"session_id": session_id},
-            json={"result": "better"},
-            headers=auth_headers_user2,
-        )
-        assert response.status_code == 404
-
-    async def test_comparison_status_wrong_user(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        test_item: ItemModel,
-        auth_headers: dict,
-        auth_headers_user2: dict,
-    ):
-        """Test getting comparison status for another user's session."""
-        # Create second item to start comparison
-        create_response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "New Item",
-                "description": "Description",
-                "image_url": "https://example.com/new.jpg",
-                "tier_set": "good",
-            },
-            headers=auth_headers,
-        )
-        session_data = create_response.json()
-        session_id = session_data["session_id"]
-
-        # Try to get status as different user
-        response = await client.get(
-            f"/api/items/comparison/{session_id}/status",
-            headers=auth_headers_user2,
-        )
-        assert response.status_code == 404
-
-    async def test_comparison_with_uuid_session_id(
-        self,
-        client: AsyncClient,
-        auth_headers: dict,
-    ):
-        """Test submit with valid UUID format but non-existent session."""
-        fake_session_id = str(uuid.uuid4())
-        response = await client.post(
-            "/api/items/comparison/result",
-            params={"session_id": fake_session_id},
-            json={"result": "better"},
-            headers=auth_headers,
-        )
-        assert response.status_code == 404
-
-    async def test_get_comparison_status_uuid_not_found(
-        self,
-        client: AsyncClient,
-        auth_headers: dict,
-    ):
-        """Test getting status for valid UUID but non-existent session."""
-        fake_session_id = str(uuid.uuid4())
-        response = await client.get(
-            f"/api/items/comparison/{fake_session_id}/status",
-            headers=auth_headers,
-        )
-        assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -954,3 +695,234 @@ class TestItemCreateValidation:
         assert response.status_code == 200
         data = response.json()
         assert data["description"] == ""
+
+    async def test_names_trim_and_casefold_across_ranges(
+        self, client: AsyncClient, test_list: ListModel, auth_headers: dict
+    ) -> None:
+        first = await client.post(
+            "/api/items/",
+            params={"list_title": test_list.title},
+            json={"name": "  Blue Bottle  ", "tier_set": "good"},
+            headers=auth_headers,
+        )
+        assert first.status_code == 200
+        assert first.json()["name"] == "Blue Bottle"
+
+        duplicate = await client.post(
+            "/api/items/",
+            params={"list_title": test_list.title},
+            json={"name": "blue bottle", "tier_set": "mid"},
+            headers=auth_headers,
+        )
+        assert duplicate.status_code == 409
+        assert (
+            duplicate.json()["detail"]
+            == "An item with this name already exists in this list."
+        )
+
+        unicode_name = await client.post(
+            "/api/items/",
+            params={"list_title": test_list.title},
+            json={"name": "Straße", "tier_set": "bad"},
+            headers=auth_headers,
+        )
+        assert unicode_name.status_code == 200
+        unicode_duplicate = await client.post(
+            "/api/items/",
+            params={"list_title": test_list.title},
+            json={"name": "STRASSE", "tier_set": "mid"},
+            headers=auth_headers,
+        )
+        assert unicode_duplicate.status_code == 409
+
+    async def test_name_validation_rejects_blank_and_overlength(
+        self, client: AsyncClient, test_list: ListModel, auth_headers: dict
+    ) -> None:
+        for name in ("   ", "x" * 101):
+            response = await client.post(
+                "/api/items/",
+                params={"list_title": test_list.title},
+                json={"name": name, "tier_set": "good"},
+                headers=auth_headers,
+            )
+            assert response.status_code == 422
+
+    async def test_self_rename_and_duplicate_rename(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        test_item: ItemModel,
+        auth_headers: dict,
+    ) -> None:
+        created = await client.post(
+            "/api/items/",
+            params={"list_title": test_list.title},
+            json={"name": "Other", "tier_set": "mid"},
+            headers=auth_headers,
+        )
+        assert created.status_code == 200
+        duplicate = await client.put(
+            f"/api/items/items/{test_item.item_id}",
+            json={"name": " Other "},
+            headers=auth_headers,
+        )
+        assert duplicate.status_code == 409
+        self_rename = await client.put(
+            f"/api/items/items/{test_item.item_id}",
+            json={"name": "  test item  "},
+            headers=auth_headers,
+        )
+        assert self_rename.status_code == 200
+        assert self_rename.json()["name"] == "test item"
+
+    async def test_update_name_rejects_blank_and_null(
+        self,
+        client: AsyncClient,
+        test_item: ItemModel,
+        auth_headers: dict,
+    ) -> None:
+        for name in ("   ", None):
+            response = await client.put(
+                f"/api/items/items/{test_item.item_id}",
+                json={"name": name},
+                headers=auth_headers,
+            )
+            assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+class TestItemComparisonSessionRoutes:
+    """Item-addressable comparison-session routes stay inside item ownership."""
+
+    async def test_lookup_rejects_unknown_and_foreign_items(
+        self,
+        client: AsyncClient,
+        test_item: ItemModel,
+        auth_headers: dict,
+        auth_headers_user2: dict,
+    ) -> None:
+        unknown = uuid.uuid4()
+        responses = (
+            await client.get(
+                f"/api/items/items/{unknown}/comparison-session", headers=auth_headers
+            ),
+            await client.post(
+                f"/api/items/items/{unknown}/comparison-session",
+                json={"tier_set": "good"},
+                headers=auth_headers,
+            ),
+            await client.get(
+                f"/api/items/items/{test_item.item_id}/comparison-session",
+                headers=auth_headers_user2,
+            ),
+            await client.post(
+                f"/api/items/items/{test_item.item_id}/comparison-session",
+                json={"tier_set": "good"},
+                headers=auth_headers_user2,
+            ),
+        )
+        assert [response.status_code for response in responses] == [404, 404, 404, 404]
+
+
+@pytest.mark.asyncio
+class TestDuplicateNameRace:
+    """Name conflicts enforced by the database when the pre-check misses."""
+
+    @staticmethod
+    def bypass_precheck(monkeypatch: pytest.MonkeyPatch) -> None:
+        """Pretend the pre-check found nothing, as a concurrent insert would."""
+
+        async def no_match(db, list_id, name_key, exclude_id=None):
+            return None
+
+        monkeypatch.setattr(item_crud, "get_by_name_key", no_match)
+
+    async def test_create_in_empty_range_reports_database_conflict(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        test_item: ItemModel,
+        auth_headers: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        self.bypass_precheck(monkeypatch)
+        response = await client.post(
+            "/api/items/",
+            params={"list_title": test_list.title},
+            json={"name": "test item", "tier_set": "mid"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+        assert response.json()["detail"] == ITEM_NAME_ALREADY_EXISTS_ERROR
+
+    async def test_create_in_ranked_range_reports_database_conflict(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        test_item: ItemModel,
+        auth_headers: dict,
+        test_db: AsyncSession,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        self.bypass_precheck(monkeypatch)
+        list_id = test_list.list_id
+        response = await client.post(
+            "/api/items/",
+            params={"list_title": test_list.title},
+            json={"name": "  TEST ITEM  ", "tier_set": "good"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+        assert response.json()["detail"] == ITEM_NAME_ALREADY_EXISTS_ERROR
+        stored = await test_db.scalar(
+            select(func.count())
+            .select_from(ItemModel)
+            .where(ItemModel.list_id == list_id)
+        )
+        assert stored == 1
+
+    async def test_update_reports_database_conflict(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        test_item: ItemModel,
+        auth_headers: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        created = await client.post(
+            "/api/items/",
+            params={"list_title": test_list.title},
+            json={"name": "Other", "tier_set": "mid"},
+            headers=auth_headers,
+        )
+        assert created.status_code == 200
+
+        self.bypass_precheck(monkeypatch)
+        response = await client.put(
+            f"/api/items/items/{test_item.item_id}",
+            json={"name": "other"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+        assert response.json()["detail"] == ITEM_NAME_ALREADY_EXISTS_ERROR
+
+    async def test_unrelated_integrity_error_is_reraised(
+        self,
+        test_db: AsyncSession,
+        test_item: ItemModel,
+    ) -> None:
+        item_id = test_item.item_id
+        list_id = test_item.list_id
+        statement = insert(ItemModel).values(
+            item_id=item_id,
+            list_id=list_id,
+            name="Clashing primary key",
+            name_key="clashing primary key",
+            tier_set="mid",
+        )
+        with pytest.raises(IntegrityError) as caught:
+            await test_db.execute(statement)
+        await test_db.rollback()
+        assert not item_crud.is_duplicate_name_error(caught.value)
+        with pytest.raises(IntegrityError):
+            await items_endpoints._raise_item_name_error(test_db, caught.value)

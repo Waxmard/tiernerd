@@ -17,7 +17,7 @@
     "check:fix": "biome check --write src/",
     "check:staged": "biome check --write --no-errors-on-unmatched",
     "typecheck": "tsc --noEmit",
-    "test:unit": "node --test src/services/googleRedirectParams.test.ts",
+    "test:unit": "node --test src/services/*.test.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

@@ -59,4 +59,26 @@ app/
 
 The ranking algorithm is implemented in `app/core/algorithm.py` and uses binary search to efficiently determine item positions through pairwise comparisons.
 
+Draft sessions persist in the database. Answers and one-step undo update the draft, not the saved item. Commit applies the new position and recalculates affected ranges. Mutation requests carry the current session revision; stale revisions or changed ranking snapshots return 409. Status reads expose stale drafts so the client can restart them.
+
+## Upgrade the UI-ranking schema
+
+This migration supports PostgreSQL only. Back up the database and stop the application before applying it. Load `DATABASE_URL` through your platform secret store; never put credentials in this command or a tracked file. `create_all` does not upgrade existing tables.
+
+Run the read-only preflight from `fastapi/` (the default mode is also read-only):
+
+```bash
+uv run python scripts/migrate_ui_ranking.py --check
+```
+
+Resolve any reported same-list duplicate names or blank/overlength names yourself. The migration stops without changing conflicting data; it does not rename or delete items.
+
+After preflight succeeds, the backup exists, and the application is stopped, apply the migration:
+
+```bash
+uv run python scripts/migrate_ui_ranking.py --apply
+```
+
+The migration trims display names, backfills normalized identity keys, and adds uniqueness and draft-session constraints in one locked transaction. Legacy active sessions become cancelled without deleting items or changing ranks; historical completed sessions remain completed. Previously unranked items can start a fresh ranking. Unknown partial schemas are rejected. A verified upgraded schema is a no-op on rerun.
+
 {{ include:partials/docs_automation.md }}

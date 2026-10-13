@@ -10,15 +10,17 @@ export interface ListSimple {
   item_count: number;
 }
 
+export type ListMetadata = Omit<ListSimple, 'item_count'>;
+
 export const listsService = {
   getLists: (token: string) => api.get<ListSimple[]>('/api/lists/', token),
+  getList: (listId: string, token: string) =>
+    api.get<ListMetadata>(`/api/lists/${listId}`, token),
   getListItems: (listId: string, token: string) =>
     api.get<Item[]>(`/api/lists/${listId}/items`, token),
   createList: (name: string, description: string, token: string) =>
     api.post<ListSimple>(
-      `/api/lists/?name=${encodeURIComponent(
-        name
-      )}&description=${encodeURIComponent(description)}`,
+      `/api/lists/?name=${encodeURIComponent(name)}&description=${encodeURIComponent(description)}`,
       undefined,
       token
     ),

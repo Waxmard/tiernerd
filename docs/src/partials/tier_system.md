@@ -6,12 +6,18 @@ Each starting range defines a score band:
 - **Okay** (`mid`): 4.0–6.9
 - **Bad** (`bad`): 1.0–3.9
 
-When adding another item in the same range, choose the better item in each comparison until ranking finishes. The list then reloads its scores and order. Select an item to edit it or choose **Delete Item**; confirm deletion to remove it and recalculate the remaining scores.
+When adding another item in the same range, choose the better item in each comparison. **Undo last answer** reverses the latest choice. Review the preview, then choose **Save ranking** to apply the position and reload canonical scores and order. The first item in an empty range is ranked immediately.
+
+Select a row to view its description, image, score and overall rank. **Edit** changes its metadata; **Re-rank** lets you choose a destination range without changing the saved ranking until you save. **Delete Item** is separate from editing and requires confirmation.
+
+Interrupted ranking drafts persist. Select the item and choose **Resume ranking**, or **Restart ranking** if ranked peers changed. Explicitly cancelling a new-item draft discards that item. Cancelling a re-ranking draft preserves the saved item and rank. Unranked items without a draft offer **Rank now**.
+
+Item names are unique within a list across ranges, ignoring surrounding whitespace and Unicode case. Different lists can use the same name.
 
 Deleting an item or list also discards its related active and completed comparison sessions. Sessions unrelated to the deleted item or list remain unchanged.
 
 Within a band, comparisons order items from lowest to highest. Item `i` of `n` ranked items receives `round(low + (high - low) * (i + 0.5) / n, 1)`, where `i` starts at zero. A single Great item scores 8.5; two Great items score 7.8 and 9.2. Scores are relative to the ranked items in each band, not user-entered ratings.
 
-The API stores scores in `rating`. An item without a position has a null score and is shown as **Not ranked yet** until its band is rescored; select it to rename or delete it. Adding a ranked item or deleting one recalculates the band's scores. Lists display ranked items best first, with unranked items last.
+The API stores scores in `rating`. An item without a position has a null score and is shown as **Not ranked yet**. Adding, removing or re-ranking items can change scores. Lists display ranked items best first by range and position, with unranked items last. Rounded scores can overlap at range boundaries.
 
-Existing development items with null ratings appear as not ranked until their band is rescored. Removing the old `tier` model field does not require a database wipe: existing nullable columns are ignored.
+Persistent PostgreSQL databases require the explicit UI-ranking schema migration before you run the updated application. See the backend migration instructions. Fresh test SQLite databases use current model metadata.

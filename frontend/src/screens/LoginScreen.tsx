@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  type TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -29,33 +30,26 @@ type LoginScreenProps = RootStackScreenProps<'Login'>;
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { signIn, signInWithGoogle, googleAvailable, isLoading, error } =
     useAuth();
-
-  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
-
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+  const [emailError, setEmailError] = useState<string>();
+  const [passwordError, setPasswordError] = useState<string>();
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const handleEmailSignIn = async () => {
-    if (!email || !password) return;
-
-    console.log('Email sign in initiated');
-    const success = await signIn(email, password);
-    if (success) {
-      console.log(
-        'Email sign in successful - navigation will happen automatically'
-      );
+    if (isLoading) return;
+    const nextEmailError = email.trim() ? undefined : 'Email is required';
+    const nextPasswordError = password ? undefined : 'Password is required';
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
+    if (nextEmailError || nextPasswordError) {
+      if (nextEmailError) emailInputRef.current?.focus();
+      else passwordInputRef.current?.focus();
+      return;
     }
+    await signIn(email.trim(), password);
   };
 
   const navigateToRegister = () => {
@@ -75,30 +69,45 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={false}
           >
-            <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+            <View style={styles.content}>
               {/* Logo */}
               <View style={styles.logoContainer}>
                 <Image
                   source={require('../../assets/logo-transparent.png')}
                   style={styles.logo}
                   resizeMode="contain"
+                  accessible={false}
                 />
               </View>
 
               {/* Login form */}
               <View style={styles.formContainer} collapsable={false}>
                 {/* Form Title */}
-                <Text style={styles.formTitle}>TierNerd</Text>
+                <Text style={styles.formTitle} accessibilityRole="header">
+                  TierNerd
+                </Text>
                 <View style={styles.titleDivider} />
                 <Input
                   label="Email"
+                  ref={emailInputRef}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    if (value.trim()) setEmailError(undefined);
+                  }}
+                  error={emailError}
                   placeholder="name@example.com"
                   keyboardType="email-address"
+                  autoComplete="email"
+                  textContentType="emailAddress"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
                   leftIcon={
                     <Ionicons
+                      accessible={false}
                       name="mail-outline"
                       size={20}
                       color={AppColors.neutral[600]}
@@ -108,12 +117,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
                 <Input
                   label="Password"
+                  ref={passwordInputRef}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(value) => {
+                    setPassword(value);
+                    if (value) setPasswordError(undefined);
+                  }}
+                  error={passwordError}
                   placeholder="••••••••"
                   secureTextEntry={!passwordVisible}
+                  autoComplete="current-password"
+                  textContentType="password"
+                  returnKeyType="done"
+                  onSubmitEditing={handleEmailSignIn}
                   leftIcon={
                     <Ionicons
+                      accessible={false}
                       name="lock-closed-outline"
                       size={20}
                       color={AppColors.neutral[600]}
@@ -121,33 +140,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   }
                   rightIcon={
                     <Ionicons
+                      accessible={false}
                       name={passwordVisible ? 'eye-outline' : 'eye-off-outline'}
                       size={20}
                       color={AppColors.neutral[600]}
                     />
                   }
+                  rightIconAccessibilityLabel={
+                    passwordVisible ? 'Hide password' : 'Show password'
+                  }
                   onRightIconPress={() => setPasswordVisible(!passwordVisible)}
                 />
 
-                <TouchableOpacity
-                  style={styles.forgotPassword}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Text style={styles.forgotPasswordText}>
-                    Forgot Password?
-                  </Text>
-                </TouchableOpacity>
+                {error && (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText} accessibilityRole="alert">
+                      {error}
+                    </Text>
+                  </View>
+                )}
 
                 <Button
                   title="Log In"
                   onPress={handleEmailSignIn}
                   fullWidth
                   loading={isLoading}
-                  disabled={!email || !password}
                   style={styles.loginButton}
                 />
-
                 {googleAvailable && (
                   <>
                     {/* Divider */}
@@ -162,6 +181,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                       style={styles.googleButton}
                       onPress={signInWithGoogle}
                       disabled={isLoading}
+                      accessibilityRole="button"
+                      accessibilityLabel="Sign in with Google"
                       activeOpacity={0.8}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
@@ -174,6 +195,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                           <Image
                             source={require('../../assets/google-logo.png')}
                             style={styles.googleIcon}
+                            accessible={false}
                           />
                           <Text style={styles.googleButtonText}>
                             Sign in with Google
@@ -188,6 +210,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 <View style={styles.signUpContainer}>
                   <Text style={styles.signUpText}>Don't have an account? </Text>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Sign Up"
                     activeOpacity={0.7}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     onPress={navigateToRegister}
@@ -196,23 +220,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   </TouchableOpacity>
                 </View>
 
-                {/* Version */}
                 <View style={styles.versionContainer}>
-                  <Image
-                    source={require('../../assets/logo-transparent.png')}
-                    style={styles.versionLogo}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.version}>v1.0.0 • Tier Nerd</Text>
+                  <Text style={styles.version}>
+                    {Constants.expoConfig?.version
+                      ? `${Constants.expoConfig.version} · `
+                      : ''}
+                    TierNerd
+                  </Text>
                 </View>
               </View>
-
-              {error && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              )}
-            </Animated.View>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -233,6 +250,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
     paddingHorizontal: AppSpacing.lg,
   },
   content: {
@@ -272,15 +292,6 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: AppSpacing.md,
-    backgroundColor: AppColors.primary,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: AppSpacing.md,
-  },
-  forgotPasswordText: {
-    ...AppTypography.bodySmall,
-    color: AppColors.primary,
   },
   divider: {
     flexDirection: 'row',
@@ -332,26 +343,19 @@ const styles = StyleSheet.create({
   },
   signUpLink: {
     ...AppTypography.bodyMedium,
-    color: AppColors.primary,
+    color: AppColors.accent.dark,
     fontWeight: 'bold',
     textDecorationLine: 'underline',
   },
   versionContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: AppSpacing.md,
   },
-  versionLogo: {
-    width: 16,
-    height: 16,
-    marginRight: AppSpacing.xs,
-    opacity: 0.3,
-  },
   version: {
     ...AppTypography.labelSmall,
     color: AppColors.textSecondary,
-    opacity: 0.5,
+    fontSize: 12,
   },
   errorContainer: {
     marginTop: AppSpacing.md,

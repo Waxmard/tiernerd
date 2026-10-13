@@ -1,14 +1,24 @@
-import type React from 'react';
-import { useState } from 'react';
-import { Modal, StyleSheet } from 'react-native';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
+import { Modal, StyleSheet, type TextInput } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import { useAuth } from '../providers/AuthContext';
-import { ApiError } from '../services/api';
+import { ApiError, getApiErrorMessage } from '../services/apiError';
 import { listsService } from '../services/listsService';
 
 export interface CreatedList {
   listId: string;
   title: string;
+}
+
+export interface CreateListContentHandle {
+  requestClose: () => Promise<boolean>;
 }
 
 interface CreateListContentProps {
@@ -22,81 +32,80 @@ interface CreateListModalProps extends CreateListContentProps {
 
 const MAX_TITLE_LENGTH = 100;
 
-// Content component without Modal wrapper (for use in parent-controlled Modal)
-export const CreateListContent: React.FC<CreateListContentProps> = ({
-  onClose,
-  onSuccess,
-}) => {
+export const CreateListContent = forwardRef<
+  CreateListContentHandle,
+  CreateListContentProps
+>(function CreateListContent({ onClose, onSuccess }, ref) {
   const { token } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const titleRef = useRef<TextInput>(null);
+  const loadingRef = useRef(false);
 
-  const resetForm = () => {
+  useEffect(() => {
+    if (fieldError) titleRef.current?.focus();
+  }, [fieldError]);
+
+  const clearForm = useCallback(() => {
     setTitle('');
     setDescription('');
+    setFieldError(null);
     setError(null);
-  };
+  }, []);
 
-  const handleClose = () => {
-    resetForm();
+  const requestClose = useCallback(async () => {
+    if (loadingRef.current) return false;
+    clearForm();
     onClose();
-  };
+    return true;
+  }, [clearForm, onClose]);
+
+  useImperativeHandle(ref, () => ({ requestClose }), [requestClose]);
 
   const handleCreate = async () => {
     const trimmedTitle = title.trim();
-
     if (!trimmedTitle) {
-      setError('Title is required');
+      setFieldError('Title is required');
+      setError(null);
       return;
     }
-
-    if (trimmedTitle.length > MAX_TITLE_LENGTH) {
-      setError(`Title must be ${MAX_TITLE_LENGTH} characters or less`);
+    if (Array.from(trimmedTitle).length > MAX_TITLE_LENGTH) {
+      setFieldError('Title must be 100 characters or less');
+      setError(null);
       return;
     }
-
     if (!token) {
       setError('Authentication required');
       return;
     }
 
+    loadingRef.current = true;
+    setIsLoading(true);
+    setFieldError(null);
+    setError(null);
     try {
-      setIsLoading(true);
-      setError(null);
       const createdList = await listsService.createList(
         trimmedTitle,
         description.trim(),
         token
       );
-      resetForm();
+      clearForm();
       onSuccess({ listId: createdList.list_id, title: createdList.title });
-      // Parent will close the modal when AddItem flow completes
-    } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 409) {
-          setError('A list with this title already exists');
-        } else if (err.data?.detail) {
-          // Handle FastAPI validation errors (array of objects)
-          if (Array.isArray(err.data.detail)) {
-            const messages = err.data.detail
-              .map((e) => e.msg ?? '')
-              .filter(Boolean)
-              .join(', ');
-            setError(messages || 'Validation error');
-          } else if (typeof err.data.detail === 'string') {
-            setError(err.data.detail);
-          } else {
-            setError('Failed to create list. Please try again.');
-          }
-        } else {
-          setError('Failed to create list. Please try again.');
-        }
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setFieldError(
+          getApiErrorMessage(error, 'A list with this title already exists')
+        );
       } else {
-        setError('An unexpected error occurred');
+        setError(
+          getApiErrorMessage(error, 'Failed to create list. Please try again.')
+        );
       }
     } finally {
+      loadingRef.current = false;
       setIsLoading(false);
     }
   };
@@ -107,22 +116,26 @@ export const CreateListContent: React.FC<CreateListContentProps> = ({
       error={error}
       isLoading={isLoading}
       submitText="Create"
-      submitDisabled={!title.trim()}
-      onClose={handleClose}
+      onClose={() => {
+        void requestClose();
+      }}
       onSubmit={handleCreate}
     >
       <Input
+        ref={titleRef}
         label="Title"
         placeholder="Enter list title"
         value={title}
-        onChangeText={(text) => {
-          setTitle(text);
-          if (error) setError(null);
+        onChangeText={(value) => {
+          setTitle(value);
+          setFieldError(null);
+          setError(null);
         }}
+        error={fieldError ?? undefined}
         maxLength={MAX_TITLE_LENGTH}
+        editable={!isLoading}
         autoFocus
       />
-
       <Input
         label="Description (optional)"
         placeholder="Add a description"
@@ -130,27 +143,38 @@ export const CreateListContent: React.FC<CreateListContentProps> = ({
         onChangeText={setDescription}
         multiline
         numberOfLines={3}
+        editable={!isLoading}
         inputStyle={styles.descriptionInput}
       />
     </BaseModalContent>
   );
-};
+});
 
-// Full modal component (wraps content in Modal for backward compatibility)
-export const CreateListModal: React.FC<CreateListModalProps> = ({
+export const CreateListModal = ({
   visible,
   onClose,
   onSuccess,
-}) => (
-  <Modal
-    visible={visible}
-    transparent
-    animationType="fade"
-    onRequestClose={onClose}
-  >
-    <CreateListContent onClose={onClose} onSuccess={onSuccess} />
-  </Modal>
-);
+}: CreateListModalProps) => {
+  const contentRef = useRef<CreateListContentHandle>(null);
+  const requestClose = () => {
+    void contentRef.current?.requestClose();
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={requestClose}
+    >
+      <CreateListContent
+        ref={contentRef}
+        onClose={onClose}
+        onSuccess={onSuccess}
+      />
+    </Modal>
+  );
+};
 
 const styles = StyleSheet.create({
   descriptionInput: {

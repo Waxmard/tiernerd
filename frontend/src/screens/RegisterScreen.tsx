@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  type TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -31,40 +32,48 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 }) => {
   const { register, signInWithGoogle, googleAvailable, isLoading, error } =
     useAuth();
-
-  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  // Validation
-  const passwordsMatch = password === confirmPassword;
-  const passwordError = confirmPassword.length > 0 && !passwordsMatch;
-  const canSubmit = email && password && confirmPassword && passwordsMatch;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+  const [emailError, setEmailError] = useState<string>();
+  const [passwordError, setPasswordError] = useState<string>();
+  const [confirmPasswordRequiredError, setConfirmPasswordRequiredError] =
+    useState<string>();
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
+  const confirmPasswordInputRef = useRef<TextInput>(null);
+  const confirmPasswordMismatch =
+    confirmPassword.length > 0 && password !== confirmPassword
+      ? 'Passwords do not match'
+      : undefined;
+  const confirmPasswordError =
+    confirmPasswordRequiredError ?? confirmPasswordMismatch;
 
   const handleRegister = async () => {
-    if (!canSubmit) return;
-
-    console.log('Registration initiated');
-    const success = await register(email, password);
-    if (success) {
-      console.log(
-        'Registration successful - navigation will happen automatically'
-      );
+    if (isLoading) return;
+    const nextEmailError = email.trim() ? undefined : 'Email is required';
+    const nextPasswordError = password ? undefined : 'Password is required';
+    const nextConfirmPasswordError = !confirmPassword
+      ? 'Confirm Password is required'
+      : undefined;
+    const passwordsMismatch = password !== confirmPassword;
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
+    setConfirmPasswordRequiredError(nextConfirmPasswordError);
+    if (
+      nextEmailError ||
+      nextPasswordError ||
+      nextConfirmPasswordError ||
+      passwordsMismatch
+    ) {
+      if (nextEmailError) emailInputRef.current?.focus();
+      else if (nextPasswordError) passwordInputRef.current?.focus();
+      else confirmPasswordInputRef.current?.focus();
+      return;
     }
+    await register(email.trim(), password);
   };
 
   const navigateToLogin = () => {
@@ -84,30 +93,45 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={false}
           >
-            <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+            <View style={styles.content}>
               {/* Logo */}
               <View style={styles.logoContainer}>
                 <Image
                   source={require('../../assets/logo-transparent.png')}
                   style={styles.logo}
                   resizeMode="contain"
+                  accessible={false}
                 />
               </View>
 
               {/* Register form */}
               <View style={styles.formContainer} collapsable={false}>
-                <Text style={styles.formTitle}>Create Account</Text>
+                <Text style={styles.formTitle} accessibilityRole="header">
+                  Create Account
+                </Text>
                 <View style={styles.titleDivider} />
 
                 <Input
                   label="Email"
+                  ref={emailInputRef}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    if (value.trim()) setEmailError(undefined);
+                  }}
+                  error={emailError}
                   placeholder="name@example.com"
                   keyboardType="email-address"
+                  autoComplete="email"
+                  textContentType="emailAddress"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordInputRef.current?.focus()}
                   leftIcon={
                     <Ionicons
+                      accessible={false}
                       name="mail-outline"
                       size={20}
                       color={AppColors.neutral[600]}
@@ -117,12 +141,24 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
                 <Input
                   label="Password"
+                  ref={passwordInputRef}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(value) => {
+                    setPassword(value);
+                    if (value) setPasswordError(undefined);
+                  }}
+                  error={passwordError}
                   placeholder="••••••••"
                   secureTextEntry={!passwordVisible}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="next"
+                  onSubmitEditing={() =>
+                    confirmPasswordInputRef.current?.focus()
+                  }
                   leftIcon={
                     <Ionicons
+                      accessible={false}
                       name="lock-closed-outline"
                       size={20}
                       color={AppColors.neutral[600]}
@@ -130,22 +166,36 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   }
                   rightIcon={
                     <Ionicons
+                      accessible={false}
                       name={passwordVisible ? 'eye-outline' : 'eye-off-outline'}
                       size={20}
                       color={AppColors.neutral[600]}
                     />
+                  }
+                  rightIconAccessibilityLabel={
+                    passwordVisible ? 'Hide password' : 'Show password'
                   }
                   onRightIconPress={() => setPasswordVisible(!passwordVisible)}
                 />
 
                 <Input
                   label="Confirm Password"
+                  ref={confirmPasswordInputRef}
                   value={confirmPassword}
-                  onChangeText={setConfirmPassword}
+                  onChangeText={(value) => {
+                    setConfirmPassword(value);
+                    if (value) setConfirmPasswordRequiredError(undefined);
+                  }}
+                  error={confirmPasswordError}
                   placeholder="••••••••"
                   secureTextEntry={!confirmPasswordVisible}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="done"
+                  onSubmitEditing={handleRegister}
                   leftIcon={
                     <Ionicons
+                      accessible={false}
                       name="lock-closed-outline"
                       size={20}
                       color={AppColors.neutral[600]}
@@ -153,6 +203,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   }
                   rightIcon={
                     <Ionicons
+                      accessible={false}
                       name={
                         confirmPasswordVisible
                           ? 'eye-outline'
@@ -162,23 +213,28 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                       color={AppColors.neutral[600]}
                     />
                   }
+                  rightIconAccessibilityLabel={
+                    confirmPasswordVisible
+                      ? 'Hide confirm password'
+                      : 'Show confirm password'
+                  }
                   onRightIconPress={() =>
                     setConfirmPasswordVisible(!confirmPasswordVisible)
                   }
                 />
 
-                {passwordError && (
-                  <Text style={styles.passwordError}>
-                    Passwords do not match
-                  </Text>
+                {error && (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText} accessibilityRole="alert">
+                      {error}
+                    </Text>
+                  </View>
                 )}
-
                 <Button
                   title="Create Account"
                   onPress={handleRegister}
                   fullWidth
                   loading={isLoading}
-                  disabled={!canSubmit}
                   style={styles.registerButton}
                 />
 
@@ -196,6 +252,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                       style={styles.googleButton}
                       onPress={signInWithGoogle}
                       disabled={isLoading}
+                      accessibilityRole="button"
+                      accessibilityLabel="Sign up with Google"
                       activeOpacity={0.8}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
@@ -208,6 +266,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                           <Image
                             source={require('../../assets/google-logo.png')}
                             style={styles.googleIcon}
+                            accessible={false}
                           />
                           <Text style={styles.googleButtonText}>
                             Sign up with Google
@@ -224,6 +283,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     Already have an account?{' '}
                   </Text>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Log in"
                     activeOpacity={0.7}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     onPress={navigateToLogin}
@@ -232,23 +293,16 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   </TouchableOpacity>
                 </View>
 
-                {/* Version */}
                 <View style={styles.versionContainer}>
-                  <Image
-                    source={require('../../assets/logo-transparent.png')}
-                    style={styles.versionLogo}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.version}>v1.0.0 • Tier Nerd</Text>
+                  <Text style={styles.version}>
+                    {Constants.expoConfig?.version
+                      ? `${Constants.expoConfig.version} · `
+                      : ''}
+                    TierNerd
+                  </Text>
                 </View>
               </View>
-
-              {error && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              )}
-            </Animated.View>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -269,6 +323,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
     paddingHorizontal: AppSpacing.lg,
   },
   content: {
@@ -308,13 +365,6 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     marginTop: AppSpacing.md,
-    backgroundColor: AppColors.primary,
-  },
-  passwordError: {
-    ...AppTypography.bodySmall,
-    color: AppColors.error,
-    marginTop: AppSpacing.xs,
-    marginBottom: AppSpacing.sm,
   },
   divider: {
     flexDirection: 'row',
@@ -366,26 +416,19 @@ const styles = StyleSheet.create({
   },
   loginLink: {
     ...AppTypography.bodyMedium,
-    color: AppColors.primary,
+    color: AppColors.accent.dark,
     fontWeight: 'bold',
     textDecorationLine: 'underline',
   },
   versionContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: AppSpacing.md,
   },
-  versionLogo: {
-    width: 16,
-    height: 16,
-    marginRight: AppSpacing.xs,
-    opacity: 0.3,
-  },
   version: {
     ...AppTypography.labelSmall,
     color: AppColors.textSecondary,
-    opacity: 0.5,
+    fontSize: 12,
   },
   errorContainer: {
     marginTop: AppSpacing.md,

@@ -1,20 +1,6 @@
-from typing import Any
-
-from app.schemas.item import Comparison
-
-
-def find_next_comparison(all_items: list[Any], comparison: Comparison) -> Comparison:
-    """
-    Return the next comparison item
-
-    Fetches all items in the list and binary-searches for the next item to compare.
-    """
-    if comparison.is_winner:
-        comparison.max_index = comparison.comparison_index
-    else:
-        comparison.min_index = comparison.comparison_index
-
-    comparison.comparison_index = (comparison.min_index + comparison.max_index) // 2
-    comparison.target_item = all_items[comparison.comparison_index]
-    comparison.done = comparison.max_index - comparison.min_index <= 1
-    return comparison
+def find_next_comparison(
+    min_index: int, max_index: int, comparison_index: int, is_winner: bool
+) -> tuple[int, int]:
+    if is_winner:
+        return comparison_index + 1, max_index
+    return min_index, comparison_index

@@ -1,8 +1,10 @@
 import type React from 'react';
+import { useId } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableWithoutFeedback,
@@ -18,7 +20,9 @@ interface BaseModalContentProps {
   error?: string | null;
   isLoading?: boolean;
   submitText?: string;
-  submitDisabled?: boolean;
+  closeText?: string;
+  presentation?: 'modal' | 'panel';
+  titleId?: string;
   onClose: () => void;
   onSubmit?: () => void;
   contentStyle?: ViewStyle;
@@ -30,11 +34,64 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   error,
   isLoading = false,
   submitText = 'Submit',
-  submitDisabled = false,
+  closeText = 'Cancel',
+  presentation = 'modal',
+  titleId,
   onClose,
   onSubmit,
   contentStyle,
 }) => {
+  const generatedTitleId = useId();
+  const headingId = titleId ?? generatedTitleId;
+  const isPanel = presentation === 'panel';
+  const content = (
+    <View
+      style={[styles.content, isPanel && styles.panel, contentStyle]}
+      role={isPanel ? 'region' : undefined}
+      accessibilityLabel={isPanel && Platform.OS !== 'web' ? title : undefined}
+      aria-labelledby={isPanel ? headingId : undefined}
+    >
+      <Text
+        nativeID={headingId}
+        accessibilityRole="header"
+        style={styles.title}
+      >
+        {title}
+      </Text>
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {children}
+      </ScrollView>
+      {error && (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
+      <View style={styles.buttonRow}>
+        <Button
+          title={closeText}
+          variant="text"
+          onPress={onClose}
+          disabled={isLoading}
+          style={styles.cancelButton}
+        />
+        {onSubmit && (
+          <Button
+            title={submitText}
+            onPress={onSubmit}
+            loading={isLoading}
+            style={styles.submitButton}
+          />
+        )}
+      </View>
+    </View>
+  );
+
+  if (isPanel) return content;
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.overlay}>
@@ -42,38 +99,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          <TouchableWithoutFeedback>
-            <View style={[styles.modal, contentStyle]}>
-              <Text style={styles.title}>{title}</Text>
-
-              {children}
-
-              {error && (
-                <Text style={styles.error} accessibilityRole="alert">
-                  {error}
-                </Text>
-              )}
-
-              <View style={styles.buttonRow}>
-                <Button
-                  title="Cancel"
-                  variant="text"
-                  onPress={onClose}
-                  disabled={isLoading}
-                  style={styles.cancelButton}
-                />
-                {onSubmit && (
-                  <Button
-                    title={submitText}
-                    onPress={onSubmit}
-                    loading={isLoading}
-                    disabled={submitDisabled}
-                    style={styles.submitButton}
-                  />
-                )}
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
+          <TouchableWithoutFeedback>{content}</TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </View>
     </TouchableWithoutFeedback>
@@ -86,15 +112,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: AppSpacing.md,
   },
   keyboardView: {
     width: '100%',
     alignItems: 'center',
-    paddingHorizontal: AppSpacing.lg,
+    paddingHorizontal: AppSpacing.md,
   },
-  modal: {
+  content: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 480,
+    maxHeight: '90%',
+    minHeight: 0,
     backgroundColor: AppColors.dominant.primary,
     borderRadius: AppBorders.radiusLg,
     padding: AppSpacing.xl,
@@ -104,6 +133,13 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
+  panel: {
+    flex: 1,
+    maxHeight: undefined,
+    borderRadius: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   title: {
     ...AppTypography.headlineSmall,
     color: AppColors.secondary.emphasis,
@@ -111,21 +147,33 @@ const styles = StyleSheet.create({
     marginBottom: AppSpacing.lg,
     textAlign: 'center',
   },
+  body: {
+    flexShrink: 1,
+  },
+  bodyContent: {
+    flexGrow: 1,
+  },
   error: {
     ...AppTypography.bodySmall,
     color: AppColors.error,
-    marginBottom: AppSpacing.md,
+    marginTop: AppSpacing.md,
   },
   buttonRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     justifyContent: 'flex-end',
     gap: AppSpacing.sm,
-    marginTop: AppSpacing.sm,
+    marginTop: AppSpacing.md,
   },
   cancelButton: {
     minWidth: 80,
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   submitButton: {
     minWidth: 100,
+    maxWidth: '100%',
+    flexShrink: 1,
   },
 });

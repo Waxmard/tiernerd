@@ -5,6 +5,7 @@ import { AppColors, AppSpacing } from '../tokens';
 
 interface FABProps {
   onPress: () => void;
+  accessibilityLabel: string;
   icon?: keyof typeof Ionicons.glyphMap;
   style?: ViewStyle;
   disabled?: boolean;
@@ -13,6 +14,7 @@ interface FABProps {
 
 export const FAB: React.FC<FABProps> = ({
   onPress,
+  accessibilityLabel,
   icon = 'add',
   style,
   disabled = false,
@@ -20,13 +22,21 @@ export const FAB: React.FC<FABProps> = ({
 }) => {
   return (
     <TouchableOpacity
-      style={[styles.fab, disabled && styles.disabled, style]}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      style={[styles.fab, style, disabled && styles.disabled]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.8}
       testID={testID}
     >
-      <Ionicons name={icon} size={28} color={AppColors.textOnPrimary} />
+      <Ionicons
+        name={icon}
+        size={28}
+        color={disabled ? AppColors.disabledText : AppColors.textOnPrimary}
+        accessible={false}
+      />
     </TouchableOpacity>
   );
 };
@@ -39,7 +49,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: AppColors.accent.primary,
+    backgroundColor: AppColors.accent.dark,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -49,6 +59,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   disabled: {
-    opacity: 0.5,
+    backgroundColor: AppColors.disabledSurface,
+    borderWidth: 1,
+    borderColor: AppColors.controlBorder,
+    shadowOpacity: 0,
+    elevation: 0,
   },
 });

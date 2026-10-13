@@ -23,3 +23,13 @@ export const AppSpacing = {
     vertical: 12,
   },
 };
+
+export const AppLayout = {
+  maxWidth: 1280,
+  desktopBreakpoint: 1024,
+  fourColumnBreakpoint: 1280,
+  gutter: 24,
+  columnGap: 16,
+  paneWidth: 360,
+  paneGap: 24,
+} as const;

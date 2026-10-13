@@ -1,5 +1,6 @@
 # Error messages
 ITEM_NOT_FOUND_ERROR = "Item not found or does not belong to current user"
+ITEM_NAME_ALREADY_EXISTS_ERROR = "An item with this name already exists in this list."
 LIST_NOT_FOUND_ERROR = "List not found"
 COMPARISON_SESSION_NOT_FOUND_ERROR = "Comparison session not found or invalid"
 SESSION_NOT_FOUND_ERROR = "Session not found or invalid"

@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import type React from 'react';
-import { useEffect, useRef } from 'react';
 import {
-  Animated,
   Image,
   ScrollView,
   StyleSheet,
@@ -21,7 +20,6 @@ import {
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 
-// Temporary inline shadows to fix import issue
 const AppShadows = {
   md: {
     shadowColor: '#000',
@@ -37,32 +35,13 @@ type ProfileScreenProps = RootStackScreenProps<'Profile'>;
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
 
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
   const handleSignOut = async () => {
-    console.log('Signing out...');
     await signOut();
-    // Navigation happens automatically when user state changes
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
-
-  const settingsItems = [
-    { id: 'account', label: 'Account Settings', icon: 'person-outline' },
-    { id: 'preferences', label: 'App Preferences', icon: 'settings-outline' },
-    { id: 'about', label: 'About', icon: 'information-circle-outline' },
-  ];
 
   return (
     <View style={styles.container}>
@@ -71,22 +50,27 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View style={{ opacity: fadeAnim }}>
+          <View>
             {/* Header with back button */}
             <View style={styles.header}>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Back"
                 onPress={handleBack}
                 style={styles.backButton}
                 activeOpacity={0.7}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Ionicons
-                  name="arrow-back"
-                  size={24}
+                  name="chevron-back"
+                  size={28}
                   color={AppColors.secondary.primary}
+                  accessible={false}
                 />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Profile</Text>
+              <Text style={styles.headerTitle} accessibilityRole="header">
+                Profile
+              </Text>
               <View style={styles.backButton} />
             </View>
 
@@ -97,6 +81,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   <Image
                     source={{ uri: user.photoUrl }}
                     style={styles.profileImage}
+                    accessibilityLabel={
+                      user?.displayName
+                        ? `${user.displayName} profile photo`
+                        : 'Profile photo'
+                    }
                   />
                 ) : (
                   <View style={styles.profilePlaceholder}>
@@ -104,6 +93,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       name="person"
                       size={40}
                       color={AppColors.neutral[600]}
+                      accessible={false}
                     />
                   </View>
                 )}
@@ -116,61 +106,34 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               </View>
             </Card>
 
-            {/* Settings Options */}
-            <View style={styles.settingsSection}>
-              <Text style={styles.sectionTitle}>Settings</Text>
-              <Card style={styles.settingsCard}>
-                {settingsItems.map((item, index) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.settingsItem,
-                      index < settingsItems.length - 1 &&
-                        styles.settingsItemBorder,
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.settingsItemContent}>
-                      <Ionicons
-                        name={item.icon as keyof typeof Ionicons.glyphMap}
-                        size={22}
-                        color={AppColors.secondary.primary}
-                        style={styles.settingsIcon}
-                      />
-                      <Text style={styles.settingsLabel}>{item.label}</Text>
-                    </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color={AppColors.neutral[400]}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </Card>
-            </View>
-
             {/* Sign Out Button */}
             <View style={styles.signOutSection}>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Sign out"
                 style={styles.signOutButton}
                 onPress={handleSignOut}
                 activeOpacity={0.8}
               >
-                <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+                <Ionicons
+                  name="log-out-outline"
+                  size={20}
+                  color="#DC2626"
+                  accessible={false}
+                />
                 <Text style={styles.signOutButtonText}>Sign Out</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Version Info */}
             <View style={styles.versionContainer}>
-              <Image
-                source={require('../../assets/logo-transparent.png')}
-                style={styles.versionLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.versionText}>v1.0.0 • Tier Nerd</Text>
+              <Text style={styles.versionText}>
+                {Constants.expoConfig?.version
+                  ? `${Constants.expoConfig.version} · `
+                  : ''}
+                TierNerd
+              </Text>
             </View>
-          </Animated.View>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -186,6 +149,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
     paddingHorizontal: AppSpacing.lg,
     paddingBottom: AppSpacing.xxxl,
   },
@@ -203,7 +169,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    ...AppTypography.headlineMedium,
+    ...AppTypography.headlineSmall,
     color: AppColors.secondary.emphasis,
     fontWeight: '600',
   },
@@ -244,43 +210,6 @@ const styles = StyleSheet.create({
     ...AppTypography.bodyMedium,
     color: AppColors.textSecondary,
   },
-  settingsSection: {
-    marginBottom: AppSpacing.xl,
-  },
-  sectionTitle: {
-    ...AppTypography.titleMedium,
-    color: AppColors.secondary.emphasis,
-    fontWeight: '600',
-    marginBottom: AppSpacing.md,
-  },
-  settingsCard: {
-    backgroundColor: AppColors.dominant.primary,
-    borderRadius: AppBorders.radiusLg,
-    ...AppShadows.md,
-  },
-  settingsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: AppSpacing.md,
-    paddingHorizontal: AppSpacing.lg,
-  },
-  settingsItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.neutral[200],
-  },
-  settingsItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingsIcon: {
-    marginRight: AppSpacing.md,
-  },
-  settingsLabel: {
-    ...AppTypography.bodyLarge,
-    color: AppColors.secondary.primary,
-    fontWeight: '500',
-  },
   signOutSection: {
     marginBottom: AppSpacing.xl,
   },
@@ -302,20 +231,13 @@ const styles = StyleSheet.create({
     marginLeft: AppSpacing.sm,
   },
   versionContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: AppSpacing.md,
   },
-  versionLogo: {
-    width: 16,
-    height: 16,
-    marginRight: AppSpacing.xs,
-    opacity: 0.3,
-  },
   versionText: {
     ...AppTypography.labelSmall,
     color: AppColors.textSecondary,
-    opacity: 0.5,
+    fontSize: 12,
   },
 });

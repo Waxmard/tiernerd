@@ -1,10 +1,12 @@
 import type React from 'react';
-import { useState } from 'react';
+import { forwardRef, useId, useState } from 'react';
 import {
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   type TextInputProps,
+  type TextStyle,
   TouchableOpacity,
   View,
   type ViewStyle,
@@ -12,72 +14,132 @@ import {
 import { AppBorders, AppColors, AppSpacing, AppTypography } from '../tokens';
 
 interface InputProps extends TextInputProps {
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
   label?: string;
   error?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  rightIconAccessibilityLabel?: string;
   containerStyle?: ViewStyle;
-  inputStyle?: ViewStyle;
+  inputStyle?: TextStyle;
   onRightIconPress?: () => void;
 }
 
-export const Input: React.FC<InputProps> = ({
-  label,
-  error,
-  leftIcon,
-  rightIcon,
-  containerStyle,
-  inputStyle,
-  onRightIconPress,
-  onFocus,
-  onBlur,
-  ...textInputProps
-}) => {
+export const Input = forwardRef<TextInput, InputProps>(function Input(
+  {
+    label,
+    error,
+    leftIcon,
+    rightIcon,
+    rightIconAccessibilityLabel,
+    containerStyle,
+    inputStyle,
+    onRightIconPress,
+    onFocus,
+    onBlur,
+    ...textInputProps
+  },
+  ref
+) {
   const [isFocused, setIsFocused] = useState(false);
+  const labelId = useId();
+  const errorId = useId();
 
-  const handleFocus: NonNullable<TextInputProps['onFocus']> = (e) => {
+  const handleFocus: NonNullable<TextInputProps['onFocus']> = (event) => {
     setIsFocused(true);
-    onFocus?.(e);
+    onFocus?.(event);
   };
 
-  const handleBlur: NonNullable<TextInputProps['onBlur']> = (e) => {
+  const handleBlur: NonNullable<TextInputProps['onBlur']> = (event) => {
     setIsFocused(false);
-    onBlur?.(e);
+    onBlur?.(event);
   };
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && (
+        <Text nativeID={labelId} style={styles.label}>
+          {label}
+        </Text>
+      )}
       <View
         style={[
           styles.inputContainer,
-          isFocused && styles.inputContainerFocused,
+          Platform.OS !== 'web' && isFocused && styles.inputContainerFocused,
           error && styles.inputContainerError,
         ]}
         collapsable={false}
       >
-        {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
+        {leftIcon && (
+          <View accessible={false} style={styles.leftIcon}>
+            {leftIcon}
+          </View>
+        )}
         <TextInput
+          ref={ref}
           style={[styles.input, inputStyle]}
           placeholderTextColor={AppColors.secondary.light}
+          {...textInputProps}
+          accessibilityLabel={textInputProps.accessibilityLabel ?? label}
+          accessibilityLabelledBy={
+            label ? labelId : textInputProps.accessibilityLabelledBy
+          }
+          accessibilityHint={
+            Platform.OS === 'web'
+              ? textInputProps.accessibilityHint
+              : (error ?? textInputProps.accessibilityHint)
+          }
+          aria-invalid={
+            Platform.OS === 'web'
+              ? error
+                ? true
+                : textInputProps['aria-invalid']
+              : undefined
+          }
+          aria-describedby={
+            Platform.OS === 'web'
+              ? [
+                  textInputProps['aria-describedby'],
+                  error ? errorId : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(' ') || undefined
+              : undefined
+          }
           onFocus={handleFocus}
           onBlur={handleBlur}
-          {...textInputProps}
         />
-        {rightIcon && (
+        {rightIcon && onRightIconPress ? (
           <TouchableOpacity
-            onPress={onRightIconPress}
+            accessibilityRole="button"
+            accessibilityLabel={rightIconAccessibilityLabel}
             style={styles.rightIcon}
-            disabled={!onRightIconPress}
+            onPress={onRightIconPress}
+            hitSlop={4}
           >
-            {rightIcon}
+            <View accessible={false}>{rightIcon}</View>
           </TouchableOpacity>
+        ) : (
+          rightIcon && (
+            <View accessible={false} style={styles.rightIcon}>
+              {rightIcon}
+            </View>
+          )
         )}
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <Text
+          nativeID={errorId}
+          accessibilityLiveRegion="polite"
+          style={styles.error}
+        >
+          {error}
+        </Text>
+      )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -92,7 +154,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: AppColors.neutral[200],
+    borderColor: AppColors.controlBorder,
     borderRadius: AppBorders.radiusMd,
     backgroundColor: AppColors.dominant.primary,
     paddingHorizontal: AppSpacing.md,
@@ -114,13 +176,15 @@ const styles = StyleSheet.create({
   },
   leftIcon: {
     marginRight: AppSpacing.sm,
-    height: 24, // Match line height of bodyLarge
+    height: 24,
     justifyContent: 'center',
   },
   rightIcon: {
-    marginLeft: AppSpacing.sm,
-    height: 24, // Match line height of bodyLarge
+    width: 44,
+    height: 44,
+    alignItems: 'center',
     justifyContent: 'center',
+    marginRight: -AppSpacing.sm,
   },
   error: {
     ...AppTypography.bodySmall,
