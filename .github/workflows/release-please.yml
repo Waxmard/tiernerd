@@ -19,14 +19,15 @@ jobs:
           token: ${{ secrets.RINKING_EPP_RELEASE_PLEASE_TOKEN }}
 
       - name: Auto-merge release PR
-        run: |
-          PR_NUMBER=$(gh pr list \
-            --repo "${{ github.repository }}" \
-            --label "autorelease: pending" \
-            --json number \
-            --jq '.[0].number')
-          if [ -n "$PR_NUMBER" ]; then
-            gh pr merge --rebase --repo "${{ github.repository }}" "$PR_NUMBER"
-          fi
         env:
           GH_TOKEN: ${{ secrets.RINKING_EPP_RELEASE_PLEASE_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+            --jq '[.[] | select(any(.labels[]; .name == "autorelease: pending"))] | .[0].number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open release PR; nothing to merge."
+            exit 0
+          fi
+          echo "Release PR: #$PR_NUMBER"
+          gh pr update-branch "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --rebase || true
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --rebase --auto
