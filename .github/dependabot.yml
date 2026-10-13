@@ -18,49 +18,24 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     ignore:
-      - dependency-name: "react-native"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "expo"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
       - dependency-name: "expo-*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
-    cooldown:
-      default-days: 7
-      semver-major-days: 14
-      semver-minor-days: 7
-      semver-patch-days: 7
-    groups:
-      root-minor-and-patch:
-        update-types:
-          - "minor"
-          - "patch"
-    commit-message:
-      prefix: "chore(deps)"
-
-  - package-ecosystem: "pip"
-    directory: "/fastapi"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
-    versioning-strategy: "increase-if-necessary"
-    cooldown:
-      default-days: 7
-      semver-major-days: 14
-      semver-minor-days: 7
-      semver-patch-days: 7
-    groups:
-      backend-minor-and-patch:
-        update-types:
-          - "minor"
-          - "patch"
-    commit-message:
-      prefix: "chore(deps)"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "@expo/*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "react-native-*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "babel-preset-expo"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
