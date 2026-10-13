@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Button } from '../design-system/components';
 import { AppColors } from '../design-system/tokens';
 import { styles } from './ListDetailScreen.styles';
 
@@ -14,6 +15,10 @@ export interface RankOutcome {
 
 interface ListDetailHeaderProps {
   title: string;
+  itemCount: number;
+  rankedCount: number;
+  addDisabled: boolean;
+  onAdd: () => void;
   description: string | null;
   metadataError: boolean;
   outcome: RankOutcome | null;
@@ -26,6 +31,10 @@ interface ListDetailHeaderProps {
 
 export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   title,
+  itemCount,
+  rankedCount,
+  addDisabled,
+  onAdd,
   description,
   metadataError,
   outcome,
@@ -48,11 +57,23 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           name="chevron-back"
           size={28}
           color={AppColors.secondary.emphasis}
+          accessible={false}
         />
       </TouchableOpacity>
-      <Text style={styles.headerTitle} numberOfLines={1}>
-        {title}
-      </Text>
+      <View style={styles.headerContent}>
+        <Text accessibilityRole="header" style={styles.headerTitle}>
+          {title}
+        </Text>
+        {description?.trim() ? (
+          <ScrollView
+            style={styles.descriptionScroll}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+          >
+            <Text style={styles.listDescription}>{description}</Text>
+          </ScrollView>
+        ) : null}
+      </View>
       <TouchableOpacity
         onPress={onDelete}
         disabled={deleteDisabled}
@@ -67,18 +88,10 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           name="trash-outline"
           size={24}
           color={deleteDisabled ? AppColors.disabledText : AppColors.error}
+          accessible={false}
         />
       </TouchableOpacity>
     </View>
-    {description?.trim() ? (
-      <ScrollView
-        style={styles.descriptionScroll}
-        nestedScrollEnabled
-        showsVerticalScrollIndicator
-      >
-        <Text style={styles.listDescription}>{description}</Text>
-      </ScrollView>
-    ) : null}
     {metadataError ? (
       <View style={styles.metadataError}>
         <Text style={styles.refreshError} accessibilityRole="alert">
@@ -94,10 +107,18 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         </TouchableOpacity>
       </View>
     ) : null}
-    <Text style={styles.scoreExplanation}>
-      Scores reflect position within each range. Adding, removing or re-ranking
-      items can change scores.
-    </Text>
+    <View style={styles.headerToolbar}>
+      <Text style={styles.rankedCount}>
+        {rankedCount} of {itemCount} ranked
+      </Text>
+      <Button
+        title="Add item"
+        onPress={onAdd}
+        disabled={addDisabled}
+        size="small"
+        testID="fab-add-item"
+      />
+    </View>
     {outcome ? (
       <View style={styles.outcome} accessibilityLiveRegion="polite">
         <View style={styles.outcomeText}>

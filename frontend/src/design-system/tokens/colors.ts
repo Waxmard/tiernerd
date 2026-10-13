@@ -23,7 +23,7 @@ export const AppColors = {
   controlBorder: '#6B7280',
   disabledSurface: '#F3F4F6',
   disabledText: '#4B5563',
-  selectedSurface: '#F3F4F6',
+  selectedSurface: '#F5F3FF',
   // Legacy mappings for compatibility
   primary: '#8B5CF6',
   primaryLight: '#A78BFA',

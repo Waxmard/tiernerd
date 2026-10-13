@@ -1,6 +1,6 @@
 import type React from 'react';
-import { ActivityIndicator, Modal, Platform, Text, View } from 'react-native';
-import { BaseModalContent, Button } from '../design-system/components';
+import { ActivityIndicator, Modal, Text, View } from 'react-native';
+import { BaseModalContent } from '../design-system/components';
 import { AppColors } from '../design-system/tokens';
 import type { ComparisonSession, Item } from '../services/itemsService';
 import { AddItemContent } from './AddItemContent';
@@ -33,7 +33,6 @@ interface ListDetailWorkspaceHostProps {
   onDetailsClose: () => void;
   onMobileClose: () => void;
   onStartRanking: () => void;
-  onAdd: () => void;
   children: React.ReactNode;
 }
 
@@ -62,7 +61,6 @@ export const ListDetailWorkspaceHost: React.FC<
   onDetailsClose,
   onMobileClose,
   onStartRanking,
-  onAdd,
   children,
 }) => {
   const isBusy = workspace.isBusy || isScreenBusy;
@@ -95,18 +93,6 @@ export const ListDetailWorkspaceHost: React.FC<
       </BaseModalContent>
     );
   };
-
-  const renderEmpty = () => (
-    <View style={styles.emptyWorkspace}>
-      <Text style={styles.emptyWorkspaceTitle} accessibilityRole="header">
-        Item details
-      </Text>
-      <Text style={styles.emptyWorkspaceText}>
-        Select an item to view its details.
-      </Text>
-      <Button onPress={onAdd} variant="primary" title="Add item" />
-    </View>
-  );
 
   const renderWorkspace = (presentation: 'modal' | 'panel') => {
     if (workspace.mode === 'ranking' && workspace.session) {
@@ -155,7 +141,7 @@ export const ListDetailWorkspaceHost: React.FC<
           </View>
         );
       }
-      return renderEmpty();
+      return null;
     }
 
     return (
@@ -163,6 +149,7 @@ export const ListDetailWorkspaceHost: React.FC<
         item={selectedItem}
         rank={selectedRank}
         rankedCount={rankedCount}
+        presentation={presentation}
         session={selectedSession}
         isLoadingSession={isLoadingSession}
         isBusy={isBusy}
@@ -183,25 +170,11 @@ export const ListDetailWorkspaceHost: React.FC<
     <>
       <View style={[styles.contentRow, isDesktop && styles.desktopContentRow]}>
         <View style={styles.listColumn}>{children}</View>
-        {isDesktop ? (
+        {isDesktop &&
+        (selectedItemId !== null || workspace.mode !== 'closed') ? (
           <View style={styles.workspacePane}>
             {workspace.mode === 'closed' ? (
-              <View
-                style={styles.paneRegion}
-                role="region"
-                aria-label={
-                  Platform.OS === 'web'
-                    ? (selectedItem?.name ?? 'Item details')
-                    : undefined
-                }
-                accessibilityLabel={
-                  Platform.OS !== 'web'
-                    ? (selectedItem?.name ?? 'Item details')
-                    : undefined
-                }
-              >
-                {selectedItemId ? renderWorkspace('panel') : renderEmpty()}
-              </View>
+              <View style={styles.paneRegion}>{renderWorkspace('panel')}</View>
             ) : (
               renderWorkspace('panel')
             )}
@@ -235,15 +208,7 @@ export const ListDetailWorkspaceHost: React.FC<
           }
           onRequestClose={onMobileClose}
         >
-          {workspace.mode === 'closed' ? (
-            <View style={styles.detailModalBackdrop}>
-              <View style={styles.detailModalFrame}>
-                {renderWorkspace('modal')}
-              </View>
-            </View>
-          ) : (
-            renderWorkspace('modal')
-          )}
+          {renderWorkspace('modal')}
         </Modal>
       ) : null}
     </>

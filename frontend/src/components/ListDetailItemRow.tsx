@@ -1,7 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
-import { AppColors } from '../design-system/tokens';
 import type { Item } from '../services/itemsService';
 import { styles } from './ListDetailScreen.styles';
 import { RANGE_OPTIONS } from './RangeSelector';
@@ -12,6 +10,7 @@ export interface FocusTarget {
 
 interface ListDetailItemRowProps {
   item: Item;
+  rank: number | null;
   selected: boolean;
   disabled: boolean;
   onPress: (item: Item) => void;
@@ -20,6 +19,7 @@ interface ListDetailItemRowProps {
 
 export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
+  rank,
   selected,
   disabled,
   onPress,
@@ -31,8 +31,9 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   )?.label;
   const accessibleDescription = [
     item.name,
-    isRanked ? ['score', item.rating?.toFixed(1)].join(' ') : 'Not ranked yet',
-    isRanked && rangeLabel ? ['range', rangeLabel].join(' ') : null,
+    rank !== null ? `rank ${rank}` : null,
+    isRanked ? `score ${item.rating?.toFixed(1)}` : 'Not ranked yet',
+    isRanked && rangeLabel ? `range ${rangeLabel}` : null,
     item.description?.trim() || null,
   ]
     .filter(Boolean)
@@ -56,9 +57,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       activeOpacity={0.7}
     >
       <View style={[styles.itemRow, selected && styles.selectedItemRow]}>
-        <Text style={[styles.itemScore, !isRanked && styles.itemScoreUnranked]}>
-          {isRanked ? item.rating?.toFixed(1) : '—'}
-        </Text>
+        <Text style={styles.itemRank}>{rank === null ? '—' : `#${rank}`}</Text>
         <View style={styles.itemDetails}>
           <Text style={styles.itemName} numberOfLines={2}>
             {item.name}
@@ -68,18 +67,21 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
               {item.description}
             </Text>
           ) : null}
-          {isRanked && rangeLabel ? (
-            <Text style={styles.itemRange}>{rangeLabel}</Text>
+          {isRanked ? (
+            rangeLabel ? (
+              <Text style={styles.itemRange}>{rangeLabel}</Text>
+            ) : null
           ) : (
             <Text style={styles.itemUnranked}>Not ranked yet</Text>
           )}
         </View>
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={AppColors.secondary.muted}
-          accessible={false}
-        />
+        <View style={styles.itemScoreCapsule}>
+          <Text
+            style={[styles.itemScore, !isRanked && styles.itemScoreUnranked]}
+          >
+            {isRanked ? item.rating?.toFixed(1) : '—'}
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -94,7 +96,7 @@ export const ListItemEmptyState: React.FC = () => (
     />
     <Text style={styles.emptyStateTitle}>No items yet</Text>
     <Text style={styles.emptyStateText}>
-      Tap the + button to add your first item
+      Select Add item to add your first item
     </Text>
   </View>
 );

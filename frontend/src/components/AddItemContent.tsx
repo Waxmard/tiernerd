@@ -104,6 +104,7 @@ const styles = StyleSheet.create({
   },
   descriptionInput: {
     minHeight: 80,
+    fontSize: 16,
     textAlignVertical: 'top',
   },
 });

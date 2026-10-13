@@ -1,9 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import type React from 'react';
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -12,16 +10,12 @@ import {
   Text,
   type TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input } from '../design-system/components';
-import {
-  AppBorders,
-  AppColors,
-  AppSpacing,
-  AppTypography,
-} from '../design-system/tokens';
+import { AppColors, AppSpacing, AppTypography } from '../design-system/tokens';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 
@@ -30,6 +24,7 @@ type RegisterScreenProps = RootStackScreenProps<'Register'>;
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   navigation,
 }) => {
+  const { width } = useWindowDimensions();
   const { register, signInWithGoogle, googleAvailable, isLoading, error } =
     useAuth();
   const [email, setEmail] = useState('');
@@ -88,13 +83,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           style={styles.keyboardView}
         >
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              width >= 1024 && styles.desktopScrollContent,
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={false}
           >
             <View style={styles.content}>
-              {/* Logo */}
               <View style={styles.logoContainer}>
                 <Image
                   source={require('../../assets/logo-transparent.png')}
@@ -103,14 +100,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   accessible={false}
                 />
               </View>
-
-              {/* Register form */}
               <View style={styles.formContainer} collapsable={false}>
                 <Text style={styles.formTitle} accessibilityRole="header">
                   Create Account
                 </Text>
-                <View style={styles.titleDivider} />
-
                 <Input
                   label="Email"
                   ref={emailInputRef}
@@ -138,7 +131,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     />
                   }
                 />
-
                 <Input
                   label="Password"
                   ref={passwordInputRef}
@@ -177,7 +169,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   }
                   onRightIconPress={() => setPasswordVisible(!passwordVisible)}
                 />
-
                 <Input
                   label="Confirm Password"
                   ref={confirmPasswordInputRef}
@@ -222,7 +213,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     setConfirmPasswordVisible(!confirmPasswordVisible)
                   }
                 />
-
                 {error && (
                   <View style={styles.errorContainer}>
                     <Text style={styles.errorText} accessibilityRole="alert">
@@ -233,51 +223,36 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 <Button
                   title="Create Account"
                   onPress={handleRegister}
+                  size="large"
                   fullWidth
                   loading={isLoading}
                   style={styles.registerButton}
                 />
-
                 {googleAvailable && (
                   <>
-                    {/* Divider */}
                     <View style={styles.divider}>
                       <View style={styles.dividerLine} />
                       <Text style={styles.dividerText}>OR</Text>
                       <View style={styles.dividerLine} />
                     </View>
-
-                    {/* Google Sign Up */}
-                    <TouchableOpacity
-                      style={styles.googleButton}
-                      onPress={signInWithGoogle}
-                      disabled={isLoading}
-                      accessibilityRole="button"
+                    <Button
+                      title="Sign up with Google"
                       accessibilityLabel="Sign up with Google"
-                      activeOpacity={0.8}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      {isLoading ? (
-                        <ActivityIndicator
-                          color={AppColors.secondary.primary}
+                      onPress={signInWithGoogle}
+                      variant="secondary"
+                      size="large"
+                      fullWidth
+                      loading={isLoading}
+                      icon={
+                        <Image
+                          source={require('../../assets/google-logo.png')}
+                          style={styles.googleIcon}
+                          accessible={false}
                         />
-                      ) : (
-                        <>
-                          <Image
-                            source={require('../../assets/google-logo.png')}
-                            style={styles.googleIcon}
-                            accessible={false}
-                          />
-                          <Text style={styles.googleButtonText}>
-                            Sign up with Google
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                      }
+                    />
                   </>
                 )}
-
-                {/* Login link */}
                 <View style={styles.loginContainer}>
                   <Text style={styles.loginText}>
                     Already have an account?{' '}
@@ -286,20 +261,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     accessibilityRole="button"
                     accessibilityLabel="Log in"
                     activeOpacity={0.7}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={styles.linkTarget}
                     onPress={navigateToLogin}
                   >
                     <Text style={styles.loginLink}>Log In</Text>
                   </TouchableOpacity>
-                </View>
-
-                <View style={styles.versionContainer}>
-                  <Text style={styles.version}>
-                    {Constants.expoConfig?.version
-                      ? `${Constants.expoConfig.version} · `
-                      : ''}
-                    TierNerd
-                  </Text>
                 </View>
               </View>
             </View>
@@ -324,44 +290,33 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 420,
     alignSelf: 'center',
-    paddingHorizontal: AppSpacing.lg,
+    paddingHorizontal: AppSpacing.md,
+    paddingTop: AppSpacing.lg,
+  },
+  desktopScrollContent: {
+    paddingTop: AppSpacing.xxxl,
   },
   content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingVertical: AppSpacing.xs,
-    paddingTop: AppSpacing.sm,
+    flexGrow: 1,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: AppSpacing.sm,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-  },
-  formTitle: {
-    ...AppTypography.brandTitle,
-    color: AppColors.secondary.emphasis,
-    textAlign: 'center',
     marginBottom: AppSpacing.md,
   },
-  titleDivider: {
-    height: 1,
-    backgroundColor: AppColors.neutral[200],
-    marginBottom: AppSpacing.lg,
+  logo: {
+    width: 48,
+    height: 48,
+  },
+  formTitle: {
+    ...AppTypography.titleLarge,
+    color: AppColors.secondary.emphasis,
+    textAlign: 'left',
+    marginBottom: AppSpacing.md,
   },
   formContainer: {
-    backgroundColor: AppColors.dominant.primary,
-    borderRadius: AppBorders.radiusLg,
-    padding: AppSpacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
+    width: '100%',
   },
   registerButton: {
     marginTop: AppSpacing.md,
@@ -369,7 +324,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: AppSpacing.lg,
+    marginVertical: AppSpacing.md,
   },
   dividerLine: {
     flex: 1,
@@ -381,34 +336,19 @@ const styles = StyleSheet.create({
     color: AppColors.textSecondary,
     marginHorizontal: AppSpacing.md,
   },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: AppColors.surface,
-    borderWidth: 1,
-    borderColor: AppColors.neutral[300],
-    borderRadius: AppBorders.radiusMd,
-    paddingVertical: AppSpacing.md,
-    paddingHorizontal: AppSpacing.lg,
-  },
   googleIcon: {
-    width: 24,
-    height: 24,
-    marginRight: AppSpacing.sm,
-  },
-  googleButtonText: {
-    ...AppTypography.labelLarge,
-    color: AppColors.textPrimary,
-    fontWeight: '500',
+    width: 20,
+    height: 20,
   },
   loginContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: AppSpacing.lg,
-    paddingTop: AppSpacing.md,
-    borderTopWidth: 1,
-    borderTopColor: AppColors.neutral[200],
+    marginTop: AppSpacing.md,
+  },
+  linkTarget: {
+    minHeight: 44,
+    justifyContent: 'center',
   },
   loginText: {
     ...AppTypography.bodyMedium,
@@ -417,24 +357,14 @@ const styles = StyleSheet.create({
   loginLink: {
     ...AppTypography.bodyMedium,
     color: AppColors.accent.dark,
-    fontWeight: 'bold',
+    fontWeight: '600',
     textDecorationLine: 'underline',
-  },
-  versionContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: AppSpacing.md,
-  },
-  version: {
-    ...AppTypography.labelSmall,
-    color: AppColors.textSecondary,
-    fontSize: 12,
   },
   errorContainer: {
     marginTop: AppSpacing.md,
     padding: AppSpacing.md,
     backgroundColor: AppColors.error,
-    borderRadius: AppBorders.radiusMd,
+    borderRadius: AppSpacing.sm,
   },
   errorText: {
     ...AppTypography.bodySmall,

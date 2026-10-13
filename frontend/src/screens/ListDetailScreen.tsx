@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -16,7 +17,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import {
   ListDetailHeader,
   type RankOutcome,
@@ -29,8 +33,7 @@ import {
 import { styles } from '../components/ListDetailScreen.styles';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
 import { useItemWorkspace } from '../components/useItemWorkspace';
-import { FAB } from '../design-system/components';
-import { AppColors, AppLayout } from '../design-system/tokens';
+import { AppColors, AppLayout, AppSpacing } from '../design-system/tokens';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
@@ -78,6 +81,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 }) => {
   const { token } = useAuth();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const safeAreaInsets = useSafeAreaInsets();
   const {
     listId,
     listTitle: routeTitle,
@@ -284,10 +288,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           itemId,
           session: null,
           isLoading: false,
-          error: getApiErrorMessage(
-            error,
-            'Unable to check ranking status. Try again.'
-          ),
+          error: `Unable to check ranking status. ${getApiErrorMessage(error, 'Try again.')}`,
         });
         if (error instanceof ApiError && error.status === 404) {
           void fetchItems().catch(() => {});
@@ -347,14 +348,20 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 
   const selectedItem =
     items.find((item) => item.item_id === selectedItemId) ?? null;
-  const rankedCount = items.filter((item) => item.rating !== null).length;
-  const selectedRank =
-    selectedItem?.rating === null || !selectedItem
-      ? null
-      : items
-          .filter((item) => item.rating !== null)
-          .findIndex((item) => item.item_id === selectedItem.item_id) + 1;
-  const matchedSessionLookup = sessionLookup.itemId === selectedItemId;
+  const hasSelectedItem = selectedItem !== null;
+  const rankByItemId = useMemo(() => {
+    const ranks = new Map<string, number>();
+    for (const item of items) {
+      if (item.rating !== null) ranks.set(item.item_id, ranks.size + 1);
+    }
+    return ranks;
+  }, [items]);
+  const rankedCount = rankByItemId.size;
+  const selectedRank = selectedItemId
+    ? (rankByItemId.get(selectedItemId) ?? null)
+    : null;
+  const matchedSessionLookup =
+    selectedItemId !== null && sessionLookup.itemId === selectedItemId;
   const selectedSession = matchedSessionLookup ? sessionLookup.session : null;
   const isLoadingSession =
     selectedItemId !== null &&
@@ -366,10 +373,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   }, [refreshSessionLookup, selectedItemId]);
 
   useEffect(() => {
-    if (selectedItemId && selectedItem) {
+    if (selectedItemId && hasSelectedItem) {
       void refreshSessionLookup(selectedItemId);
     }
-  }, [refreshSessionLookup, selectedItem, selectedItemId]);
+  }, [refreshSessionLookup, hasSelectedItem, selectedItemId]);
 
   useEffect(() => {
     if (!selectedItemId || !itemsLoaded) return;
@@ -650,6 +657,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     <ListDetailItemRow
       item={item}
       selected={selectedItemId === item.item_id}
+      rank={rankByItemId.get(item.item_id) ?? null}
       disabled={isDeletingList}
       onPress={(selected) => void handleItemPress(selected)}
       onFocusTarget={(itemId, element) => {
@@ -691,7 +699,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         style={styles.list}
         data={items}
         keyExtractor={(item) => item.item_id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[
+          styles.listContainer,
+          { paddingBottom: AppSpacing.md + safeAreaInsets.bottom },
+        ]}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         onScrollToIndexFailed={handleScrollToIndexFailed}
@@ -703,12 +714,23 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     <View style={[styles.container, { height: windowHeight }]}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.shell}>
-          <View style={styles.shellContent}>
+          <View
+            style={[
+              styles.shellContent,
+              {
+                marginHorizontal: isDesktop ? AppSpacing.lg : AppSpacing.md,
+              },
+            ]}
+          >
             <ListDetailHeader
               title={detailsTitle}
               description={listDescription}
-              metadataError={metadataError}
               outcome={outcome}
+              metadataError={metadataError}
+              itemCount={items.length}
+              rankedCount={rankedCount}
+              addDisabled={isDeletingList}
+              onAdd={() => void handleAddPress()}
               deleteDisabled={workspace.isBusy || isDeletingList}
               onBack={handleBack}
               onDelete={() => void handleDeleteList()}
@@ -753,17 +775,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               onDetailsClose={handleWorkspaceContentClose}
               onMobileClose={handleMobileClose}
               onStartRanking={handleStartRanking}
-              onAdd={() => void handleAddPress()}
             >
               {renderListItems()}
             </ListDetailWorkspaceHost>
-            <FAB
-              onPress={() => void handleAddPress()}
-              accessibilityLabel="Add item"
-              testID="fab-add-item"
-              disabled={isDeletingList}
-              style={isDesktop ? styles.desktopFab : styles.fab}
-            />
           </View>
         </View>
       </SafeAreaView>

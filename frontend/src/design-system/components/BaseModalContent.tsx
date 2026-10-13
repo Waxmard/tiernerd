@@ -8,10 +8,18 @@ import {
   StyleSheet,
   Text,
   TouchableWithoutFeedback,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
-import { AppBorders, AppColors, AppSpacing, AppTypography } from '../tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  AppBorders,
+  AppColors,
+  AppLayout,
+  AppSpacing,
+  AppTypography,
+} from '../tokens';
 import { Button } from './Button';
 
 interface BaseModalContentProps {
@@ -26,6 +34,7 @@ interface BaseModalContentProps {
   onClose: () => void;
   onSubmit?: () => void;
   contentStyle?: ViewStyle;
+  footer?: React.ReactNode;
 }
 
 export const BaseModalContent: React.FC<BaseModalContentProps> = ({
@@ -40,13 +49,21 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   onClose,
   onSubmit,
   contentStyle,
+  footer,
 }) => {
   const generatedTitleId = useId();
   const headingId = titleId ?? generatedTitleId;
   const isPanel = presentation === 'panel';
+  const isWide = useWindowDimensions().width >= AppLayout.desktopBreakpoint;
+  const safeAreaInsets = useSafeAreaInsets();
   const content = (
     <View
-      style={[styles.content, isPanel && styles.panel, contentStyle]}
+      style={[
+        styles.content,
+        isPanel && styles.panel,
+        !isPanel && isWide && styles.wideModalContent,
+        contentStyle,
+      ]}
       role={isPanel ? 'region' : undefined}
       accessibilityLabel={isPanel && Platform.OS !== 'web' ? title : undefined}
       aria-labelledby={isPanel ? headingId : undefined}
@@ -59,32 +76,44 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
         {title}
       </Text>
       <ScrollView
-        style={styles.body}
+        style={[styles.body, isPanel && styles.panelBody]}
         contentContainerStyle={styles.bodyContent}
         keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
-      {error && (
+      {error ? (
         <Text style={styles.error} accessibilityRole="alert">
           {error}
         </Text>
-      )}
-      <View style={styles.buttonRow}>
-        <Button
-          title={closeText}
-          variant="text"
-          onPress={onClose}
-          disabled={isLoading}
-          style={styles.cancelButton}
-        />
-        {onSubmit && (
-          <Button
-            title={submitText}
-            onPress={onSubmit}
-            loading={isLoading}
-            style={styles.submitButton}
-          />
+      ) : null}
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: isPanel ? 0 : safeAreaInsets.bottom },
+        ]}
+      >
+        {footer !== undefined ? (
+          footer
+        ) : (
+          <View style={styles.buttonRow}>
+            <Button
+              title={closeText}
+              variant="text"
+              onPress={onClose}
+              disabled={isLoading}
+              style={styles.cancelButton}
+            />
+            {onSubmit ? (
+              <Button
+                title={submitText}
+                size="large"
+                onPress={onSubmit}
+                loading={isLoading}
+                style={styles.submitButton}
+              />
+            ) : null}
+          </View>
         )}
       </View>
     </View>
@@ -94,10 +123,16 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.overlay}>
+      <View
+        style={[
+          styles.overlay,
+          { paddingTop: safeAreaInsets.top },
+          isWide && styles.wideOverlay,
+        ]}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
+          style={[styles.keyboardView, isWide && styles.wideKeyboardView]}
         >
           <TouchableWithoutFeedback>{content}</TouchableWithoutFeedback>
         </KeyboardAvoidingView>
@@ -110,28 +145,36 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: AppSpacing.md,
+  },
+  wideOverlay: {
+    paddingHorizontal: AppSpacing.md,
   },
   keyboardView: {
+    flex: 1,
     width: '100%',
     alignItems: 'center',
-    paddingHorizontal: AppSpacing.md,
+    justifyContent: 'flex-end',
+  },
+  wideKeyboardView: {
+    justifyContent: 'center',
   },
   content: {
     width: '100%',
-    maxWidth: 480,
     maxHeight: '90%',
-    minHeight: 0,
+    flexShrink: 1,
     backgroundColor: AppColors.dominant.primary,
-    borderRadius: AppBorders.radiusLg,
-    padding: AppSpacing.xl,
+    borderTopLeftRadius: AppBorders.radiusXl,
+    borderTopRightRadius: AppBorders.radiusXl,
+    padding: AppSpacing.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
+  },
+  wideModalContent: {
+    maxWidth: 480,
+    borderRadius: AppBorders.radiusXl,
   },
   panel: {
     flex: 1,
@@ -141,21 +184,32 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   title: {
-    ...AppTypography.headlineSmall,
+    ...AppTypography.titleMedium,
     color: AppColors.secondary.emphasis,
-    fontWeight: '600',
-    marginBottom: AppSpacing.lg,
-    textAlign: 'center',
+    flexShrink: 0,
+    marginBottom: AppSpacing.md,
+    textAlign: 'left',
   },
   body: {
     flexShrink: 1,
+    minHeight: 0,
+    margin: -AppSpacing.xs,
+  },
+  panelBody: {
+    flex: 1,
   },
   bodyContent: {
     flexGrow: 1,
+    padding: AppSpacing.xs,
   },
   error: {
     ...AppTypography.bodySmall,
     color: AppColors.error,
+    flexShrink: 0,
+    marginTop: AppSpacing.md,
+  },
+  footer: {
+    flexShrink: 0,
     marginTop: AppSpacing.md,
   },
   buttonRow: {
@@ -164,7 +218,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: AppSpacing.sm,
-    marginTop: AppSpacing.md,
   },
   cancelButton: {
     minWidth: 80,

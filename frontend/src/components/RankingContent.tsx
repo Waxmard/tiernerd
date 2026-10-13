@@ -124,6 +124,14 @@ export function RankingContent({
   const isCancelled = session.status === 'cancelled';
   const isReady = session.status === 'ready_to_commit';
   const isStale = session.is_stale;
+  const isAsking = Boolean(
+    !isStale &&
+      !isCompleted &&
+      !isReady &&
+      !isCancelled &&
+      comparison &&
+      existingItem
+  );
   const canCommit = isReady && !isStale && session.preview !== null;
   const title = isCompleted
     ? 'Ranking saved'
@@ -136,6 +144,24 @@ export function RankingContent({
       : session.discard_on_cancel
         ? 'Cancel and discard item'
         : 'Cancel ranking';
+  const preview = session.preview;
+  const previewContent = preview ? (
+    <View style={styles.preview}>
+      <Text style={styles.previewItem}>{candidate.name}</Text>
+      <View style={styles.previewStats}>
+        <View style={styles.previewStat}>
+          <Text style={styles.previewScore}>{preview.score.toFixed(1)}</Text>
+          <Text style={styles.previewLabel}>Score</Text>
+        </View>
+        <View style={styles.previewStat}>
+          <Text style={styles.previewRank}>#{preview.rank}</Text>
+          <Text style={styles.previewLabel}>
+            of {preview.ranked_count} ranked items
+          </Text>
+        </View>
+      </View>
+    </View>
+  ) : null;
 
   return (
     <BaseModalContent
@@ -148,8 +174,16 @@ export function RankingContent({
       onSubmit={canCommit ? onCommit : undefined}
       submitText="Save ranking"
     >
-      <Text style={styles.listTitle}>{listTitle}</Text>
-      <Text style={styles.destination}>Ranking into {destinationRange}</Text>
+      <View style={styles.context}>
+        <Text style={styles.listTitle}>{listTitle}</Text>
+        <Text style={styles.destination}>Ranking into {destinationRange}</Text>
+        {isAsking ? (
+          <Text style={styles.questionCount}>
+            Question {session.comparisons_answered + 1} · up to{' '}
+            {session.comparison_limit} questions
+          </Text>
+        ) : null}
+      </View>
       {isStale ? (
         <View style={styles.messageBlock}>
           <Text style={styles.message}>
@@ -164,12 +198,8 @@ export function RankingContent({
         </View>
       ) : isCompleted ? (
         <View style={styles.messageBlock}>
-          {session.preview ? (
-            <Text style={styles.message}>
-              {candidate.name}: {session.preview.score.toFixed(1)}, rank #
-              {session.preview.rank} of {session.preview.ranked_count} ranked
-              items in {destinationRange}
-            </Text>
+          {preview ? (
+            previewContent
           ) : (
             <>
               <Text style={styles.message}>
@@ -187,12 +217,8 @@ export function RankingContent({
         </View>
       ) : isReady ? (
         <View style={styles.messageBlock}>
-          {session.preview ? (
-            <Text style={styles.message}>
-              {candidate.name}: {session.preview.score.toFixed(1)}, rank #
-              {session.preview.rank} of {session.preview.ranked_count} ranked
-              items in {destinationRange}
-            </Text>
+          {preview ? (
+            previewContent
           ) : (
             <>
               <Text style={styles.message}>
@@ -220,12 +246,8 @@ export function RankingContent({
         </View>
       ) : isCancelled ? (
         <Text style={styles.message}>This ranking was cancelled.</Text>
-      ) : comparison && existingItem ? (
+      ) : isAsking && existingItem ? (
         <View style={styles.question}>
-          <Text style={styles.questionCount}>
-            Question {session.comparisons_answered + 1} · up to{' '}
-            {session.comparison_limit} questions
-          </Text>
           <Text style={styles.instruction}>Select the better item.</Text>
           <ComparisonChoice
             item={candidate}
@@ -279,40 +301,36 @@ export function RankingContent({
 }
 
 const styles = StyleSheet.create({
-  listTitle: {
-    ...AppTypography.bodyMedium,
-    color: AppColors.textSecondary,
-    textAlign: 'center',
-    marginBottom: AppSpacing.xs,
-  },
-  destination: {
-    ...AppTypography.labelMedium,
-    color: AppColors.accent.dark,
-    textAlign: 'center',
+  context: {
+    gap: AppSpacing.xs,
     marginBottom: AppSpacing.md,
   },
+  listTitle: {
+    ...AppTypography.bodySmall,
+    color: AppColors.textSecondary,
+  },
+  destination: {
+    ...AppTypography.bodySmall,
+    color: AppColors.accent.dark,
+  },
   question: {
-    gap: AppSpacing.md,
+    gap: 12,
   },
   questionCount: {
     ...AppTypography.bodySmall,
     color: AppColors.textSecondary,
-    textAlign: 'center',
   },
   instruction: {
-    ...AppTypography.labelLarge,
+    ...AppTypography.titleSmall,
     color: AppColors.secondary.emphasis,
-    textAlign: 'center',
   },
   choice: {
-    minHeight: 112,
-    justifyContent: 'center',
     borderWidth: 1,
     borderColor: AppColors.controlBorder,
     borderRadius: AppBorders.radiusMd,
     backgroundColor: AppColors.dominant.primary,
     padding: AppSpacing.md,
-    gap: AppSpacing.xs,
+    gap: 12,
   },
   choicePressed: {
     backgroundColor: AppColors.selectedSurface,
@@ -321,19 +339,20 @@ const styles = StyleSheet.create({
   choiceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: AppSpacing.md,
+    gap: 12,
   },
   image: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     borderRadius: AppBorders.radiusSm,
   },
   choiceCopy: {
     flex: 1,
     minWidth: 0,
+    gap: AppSpacing.xxs,
   },
   choiceName: {
-    ...AppTypography.labelLarge,
+    ...AppTypography.titleMedium,
     color: AppColors.secondary.emphasis,
   },
   choiceRole: {
@@ -349,11 +368,43 @@ const styles = StyleSheet.create({
     color: AppColors.textSecondary,
   },
   messageBlock: {
-    gap: AppSpacing.md,
+    gap: 12,
   },
   message: {
     ...AppTypography.bodyMedium,
     color: AppColors.secondary.primary,
-    textAlign: 'center',
+    textAlign: 'left',
+  },
+  preview: {
+    gap: AppSpacing.xs,
+  },
+  previewItem: {
+    ...AppTypography.titleSmall,
+    color: AppColors.secondary.emphasis,
+  },
+  previewStats: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: AppSpacing.lg,
+    marginTop: AppSpacing.xs,
+  },
+  previewStat: {
+    gap: AppSpacing.xxs,
+  },
+  previewScore: {
+    fontSize: 28,
+    lineHeight: 36,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+    color: AppColors.accent.dark,
+  },
+  previewRank: {
+    ...AppTypography.titleMedium,
+    fontVariant: ['tabular-nums'],
+    color: AppColors.secondary.emphasis,
+  },
+  previewLabel: {
+    ...AppTypography.bodySmall,
+    color: AppColors.textSecondary,
   },
 });

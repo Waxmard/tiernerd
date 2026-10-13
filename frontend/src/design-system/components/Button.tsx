@@ -21,6 +21,8 @@ interface ButtonProps {
   icon?: React.ReactNode;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  testID?: string;
+  accessibilityLabel?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -34,6 +36,8 @@ export const Button: React.FC<ButtonProps> = ({
   icon,
   style,
   textStyle,
+  testID,
+  accessibilityLabel,
 }) => {
   const isDisabled = disabled || loading;
   const buttonStyles = [
@@ -56,14 +60,14 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       aria-busy={loading}
+      testID={testID}
       style={buttonStyles}
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.8}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       delayPressIn={0}
       delayPressOut={0}
     >
@@ -118,7 +122,7 @@ const styles = StyleSheet.create({
   secondary: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: AppColors.accent.dark,
+    borderColor: AppColors.controlBorder,
   },
   textVariant: {
     backgroundColor: 'transparent',
@@ -126,17 +130,17 @@ const styles = StyleSheet.create({
   small: {
     paddingHorizontal: AppSpacing.md,
     paddingVertical: AppSpacing.sm,
-    minHeight: 36,
+    minHeight: 44,
   },
   medium: {
-    paddingHorizontal: AppSpacing.lg,
-    paddingVertical: AppSpacing.md,
-    minHeight: 48,
+    paddingHorizontal: AppSpacing.md,
+    paddingVertical: AppSpacing.sm,
+    minHeight: 44,
   },
   large: {
-    paddingHorizontal: AppSpacing.xl,
-    paddingVertical: AppSpacing.lg,
-    minHeight: 56,
+    paddingHorizontal: AppSpacing.md,
+    paddingVertical: 12,
+    minHeight: 48,
   },
   fullWidth: {
     width: '100%',
@@ -159,7 +163,7 @@ const styles = StyleSheet.create({
     color: AppColors.textOnPrimary,
   },
   secondaryText: {
-    color: AppColors.accent.dark,
+    color: AppColors.secondary.primary,
   },
   textText: {
     color: AppColors.accent.dark,

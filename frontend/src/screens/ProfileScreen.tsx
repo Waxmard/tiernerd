@@ -7,33 +7,24 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card } from '../design-system/components';
 import {
-  AppBorders,
   AppColors,
+  AppLayout,
   AppSpacing,
   AppTypography,
 } from '../design-system/tokens';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 
-const AppShadows = {
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-};
-
 type ProfileScreenProps = RootStackScreenProps<'Profile'>;
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
+  const { width } = useWindowDimensions();
 
   const handleSignOut = async () => {
     await signOut();
@@ -50,8 +41,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View>
-            {/* Header with back button */}
+          <View
+            style={[
+              styles.page,
+              {
+                paddingHorizontal:
+                  width >= AppLayout.desktopBreakpoint
+                    ? AppSpacing.lg
+                    : AppSpacing.md,
+              },
+            ]}
+          >
             <View style={styles.header}>
               <TouchableOpacity
                 accessibilityRole="button"
@@ -74,56 +74,66 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               <View style={styles.backButton} />
             </View>
 
-            {/* User Info Card */}
-            <Card style={styles.userCard}>
-              <View style={styles.userInfo}>
-                {user?.photoUrl ? (
-                  <Image
-                    source={{ uri: user.photoUrl }}
-                    style={styles.profileImage}
-                    accessibilityLabel={
-                      user?.displayName
-                        ? `${user.displayName} profile photo`
-                        : 'Profile photo'
-                    }
+            <View style={styles.identityRow}>
+              {user?.photoUrl ? (
+                <Image
+                  source={{ uri: user.photoUrl }}
+                  style={styles.profileImage}
+                  accessibilityLabel={
+                    user?.displayName
+                      ? `${user.displayName} profile photo`
+                      : 'Profile photo'
+                  }
+                />
+              ) : (
+                <View style={styles.profilePlaceholder}>
+                  <Ionicons
+                    name="person"
+                    size={28}
+                    color={AppColors.neutral[600]}
+                    accessible={false}
                   />
-                ) : (
-                  <View style={styles.profilePlaceholder}>
-                    <Ionicons
-                      name="person"
-                      size={40}
-                      color={AppColors.neutral[600]}
-                      accessible={false}
-                    />
-                  </View>
-                )}
+                </View>
+              )}
+              <View style={styles.identityText}>
                 <Text style={styles.userName}>
                   {user?.displayName || user?.email?.split('@')[0] || 'User'}
                 </Text>
+                <Text style={styles.identityCaption}>TierNerd account</Text>
+              </View>
+            </View>
+
+            <View style={styles.accountSection}>
+              <Text style={styles.sectionLabel}>Account</Text>
+              <View style={styles.accountRow}>
+                <Text style={styles.accountLabel}>Email address</Text>
                 <Text style={styles.userEmail}>
                   {user?.email || 'No email'}
                 </Text>
               </View>
-            </Card>
-
-            {/* Sign Out Button */}
-            <View style={styles.signOutSection}>
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel="Sign out"
-                style={styles.signOutButton}
-                onPress={handleSignOut}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name="log-out-outline"
-                  size={20}
-                  color="#DC2626"
-                  accessible={false}
-                />
-                <Text style={styles.signOutButtonText}>Sign Out</Text>
-              </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color={AppColors.secondary.primary}
+                accessible={false}
+              />
+              <Text style={styles.signOutButtonText}>Sign Out</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={AppColors.neutral[500]}
+                accessible={false}
+              />
+            </TouchableOpacity>
 
             <View style={styles.versionContainer}>
               <Text style={styles.versionText}>
@@ -150,10 +160,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     width: '100%',
-    maxWidth: 480,
+    flexGrow: 1,
+  },
+  page: {
+    width: '100%',
+    maxWidth: AppLayout.maxWidth,
     alignSelf: 'center',
-    paddingHorizontal: AppSpacing.lg,
-    paddingBottom: AppSpacing.xxxl,
+    flexGrow: 1,
+    paddingBottom: AppSpacing.xl,
   },
   header: {
     flexDirection: 'row',
@@ -173,71 +187,94 @@ const styles = StyleSheet.create({
     color: AppColors.secondary.emphasis,
     fontWeight: '600',
   },
-  userCard: {
-    backgroundColor: AppColors.dominant.primary,
-    borderRadius: AppBorders.radiusLg,
-    padding: AppSpacing.xl,
-    marginBottom: AppSpacing.xl,
-    ...AppShadows.md,
-  },
-  userInfo: {
+  identityRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: AppSpacing.md,
+    marginBottom: AppSpacing.xl,
+  },
+  identityText: {
+    flex: 1,
+    minWidth: 0,
   },
   profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: AppSpacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   profilePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: AppColors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: AppColors.neutral[300],
-    marginBottom: AppSpacing.md,
   },
   userName: {
-    ...AppTypography.headlineSmall,
+    ...AppTypography.titleMedium,
     color: AppColors.secondary.emphasis,
-    fontWeight: '600',
-    marginBottom: AppSpacing.xs,
+    flexShrink: 1,
+  },
+  identityCaption: {
+    ...AppTypography.bodySmall,
+    color: AppColors.textSecondary,
+    marginTop: AppSpacing.xs,
+  },
+  accountSection: {
+    marginBottom: AppSpacing.lg,
+  },
+  sectionLabel: {
+    ...AppTypography.labelMedium,
+    color: AppColors.textSecondary,
+    textTransform: 'uppercase',
+    marginBottom: AppSpacing.sm,
+  },
+  accountRow: {
+    backgroundColor: AppColors.dominant.primary,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: AppColors.neutral[200],
+    paddingVertical: AppSpacing.md,
+    gap: AppSpacing.xs,
+  },
+  accountLabel: {
+    ...AppTypography.labelMedium,
+    color: AppColors.secondary.primary,
   },
   userEmail: {
     ...AppTypography.bodyMedium,
     color: AppColors.textSecondary,
-  },
-  signOutSection: {
-    marginBottom: AppSpacing.xl,
+    flexShrink: 1,
   },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: AppColors.surface,
+    justifyContent: 'space-between',
+    minHeight: 48,
+    backgroundColor: AppColors.dominant.primary,
     borderWidth: 1,
-    borderColor: '#DC2626',
-    borderRadius: AppBorders.radiusMd,
+    borderColor: AppColors.neutral[200],
+    borderRadius: 8,
     paddingVertical: AppSpacing.md,
     paddingHorizontal: AppSpacing.lg,
   },
   signOutButtonText: {
     ...AppTypography.labelLarge,
-    color: '#DC2626',
+    color: AppColors.secondary.primary,
     fontWeight: '600',
-    marginLeft: AppSpacing.sm,
+    flex: 1,
+    marginLeft: AppSpacing.md,
   },
   versionContainer: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    marginTop: AppSpacing.md,
+    marginTop: 'auto',
+    paddingTop: AppSpacing.xl,
   },
   versionText: {
     ...AppTypography.labelSmall,
     color: AppColors.textSecondary,
-    fontSize: 12,
   },
 });

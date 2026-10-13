@@ -1,5 +1,5 @@
 import type React from 'react';
-import { forwardRef, useId, useState } from 'react';
+import { forwardRef, useId } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -36,25 +36,13 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
     containerStyle,
     inputStyle,
     onRightIconPress,
-    onFocus,
-    onBlur,
     ...textInputProps
   },
   ref
 ) {
-  const [isFocused, setIsFocused] = useState(false);
   const labelId = useId();
   const errorId = useId();
-
-  const handleFocus: NonNullable<TextInputProps['onFocus']> = (event) => {
-    setIsFocused(true);
-    onFocus?.(event);
-  };
-
-  const handleBlur: NonNullable<TextInputProps['onBlur']> = (event) => {
-    setIsFocused(false);
-    onBlur?.(event);
-  };
+  const containerId = `tiernerd-input-container-${useId()}`;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -64,11 +52,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         </Text>
       )}
       <View
-        style={[
-          styles.inputContainer,
-          Platform.OS !== 'web' && isFocused && styles.inputContainerFocused,
-          error && styles.inputContainerError,
-        ]}
+        nativeID={containerId}
+        style={[styles.inputContainer, error && styles.inputContainerError]}
         collapsable={false}
       >
         {leftIcon && (
@@ -107,8 +92,6 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
                   .join(' ') || undefined
               : undefined
           }
-          onFocus={handleFocus}
-          onBlur={handleBlur}
         />
         {rightIcon && onRightIconPress ? (
           <TouchableOpacity
@@ -116,7 +99,6 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
             accessibilityLabel={rightIconAccessibilityLabel}
             style={styles.rightIcon}
             onPress={onRightIconPress}
-            hitSlop={4}
           >
             <View accessible={false}>{rightIcon}</View>
           </TouchableOpacity>
@@ -157,11 +139,9 @@ const styles = StyleSheet.create({
     borderColor: AppColors.controlBorder,
     borderRadius: AppBorders.radiusMd,
     backgroundColor: AppColors.dominant.primary,
-    paddingHorizontal: AppSpacing.md,
-    paddingVertical: AppSpacing.md,
-  },
-  inputContainerFocused: {
-    borderColor: AppColors.accent.primary,
+    paddingHorizontal: AppSpacing.inputPadding.horizontal,
+    paddingVertical: AppSpacing.inputPadding.vertical,
+    minHeight: 48,
   },
   inputContainerError: {
     borderColor: AppColors.error,

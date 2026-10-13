@@ -1,13 +1,6 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { Button } from '../design-system/components';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import { BaseModalContent, Button } from '../design-system/components';
 import {
   AppBorders,
   AppColors,
@@ -26,6 +19,7 @@ export interface ItemDetailContentProps {
   isBusy: boolean;
   error: string | null;
   sessionError?: string | null;
+  presentation: 'modal' | 'panel';
   onRetrySession: () => void;
   onRank: () => void;
   onResume: () => void;
@@ -46,6 +40,7 @@ export function ItemDetailContent({
   isBusy,
   error,
   sessionError,
+  presentation,
   onRetrySession,
   onRank,
   onResume,
@@ -76,120 +71,117 @@ export function ItemDetailContent({
       ? 'Rank now'
       : 'Re-rank';
   const canRetryRefresh = refreshPending && onRetryRefresh !== undefined;
+  const deleteTitle = canRetryRefresh ? 'Retry refresh' : 'Delete Item';
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <Text accessibilityRole="header" style={styles.name}>
-        {item.name}
-      </Text>
-      {item.rating === null ? (
-        <Text style={styles.score}>Not ranked yet</Text>
-      ) : (
-        <View style={styles.rankingSummary}>
-          <Text style={styles.score}>{item.rating.toFixed(1)}</Text>
-          {rank !== null ? (
-            <Text style={styles.rank}>
-              Rank #{rank} of {rankedCount}
-            </Text>
-          ) : null}
-        </View>
-      )}
-      <Text style={styles.range}>{rangeLabel}</Text>
-      {item.description ? (
-        <Text style={styles.description}>{item.description}</Text>
-      ) : null}
-      {item.image_url ? (
-        imageFailed ? (
-          <Text style={styles.imageUnavailable}>Image unavailable</Text>
-        ) : (
-          <Image
-            source={{ uri: item.image_url }}
-            accessibilityLabel={item.name}
-            onError={() => setFailedImageUrl(item.image_url)}
-            resizeMode="cover"
-            style={styles.image}
-          />
-        )
-      ) : null}
-
-      {isLoadingSession ? (
-        <View style={styles.sessionStatus}>
-          <ActivityIndicator color={AppColors.accent.dark} />
-          <Text style={styles.secondaryText}>Checking ranking status</Text>
-        </View>
-      ) : sessionError ? (
-        <View style={styles.sessionStatus}>
-          <Text accessibilityRole="alert" style={styles.error}>
-            {sessionError}
-          </Text>
+    <BaseModalContent
+      title={item.name}
+      error={error}
+      presentation={presentation}
+      onClose={onClose}
+      footer={
+        <View style={styles.footerActions}>
           <Button
-            title="Retry"
-            variant="secondary"
-            onPress={onRetrySession}
-            disabled={isBusy}
+            title={rankTitle}
+            onPress={liveSession ? onResume : onRank}
+            disabled={actionsBlocked}
+            fullWidth
+          />
+          <View style={styles.secondaryActions}>
+            <Button
+              title="Edit"
+              variant="secondary"
+              onPress={onEdit}
+              disabled={isBusy || refreshPending}
+              style={styles.secondaryAction}
+            />
+            <Button
+              title={deleteTitle}
+              variant={canRetryRefresh ? 'secondary' : 'text'}
+              onPress={canRetryRefresh ? onRetryRefresh : onDelete}
+              disabled={
+                isBusy ||
+                isLoadingSession ||
+                Boolean(sessionError) ||
+                (refreshPending && !onRetryRefresh)
+              }
+              textStyle={canRetryRefresh ? undefined : styles.deleteText}
+              style={styles.secondaryAction}
+            />
+          </View>
+          <Button
+            title="Close details"
+            variant="text"
+            onPress={onClose}
+            disabled={isBusy || refreshPending}
             fullWidth
           />
         </View>
-      ) : null}
-
-      {error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
+      }
+    >
+      <View style={styles.content}>
+        {item.rating === null ? (
+          <Text style={styles.score}>Not ranked yet</Text>
+        ) : (
+          <View style={styles.rankingSummary}>
+            <Text style={styles.score}>{item.rating.toFixed(1)}</Text>
+            {rank !== null ? (
+              <Text style={styles.rank}>
+                Rank #{rank} of {rankedCount}
+              </Text>
+            ) : null}
+          </View>
+        )}
+        <Text style={styles.range}>{rangeLabel}</Text>
+        <Text style={styles.scoreExplanation}>
+          Scores reflect position within each range. Adding, removing or
+          re-ranking items can change scores.
         </Text>
-      ) : null}
+        {item.description ? (
+          <Text style={styles.description}>{item.description}</Text>
+        ) : null}
+        {item.image_url ? (
+          imageFailed ? (
+            <Text style={styles.imageUnavailable}>Image unavailable</Text>
+          ) : (
+            <Image
+              source={{ uri: item.image_url }}
+              accessibilityLabel={item.name}
+              onError={() => setFailedImageUrl(item.image_url)}
+              resizeMode="cover"
+              style={styles.image}
+            />
+          )
+        ) : null}
 
-      <View style={styles.actions}>
-        <Button
-          title={rankTitle}
-          onPress={liveSession ? onResume : onRank}
-          disabled={actionsBlocked}
-          fullWidth
-        />
-        <Button
-          title="Edit"
-          variant="secondary"
-          onPress={onEdit}
-          disabled={isBusy || refreshPending}
-          fullWidth
-        />
+        {isLoadingSession ? (
+          <View style={styles.sessionStatus}>
+            <ActivityIndicator color={AppColors.accent.dark} />
+            <Text style={styles.secondaryText}>Checking ranking status</Text>
+          </View>
+        ) : sessionError ? (
+          <View style={styles.sessionStatus}>
+            <Text accessibilityRole="alert" style={styles.error}>
+              {sessionError}
+            </Text>
+            <Button
+              title="Retry"
+              variant="secondary"
+              onPress={onRetrySession}
+              disabled={isBusy}
+              fullWidth
+            />
+          </View>
+        ) : null}
       </View>
-      <View style={styles.deleteSection}>
-        <Button
-          title={canRetryRefresh ? 'Retry refresh' : 'Delete Item'}
-          variant="text"
-          onPress={canRetryRefresh ? onRetryRefresh : onDelete}
-          disabled={
-            isBusy ||
-            isLoadingSession ||
-            Boolean(sessionError) ||
-            (refreshPending && !onRetryRefresh)
-          }
-          textStyle={canRetryRefresh ? undefined : styles.deleteText}
-          fullWidth
-        />
-      </View>
-      <Button
-        title="Close details"
-        variant="text"
-        onPress={onClose}
-        disabled={isBusy || refreshPending}
-        fullWidth
-      />
-    </ScrollView>
+    </BaseModalContent>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-  },
   content: {
     gap: AppSpacing.md,
     paddingBottom: AppSpacing.md,
-  },
-  name: {
-    ...AppTypography.headlineSmall,
-    color: AppColors.secondary.emphasis,
   },
   rankingSummary: {
     flexDirection: 'row',
@@ -198,8 +190,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   score: {
-    ...AppTypography.headlineMedium,
+    ...AppTypography.titleMedium,
     color: AppColors.accent.dark,
+    fontSize: 20,
+    lineHeight: 24,
     fontVariant: ['tabular-nums'],
   },
   rank: {
@@ -210,8 +204,12 @@ const styles = StyleSheet.create({
     ...AppTypography.labelMedium,
     color: AppColors.textSecondary,
   },
+  scoreExplanation: {
+    ...AppTypography.bodySmall,
+    color: AppColors.secondary.muted,
+  },
   description: {
-    ...AppTypography.bodyMedium,
+    ...AppTypography.bodyLarge,
     color: AppColors.secondary.primary,
   },
   image: {
@@ -236,14 +234,17 @@ const styles = StyleSheet.create({
     ...AppTypography.bodySmall,
     color: AppColors.error,
   },
-  actions: {
+  footerActions: {
     gap: AppSpacing.sm,
   },
-  deleteSection: {
-    borderTopWidth: 1,
-    borderTopColor: AppColors.controlBorder,
-    marginTop: AppSpacing.xl,
-    paddingTop: AppSpacing.md,
+  secondaryActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: AppSpacing.sm,
+  },
+  secondaryAction: {
+    flex: 1,
+    minWidth: 120,
   },
   deleteText: {
     color: AppColors.error,
