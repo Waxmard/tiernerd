@@ -47,6 +47,7 @@ def build_list_response(
         "user_id": list_obj.user_id,
         "title": list_obj.title,
         "description": list_obj.description,
+        "color": list_obj.color,
         "created_at": list_obj.created_at,
         "updated_at": list_obj.updated_at,
     }
@@ -72,6 +73,7 @@ def build_list_simple_response(row: tuple[Any, ...]) -> dict[str, Any]:
         "user_id": list_obj.user_id,
         "title": list_obj.title,
         "description": list_obj.description,
+        "color": list_obj.color,
         "created_at": list_obj.created_at,
         "updated_at": list_obj.updated_at,
         "item_count": item_count,

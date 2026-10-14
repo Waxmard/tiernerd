@@ -82,6 +82,7 @@ class TestBuildListResponse:
             user_id = uuid.uuid4()
             title = "Test List"
             description = "Test description"
+            color = None
             created_at = datetime.now()
             updated_at = datetime.now()
 
@@ -98,6 +99,7 @@ class TestBuildListResponse:
             user_id = uuid.uuid4()
             title = "Test List"
             description = "Test description"
+            color = None
             created_at = datetime.now()
             updated_at = datetime.now()
 
@@ -115,6 +117,7 @@ class TestBuildListResponse:
             user_id = uuid.uuid4()
             title = "Test List"
             description = "Test description"
+            color = None
             created_at = datetime.now()
             updated_at = datetime.now()
 
@@ -134,6 +137,7 @@ class TestBuildListSimpleResponse:
             user_id = uuid.uuid4()
             title = "Test List"
             description = "Test description"
+            color = None
             created_at = datetime.now()
             updated_at = datetime.now()
 
@@ -152,6 +156,7 @@ class TestBuildListSimpleResponse:
             user_id = uuid.uuid4()
             title = "Test List"
             description = "Test description"
+            color = None
             created_at = datetime.now()
             updated_at = datetime.now()
 

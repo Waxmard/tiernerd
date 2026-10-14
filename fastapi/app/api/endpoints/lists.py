@@ -1,6 +1,6 @@
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,6 +42,7 @@ async def read_lists(
 async def create_list(
     name: str,
     description: str,
+    color: Literal["blue", "teal", "amber", "pink"] | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -61,6 +62,7 @@ async def create_list(
         title=name,
         user_id=current_user.user_id,
         description=description,
+        color=color,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )

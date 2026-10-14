@@ -7,6 +7,7 @@ const listSimple: ListSimple = {
   list_id: 'list-1',
   title: 'Cache proof',
   description: null,
+  color: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
   item_count: 2,
@@ -40,4 +41,19 @@ test('round-trips a stored payload', () => {
   assert.deepEqual(parseCachedLists(JSON.stringify([listSimple])), [
     listSimple,
   ]);
+});
+
+test('drops payloads whose color is missing or not a known swatch', () => {
+  const { color, ...withoutColor } = listSimple;
+  assert.equal(color, null);
+
+  assert.equal(parseCachedLists(JSON.stringify([withoutColor])), null);
+  assert.equal(
+    parseCachedLists(JSON.stringify([{ ...listSimple, color: 'chartreuse' }])),
+    null
+  );
+  assert.deepEqual(
+    parseCachedLists(JSON.stringify([{ ...listSimple, color: 'teal' }])),
+    [{ ...listSimple, color: 'teal' }]
+  );
 });

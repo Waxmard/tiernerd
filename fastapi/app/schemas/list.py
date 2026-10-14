@@ -10,13 +10,7 @@ class ListBase(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
-
-
-# Properties to receive via API on creation
-class ListCreate(ListBase):
-    """Schema for list creation."""
-
-    pass
+    color: str | None = None
 
 
 # Properties to receive via API on update

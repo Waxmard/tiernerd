@@ -1,15 +1,9 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import type React from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { AppColors, AppSpacing, AppTypography } from '../design-system/tokens';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { useAuth } from '../providers/AuthContext';
+import { useThemeColors } from '../providers/ThemeProvider';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ListDetailScreen } from '../screens/ListDetailScreen';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -21,12 +15,16 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
   const { user, isRestoring } = useAuth();
+  const colors = useThemeColors();
 
   if (isRestoring) {
     return (
-      <View style={styles.splash}>
-        <ActivityIndicator size="large" color={AppColors.accent.primary} />
-        <Text accessibilityLiveRegion="polite" style={styles.splashText}>
+      <View className="flex-1 items-center justify-center bg-surface dark:bg-surface-dark">
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-4"
+        >
           Loading your session…
         </Text>
       </View>
@@ -57,17 +55,3 @@ export const AppNavigator: React.FC = () => {
     </NavigationContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  splash: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: AppColors.dominant.primary,
-  },
-  splashText: {
-    ...AppTypography.bodyMedium,
-    color: AppColors.secondary.muted,
-    marginTop: AppSpacing.md,
-  },
-});

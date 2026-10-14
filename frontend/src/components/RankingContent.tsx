@@ -1,12 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
-import {
-  AppBorders,
-  AppColors,
-  AppSpacing,
-  AppTypography,
-} from '../design-system/tokens';
+import { useThemeColors } from '../providers/ThemeProvider';
 import type {
   ComparisonSession,
   Item,
@@ -39,6 +34,13 @@ interface ComparisonChoiceProps {
 
 const REFRESH_ERROR = 'Unable to refresh items. Try again.';
 
+const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
+
+const choiceTextClass = (isBusy: boolean): string =>
+  isBusy
+    ? 'text-ink-disabled dark:text-ink-disabled-dark'
+    : 'text-ink dark:text-ink-dark';
+
 function getRangeLabel(tierSet: TierSet | null): string {
   return (
     RANGE_OPTIONS.find((option) => option.value === tierSet)?.label ??
@@ -63,6 +65,7 @@ function ComparisonChoice({
   isBusy,
   onPress,
 }: ComparisonChoiceProps) {
+  const colors = useThemeColors();
   return (
     <Pressable
       accessibilityRole="button"
@@ -71,28 +74,36 @@ function ComparisonChoice({
       accessibilityState={{ disabled: isBusy }}
       disabled={isBusy}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.choice,
-        pressed && !isBusy && styles.choicePressed,
-        isBusy && styles.choiceDisabled,
-      ]}
+      className={[
+        'min-h-[152px] border rounded-2xl p-6 gap-4',
+        isBusy
+          ? 'bg-surface-muted dark:bg-surface-muted-dark border-control dark:border-control-dark'
+          : 'bg-accent-tint dark:bg-accent-tint-dark border-line dark:border-line-dark',
+      ].join(' ')}
+      style={({ pressed }) =>
+        pressed && !isBusy
+          ? { transform: [{ scale: 0.96 }], borderColor: colors.accent }
+          : undefined
+      }
     >
-      <View style={styles.choiceHeader}>
+      <View className="flex-row items-center gap-4">
         {item.image_url ? (
           <Image
             source={{ uri: item.image_url }}
             accessibilityLabel={item.name}
-            style={styles.image}
+            className="w-16 h-16 rounded"
           />
         ) : null}
-        <View style={styles.choiceCopy}>
+        <View className="flex-1 min-w-0 gap-0.5">
           <Text
-            style={[styles.choiceName, isBusy && styles.choiceDisabledText]}
+            className={['text-headline-small', choiceTextClass(isBusy)].join(
+              ' '
+            )}
           >
             {item.name}
           </Text>
           <Text
-            style={[styles.choiceRole, isBusy && styles.choiceDisabledText]}
+            className={['text-body-small', choiceTextClass(isBusy)].join(' ')}
           >
             {label}
           </Text>
@@ -100,19 +111,19 @@ function ComparisonChoice({
         <Ionicons
           name="trophy-outline"
           size={28}
-          color={isBusy ? AppColors.disabledText : AppColors.accent.dark}
+          color={isBusy ? colors['ink-disabled'] : colors['accent-text']}
           accessible={false}
         />
       </View>
       {item.description ? (
         <Text
-          style={[styles.description, isBusy && styles.choiceDisabledText]}
           numberOfLines={2}
+          className={['text-body-small', choiceTextClass(isBusy)].join(' ')}
         >
           {item.description}
         </Text>
       ) : null}
-      <Text style={[styles.scoreLabel, isBusy && styles.choiceDisabledText]}>
+      <Text className={['text-body-small', choiceTextClass(isBusy)].join(' ')}>
         {scoreLabel}
       </Text>
     </Pressable>
@@ -169,16 +180,30 @@ export function RankingContent({
         : 'Cancel ranking';
   const preview = session.preview;
   const previewContent = preview ? (
-    <View style={styles.preview}>
-      <Text style={styles.previewItem}>{candidate.name}</Text>
-      <View style={styles.previewStats}>
-        <View style={styles.previewStat}>
-          <Text style={styles.previewScore}>{preview.score.toFixed(1)}</Text>
-          <Text style={styles.previewLabel}>Score</Text>
+    <View className="gap-1">
+      <Text className="text-title-small text-ink dark:text-ink-dark">
+        {candidate.name}
+      </Text>
+      <View className="flex-row items-start gap-6 mt-1">
+        <View className="gap-0.5">
+          <Text
+            style={TABULAR_NUMS}
+            className="text-[28px] leading-9 font-semibold text-accent-text dark:text-accent-text-dark"
+          >
+            {preview.score.toFixed(1)}
+          </Text>
+          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            Score
+          </Text>
         </View>
-        <View style={styles.previewStat}>
-          <Text style={styles.previewRank}>#{preview.rank}</Text>
-          <Text style={styles.previewLabel}>
+        <View className="gap-0.5">
+          <Text
+            style={TABULAR_NUMS}
+            className="text-title-medium text-ink dark:text-ink-dark"
+          >
+            #{preview.rank}
+          </Text>
+          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
             of {preview.ranked_count} ranked items
           </Text>
         </View>
@@ -197,26 +222,32 @@ export function RankingContent({
       onSubmit={canCommit ? onCommit : undefined}
       submitText="Save ranking"
     >
-      <View style={styles.context}>
-        <Text style={styles.listTitle}>{listTitle}</Text>
-        <View style={styles.destination}>
-          <Text style={styles.destinationLabel}>Ranking into</Text>
+      <View className="gap-2 mb-4">
+        <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+          {listTitle}
+        </Text>
+        <View className="flex-row flex-wrap items-center gap-2">
+          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            Ranking into
+          </Text>
           {destinationOption ? (
             <RangeBadge tierSet={session.tier_set} />
           ) : (
-            <Text style={styles.destinationLabel}>Range not selected</Text>
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+              Range not selected
+            </Text>
           )}
         </View>
         {isAsking ? (
-          <Text style={styles.questionCount}>
+          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
             Question {session.comparisons_answered + 1} · up to{' '}
             {session.comparison_limit} questions
           </Text>
         ) : null}
       </View>
       {isStale ? (
-        <View style={styles.messageBlock}>
-          <Text style={styles.message}>
+        <View className="gap-4">
+          <Text className="text-body-medium text-ink dark:text-ink-dark text-left">
             The list changed. Restart ranking to continue.
           </Text>
           <Button
@@ -224,16 +255,16 @@ export function RankingContent({
             onPress={onRestart}
             disabled={isBusy}
             fullWidth
-            style={styles.recoveryAction}
+            className="mt-2"
           />
         </View>
       ) : isCompleted ? (
-        <View style={styles.messageBlock}>
+        <View className="gap-4">
           {preview ? (
             previewContent
           ) : (
             <>
-              <Text style={styles.message}>
+              <Text className="text-body-medium text-ink dark:text-ink-dark text-left">
                 The saved rank is unavailable. Reload ranking status.
               </Text>
               <Button
@@ -242,18 +273,18 @@ export function RankingContent({
                 onPress={onReload}
                 disabled={isBusy}
                 fullWidth
-                style={styles.recoveryAction}
+                className="mt-2"
               />
             </>
           )}
         </View>
       ) : isReady ? (
-        <View style={styles.messageBlock}>
+        <View className="gap-4">
           {preview ? (
             previewContent
           ) : (
             <>
-              <Text style={styles.message}>
+              <Text className="text-body-medium text-ink dark:text-ink-dark text-left">
                 Unable to load the ranking preview. Reload ranking status before
                 saving.
               </Text>
@@ -263,7 +294,7 @@ export function RankingContent({
                 onPress={onReload}
                 disabled={isBusy}
                 fullWidth
-                style={styles.recoveryAction}
+                className="mt-2"
               />
             </>
           )}
@@ -274,15 +305,19 @@ export function RankingContent({
               onPress={onUndo}
               disabled={isBusy}
               fullWidth
-              style={styles.recoveryAction}
+              className="mt-2"
             />
           ) : null}
         </View>
       ) : isCancelled ? (
-        <Text style={styles.message}>This ranking was cancelled.</Text>
+        <Text className="text-body-medium text-ink dark:text-ink-dark text-left">
+          This ranking was cancelled.
+        </Text>
       ) : isAsking && existingItem ? (
-        <View style={styles.question}>
-          <Text style={styles.instruction}>Select the better item.</Text>
+        <View className="gap-4">
+          <Text className="text-title-small text-ink dark:text-ink-dark">
+            Select the better item.
+          </Text>
           <ComparisonChoice
             item={candidate}
             label="Item being ranked"
@@ -304,13 +339,13 @@ export function RankingContent({
               onPress={onUndo}
               disabled={isBusy}
               fullWidth
-              style={styles.recoveryAction}
+              className="mt-2"
             />
           ) : null}
         </View>
       ) : (
-        <View style={styles.messageBlock}>
-          <Text style={styles.message}>
+        <View className="gap-4">
+          <Text className="text-body-medium text-ink dark:text-ink-dark text-left">
             Unable to load the current question. Reload ranking status before
             continuing.
           </Text>
@@ -320,7 +355,7 @@ export function RankingContent({
             onPress={onReload}
             disabled={isBusy}
             fullWidth
-            style={styles.recoveryAction}
+            className="mt-2"
           />
         </View>
       )}
@@ -330,138 +365,9 @@ export function RankingContent({
           onPress={onRetryRefresh}
           disabled={isBusy}
           fullWidth
-          style={styles.recoveryActionStandalone}
+          className="mt-6"
         />
       ) : null}
     </BaseModalContent>
   );
 }
-
-const styles = StyleSheet.create({
-  context: {
-    gap: AppSpacing.sm,
-    marginBottom: AppSpacing.md,
-  },
-  listTitle: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
-  },
-  destination: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: AppSpacing.sm,
-  },
-  destinationLabel: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
-  },
-  question: {
-    gap: AppSpacing.md,
-  },
-  questionCount: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
-  },
-  instruction: {
-    ...AppTypography.titleSmall,
-    color: AppColors.secondary.emphasis,
-  },
-  choice: {
-    minHeight: 152,
-    borderWidth: AppBorders.widthThin,
-    borderColor: AppColors.neutral[200],
-    borderRadius: AppBorders.radiusXl,
-    backgroundColor: AppColors.selectedSurface,
-    padding: AppSpacing.lg,
-    gap: AppSpacing.md,
-  },
-  choicePressed: {
-    borderColor: AppColors.accent.dark,
-    transform: [{ scale: 0.96 }],
-  },
-  choiceDisabled: {
-    backgroundColor: AppColors.disabledSurface,
-    borderColor: AppColors.controlBorder,
-  },
-  choiceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: AppSpacing.md,
-  },
-  image: {
-    width: 64,
-    height: 64,
-    borderRadius: AppBorders.radiusSm,
-  },
-  choiceCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: AppSpacing.xxs,
-  },
-  choiceName: {
-    ...AppTypography.headlineSmall,
-    color: AppColors.secondary.emphasis,
-  },
-  choiceRole: {
-    ...AppTypography.bodySmall,
-    color: AppColors.secondary.primary,
-  },
-  description: {
-    ...AppTypography.bodySmall,
-    color: AppColors.secondary.primary,
-  },
-  scoreLabel: {
-    ...AppTypography.bodySmall,
-    color: AppColors.secondary.primary,
-  },
-  choiceDisabledText: {
-    color: AppColors.disabledText,
-  },
-  recoveryAction: {
-    marginTop: AppSpacing.sm,
-  },
-  recoveryActionStandalone: {
-    marginTop: AppSpacing.lg,
-  },
-  messageBlock: {
-    gap: AppSpacing.md,
-  },
-  message: {
-    ...AppTypography.bodyMedium,
-    color: AppColors.secondary.primary,
-    textAlign: 'left',
-  },
-  preview: {
-    gap: AppSpacing.xs,
-  },
-  previewItem: {
-    ...AppTypography.titleSmall,
-    color: AppColors.secondary.emphasis,
-  },
-  previewStats: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: AppSpacing.lg,
-    marginTop: AppSpacing.xs,
-  },
-  previewStat: {
-    gap: AppSpacing.xxs,
-  },
-  previewScore: {
-    fontSize: 28,
-    lineHeight: 36,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-    color: AppColors.accent.dark,
-  },
-  previewRank: {
-    ...AppTypography.titleMedium,
-    fontVariant: ['tabular-nums'],
-    color: AppColors.secondary.emphasis,
-  },
-  previewLabel: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
-  },
-});

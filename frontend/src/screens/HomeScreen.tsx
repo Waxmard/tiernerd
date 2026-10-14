@@ -9,10 +9,8 @@ import {
   Image,
   type ListRenderItemInfo,
   Modal,
-  StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import {
@@ -28,15 +26,10 @@ import {
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button } from '../design-system/components';
-import {
-  AppBorders,
-  AppColors,
-  AppLayout,
-  AppSpacing,
-  AppTypography,
-} from '../design-system/tokens';
+import { type ListColor, palette } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
+import { useTheme, useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import { listsCacheKey, parseCachedLists } from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
@@ -46,25 +39,30 @@ interface TierList {
   id: string;
   title: string;
   description: string | null;
+  color: ListColor | null;
   itemCount: number;
   updatedAt: Date;
 }
 type HomeScreenProps = RootStackScreenProps<'Main'>;
+const CHIP_CLASS: Record<ListColor, string> = {
+  blue: 'bg-list-blue-tint dark:bg-list-blue-tint-dark',
+  teal: 'bg-list-teal-tint dark:bg-list-teal-tint-dark',
+  amber: 'bg-list-amber-tint dark:bg-list-amber-tint-dark',
+  pink: 'bg-list-pink-tint dark:bg-list-pink-tint-dark',
+};
 const toTierList = (list: ListSimple): TierList => ({
   id: list.list_id,
   title: list.title,
   description: list.description,
+  color: list.color,
   itemCount: list.item_count,
   updatedAt: new Date(list.updated_at),
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
-  const { width: windowWidth } = useWindowDimensions();
+  const { scheme } = useTheme();
+  const colors = useThemeColors();
   const safeAreaInsets = useSafeAreaInsets();
-  const gutter =
-    windowWidth >= AppLayout.desktopBreakpoint
-      ? AppSpacing.lg
-      : AppLayout.gutter;
   const [lists, setLists] = useState<TierList[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -207,91 +205,116 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     if (age < 7) return `${age} days ago`;
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   };
-  const renderRow = ({ item }: ListRenderItemInfo<TierList>) => (
-    <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityLabel={
-        item.description?.trim()
-          ? `${item.title}, ${item.itemCount} items. ${item.description}`
-          : `${item.title}, ${item.itemCount} items`
-      }
-      accessibilityHint="Open tier list"
-      onPress={() =>
-        navigation.navigate('ListDetail', {
-          listId: item.id,
-          listTitle: item.title,
-        })
-      }
-      activeOpacity={0.7}
-      style={styles.row}
-    >
-      <View style={styles.rowCover}>
-        <Ionicons
-          name="layers-outline"
-          size={20}
-          color={AppColors.accent.dark}
-          accessible={false}
-        />
-      </View>
-      <View style={styles.rowText}>
-        <Text style={styles.title} numberOfLines={2}>
-          {item.title}
-        </Text>
-        {item.description?.trim() ? (
-          <Text style={styles.description} numberOfLines={1}>
-            {item.description}
-          </Text>
-        ) : null}
-        <View style={styles.metadataRow}>
-          <Text style={styles.itemCount}>{item.itemCount} items</Text>
-          <Text style={styles.updatedAt}>
-            Modified {formatDate(item.updatedAt)}
-          </Text>
+  const renderRow = ({ item }: ListRenderItemInfo<TierList>) => {
+    const chipIconColor = item.color
+      ? palette.list[item.color][scheme]['on-tint']
+      : colors['accent-text'];
+    return (
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={
+          item.description?.trim()
+            ? `${item.title}, ${item.itemCount} items. ${item.description}`
+            : `${item.title}, ${item.itemCount} items`
+        }
+        accessibilityHint="Open tier list"
+        onPress={() =>
+          navigation.navigate('ListDetail', {
+            listId: item.id,
+            listTitle: item.title,
+          })
+        }
+        activeOpacity={0.7}
+        className="flex-row items-center gap-2 p-4 mb-3 bg-surface dark:bg-surface-dark rounded-xl"
+      >
+        <View
+          className={[
+            'w-10 h-10 items-center justify-center rounded-lg',
+            item.color
+              ? CHIP_CLASS[item.color]
+              : 'bg-accent-tint dark:bg-accent-tint-dark',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <Ionicons
+            name="layers-outline"
+            size={20}
+            color={chipIconColor}
+            accessible={false}
+          />
         </View>
-      </View>
-      <Ionicons
-        name="chevron-forward"
-        size={20}
-        color={AppColors.textSecondary}
-      />
-    </TouchableOpacity>
-  );
+        <View className="flex-1 min-w-0 gap-2">
+          <Text
+            className="text-body-large font-semibold text-ink dark:text-ink-dark"
+            numberOfLines={2}
+          >
+            {item.title}
+          </Text>
+          {item.description?.trim() ? (
+            <Text
+              className="text-body-small text-ink-muted dark:text-ink-muted-dark"
+              numberOfLines={1}
+            >
+              {item.description}
+            </Text>
+          ) : null}
+          <View className="flex-row flex-wrap items-center gap-2">
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+              {item.itemCount} items
+            </Text>
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+              Modified {formatDate(item.updatedAt)}
+            </Text>
+          </View>
+        </View>
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={colors['ink-muted']}
+        />
+      </TouchableOpacity>
+    );
+  };
   const content =
     !token || isLoading ? (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={AppColors.accent.primary} />
+      <View className="flex-1 items-center justify-center px-6">
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     ) : error && !lists.length ? (
-      <View style={styles.center}>
+      <View className="flex-1 items-center justify-center px-6">
         <Ionicons
           name="alert-circle-outline"
           size={48}
-          color={AppColors.textSecondary}
+          color={colors['ink-muted']}
         />
-        <Text style={styles.errorTitle}>Something went wrong</Text>
-        <Text style={styles.errorText}>{error}</Text>
+        <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark mt-4 mb-1">
+          Something went wrong
+        </Text>
+        <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark text-center mb-6">
+          {error}
+        </Text>
         <Button title="Try again" onPress={() => void fetchLists()} />
       </View>
     ) : (
       <FlatList
-        style={styles.list}
+        className="flex-1 min-h-0"
         data={lists}
         renderItem={renderRow}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: AppSpacing.md + safeAreaInsets.bottom },
-        ]}
+        contentContainerStyle={{ paddingBottom: 16 + safeAreaInsets.bottom }}
         ListEmptyComponent={
-          <View style={styles.empty}>
+          <View className="items-start pt-0.5">
             <Image
               source={require('../../assets/logo-transparent.png')}
-              style={styles.logo}
+              className="w-14 h-14 mb-2"
               accessible={false}
             />
-            <Text style={styles.emptyTitle}>Your lists start here</Text>
-            <Text style={styles.emptyText}>
+            <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark mb-1">
+              Your lists start here
+            </Text>
+            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
               Create a list to start ranking what you love.
             </Text>
           </View>
@@ -299,27 +322,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       />
     );
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.shell}>
-          <View style={[styles.shellContent, { marginHorizontal: gutter }]}>
-            <View
-              style={[
-                styles.header,
-                windowWidth < AppLayout.desktopBreakpoint &&
-                  styles.mobileHeader,
-              ]}
-            >
-              <View style={styles.brandLockup}>
+    <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
+      <SafeAreaView className="min-h-0 flex-1" edges={['top']}>
+        <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
+          <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
+            <View className="pt-8 desktop:pt-4 pb-4 flex-row flex-wrap justify-between items-center shrink-0 bg-canvas dark:bg-canvas-dark">
+              <View className="flex-row items-center gap-1">
                 <Ionicons
                   name="layers-outline"
                   size={20}
-                  color={AppColors.accent.dark}
+                  color={colors['accent-text']}
                   accessible={false}
                 />
-                <Text style={styles.brand}>TierNerd</Text>
+                <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark">
+                  TierNerd
+                </Text>
               </View>
-              <View style={styles.headerActions}>
+              <View className="flex-row flex-wrap items-center gap-2">
                 <Button
                   title="New list"
                   onPress={() => setModalStep('create')}
@@ -328,7 +347,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                     <Ionicons
                       name="add-circle-outline"
                       size={20}
-                      color={AppColors.textOnPrimary}
+                      color={colors['on-accent']}
                       accessible={false}
                     />
                   }
@@ -337,7 +356,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 />
                 <TouchableOpacity
                   onPress={() => navigation.navigate('Profile')}
-                  style={styles.profile}
+                  className="w-11 h-11 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
                   activeOpacity={0.7}
                   accessibilityRole="button"
                   accessibilityLabel="Open profile"
@@ -345,22 +364,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   {user?.photoUrl ? (
                     <Image
                       source={{ uri: user.photoUrl }}
-                      style={styles.profileImage}
+                      className="w-full h-full"
                       accessible={false}
                     />
                   ) : (
-                    <View style={styles.profilePlaceholder}>
+                    <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
                       <Ionicons
                         name="person"
                         size={20}
-                        color={AppColors.accent.primary}
+                        color={colors['accent-text']}
                       />
                     </View>
                   )}
                 </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.readingRegion}>{content}</View>
+            <View className="w-full max-w-[800px] self-center flex-1 min-h-0">
+              {content}
+            </View>
           </View>
         </View>
         <Modal
@@ -424,141 +445,3 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     </View>
   );
 };
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    minHeight: 0,
-    backgroundColor: AppColors.dominant.secondary,
-  },
-  safeArea: { minHeight: 0, flex: 1 },
-  shell: {
-    width: '100%',
-    maxWidth: AppLayout.maxWidth,
-    alignSelf: 'center',
-    flex: 1,
-    minHeight: 0,
-  },
-  shellContent: { flex: 1, minHeight: 0 },
-  header: {
-    paddingTop: AppSpacing.md,
-    paddingBottom: AppSpacing.md,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexShrink: 0,
-    backgroundColor: AppColors.dominant.secondary,
-  },
-  mobileHeader: { paddingTop: AppSpacing.xl },
-  brandLockup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: AppSpacing.xs,
-  },
-  brand: {
-    ...AppTypography.headlineSmall,
-    color: AppColors.secondary.emphasis,
-    fontWeight: '600',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: AppSpacing.sm,
-  },
-  profile: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-    backgroundColor: AppColors.surface,
-    borderWidth: 1,
-    borderColor: AppColors.accent.light,
-  },
-  profileImage: { width: '100%', height: '100%' },
-  profilePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: AppColors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  readingRegion: {
-    width: '100%',
-    maxWidth: 800,
-    alignSelf: 'center',
-    flex: 1,
-    minHeight: 0,
-  },
-  list: { flex: 1, minHeight: 0 },
-  listContent: { paddingBottom: AppSpacing.md },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: AppSpacing.sm,
-    padding: AppSpacing.md,
-    marginBottom: 12,
-    backgroundColor: AppColors.dominant.primary,
-    borderRadius: AppBorders.radiusLg,
-  },
-  rowCover: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: AppBorders.radiusMd,
-    backgroundColor: AppColors.selectedSurface,
-  },
-  rowText: { flex: 1, minWidth: 0, gap: AppSpacing.sm },
-  metadataRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: AppSpacing.sm,
-  },
-  title: {
-    ...AppTypography.bodyLarge,
-    color: AppColors.secondary.emphasis,
-    fontWeight: '600',
-  },
-  description: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
-  },
-  itemCount: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
-  },
-  updatedAt: {
-    ...AppTypography.bodySmall,
-    color: AppColors.secondary.muted,
-  },
-  empty: { alignItems: 'flex-start', paddingTop: AppSpacing.xs },
-  logo: { width: 56, height: 56, marginBottom: AppSpacing.sm },
-  emptyTitle: {
-    ...AppTypography.headlineSmall,
-    color: AppColors.secondary.emphasis,
-    fontWeight: '600',
-    marginBottom: AppSpacing.xs,
-  },
-  emptyText: { ...AppTypography.bodyMedium, color: AppColors.textSecondary },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: AppSpacing.lg,
-  },
-  errorTitle: {
-    ...AppTypography.headlineSmall,
-    color: AppColors.secondary.emphasis,
-    fontWeight: '600',
-    marginTop: AppSpacing.md,
-    marginBottom: AppSpacing.xs,
-  },
-  errorText: {
-    ...AppTypography.bodyMedium,
-    color: AppColors.textSecondary,
-    textAlign: 'center',
-    marginBottom: AppSpacing.lg,
-  },
-});

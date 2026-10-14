@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import {
   forwardRef,
   useCallback,
@@ -6,9 +7,15 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Modal, StyleSheet, type TextInput } from 'react-native';
+import { Modal, Pressable, Text, type TextInput, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
+import {
+  LIST_COLORS,
+  type ListColor,
+  palette,
+} from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
+import { useTheme } from '../providers/ThemeProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import { listsService } from '../services/listsService';
 
@@ -32,13 +39,24 @@ interface CreateListModalProps extends CreateListContentProps {
 
 const MAX_TITLE_LENGTH = 100;
 
+const SWATCH_CLASS: Record<ListColor, string> = {
+  blue: 'bg-list-blue-solid dark:bg-list-blue-solid-dark',
+  teal: 'bg-list-teal-solid dark:bg-list-teal-solid-dark',
+  amber: 'bg-list-amber-solid dark:bg-list-amber-solid-dark',
+  pink: 'bg-list-pink-solid dark:bg-list-pink-solid-dark',
+};
+
+const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
+
 export const CreateListContent = forwardRef<
   CreateListContentHandle,
   CreateListContentProps
 >(function CreateListContent({ onClose, onSuccess }, ref) {
   const { token } = useAuth();
+  const { scheme } = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [color, setColor] = useState<ListColor | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +70,7 @@ export const CreateListContent = forwardRef<
   const clearForm = useCallback(() => {
     setTitle('');
     setDescription('');
+    setColor(null);
     setFieldError(null);
     setError(null);
   }, []);
@@ -90,6 +109,7 @@ export const CreateListContent = forwardRef<
       const createdList = await listsService.createList(
         trimmedTitle,
         description.trim(),
+        color,
         token
       );
       clearForm();
@@ -144,8 +164,44 @@ export const CreateListContent = forwardRef<
         multiline
         numberOfLines={3}
         editable={!isLoading}
-        inputStyle={styles.descriptionInput}
+        inputClassName="min-h-20 text-[16px]"
+        style={MULTILINE_INPUT_STYLE}
       />
+      <View className="mb-4">
+        <Text className="text-label-medium text-ink dark:text-ink-dark mb-1">
+          Color
+        </Text>
+        <View className="flex-row gap-3">
+          {LIST_COLORS.map((hue) => {
+            const selected = color === hue;
+            return (
+              <Pressable
+                key={hue}
+                accessibilityRole="button"
+                accessibilityLabel={'Color ' + hue}
+                accessibilityState={{ selected }}
+                aria-pressed={selected}
+                testID={'color-' + hue}
+                disabled={isLoading}
+                onPress={() => setColor(selected ? null : hue)}
+                className={[
+                  'w-10 h-10 rounded-full items-center justify-center',
+                  SWATCH_CLASS[hue],
+                ].join(' ')}
+              >
+                {selected ? (
+                  <Ionicons
+                    name="checkmark"
+                    size={20}
+                    color={palette.list[hue][scheme]['on-solid']}
+                    accessible={false}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
     </BaseModalContent>
   );
 });
@@ -175,11 +231,3 @@ export const CreateListModal = ({
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  descriptionInput: {
-    minHeight: 80,
-    fontSize: 16,
-    textAlignVertical: 'top',
-  },
-});

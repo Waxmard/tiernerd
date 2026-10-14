@@ -188,6 +188,46 @@ class TestCreateList:
         data = response.json()
         assert data["title"] == "List Without Description"
 
+    async def test_create_list_with_color_round_trips_through_the_api(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """A chosen swatch is persisted, echoed, and rejected when unknown."""
+        response = await client.post(
+            "/api/lists/",
+            params={
+                "name": "Colored List",
+                "description": "Has a swatch",
+                "color": "teal",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["color"] == "teal"
+
+        lists = await client.get("/api/lists/", headers=auth_headers)
+        assert lists.status_code == 200
+        colored = [row for row in lists.json() if row["title"] == "Colored List"]
+        assert [row["color"] for row in colored] == ["teal"]
+
+        invalid = await client.post(
+            "/api/lists/",
+            params={
+                "name": "Chartreuse List",
+                "description": "Not a swatch",
+                "color": "chartreuse",
+            },
+            headers=auth_headers,
+        )
+        assert invalid.status_code == 422
+
+        uncolored = await client.post(
+            "/api/lists/",
+            params={"name": "Uncolored List", "description": "No swatch"},
+            headers=auth_headers,
+        )
+        assert uncolored.status_code == 200
+        assert uncolored.json()["color"] is None
+
 
 @pytest.mark.asyncio
 class TestReadList:

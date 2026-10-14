@@ -1,7 +1,6 @@
 import type React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import type { Item } from '../services/itemsService';
-import { styles } from './ListDetailScreen.styles';
 import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface FocusTarget {
@@ -16,6 +15,11 @@ interface ListDetailItemRowProps {
   onPress: (item: Item) => void;
   onFocusTarget: (itemId: string, element: FocusTarget | null) => void;
 }
+
+const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
+
+const ROW_CLASS =
+  'flex-row items-center border-b border-line dark:border-line-dark px-2 py-3 mb-2 min-h-16';
 
 export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
@@ -56,14 +60,29 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       }
       activeOpacity={0.7}
     >
-      <View style={[styles.itemRow, selected && styles.selectedItemRow]}>
-        <Text style={styles.itemRank}>{rank === null ? '—' : `#${rank}`}</Text>
-        <View style={styles.itemDetails}>
-          <Text style={styles.itemName} numberOfLines={2}>
+      <View
+        className={[
+          ROW_CLASS,
+          selected
+            ? 'bg-accent-tint dark:bg-accent-tint-dark rounded-lg'
+            : 'bg-surface dark:bg-surface-dark',
+        ].join(' ')}
+      >
+        <Text className="w-8 shrink-0 text-label-medium text-ink-muted dark:text-ink-muted-dark">
+          {rank === null ? '—' : `#${rank}`}
+        </Text>
+        <View className="flex-1 min-w-0 mx-2">
+          <Text
+            className="text-body-large font-semibold text-ink dark:text-ink-dark"
+            numberOfLines={2}
+          >
             {item.name}
           </Text>
           {item.description?.trim() ? (
-            <Text style={styles.itemDescription} numberOfLines={1}>
+            <Text
+              className="text-body-small text-ink-muted dark:text-ink-muted-dark"
+              numberOfLines={1}
+            >
               {item.description}
             </Text>
           ) : null}
@@ -72,12 +91,20 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
               <RangeBadge tierSet={item.tier_set} />
             ) : null
           ) : (
-            <Text style={styles.itemUnranked}>Not ranked yet</Text>
+            <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
+              Not ranked yet
+            </Text>
           )}
         </View>
-        <View style={styles.itemScoreCapsule}>
+        <View className="w-12 min-h-8 shrink-0 items-center justify-center rounded-full border border-line dark:border-line-dark bg-canvas dark:bg-canvas-dark">
           <Text
-            style={[styles.itemScore, !isRanked && styles.itemScoreUnranked]}
+            className={[
+              'text-[20px] leading-6 font-semibold',
+              isRanked
+                ? 'text-accent-text dark:text-accent-text-dark'
+                : 'text-ink-muted dark:text-ink-muted-dark',
+            ].join(' ')}
+            style={TABULAR_NUMS}
           >
             {isRanked ? item.rating?.toFixed(1) : '—'}
           </Text>
@@ -88,14 +115,16 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
 };
 
 export const ListItemEmptyState: React.FC = () => (
-  <View style={styles.emptyState}>
+  <View className="flex-1 items-center justify-center px-6">
     <Image
       source={require('../../assets/logo-transparent.png')}
-      style={styles.emptyStateImage}
+      className="w-[100px] h-[100px] opacity-30 mb-6"
       accessible={false}
     />
-    <Text style={styles.emptyStateTitle}>No items yet</Text>
-    <Text style={styles.emptyStateText}>
+    <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark mb-2">
+      No items yet
+    </Text>
+    <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark text-center">
       Select Add item to add your first item
     </Text>
   </View>

@@ -1,0 +1,92 @@
+{
+  "light": {
+    "canvas": "#F7F7F8",
+    "surface": "#FFFFFF",
+    "surface-muted": "#F1F1F3",
+    "line": "#E4E4E7",
+    "control": "#71717A",
+    "ink": "#18181B",
+    "ink-muted": "#52525B",
+    "ink-disabled": "#A1A1AA",
+    "accent": "#7C3AED",
+    "on-accent": "#FFFFFF",
+    "accent-text": "#6D28D9",
+    "accent-tint": "#EDE9FE",
+    "accent-line": "#A78BFA",
+    "danger-text": "#B91C1C"
+  },
+  "dark": {
+    "canvas": "#0B0B0E",
+    "surface": "#17171B",
+    "surface-muted": "#232329",
+    "line": "#2A2A31",
+    "control": "#8A8A95",
+    "ink": "#F4F4F5",
+    "ink-muted": "#A6A6B0",
+    "ink-disabled": "#5A5A63",
+    "accent": "#7C3AED",
+    "on-accent": "#FFFFFF",
+    "accent-text": "#C4B5FD",
+    "accent-tint": "#2A1B57",
+    "accent-line": "#6D28D9",
+    "danger-text": "#FCA5A5"
+  },
+  "list": {
+    "blue": {
+      "light": {
+        "solid": "#2563EB",
+        "on-solid": "#FFFFFF",
+        "tint": "#E8F0FE",
+        "on-tint": "#1D4ED8"
+      },
+      "dark": {
+        "solid": "#60A5FA",
+        "on-solid": "#0B0B0E",
+        "tint": "#12234A",
+        "on-tint": "#BFDBFE"
+      }
+    },
+    "teal": {
+      "light": {
+        "solid": "#0F766E",
+        "on-solid": "#FFFFFF",
+        "tint": "#E6F7F3",
+        "on-tint": "#0F766E"
+      },
+      "dark": {
+        "solid": "#2DD4BF",
+        "on-solid": "#0B0B0E",
+        "tint": "#0B2F2A",
+        "on-tint": "#99F6E4"
+      }
+    },
+    "amber": {
+      "light": {
+        "solid": "#B45309",
+        "on-solid": "#FFFFFF",
+        "tint": "#FDF3E3",
+        "on-tint": "#92400E"
+      },
+      "dark": {
+        "solid": "#FBBF24",
+        "on-solid": "#0B0B0E",
+        "tint": "#33240C",
+        "on-tint": "#FCD34D"
+      }
+    },
+    "pink": {
+      "light": {
+        "solid": "#BE185D",
+        "on-solid": "#FFFFFF",
+        "tint": "#FCE7F3",
+        "on-tint": "#9D174D"
+      },
+      "dark": {
+        "solid": "#F472B6",
+        "on-solid": "#0B0B0E",
+        "tint": "#3A1226",
+        "on-tint": "#FBCFE8"
+      }
+    }
+  }
+}

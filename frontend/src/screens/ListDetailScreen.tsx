@@ -30,12 +30,12 @@ import {
   ListDetailItemRow,
   ListItemEmptyState,
 } from '../components/ListDetailItemRow';
-import { styles } from '../components/ListDetailScreen.styles';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
 import { useItemWorkspace } from '../components/useItemWorkspace';
-import { AppColors, AppLayout, AppSpacing } from '../design-system/tokens';
+import type { ListColor } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
+import { useThemeColors } from '../providers/ThemeProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import {
   type ComparisonSession,
@@ -80,6 +80,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   navigation,
 }) => {
   const { token } = useAuth();
+  const colors = useThemeColors();
   const { width: windowWidth } = useWindowDimensions();
   const safeAreaInsets = useSafeAreaInsets();
   const {
@@ -88,7 +89,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     promptAddItem,
     completedItemId,
   } = route.params;
-  const isDesktop = windowWidth >= AppLayout.desktopBreakpoint;
+  const isDesktop = windowWidth >= 1024;
   const [items, setItems] = useState<Item[]>([]);
   const itemsRef = useRef<Item[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(true);
@@ -96,6 +97,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const [itemsError, setItemsError] = useState<string | null>(null);
   const [detailsTitle, setDetailsTitle] = useState(routeTitle);
   const [listDescription, setListDescription] = useState<string | null>(null);
+  const [listColor, setListColor] = useState<ListColor | null>(null);
   const [metadataError, setMetadataError] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [dismissedDetailsItemId, setDismissedDetailsItemId] = useState<
@@ -195,6 +197,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   useEffect(() => {
     setDetailsTitle(routeTitle);
     setListDescription(null);
+    setListColor(null);
     setMetadataError(false);
   }, [routeTitle]);
 
@@ -210,6 +213,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       if (requestId === metadataRequestRef.current) {
         setDetailsTitle(list.title);
         setListDescription(list.description);
+        setListColor(list.color);
       }
     } catch {
       if (requestId === metadataRequestRef.current) setMetadataError(true);
@@ -669,25 +673,30 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const renderListItems = () => {
     if (isLoadingItems && !itemsLoaded) {
       return (
-        <View style={styles.loadingState}>
-          <ActivityIndicator size="large" color={AppColors.accent.primary} />
+        <View className="flex-1 items-center justify-center px-6">
+          <ActivityIndicator size="large" color={colors.accent} />
         </View>
       );
     }
     if (items.length === 0 && !itemsError) return <ListItemEmptyState />;
     if (items.length === 0 && itemsError) {
       return (
-        <View style={styles.loadingState}>
-          <Text style={styles.refreshError} accessibilityRole="alert">
+        <View className="flex-1 items-center justify-center px-6">
+          <Text
+            className="text-body-small text-danger-text dark:text-danger-text-dark shrink"
+            accessibilityRole="alert"
+          >
             {itemsError}
           </Text>
           <TouchableOpacity
             onPress={handleListItemsRetry}
             accessibilityRole="button"
             accessibilityLabel="Retry loading items"
-            style={styles.retryButton}
+            className="border border-control dark:border-control-dark rounded px-4 py-1 min-h-11 justify-center"
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text className="text-label-medium font-semibold text-accent-text dark:text-accent-text-dark">
+              Retry
+            </Text>
           </TouchableOpacity>
         </View>
       );
@@ -696,13 +705,13 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     return (
       <FlatList
         ref={listRef}
-        style={styles.list}
+        className="flex-1 min-h-0"
         data={items}
         keyExtractor={(item) => item.item_id}
-        contentContainerStyle={[
-          styles.listContainer,
-          { paddingBottom: AppSpacing.md + safeAreaInsets.bottom },
-        ]}
+        contentContainerStyle={{
+          paddingTop: 8,
+          paddingBottom: 16 + safeAreaInsets.bottom,
+        }}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         onScrollToIndexFailed={handleScrollToIndexFailed}
@@ -711,19 +720,13 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   };
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.shell}>
-          <View
-            style={[
-              styles.shellContent,
-              {
-                marginHorizontal: isDesktop ? AppSpacing.lg : AppSpacing.md,
-              },
-            ]}
-          >
+    <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
+      <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
+        <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
+          <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
             <ListDetailHeader
               title={detailsTitle}
+              color={listColor}
               description={listDescription}
               outcome={outcome}
               metadataError={metadataError}
@@ -738,17 +741,22 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               onDismissOutcome={handleDismissOutcome}
             />
             {itemsError && items.length > 0 ? (
-              <View style={styles.itemsError}>
-                <Text style={styles.refreshError} accessibilityRole="alert">
+              <View className="flex-row items-center justify-between py-1">
+                <Text
+                  className="text-body-small text-danger-text dark:text-danger-text-dark shrink"
+                  accessibilityRole="alert"
+                >
                   {itemsError}
                 </Text>
                 <TouchableOpacity
                   onPress={handleListItemsRetry}
                   accessibilityRole="button"
                   accessibilityLabel="Retry refreshing items"
-                  style={styles.inlineRetryButton}
+                  className="px-4 py-1 min-h-11 justify-center"
                 >
-                  <Text style={styles.retryButtonText}>Retry</Text>
+                  <Text className="text-label-medium font-semibold text-accent-text dark:text-accent-text-dark">
+                    Retry
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : null}
