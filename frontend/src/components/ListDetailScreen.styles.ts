@@ -38,6 +38,7 @@ export const styles = StyleSheet.create({
     backgroundColor: AppColors.dominant.primary,
     flexShrink: 0,
   },
+  mobileHeader: { paddingTop: AppSpacing.lg },
   backButton: {
     width: 44,
     height: 44,

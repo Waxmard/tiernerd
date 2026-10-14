@@ -303,7 +303,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.shell}>
           <View style={[styles.shellContent, { marginHorizontal: gutter }]}>
-            <View style={styles.header}>
+            <View
+              style={[
+                styles.header,
+                windowWidth < AppLayout.desktopBreakpoint &&
+                  styles.mobileHeader,
+              ]}
+            >
               <View style={styles.brandLockup}>
                 <Ionicons
                   name="layers-outline"
@@ -443,6 +449,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     backgroundColor: AppColors.dominant.secondary,
   },
+  mobileHeader: { paddingTop: AppSpacing.xl },
   brandLockup: {
     flexDirection: 'row',
     alignItems: 'center',
