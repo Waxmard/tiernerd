@@ -21,10 +21,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import {
-  ListDetailHeader,
-  type RankOutcome,
-} from '../components/ListDetailHeader';
+import { ListDetailHeader } from '../components/ListDetailHeader';
 import {
   type FocusTarget,
   ListDetailItemRow,
@@ -61,20 +58,6 @@ interface SessionLookup {
   error: string | null;
 }
 
-const getRankOutcome = (items: Item[], itemId: string): RankOutcome | null => {
-  const rankedItems = items.filter((item) => item.rating !== null);
-  const rank = rankedItems.findIndex((item) => item.item_id === itemId) + 1;
-  const item = rankedItems[rank - 1];
-  if (!item || item.rating === null) return null;
-  return {
-    itemId,
-    name: item.name,
-    rank,
-    rankedCount: rankedItems.length,
-    score: item.rating,
-  };
-};
-
 export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   route,
   navigation,
@@ -109,7 +92,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     isLoading: false,
     error: null,
   });
-  const [outcome, setOutcome] = useState<RankOutcome | null>(null);
   const [isDeletingList, setIsDeletingList] = useState(false);
   const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
   const listRef = useRef<FlatList<Item> | null>(null);
@@ -187,7 +169,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setScrollTargetId(null);
     pendingScrollRef.current = null;
     setDismissedDetailsItemId(null);
-    setOutcome(null);
     void fetchItems().catch(() => {});
     return () => {
       itemsRequestRef.current += 1;
@@ -232,7 +213,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       const existedBeforeRefresh = item
         ? itemsRef.current.some((existing) => existing.item_id === item.item_id)
         : false;
-      const shouldShowOutcome =
+      const isCompletedRankingCandidate =
         item !== undefined &&
         (!existedBeforeRefresh ||
           rankingCandidateIdRef.current === item.item_id);
@@ -253,13 +234,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         };
         setScrollTargetId(item.item_id);
         setSelectedItemId(item.item_id);
-        if (shouldShowOutcome) {
-          const completedOutcome = getRankOutcome(refreshedItems, item.item_id);
-          if (completedOutcome) {
-            setOutcome(completedOutcome);
-            setDismissedDetailsItemId(item.item_id);
-            focusItemRow(item.item_id);
-          }
+        if (isCompletedRankingCandidate) {
+          setDismissedDetailsItemId(item.item_id);
+          focusItemRow(item.item_id);
         }
       }
     },
@@ -392,9 +369,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     }
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
-    setOutcome((current) =>
-      current?.itemId === selectedItemId ? null : current
-    );
   }, [
     items,
     itemsLoaded,
@@ -428,11 +402,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         retried: false,
       };
       setScrollTargetId(completedItemId);
-      const completedOutcome = getRankOutcome(items, completedItemId);
-      if (completedOutcome) {
-        setOutcome(completedOutcome);
-        setDismissedDetailsItemId(completedItemId);
-      }
+      setDismissedDetailsItemId(completedItemId);
     }
     consumedCompletedItemIdRef.current = completedItemId;
     navigation.setParams({ completedItemId: undefined });
@@ -572,10 +542,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const handleStartRanking = useCallback(() => {
     void workspace.startRanking();
   }, [workspace.startRanking]);
-
-  const handleDismissOutcome = useCallback(() => {
-    setOutcome(null);
-  }, []);
 
   const handleMetadataRetry = useCallback(() => {
     void refreshMetadata();
@@ -728,7 +694,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               title={detailsTitle}
               color={listColor}
               description={listDescription}
-              outcome={outcome}
               metadataError={metadataError}
               itemCount={items.length}
               rankedCount={rankedCount}
@@ -738,7 +703,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               onBack={handleBack}
               onDelete={() => void handleDeleteList()}
               onRetryMetadata={handleMetadataRetry}
-              onDismissOutcome={handleDismissOutcome}
             />
             {itemsError && items.length > 0 ? (
               <View className="flex-row items-center justify-between py-1">

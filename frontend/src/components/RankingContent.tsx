@@ -15,15 +15,15 @@ export interface RankingContentProps {
   presentation: 'modal' | 'panel';
   isBusy: boolean;
   error: string | null;
+  recoveryRequired: boolean;
   onAnswer: (result: 'better' | 'worse') => void;
   onUndo: () => void;
-  onCommit: () => void;
+  onRetryCommit: () => void;
   onCancel: () => void;
   onRestart: () => void;
   onReload: () => void;
   onRetryRefresh?: () => void;
 }
-
 interface ComparisonChoiceProps {
   item: Item;
   label: string;
@@ -33,8 +33,6 @@ interface ComparisonChoiceProps {
 }
 
 const REFRESH_ERROR = 'Unable to refresh items. Try again.';
-
-const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
 
 const choiceTextClass = (isBusy: boolean): string =>
   isBusy
@@ -136,9 +134,10 @@ export function RankingContent({
   presentation,
   isBusy,
   error,
+  recoveryRequired,
   onAnswer,
   onUndo,
-  onCommit,
+  onRetryCommit,
   onCancel,
   onRestart,
   onReload,
@@ -166,50 +165,21 @@ export function RankingContent({
       comparison &&
       existingItem
   );
-  const canCommit = isReady && !isStale && session.preview !== null;
   const title = isCompleted
-    ? 'Ranking saved'
-    : isReady
-      ? 'Ready to save'
-      : 'Which is better?';
+    ? 'Refreshing list…'
+    : isCancelled
+      ? 'Ranking cancelled'
+      : isReady
+        ? error
+          ? 'Unable to save ranking'
+          : 'Saving ranking…'
+        : 'Which is better?';
   const closeText =
     isCompleted || isCancelled
       ? 'Close'
       : session.discard_on_cancel
         ? 'Cancel and discard item'
         : 'Cancel ranking';
-  const preview = session.preview;
-  const previewContent = preview ? (
-    <View className="gap-1">
-      <Text className="text-title-small text-ink dark:text-ink-dark">
-        {candidate.name}
-      </Text>
-      <View className="flex-row items-start gap-6 mt-1">
-        <View className="gap-0.5">
-          <Text
-            style={TABULAR_NUMS}
-            className="text-[28px] leading-9 font-semibold text-accent-text dark:text-accent-text-dark"
-          >
-            {preview.score.toFixed(1)}
-          </Text>
-          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-            Score
-          </Text>
-        </View>
-        <View className="gap-0.5">
-          <Text
-            style={TABULAR_NUMS}
-            className="text-title-medium text-ink dark:text-ink-dark"
-          >
-            #{preview.rank}
-          </Text>
-          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-            of {preview.ranked_count} ranked items
-          </Text>
-        </View>
-      </View>
-    </View>
-  ) : null;
 
   return (
     <BaseModalContent
@@ -219,8 +189,6 @@ export function RankingContent({
       closeText={closeText}
       presentation={presentation}
       onClose={onCancel}
-      onSubmit={canCommit ? onCommit : undefined}
-      submitText="Save ranking"
     >
       <View className="gap-2 mb-4">
         <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
@@ -260,8 +228,13 @@ export function RankingContent({
         </View>
       ) : isCompleted ? (
         <View className="gap-4">
-          {preview ? (
-            previewContent
+          {session.preview ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              className="text-body-medium text-ink dark:text-ink-dark text-left"
+            >
+              Refreshing list…
+            </Text>
           ) : (
             <>
               <Text className="text-body-medium text-ink dark:text-ink-dark text-left">
@@ -280,13 +253,12 @@ export function RankingContent({
         </View>
       ) : isReady ? (
         <View className="gap-4">
-          {preview ? (
-            previewContent
-          ) : (
+          {recoveryRequired || !session.preview ? (
             <>
               <Text className="text-body-medium text-ink dark:text-ink-dark text-left">
-                Unable to load the ranking preview. Reload ranking status before
-                saving.
+                {session.preview
+                  ? 'Unable to confirm ranking status. Reload ranking status to continue.'
+                  : 'Unable to load ranking status. Reload to continue.'}
               </Text>
               <Button
                 title="Reload ranking status"
@@ -297,17 +269,22 @@ export function RankingContent({
                 className="mt-2"
               />
             </>
-          )}
-          {session.can_undo ? (
+          ) : error ? (
             <Button
-              title="Undo last answer"
-              variant="secondary"
-              onPress={onUndo}
+              title="Retry saving"
+              onPress={onRetryCommit}
               disabled={isBusy}
               fullWidth
               className="mt-2"
             />
-          ) : null}
+          ) : (
+            <Text
+              accessibilityLiveRegion="polite"
+              className="text-body-medium text-ink dark:text-ink-dark text-left"
+            >
+              Saving ranking…
+            </Text>
+          )}
         </View>
       ) : isCancelled ? (
         <Text className="text-body-medium text-ink dark:text-ink-dark text-left">
@@ -315,9 +292,6 @@ export function RankingContent({
         </Text>
       ) : isAsking && existingItem ? (
         <View className="gap-4">
-          <Text className="text-title-small text-ink dark:text-ink-dark">
-            Select the better item.
-          </Text>
           <ComparisonChoice
             item={candidate}
             label="Item being ranked"

@@ -162,7 +162,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       ? 'Create New List'
       : workspace.mode === 'ranking'
         ? workspace.session?.status === 'ready_to_commit'
-          ? 'Ready to save'
+          ? 'Saving ranking…'
           : 'Which is better?'
         : 'Add item';
   useEffect(
@@ -415,9 +415,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 presentation="modal"
                 isBusy={workspace.isBusy}
                 error={workspace.error}
+                recoveryRequired={workspace.recoveryRequired}
                 onAnswer={(result) => void workspace.answer(result)}
                 onUndo={() => void workspace.undo()}
-                onCommit={() => void workspace.commit()}
+                onRetryCommit={() => void workspace.retryCommit()}
                 onCancel={() =>
                   void workspace.requestClose().catch(() => false)
                 }
@@ -437,7 +438,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 onSubmit={() => void workspace.submitMetadata()}
                 onClose={() => void workspace.requestClose().catch(() => false)}
                 presentation="modal"
-                introText={`“${pendingList.title}” created. Add its first item.`}
+                introText={`“${pendingList.title}”`}
               />
             ) : null)}
         </Modal>

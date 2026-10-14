@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import {
   type ComparisonSession,
@@ -13,54 +13,18 @@ import {
   performComparisonAction,
   reconcileComparisonSession,
   saveItemMetadata,
+  shouldAutoCommitRanking,
   startItemRanking,
 } from '../services/itemWorkspaceActions';
 import { confirmDestructive } from '../utils/confirm';
+import type {
+  ItemFormDraft,
+  ItemWorkspace,
+  ItemWorkspaceState,
+  PendingRefresh,
+  UseItemWorkspaceOptions,
+} from './itemWorkspaceTypes';
 
-export interface ItemFormDraft {
-  name: string;
-  description: string;
-  tierSet: TierSet | null;
-}
-export type ItemWorkspaceMode = 'closed' | 'add' | 'edit' | 'range' | 'ranking';
-export interface ItemWorkspaceState {
-  mode: ItemWorkspaceMode;
-  item: Item | null;
-  form: ItemFormDraft;
-  fieldErrors: { name?: string; range?: string };
-  session: ComparisonSession | null;
-  isBusy: boolean;
-  error: string | null;
-}
-export interface UseItemWorkspaceOptions {
-  listTitle: string;
-  token: string | null;
-  onItemsChanged: (item?: Item) => Promise<void>;
-  onClosed: () => void;
-}
-export interface ItemWorkspace extends ItemWorkspaceState {
-  openAdd: () => void;
-  openEdit: (item: Item) => void;
-  openRange: (item: Item) => void;
-  resume: (session: ComparisonSession) => void;
-  setForm: (patch: Partial<ItemFormDraft>) => void;
-  submitMetadata: () => Promise<void>;
-  startRanking: () => Promise<void>;
-  answer: (result: 'better' | 'worse') => Promise<void>;
-  undo: () => Promise<void>;
-  commit: () => Promise<void>;
-  restart: () => Promise<void>;
-  deleteItem: (item: Item) => Promise<void>;
-  retryRefresh: () => Promise<void>;
-  requestClose: () => Promise<boolean>;
-  reloadSession: () => Promise<void>;
-  closeMissingItem: (itemId: string) => boolean;
-}
-interface PendingRefresh {
-  item?: Item;
-  closeAfter: boolean;
-  closeOnRefreshFailure?: boolean;
-}
 const REFRESH_ERROR = 'Unable to refresh items. Try again.';
 const CANCEL_NEW_ERROR =
   'Unable to discard this item. Check your connection and try again.';
@@ -96,6 +60,10 @@ export function useItemWorkspace({
   const busyRef = useRef(false);
   const recoveryRequiredRef = useRef(false);
   const pendingRefreshRef = useRef<PendingRefresh | null>(null);
+  const autoCommitAttemptRef = useRef<{
+    sessionId: string;
+    revision: number;
+  } | null>(null);
 
   const replaceWorkspace = useCallback((next: ItemWorkspaceState) => {
     workspaceRef.current = next;
@@ -120,6 +88,7 @@ export function useItemWorkspace({
   }, [setBusy]);
 
   const closeWorkspace = useCallback(() => {
+    autoCommitAttemptRef.current = null;
     pendingRefreshRef.current = null;
     recoveryRequiredRef.current = false;
     initialFormRef.current = { ...EMPTY_FORM };
@@ -172,10 +141,17 @@ export function useItemWorkspace({
             closeOnRefreshFailure: true,
           };
         } else {
+          const attempted = autoCommitAttemptRef.current;
+          const retryRequired =
+            result.session.status === 'ready_to_commit' &&
+            !result.session.is_stale &&
+            result.session.preview !== null &&
+            attempted?.sessionId === result.session.session_id &&
+            attempted.revision === result.session.revision;
           updateWorkspace({
             session: result.session,
             item: result.session.item,
-            error: null,
+            error: retryRequired ? 'Unable to save ranking. Try again.' : null,
           });
           return result.session;
         }
@@ -252,6 +228,7 @@ export function useItemWorkspace({
     initialFormRef.current = { ...EMPTY_FORM };
     pendingRefreshRef.current = null;
     recoveryRequiredRef.current = false;
+    autoCommitAttemptRef.current = null;
     replaceWorkspace({
       ...EMPTY_WORKSPACE,
       mode: 'add',
@@ -268,6 +245,7 @@ export function useItemWorkspace({
       };
       initialFormRef.current = form;
       pendingRefreshRef.current = null;
+      autoCommitAttemptRef.current = null;
       recoveryRequiredRef.current = false;
       replaceWorkspace({ ...EMPTY_WORKSPACE, mode: 'edit', item, form });
     },
@@ -283,6 +261,7 @@ export function useItemWorkspace({
       };
       initialFormRef.current = form;
       pendingRefreshRef.current = null;
+      autoCommitAttemptRef.current = null;
       recoveryRequiredRef.current = false;
       replaceWorkspace({ ...EMPTY_WORKSPACE, mode: 'range', item, form });
     },
@@ -292,6 +271,7 @@ export function useItemWorkspace({
     (session: ComparisonSession) => {
       if (busyRef.current) return;
       pendingRefreshRef.current = null;
+      autoCommitAttemptRef.current = null;
       recoveryRequiredRef.current = false;
       replaceWorkspace({
         ...EMPTY_WORKSPACE,
@@ -575,7 +555,9 @@ export function useItemWorkspace({
             item: result.session.item,
             error: getApiErrorMessage(
               result.error,
-              'Ranking changed. Reload the current question.'
+              action === 'commit'
+                ? 'Unable to save ranking. Try again.'
+                : 'Ranking changed. Reload the current question.'
             ),
           });
         } else updateWorkspace({ error: RECOVERY_ERROR });
@@ -597,6 +579,35 @@ export function useItemWorkspace({
   );
   const undo = useCallback(() => performAction('undo'), [performAction]);
   const commit = useCallback(() => performAction('commit'), [performAction]);
+
+  useEffect(() => {
+    const session = workspace.session;
+    if (
+      !session ||
+      !shouldAutoCommitRanking(
+        session,
+        workspace.mode !== 'ranking' ||
+          !token ||
+          workspace.isBusy ||
+          workspace.error !== null ||
+          recoveryRequiredRef.current,
+        autoCommitAttemptRef.current
+      )
+    )
+      return;
+    autoCommitAttemptRef.current = {
+      sessionId: session.session_id,
+      revision: session.revision,
+    };
+    void commit();
+  }, [
+    workspace.mode,
+    workspace.session,
+    workspace.isBusy,
+    workspace.error,
+    token,
+    commit,
+  ]);
   const restart = useCallback(() => performAction('restart'), [performAction]);
 
   const retryRefresh = useCallback(async () => {
@@ -763,6 +774,7 @@ export function useItemWorkspace({
 
   return {
     ...workspace,
+    recoveryRequired: recoveryRequiredRef.current,
     openAdd,
     openEdit,
     openRange,
@@ -772,7 +784,7 @@ export function useItemWorkspace({
     startRanking,
     answer,
     undo,
-    commit,
+    retryCommit: commit,
     restart,
     deleteItem,
     retryRefresh,

@@ -3,8 +3,8 @@ import { useEffect, useRef } from 'react';
 import { Text, type TextInput } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
+import type { ItemFormDraft } from './itemWorkspaceTypes';
 import { RangeSelector } from './RangeSelector';
-import type { ItemFormDraft } from './useItemWorkspace';
 
 export interface AddItemFieldErrors {
   name?: string;

@@ -1,14 +1,12 @@
-import { ApiError } from './apiError';
-import {
-  type ComparisonSession,
-  type CreateItemResponse,
-  type Item,
-  itemsService,
-  type TierSet,
-  type UpdateItemRequest,
-} from './itemsService';
-import { listsService } from './listsService';
-import { hasSavedRankChanged } from './rankSnapshot';
+import { ApiError } from './apiError.ts';
+import type {
+  ComparisonSession,
+  CreateItemResponse,
+  Item,
+  TierSet,
+  UpdateItemRequest,
+} from './itemsService.ts';
+import { hasSavedRankChanged } from './rankSnapshot.ts';
 
 export type ReconciledSession =
   | { kind: 'found'; session: ComparisonSession }
@@ -23,10 +21,34 @@ export type DraftCancellation =
   | { kind: 'missing' }
   | { kind: 'unknown' };
 
+export function shouldAutoCommitRanking(
+  session: ComparisonSession | null,
+  blocked: boolean,
+  attempted: { sessionId: string; revision: number } | null
+): boolean {
+  if (
+    blocked ||
+    !session ||
+    session.status !== 'ready_to_commit' ||
+    session.is_stale ||
+    !session.preview
+  )
+    return false;
+  return (
+    !attempted ||
+    attempted.sessionId !== session.session_id ||
+    attempted.revision !== session.revision
+  );
+}
+
 async function findSessionAfterMissing(
   session: ComparisonSession,
   token: string
 ): Promise<ReconciledSession> {
+  const [{ itemsService }, { listsService }] = await Promise.all([
+    import('./itemsService.ts'),
+    import('./listsService.ts'),
+  ]);
   try {
     const active = await itemsService.getComparison(session.item_id, token);
     if (active) return { kind: 'found', session: active };
@@ -52,6 +74,7 @@ export async function reconcileComparisonSession(
   session: ComparisonSession,
   token: string
 ): Promise<ReconciledSession> {
+  const { itemsService } = await import('./itemsService.ts');
   try {
     return {
       kind: 'found',
@@ -87,6 +110,7 @@ export async function cancelComparisonSession(
   token: string,
   recoveryRequired: boolean
 ): Promise<DraftCancellation> {
+  const { itemsService } = await import('./itemsService.ts');
   if (session.status === 'cancelled') return { kind: 'cancelled' };
   if (session.status === 'completed')
     return { kind: 'completed', item: session.item };
@@ -140,6 +164,7 @@ export async function startItemRanking(
   token: string,
   recoveryRequired: boolean
 ): Promise<RankingStartResult> {
+  const { itemsService } = await import('./itemsService.ts');
   let startError: unknown;
   if (!recoveryRequired) {
     try {
@@ -188,6 +213,7 @@ export async function performComparisonAction(
   action: ComparisonAction,
   answer?: 'better' | 'worse'
 ): Promise<ComparisonActionResult> {
+  const { itemsService } = await import('./itemsService.ts');
   try {
     if (action === 'answer') {
       if (!answer) throw new Error('A comparison choice is required');
@@ -251,6 +277,7 @@ export async function saveItemMetadata(
   tierSet: TierSet,
   token: string
 ): Promise<CreateItemResponse> {
+  const { itemsService } = await import('./itemsService.ts');
   if (mode === 'edit') {
     if (!item) throw new Error('An item is required to edit its metadata');
     const request: UpdateItemRequest = {
@@ -278,6 +305,7 @@ async function listItemExists(
   item: Item,
   token: string
 ): Promise<boolean | null> {
+  const { listsService } = await import('./listsService.ts');
   try {
     return (await listsService.getListItems(item.list_id, token)).some(
       (candidate) => candidate.item_id === item.item_id
@@ -291,6 +319,7 @@ export async function deleteItemWithDraft(
   token: string,
   recoveryRequired: boolean
 ): Promise<DeleteItemResult> {
+  const { itemsService } = await import('./itemsService.ts');
   let active: ComparisonSession | null;
   try {
     active = await itemsService.getComparison(item.item_id, token);

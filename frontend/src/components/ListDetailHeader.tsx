@@ -5,14 +5,6 @@ import { Button } from '../design-system/components';
 import { type ListColor, palette } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
 
-export interface RankOutcome {
-  itemId: string;
-  name: string;
-  rank: number;
-  rankedCount: number;
-  score: number;
-}
-
 interface ListDetailHeaderProps {
   title: string;
   color: ListColor | null;
@@ -22,12 +14,10 @@ interface ListDetailHeaderProps {
   onAdd: () => void;
   description: string | null;
   metadataError: boolean;
-  outcome: RankOutcome | null;
   deleteDisabled: boolean;
   onBack: () => void;
   onDelete: () => void;
   onRetryMetadata: () => void;
-  onDismissOutcome: () => void;
 }
 
 const CHIP_CLASS: Record<ListColor, string> = {
@@ -52,12 +42,10 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   onAdd,
   description,
   metadataError,
-  outcome,
   deleteDisabled,
   onBack,
   onDelete,
   onRetryMetadata,
-  onDismissOutcome,
 }) => {
   const { scheme, colors } = useTheme();
   const chipClass = color
@@ -175,34 +163,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           testID="fab-add-item"
         />
       </View>
-      {outcome ? (
-        <View
-          className="flex-row items-center bg-accent-tint dark:bg-accent-tint-dark border border-control dark:border-control-dark rounded-lg px-4 py-2 mb-4"
-          accessibilityLiveRegion="polite"
-        >
-          <View className="flex-1">
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              “{outcome.name}” ranked #{outcome.rank} of {outcome.rankedCount}.
-            </Text>
-            <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
-              Score {outcome.score.toFixed(1)}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={onDismissOutcome}
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss ranking result"
-            className="w-10 h-10 items-center justify-center"
-          >
-            <Ionicons
-              name="close"
-              size={20}
-              color={colors.ink}
-              accessible={false}
-            />
-          </TouchableOpacity>
-        </View>
-      ) : null}
     </>
   );
 };

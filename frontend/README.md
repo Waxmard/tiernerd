@@ -8,7 +8,7 @@ React Native mobile app built with Expo SDK 54.
 
 Choose **New list** to create a list and add its first item. Home displays lists in a single column. Each list shows saved ranks and scores, with **Add item** in its header. Select an item to view its details or resume a ranking draft.
 
-Enter a name and choose **Good**, **Mid**, or **Bad** from the colored category tiles. Compare items with the large choice cards, then save the ranking. Category badges identify the starting category without replacing saved scores or ranks.
+Enter a name and choose **Good**, **Mid**, or **Bad** from the colored category tiles. Compare items with the large choice cards; ranking saves automatically after the final comparison, or immediately when the destination range is empty. The refreshed list confirms the saved score and order without an extra success banner or sheet. **Undo last answer** is available before the final answer, not after saving. If saving fails, choose **Retry saving**; if the item refresh fails, choose **Retry refresh**. Category badges identify the starting category without replacing saved scores or ranks.
 
 On phones, forms and item details open in bottom sheets with scrolling content and separate action controls. The web shell follows the dynamic viewport, with safe-area insets owned by the screens and modal footers. Desktop item details open in a 400px side pane only when you select an item or start a workspace action.
 

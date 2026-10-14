@@ -5,9 +5,9 @@ import { useThemeColors } from '../providers/ThemeProvider';
 import type { ComparisonSession, Item } from '../services/itemsService';
 import { AddItemContent } from './AddItemContent';
 import { ItemDetailContent } from './ItemDetailContent';
+import type { ItemWorkspace } from './itemWorkspaceTypes';
 import { RangeSelector } from './RangeSelector';
 import { RankingContent } from './RankingContent';
-import type { ItemWorkspace } from './useItemWorkspace';
 
 interface ListDetailWorkspaceHostProps {
   isDesktop: boolean;
@@ -103,9 +103,10 @@ export const ListDetailWorkspaceHost: React.FC<
           presentation={presentation}
           isBusy={isBusy}
           error={workspace.error}
+          recoveryRequired={workspace.recoveryRequired}
           onAnswer={workspace.answer}
           onUndo={workspace.undo}
-          onCommit={workspace.commit}
+          onRetryCommit={workspace.retryCommit}
           onCancel={() => workspace.requestClose().catch(() => false)}
           onRestart={workspace.restart}
           onReload={workspace.reloadSession}
@@ -195,7 +196,7 @@ export const ListDetailWorkspaceHost: React.FC<
           accessibilityLabel={
             workspace.mode === 'ranking'
               ? workspace.session?.status === 'ready_to_commit'
-                ? 'Ready to save'
+                ? 'Saving ranking…'
                 : 'Which is better?'
               : workspace.mode === 'range'
                 ? workspace.item?.rating !== null &&
