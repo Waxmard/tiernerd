@@ -115,7 +115,16 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         title="Add item"
         onPress={onAdd}
         disabled={addDisabled}
-        size="small"
+        size="large"
+        style={styles.addItemButton}
+        icon={
+          <Ionicons
+            name="add-circle-outline"
+            size={20}
+            color={AppColors.textOnPrimary}
+            accessible={false}
+          />
+        }
         testID="fab-add-item"
       />
     </View>

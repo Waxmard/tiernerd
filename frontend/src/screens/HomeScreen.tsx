@@ -15,7 +15,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { AddItemContent } from '../components/AddItemContent';
 import {
   type CreatedList,
@@ -26,6 +29,7 @@ import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button } from '../design-system/components';
 import {
+  AppBorders,
   AppColors,
   AppLayout,
   AppSpacing,
@@ -55,7 +59,8 @@ const toTierList = (list: ListSimple): TierList => ({
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  const safeAreaInsets = useSafeAreaInsets();
   const gutter =
     windowWidth >= AppLayout.desktopBreakpoint
       ? AppSpacing.lg
@@ -220,6 +225,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       activeOpacity={0.7}
       style={styles.row}
     >
+      <View style={styles.rowCover}>
+        <Ionicons
+          name="layers-outline"
+          size={20}
+          color={AppColors.accent.dark}
+          accessible={false}
+        />
+      </View>
       <View style={styles.rowText}>
         <Text style={styles.title} numberOfLines={2}>
           {item.title}
@@ -229,10 +242,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             {item.description}
           </Text>
         ) : null}
-        <Text style={styles.itemCount}>{item.itemCount} items</Text>
-        <Text style={styles.updatedAt}>
-          Modified {formatDate(item.updatedAt)}
-        </Text>
+        <View style={styles.metadataRow}>
+          <Text style={styles.itemCount}>{item.itemCount} items</Text>
+          <Text style={styles.updatedAt}>
+            Modified {formatDate(item.updatedAt)}
+          </Text>
+        </View>
       </View>
       <Ionicons
         name="chevron-forward"
@@ -264,7 +279,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         renderItem={renderRow}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: AppSpacing.md + safeAreaInsets.bottom },
+        ]}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Image
@@ -281,17 +299,33 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       />
     );
   return (
-    <View style={[styles.container, { height: windowHeight }]}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.shell}>
           <View style={[styles.shellContent, { marginHorizontal: gutter }]}>
             <View style={styles.header}>
-              <Text style={styles.brand}>TierNerd</Text>
+              <View style={styles.brandLockup}>
+                <Ionicons
+                  name="layers-outline"
+                  size={20}
+                  color={AppColors.accent.dark}
+                  accessible={false}
+                />
+                <Text style={styles.brand}>TierNerd</Text>
+              </View>
               <View style={styles.headerActions}>
                 <Button
                   title="New list"
                   onPress={() => setModalStep('create')}
                   size="small"
+                  icon={
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={20}
+                      color={AppColors.textOnPrimary}
+                      accessible={false}
+                    />
+                  }
                   testID="fab-create"
                   accessibilityLabel="Create new list"
                 />
@@ -385,7 +419,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   );
 };
 const styles = StyleSheet.create({
-  container: { minHeight: 0, backgroundColor: AppColors.dominant.secondary },
+  container: {
+    flex: 1,
+    minHeight: 0,
+    backgroundColor: AppColors.dominant.secondary,
+  },
   safeArea: { minHeight: 0, flex: 1 },
   shell: {
     width: '100%',
@@ -399,8 +437,16 @@ const styles = StyleSheet.create({
     paddingTop: AppSpacing.md,
     paddingBottom: AppSpacing.md,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexShrink: 0,
+    backgroundColor: AppColors.dominant.secondary,
+  },
+  brandLockup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AppSpacing.xs,
   },
   brand: {
     ...AppTypography.headlineSmall,
@@ -409,6 +455,7 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: AppSpacing.sm,
   },
@@ -442,11 +489,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: AppSpacing.sm,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.neutral[200],
+    padding: AppSpacing.md,
+    marginBottom: 12,
+    backgroundColor: AppColors.dominant.primary,
+    borderRadius: AppBorders.radiusLg,
+  },
+  rowCover: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: AppBorders.radiusMd,
+    backgroundColor: AppColors.selectedSurface,
   },
   rowText: { flex: 1, minWidth: 0, gap: AppSpacing.sm },
+  metadataRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: AppSpacing.sm,
+  },
   title: {
     ...AppTypography.bodyLarge,
     color: AppColors.secondary.emphasis,

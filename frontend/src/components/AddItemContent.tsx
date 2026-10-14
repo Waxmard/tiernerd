@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, Text, type TextInput } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
@@ -73,6 +74,14 @@ export function AddItemContent({
         maxLength={MAX_NAME_LENGTH}
         editable={!isBusy}
         autoFocus
+        inputStyle={styles.nameInput}
+        leftIcon={
+          <Ionicons
+            name="sparkles-outline"
+            size={24}
+            color={AppColors.accent.dark}
+          />
+        }
       />
       {!isEdit ? (
         <RangeSelector
@@ -91,12 +100,19 @@ export function AddItemContent({
         numberOfLines={3}
         editable={!isBusy}
         inputStyle={styles.descriptionInput}
+        containerStyle={!isEdit ? styles.descriptionField : undefined}
       />
     </BaseModalContent>
   );
 }
 
 const styles = StyleSheet.create({
+  nameInput: {
+    ...AppTypography.headlineSmall,
+    fontWeight: '600',
+    minHeight: 48,
+    minWidth: 0,
+  },
   intro: {
     ...AppTypography.bodyMedium,
     color: AppColors.textSecondary,
@@ -106,5 +122,8 @@ const styles = StyleSheet.create({
     minHeight: 80,
     fontSize: 16,
     textAlignVertical: 'top',
+  },
+  descriptionField: {
+    marginTop: AppSpacing.md,
   },
 });

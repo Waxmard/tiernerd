@@ -80,7 +80,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   navigation,
 }) => {
   const { token } = useAuth();
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const safeAreaInsets = useSafeAreaInsets();
   const {
     listId,
@@ -711,7 +711,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   };
 
   return (
-    <View style={[styles.container, { height: windowHeight }]}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.shell}>
           <View

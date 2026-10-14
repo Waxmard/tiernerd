@@ -2,7 +2,7 @@ import type React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import type { Item } from '../services/itemsService';
 import { styles } from './ListDetailScreen.styles';
-import { RANGE_OPTIONS } from './RangeSelector';
+import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface FocusTarget {
   focus?: () => void;
@@ -69,7 +69,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
           ) : null}
           {isRanked ? (
             rangeLabel ? (
-              <Text style={styles.itemRange}>{rangeLabel}</Text>
+              <RangeBadge tierSet={item.tier_set} />
             ) : null
           ) : (
             <Text style={styles.itemUnranked}>Not ranked yet</Text>

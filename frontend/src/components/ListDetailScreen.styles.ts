@@ -9,6 +9,7 @@ import {
 
 export const styles = StyleSheet.create({
   container: {
+    flex: 1,
     minHeight: 0,
     backgroundColor: AppColors.dominant.secondary,
   },
@@ -30,17 +31,19 @@ export const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'flex-start',
     gap: AppSpacing.sm,
     paddingVertical: AppSpacing.sm,
     backgroundColor: AppColors.dominant.primary,
+    flexShrink: 0,
   },
   backButton: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: -AppSpacing.xs,
+    flexShrink: 0,
   },
   headerContent: {
     flex: 1,
@@ -57,7 +60,7 @@ export const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: -AppSpacing.xs,
+    flexShrink: 0,
   },
   descriptionScroll: {
     maxHeight: 72,
@@ -74,12 +77,18 @@ export const styles = StyleSheet.create({
   },
   headerToolbar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: AppSpacing.sm,
     paddingVertical: AppSpacing.sm,
+    backgroundColor: AppColors.dominant.primary,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.neutral[200],
+    flexShrink: 0,
+  },
+  addItemButton: {
+    minHeight: 56,
   },
   rankedCount: {
     ...AppTypography.bodySmall,
@@ -233,11 +242,6 @@ export const styles = StyleSheet.create({
   itemDescription: {
     ...AppTypography.bodySmall,
     color: AppColors.textSecondary,
-  },
-  itemRange: {
-    ...AppTypography.labelMedium,
-    color: AppColors.secondary.muted,
-    marginTop: AppSpacing.xxs,
   },
   itemUnranked: {
     ...AppTypography.labelMedium,

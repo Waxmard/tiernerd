@@ -10,10 +10,42 @@ import {
 import type { TierSet } from '../services/itemsService';
 
 export const RANGE_OPTIONS = [
-  { label: 'Great (7.0–10.0)', value: 'good' },
-  { label: 'Okay (4.0–6.9)', value: 'mid' },
-  { label: 'Bad (1.0–3.9)', value: 'bad' },
-] as const satisfies ReadonlyArray<{ label: string; value: TierSet }>;
+  { label: 'Good', value: 'good', icon: 'happy-outline' },
+  { label: 'Mid', value: 'mid', icon: 'remove-circle-outline' },
+  { label: 'Bad', value: 'bad', icon: 'sad-outline' },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  value: TierSet;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+}>;
+
+export const RangeBadge = ({
+  tierSet,
+}: {
+  tierSet: TierSet | null;
+}): React.ReactElement | null => {
+  const option = RANGE_OPTIONS.find((entry) => entry.value === tierSet);
+  if (!option) return null;
+  const category = AppColors.category[option.value];
+  return (
+    <View
+      style={[
+        styles.badge,
+        { backgroundColor: category.surface, borderColor: category.border },
+      ]}
+    >
+      <Ionicons
+        name={option.icon}
+        size={16}
+        color={category.foreground}
+        accessible={false}
+      />
+      <Text style={[styles.badgeText, { color: category.foreground }]}>
+        {option.label}
+      </Text>
+    </View>
+  );
+};
 
 interface RangeSelectorProps {
   value: TierSet | null;
@@ -32,6 +64,7 @@ export const RangeSelector: React.FC<RangeSelectorProps> = ({
     <View style={styles.options}>
       {RANGE_OPTIONS.map((option) => {
         const selected = value === option.value;
+        const category = AppColors.category[option.value];
         return (
           <Pressable
             key={option.value}
@@ -40,35 +73,52 @@ export const RangeSelector: React.FC<RangeSelectorProps> = ({
             accessibilityState={{ selected, disabled }}
             aria-pressed={selected}
             disabled={disabled}
-            onPress={() => onChange(option.value)}
-            style={[
+            onPress={() => {
+              if (!disabled) onChange(option.value);
+            }}
+            style={({ pressed }) => [
               styles.option,
+              {
+                backgroundColor: category.surface,
+                borderColor: category.border,
+              },
               selected && styles.selectedOption,
+              pressed && !disabled && styles.pressedOption,
               disabled && styles.disabledOption,
             ]}
           >
+            <View style={styles.indicatorSlot}>
+              {selected ? (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color={
+                    disabled ? AppColors.disabledText : category.foreground
+                  }
+                  accessible={false}
+                />
+              ) : null}
+            </View>
+            <Ionicons
+              name={option.icon}
+              size={28}
+              color={disabled ? AppColors.disabledText : category.foreground}
+              accessible={false}
+            />
             <Text
               style={[
                 styles.optionText,
-                selected && styles.selectedText,
+                { color: category.foreground },
                 disabled && styles.disabledText,
               ]}
             >
               {option.label}
             </Text>
-            {selected && (
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={AppColors.accent.dark}
-                accessible={false}
-              />
-            )}
           </Pressable>
         );
       })}
     </View>
-    <Text style={styles.caption}>Ranges are approximate after rounding.</Text>
+    <Text style={styles.caption}>Choose a starting category.</Text>
     {error && (
       <Text style={styles.error} accessibilityRole="alert">
         {error}
@@ -82,36 +132,57 @@ const styles = StyleSheet.create({
     gap: AppSpacing.sm,
   },
   options: {
+    flexDirection: 'row',
     gap: AppSpacing.sm,
   },
   option: {
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: AppColors.controlBorder,
-    borderRadius: AppBorders.radiusMd,
-    backgroundColor: AppColors.dominant.primary,
-    flexDirection: 'row',
+    flex: 1,
+    minWidth: 0,
+    minHeight: 104,
+    borderWidth: AppBorders.widthThin,
+    borderRadius: AppBorders.radiusXl,
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: AppSpacing.md,
+    justifyContent: 'center',
+    gap: AppSpacing.xxs,
+    padding: 12,
   },
   selectedOption: {
-    backgroundColor: AppColors.selectedSurface,
-    borderColor: AppColors.accent.dark,
+    borderWidth: AppBorders.widthMedium,
+    padding: 11,
+  },
+  pressedOption: {
+    transform: [{ scale: 0.96 }],
   },
   disabledOption: {
     backgroundColor: AppColors.disabledSurface,
     borderColor: AppColors.controlBorder,
   },
-  optionText: {
-    ...AppTypography.labelMedium,
-    color: AppColors.secondary.primary,
+  indicatorSlot: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  selectedText: {
-    color: AppColors.accent.dark,
+  optionText: {
+    ...AppTypography.titleMedium,
+    textAlign: 'center',
   },
   disabledText: {
     color: AppColors.disabledText,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AppSpacing.xs,
+    borderWidth: AppBorders.widthThin,
+    borderRadius: AppBorders.radiusFull,
+    paddingHorizontal: AppSpacing.sm,
+    paddingVertical: AppSpacing.xxs,
+  },
+  badgeText: {
+    ...AppTypography.labelMedium,
   },
   caption: {
     ...AppTypography.bodySmall,

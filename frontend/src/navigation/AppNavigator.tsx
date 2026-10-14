@@ -1,7 +1,13 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import type React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { AppColors, AppSpacing, AppTypography } from '../design-system/tokens';
 import { useAuth } from '../providers/AuthContext';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -29,7 +35,12 @@ export const AppNavigator: React.FC = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          cardStyle: Platform.OS === 'web' ? { flex: 1 } : undefined,
+        }}
+      >
         {user ? (
           <>
             <Stack.Screen name="Main" component={HomeScreen} />

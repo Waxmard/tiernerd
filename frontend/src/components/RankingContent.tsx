@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
 import {
@@ -11,7 +12,7 @@ import type {
   Item,
   TierSet,
 } from '../services/itemsService';
-import { RANGE_OPTIONS } from './RangeSelector';
+import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface RankingContentProps {
   listTitle: string;
@@ -65,7 +66,7 @@ function ComparisonChoice({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.name} is better. ${label}. ${scoreLabel}`}
+      accessibilityLabel={`${item.name}. ${label}. ${scoreLabel}`}
       accessibilityHint="Select the better item."
       accessibilityState={{ disabled: isBusy }}
       disabled={isBusy}
@@ -73,6 +74,7 @@ function ComparisonChoice({
       style={({ pressed }) => [
         styles.choice,
         pressed && !isBusy && styles.choicePressed,
+        isBusy && styles.choiceDisabled,
       ]}
     >
       <View style={styles.choiceHeader}>
@@ -84,16 +86,35 @@ function ComparisonChoice({
           />
         ) : null}
         <View style={styles.choiceCopy}>
-          <Text style={styles.choiceName}>{item.name}</Text>
-          <Text style={styles.choiceRole}>{label}</Text>
+          <Text
+            style={[styles.choiceName, isBusy && styles.choiceDisabledText]}
+          >
+            {item.name}
+          </Text>
+          <Text
+            style={[styles.choiceRole, isBusy && styles.choiceDisabledText]}
+          >
+            {label}
+          </Text>
         </View>
+        <Ionicons
+          name="trophy-outline"
+          size={28}
+          color={isBusy ? AppColors.disabledText : AppColors.accent.dark}
+          accessible={false}
+        />
       </View>
       {item.description ? (
-        <Text style={styles.description} numberOfLines={2}>
+        <Text
+          style={[styles.description, isBusy && styles.choiceDisabledText]}
+          numberOfLines={2}
+        >
           {item.description}
         </Text>
       ) : null}
-      <Text style={styles.scoreLabel}>{scoreLabel}</Text>
+      <Text style={[styles.scoreLabel, isBusy && styles.choiceDisabledText]}>
+        {scoreLabel}
+      </Text>
     </Pressable>
   );
 }
@@ -112,7 +133,9 @@ export function RankingContent({
   onReload,
   onRetryRefresh,
 }: RankingContentProps) {
-  const destinationRange = getRangeLabel(session.tier_set);
+  const destinationOption = RANGE_OPTIONS.find(
+    (option) => option.value === session.tier_set
+  );
   const comparison = session.current_comparison;
   const candidate = session.item;
   const existingItem = comparison
@@ -176,7 +199,14 @@ export function RankingContent({
     >
       <View style={styles.context}>
         <Text style={styles.listTitle}>{listTitle}</Text>
-        <Text style={styles.destination}>Ranking into {destinationRange}</Text>
+        <View style={styles.destination}>
+          <Text style={styles.destinationLabel}>Ranking into</Text>
+          {destinationOption ? (
+            <RangeBadge tierSet={session.tier_set} />
+          ) : (
+            <Text style={styles.destinationLabel}>Range not selected</Text>
+          )}
+        </View>
         {isAsking ? (
           <Text style={styles.questionCount}>
             Question {session.comparisons_answered + 1} · up to{' '}
@@ -194,6 +224,7 @@ export function RankingContent({
             onPress={onRestart}
             disabled={isBusy}
             fullWidth
+            style={styles.recoveryAction}
           />
         </View>
       ) : isCompleted ? (
@@ -211,6 +242,7 @@ export function RankingContent({
                 onPress={onReload}
                 disabled={isBusy}
                 fullWidth
+                style={styles.recoveryAction}
               />
             </>
           )}
@@ -231,6 +263,7 @@ export function RankingContent({
                 onPress={onReload}
                 disabled={isBusy}
                 fullWidth
+                style={styles.recoveryAction}
               />
             </>
           )}
@@ -241,6 +274,7 @@ export function RankingContent({
               onPress={onUndo}
               disabled={isBusy}
               fullWidth
+              style={styles.recoveryAction}
             />
           ) : null}
         </View>
@@ -270,6 +304,7 @@ export function RankingContent({
               onPress={onUndo}
               disabled={isBusy}
               fullWidth
+              style={styles.recoveryAction}
             />
           ) : null}
         </View>
@@ -285,6 +320,7 @@ export function RankingContent({
             onPress={onReload}
             disabled={isBusy}
             fullWidth
+            style={styles.recoveryAction}
           />
         </View>
       )}
@@ -294,6 +330,7 @@ export function RankingContent({
           onPress={onRetryRefresh}
           disabled={isBusy}
           fullWidth
+          style={styles.recoveryActionStandalone}
         />
       ) : null}
     </BaseModalContent>
@@ -302,7 +339,7 @@ export function RankingContent({
 
 const styles = StyleSheet.create({
   context: {
-    gap: AppSpacing.xs,
+    gap: AppSpacing.sm,
     marginBottom: AppSpacing.md,
   },
   listTitle: {
@@ -310,11 +347,17 @@ const styles = StyleSheet.create({
     color: AppColors.textSecondary,
   },
   destination: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: AppSpacing.sm,
+  },
+  destinationLabel: {
     ...AppTypography.bodySmall,
-    color: AppColors.accent.dark,
+    color: AppColors.textSecondary,
   },
   question: {
-    gap: 12,
+    gap: AppSpacing.md,
   },
   questionCount: {
     ...AppTypography.bodySmall,
@@ -325,25 +368,30 @@ const styles = StyleSheet.create({
     color: AppColors.secondary.emphasis,
   },
   choice: {
-    borderWidth: 1,
-    borderColor: AppColors.controlBorder,
-    borderRadius: AppBorders.radiusMd,
-    backgroundColor: AppColors.dominant.primary,
-    padding: AppSpacing.md,
-    gap: 12,
+    minHeight: 152,
+    borderWidth: AppBorders.widthThin,
+    borderColor: AppColors.neutral[200],
+    borderRadius: AppBorders.radiusXl,
+    backgroundColor: AppColors.selectedSurface,
+    padding: AppSpacing.lg,
+    gap: AppSpacing.md,
   },
   choicePressed: {
-    backgroundColor: AppColors.selectedSurface,
     borderColor: AppColors.accent.dark,
+    transform: [{ scale: 0.96 }],
+  },
+  choiceDisabled: {
+    backgroundColor: AppColors.disabledSurface,
+    borderColor: AppColors.controlBorder,
   },
   choiceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: AppSpacing.md,
   },
   image: {
-    width: 48,
-    height: 48,
+    width: 64,
+    height: 64,
     borderRadius: AppBorders.radiusSm,
   },
   choiceCopy: {
@@ -352,12 +400,12 @@ const styles = StyleSheet.create({
     gap: AppSpacing.xxs,
   },
   choiceName: {
-    ...AppTypography.titleMedium,
+    ...AppTypography.headlineSmall,
     color: AppColors.secondary.emphasis,
   },
   choiceRole: {
     ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
+    color: AppColors.secondary.primary,
   },
   description: {
     ...AppTypography.bodySmall,
@@ -365,10 +413,19 @@ const styles = StyleSheet.create({
   },
   scoreLabel: {
     ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
+    color: AppColors.secondary.primary,
+  },
+  choiceDisabledText: {
+    color: AppColors.disabledText,
+  },
+  recoveryAction: {
+    marginTop: AppSpacing.sm,
+  },
+  recoveryActionStandalone: {
+    marginTop: AppSpacing.lg,
   },
   messageBlock: {
-    gap: 12,
+    gap: AppSpacing.md,
   },
   message: {
     ...AppTypography.bodyMedium,

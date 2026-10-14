@@ -24,6 +24,11 @@ export const AppColors = {
   disabledSurface: '#F3F4F6',
   disabledText: '#4B5563',
   selectedSurface: '#F5F3FF',
+  category: {
+    good: { foreground: '#166534', surface: '#ECFDF5', border: '#166534' },
+    mid: { foreground: '#854D0E', surface: '#FFFBEB', border: '#854D0E' },
+    bad: { foreground: '#9F1239', surface: '#FFF1F2', border: '#9F1239' },
+  },
   // Legacy mappings for compatibility
   primary: '#8B5CF6',
   primaryLight: '#A78BFA',

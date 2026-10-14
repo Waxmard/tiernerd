@@ -8,7 +8,7 @@ import {
   AppTypography,
 } from '../design-system/tokens';
 import type { ComparisonSession, Item } from '../services/itemsService';
-import { RANGE_OPTIONS } from './RangeSelector';
+import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface ItemDetailContentProps {
   item: Item;
@@ -53,9 +53,10 @@ export function ItemDetailContent({
   const imageFailed =
     item.image_url !== null && failedImageUrl === item.image_url;
 
-  const rangeLabel =
-    RANGE_OPTIONS.find((option) => option.value === item.tier_set)?.label ??
-    'Range not selected';
+  const rangeOption = RANGE_OPTIONS.find(
+    (option) => option.value === item.tier_set
+  );
+  const rangeLabel = rangeOption?.label ?? 'Range not selected';
   const liveSession =
     session && ['active', 'ready_to_commit'].includes(session.status)
       ? session
@@ -132,7 +133,11 @@ export function ItemDetailContent({
             ) : null}
           </View>
         )}
-        <Text style={styles.range}>{rangeLabel}</Text>
+        {rangeOption ? (
+          <RangeBadge tierSet={item.tier_set} />
+        ) : (
+          <Text style={styles.range}>{rangeLabel}</Text>
+        )}
         <Text style={styles.scoreExplanation}>
           Scores reflect position within each range. Adding, removing or
           re-ranking items can change scores.

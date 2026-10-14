@@ -29,6 +29,6 @@ export const AppLayout = {
   desktopBreakpoint: 1024,
   gutter: 16,
   columnGap: 16,
-  paneWidth: 360,
+  paneWidth: 400,
   paneGap: 24,
 } as const;

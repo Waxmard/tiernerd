@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
-    maxHeight: '90%',
+    maxHeight: '96%',
     flexShrink: 1,
     backgroundColor: AppColors.dominant.primary,
     borderTopLeftRadius: AppBorders.radiusXl,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   title: {
-    ...AppTypography.titleMedium,
+    ...AppTypography.titleLarge,
     color: AppColors.secondary.emphasis,
     flexShrink: 0,
     marginBottom: AppSpacing.md,
