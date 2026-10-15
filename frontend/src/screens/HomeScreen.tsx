@@ -225,7 +225,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           })
         }
         activeOpacity={0.7}
-        className="flex-row items-center gap-2 p-4 mb-3 bg-surface dark:bg-surface-dark rounded-xl"
+        className="flex-row items-center gap-2 p-[14px] mb-2 bg-surface dark:bg-surface-dark rounded-lg"
       >
         <View
           className={[
@@ -245,25 +245,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           />
         </View>
         <View className="flex-1 min-w-0 gap-2">
-          <Text
-            className="text-body-large font-semibold text-ink dark:text-ink-dark"
-            numberOfLines={2}
-          >
+          <Text className="text-[18px] leading-[25.2px] font-semibold text-ink dark:text-ink-dark">
             {item.title}
           </Text>
           {item.description?.trim() ? (
-            <Text
-              className="text-body-small text-ink-muted dark:text-ink-muted-dark"
-              numberOfLines={1}
-            >
+            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
               {item.description}
             </Text>
           ) : null}
           <View className="flex-row flex-wrap items-center gap-2">
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
               {item.itemCount} items
             </Text>
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
               Modified {formatDate(item.updatedAt)}
             </Text>
           </View>
@@ -304,6 +298,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 16 + safeAreaInsets.bottom }}
+        ListHeaderComponent={
+          <Text
+            accessibilityRole="header"
+            className="text-[30px] leading-[36px] font-semibold text-ink dark:text-ink-dark mb-3"
+          >
+            My lists
+          </Text>
+        }
         ListEmptyComponent={
           <View className="items-start pt-0.5">
             <Image

@@ -2,10 +2,8 @@
 <html lang="%LANG_ISO_CODE%">
   <head>
     <script>
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.dataset.theme = 'dark';
-        document.documentElement.classList.add('dark');
-      }
+      document.documentElement.dataset.theme = 'dark';
+      document.documentElement.classList.add('dark');
     </script>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -16,7 +14,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="TierNerd" />
-    <meta name="theme-color" content="#F7F7F8" />
+    <meta name="theme-color" content="#151e1a" />
     <style id="expo-reset">
       html,
       body {
@@ -26,7 +24,7 @@
       html[data-theme="dark"],
       html[data-theme="dark"] body,
       html[data-theme="dark"] #root {
-        background-color: #0B0B0E;
+        background-color: #151e1a;
       }
       body {
         margin: 0;
@@ -51,6 +49,9 @@
         outline-offset: 2px;
       }
       @media (forced-colors: active) {
+        [id^="tiernerd-preference-rail-"] {
+          display: none;
+        }
         html[data-input-modality="keyboard"] [id^="tiernerd-input-container-"]:has(input:focus-visible),
         html[data-input-modality="keyboard"] [id^="tiernerd-input-container-"]:has(textarea:focus-visible) {
           outline-color: Highlight;

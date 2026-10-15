@@ -1,6 +1,7 @@
 import type React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import type { Item } from '../services/itemsService';
+import { preferenceColor } from '../services/themePreference';
 import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface FocusTarget {
@@ -10,33 +11,34 @@ export interface FocusTarget {
 interface ListDetailItemRowProps {
   item: Item;
   rank: number | null;
+  rankedCount: number;
   selected: boolean;
   disabled: boolean;
   onPress: (item: Item) => void;
   onFocusTarget: (itemId: string, element: FocusTarget | null) => void;
 }
 
-const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
-
 const ROW_CLASS =
-  'flex-row items-center border-b border-line dark:border-line-dark px-2 py-3 mb-2 min-h-16';
+  'flex-row items-center border-2 p-[14px] mb-2 min-h-16 rounded-lg bg-surface dark:bg-surface-dark';
 
 export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
   rank,
+  rankedCount,
   selected,
   disabled,
   onPress,
   onFocusTarget,
 }) => {
   const isRanked = item.rating !== null;
+  const railColor = preferenceColor(rank, rankedCount);
   const rangeLabel = RANGE_OPTIONS.find(
     (option) => option.value === item.tier_set
   )?.label;
   const accessibleDescription = [
     item.name,
     rank !== null ? `rank ${rank}` : null,
-    isRanked ? `score ${item.rating?.toFixed(1)}` : 'Not ranked yet',
+    !isRanked ? 'Not ranked yet' : null,
     isRanked && rangeLabel ? `range ${rangeLabel}` : null,
     item.description?.trim() || null,
   ]
@@ -48,7 +50,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       accessibilityRole="button"
       accessibilityLabel={accessibleDescription}
       accessibilityHint="Open item details"
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, selected }}
       disabled={disabled}
       testID={isRanked ? 'ranked-item' : 'unranked-item'}
       onPress={() => onPress(item)}
@@ -64,25 +66,27 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
         className={[
           ROW_CLASS,
           selected
-            ? 'bg-accent-tint dark:bg-accent-tint-dark rounded-lg'
-            : 'bg-surface dark:bg-surface-dark',
+            ? 'border-accent-text dark:border-accent-text-dark'
+            : 'border-transparent',
+          railColor ? 'pl-5' : '',
         ].join(' ')}
       >
-        <Text className="w-8 shrink-0 text-label-medium text-ink-muted dark:text-ink-muted-dark">
-          {rank === null ? '—' : `#${rank}`}
-        </Text>
-        <View className="flex-1 min-w-0 mx-2">
-          <Text
-            className="text-body-large font-semibold text-ink dark:text-ink-dark"
-            numberOfLines={2}
-          >
+        {railColor ? (
+          <View
+            nativeID={`tiernerd-preference-rail-${item.item_id}`}
+            accessible={false}
+            importantForAccessibility="no"
+            pointerEvents="none"
+            className="absolute left-0 top-0 bottom-0 w-[6px] rounded-l-md"
+            style={{ backgroundColor: railColor }}
+          />
+        ) : null}
+        <View className="flex-1 min-w-0">
+          <Text className="text-[18px] leading-[25.2px] font-semibold text-ink dark:text-ink-dark">
             {item.name}
           </Text>
           {item.description?.trim() ? (
-            <Text
-              className="text-body-small text-ink-muted dark:text-ink-muted-dark"
-              numberOfLines={1}
-            >
+            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
               {item.description}
             </Text>
           ) : null}
@@ -91,23 +95,10 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
               <RangeBadge tierSet={item.tier_set} />
             ) : null
           ) : (
-            <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
+            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark mt-0.5">
               Not ranked yet
             </Text>
           )}
-        </View>
-        <View className="w-12 min-h-8 shrink-0 items-center justify-center rounded-full border border-line dark:border-line-dark bg-canvas dark:bg-canvas-dark">
-          <Text
-            className={[
-              'text-[20px] leading-6 font-semibold',
-              isRanked
-                ? 'text-accent-text dark:text-accent-text-dark'
-                : 'text-ink-muted dark:text-ink-muted-dark',
-            ].join(' ')}
-            style={TABULAR_NUMS}
-          >
-            {isRanked ? item.rating?.toFixed(1) : '—'}
-          </Text>
         </View>
       </View>
     </TouchableOpacity>

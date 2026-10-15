@@ -90,7 +90,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         <View className="flex-1 min-w-0 gap-1">
           <Text
             accessibilityRole="header"
-            className="text-title-large text-ink dark:text-ink-dark text-left"
+            className="text-[30px] leading-[36px] font-semibold text-ink dark:text-ink-dark text-left"
           >
             {title}
           </Text>
@@ -100,7 +100,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
               nestedScrollEnabled
               showsVerticalScrollIndicator
             >
-              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+              <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
                 {description}
               </Text>
             </ScrollView>
@@ -143,7 +143,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         </View>
       ) : null}
       <View className="flex-row flex-wrap items-center justify-between gap-2 py-2 bg-surface dark:bg-surface-dark border-b border-line dark:border-line-dark shrink-0">
-        <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark shrink">
+        <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark shrink">
           {rankedCount} of {itemCount} ranked
         </Text>
         <Button
@@ -163,6 +163,9 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           testID="fab-add-item"
         />
       </View>
+      <Text className="text-[14px] leading-[21px] text-ink dark:text-ink-dark py-2 shrink-0">
+        Stronger green = more preferred. Paler green = less preferred.
+      </Text>
     </>
   );
 };

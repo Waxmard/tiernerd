@@ -628,6 +628,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       item={item}
       selected={selectedItemId === item.item_id}
       rank={rankByItemId.get(item.item_id) ?? null}
+      rankedCount={rankedCount}
       disabled={isDeletingList}
       onPress={(selected) => void handleItemPress(selected)}
       onFocusTarget={(itemId, element) => {

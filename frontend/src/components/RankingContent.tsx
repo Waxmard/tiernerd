@@ -1,12 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Image, Pressable, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
-import type {
-  ComparisonSession,
-  Item,
-  TierSet,
-} from '../services/itemsService';
+import type { ComparisonSession, Item } from '../services/itemsService';
 import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface RankingContentProps {
@@ -27,7 +22,6 @@ export interface RankingContentProps {
 interface ComparisonChoiceProps {
   item: Item;
   label: string;
-  scoreLabel: string;
   isBusy: boolean;
   onPress: () => void;
 }
@@ -39,27 +33,9 @@ const choiceTextClass = (isBusy: boolean): string =>
     ? 'text-ink-disabled dark:text-ink-disabled-dark'
     : 'text-ink dark:text-ink-dark';
 
-function getRangeLabel(tierSet: TierSet | null): string {
-  return (
-    RANGE_OPTIONS.find((option) => option.value === tierSet)?.label ??
-    'Range not selected'
-  );
-}
-
-function getSavedScore(item: Item): string {
-  if (item.rating === null || item.tier_set === null) return 'Not ranked yet';
-  return (
-    'Saved score ' +
-    item.rating.toFixed(1) +
-    ' in ' +
-    getRangeLabel(item.tier_set)
-  );
-}
-
 function ComparisonChoice({
   item,
   label,
-  scoreLabel,
   isBusy,
   onPress,
 }: ComparisonChoiceProps) {
@@ -67,24 +43,19 @@ function ComparisonChoice({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}. ${label}. ${scoreLabel}`}
+      accessibilityLabel={`${item.name}. ${label}.`}
       accessibilityHint="Select the better item."
       accessibilityState={{ disabled: isBusy }}
       disabled={isBusy}
       onPress={onPress}
-      className={[
-        'min-h-[152px] border rounded-2xl p-6 gap-4',
-        isBusy
-          ? 'bg-surface-muted dark:bg-surface-muted-dark border-control dark:border-control-dark'
-          : 'bg-accent-tint dark:bg-accent-tint-dark border-line dark:border-line-dark',
-      ].join(' ')}
+      className="min-h-16 border border-control dark:border-control-dark rounded-lg p-[14px] gap-2 bg-surface dark:bg-surface-dark"
       style={({ pressed }) =>
         pressed && !isBusy
-          ? { transform: [{ scale: 0.96 }], borderColor: colors.accent }
+          ? { transform: [{ scale: 0.96 }], borderColor: colors['accent-text'] }
           : undefined
       }
     >
-      <View className="flex-row items-center gap-4">
+      <View className="flex-row items-center gap-2">
         {item.image_url ? (
           <Image
             source={{ uri: item.image_url }}
@@ -94,36 +65,33 @@ function ComparisonChoice({
         ) : null}
         <View className="flex-1 min-w-0 gap-0.5">
           <Text
-            className={['text-headline-small', choiceTextClass(isBusy)].join(
-              ' '
-            )}
+            className={[
+              'text-[18px] leading-[25.2px] font-semibold',
+              choiceTextClass(isBusy),
+            ].join(' ')}
           >
             {item.name}
           </Text>
           <Text
-            className={['text-body-small', choiceTextClass(isBusy)].join(' ')}
+            className={[
+              'text-[14px] leading-[21px]',
+              choiceTextClass(isBusy),
+            ].join(' ')}
           >
             {label}
           </Text>
         </View>
-        <Ionicons
-          name="trophy-outline"
-          size={28}
-          color={isBusy ? colors['ink-disabled'] : colors['accent-text']}
-          accessible={false}
-        />
       </View>
       {item.description ? (
         <Text
-          numberOfLines={2}
-          className={['text-body-small', choiceTextClass(isBusy)].join(' ')}
+          className={[
+            'text-[14px] leading-[21px]',
+            choiceTextClass(isBusy),
+          ].join(' ')}
         >
           {item.description}
         </Text>
       ) : null}
-      <Text className={['text-body-small', choiceTextClass(isBusy)].join(' ')}>
-        {scoreLabel}
-      </Text>
     </Pressable>
   );
 }
@@ -291,18 +259,16 @@ export function RankingContent({
           This ranking was cancelled.
         </Text>
       ) : isAsking && existingItem ? (
-        <View className="gap-4">
+        <View className="gap-2">
           <ComparisonChoice
             item={candidate}
             label="Item being ranked"
-            scoreLabel={getSavedScore(candidate)}
             isBusy={isBusy}
             onPress={() => onAnswer('better')}
           />
           <ComparisonChoice
             item={existingItem}
             label="Existing item"
-            scoreLabel={getSavedScore(existingItem)}
             isBusy={isBusy}
             onPress={() => onAnswer('worse')}
           />
