@@ -1,12 +1,22 @@
 import type React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import type { Item } from '../services/itemsService';
-import { preferenceColor } from '../services/themePreference';
+import {
+  type PreferenceBand,
+  preferenceBand,
+} from '../services/themePreference';
 import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface FocusTarget {
   focus?: () => void;
 }
+
+const RAIL_CLASS: Record<PreferenceBand, string> = {
+  1: 'bg-preference-1 dark:bg-preference-1-dark',
+  2: 'bg-preference-2 dark:bg-preference-2-dark',
+  3: 'bg-preference-3 dark:bg-preference-3-dark',
+  4: 'bg-preference-4 dark:bg-preference-4-dark',
+};
 
 interface ListDetailItemRowProps {
   item: Item;
@@ -31,7 +41,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   onFocusTarget,
 }) => {
   const isRanked = item.rating !== null;
-  const railColor = preferenceColor(rank, rankedCount);
+  const band = preferenceBand(rank, rankedCount);
   const rangeLabel = RANGE_OPTIONS.find(
     (option) => option.value === item.tier_set
   )?.label;
@@ -68,17 +78,19 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
           selected
             ? 'border-accent-text dark:border-accent-text-dark'
             : 'border-transparent',
-          railColor ? 'pl-5' : '',
+          band !== null ? 'pl-5' : '',
         ].join(' ')}
       >
-        {railColor ? (
+        {band !== null ? (
           <View
             nativeID={`tiernerd-preference-rail-${item.item_id}`}
             accessible={false}
             importantForAccessibility="no"
             pointerEvents="none"
-            className="absolute left-0 top-0 bottom-0 w-[6px] rounded-l-md"
-            style={{ backgroundColor: railColor }}
+            className={[
+              'absolute left-0 top-0 bottom-0 w-[6px] rounded-l-md',
+              RAIL_CLASS[band],
+            ].join(' ')}
           />
         ) : null}
         <View className="flex-1 min-w-0">

@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F7F7F8"
+      "backgroundColor": "#151e1a"
     },
     "ios": {
       "supportsTablet": true,
@@ -22,7 +22,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#F7F7F8"
+        "backgroundColor": "#F1F7F0"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.tiernerd"

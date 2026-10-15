@@ -23,14 +23,14 @@ export const RangeBadge = ({
   const option = RANGE_OPTIONS.find((entry) => entry.value === tierSet);
   if (!option) return null;
   return (
-    <View className="self-start flex-row items-center gap-1 border border-accent-line dark:border-accent-line-dark rounded-full px-2 py-0.5 bg-accent-tint dark:bg-accent-tint-dark">
+    <View className="self-start flex-row items-center gap-1 border border-line dark:border-line-dark rounded-full px-2 py-0.5 bg-accent-tint dark:bg-accent-tint-dark">
       <Ionicons
         name={option.icon}
         size={16}
-        color={colors['accent-text']}
+        color={colors['ink-muted']}
         accessible={false}
       />
-      <Text className="text-label-medium text-accent-text dark:text-accent-text-dark">
+      <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark">
         {option.label}
       </Text>
     </View>

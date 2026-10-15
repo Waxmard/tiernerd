@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseThemePreference, preferenceColor } from './themePreference.ts';
+import { parseThemePreference, preferenceBand } from './themePreference.ts';
 
 test('defaults to dark for missing or unknown values', () => {
   assert.equal(parseThemePreference(null), 'dark');
@@ -15,32 +15,23 @@ test('accepts the three stored preferences', () => {
   assert.equal(parseThemePreference('system'), 'system');
 });
 
-test('maps relative ranks to the four preference greens', () => {
+test('maps relative ranks to the four preference bands', () => {
   assert.deepEqual(
-    [1, 2, 3, 4].map((rank) => preferenceColor(rank, 4)),
-    ['#2e7d50', '#69a77c', '#a1c9ac', '#d8eadd']
+    [1, 2, 3, 4].map((rank) => preferenceBand(rank, 4)),
+    [1, 2, 3, 4]
   );
-  assert.equal(preferenceColor(1, 1), '#2e7d50');
+  assert.equal(preferenceBand(1, 1), 1);
   assert.deepEqual(
-    [1, 2, 3, 4, 5, 6, 7, 8].map((rank) => preferenceColor(rank, 8)),
-    [
-      '#2e7d50',
-      '#2e7d50',
-      '#2e7d50',
-      '#69a77c',
-      '#69a77c',
-      '#a1c9ac',
-      '#a1c9ac',
-      '#d8eadd',
-    ]
+    [1, 2, 3, 4, 5, 6, 7, 8].map((rank) => preferenceBand(rank, 8)),
+    [1, 1, 1, 2, 2, 3, 3, 4]
   );
 });
 
 test('rejects missing, fractional and out-of-range ranks or counts', () => {
   for (const rank of [null, 0, -1, 1.5, 5, Number.NaN, Infinity]) {
-    assert.equal(preferenceColor(rank, 4), null);
+    assert.equal(preferenceBand(rank, 4), null);
   }
   for (const count of [0, -1, 1.5, Number.NaN, Infinity]) {
-    assert.equal(preferenceColor(1, count), null);
+    assert.equal(preferenceBand(1, count), null);
   }
 });

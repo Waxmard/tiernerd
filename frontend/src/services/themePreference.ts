@@ -6,12 +6,12 @@ export function parseThemePreference(raw: string | null): ThemePreference {
   return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'dark';
 }
 
-const PREFERENCE_COLORS = ['#2e7d50', '#69a77c', '#a1c9ac', '#d8eadd'];
+export type PreferenceBand = 1 | 2 | 3 | 4;
 
-export function preferenceColor(
+export function preferenceBand(
   rank: number | null,
   rankedCount: number
-): string | null {
+): PreferenceBand | null {
   if (
     rank === null ||
     !Number.isInteger(rank) ||
@@ -24,5 +24,5 @@ export function preferenceColor(
   }
   const index =
     rankedCount === 1 ? 0 : Math.floor(((rank - 1) * 3) / (rankedCount - 1));
-  return PREFERENCE_COLORS[index] ?? null;
+  return (index + 1) as PreferenceBand;
 }
