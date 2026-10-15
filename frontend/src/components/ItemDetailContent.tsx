@@ -1,14 +1,9 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
-import {
-  AppBorders,
-  AppColors,
-  AppSpacing,
-  AppTypography,
-} from '../design-system/tokens';
+import { useThemeColors } from '../providers/ThemeProvider';
 import type { ComparisonSession, Item } from '../services/itemsService';
-import { RANGE_OPTIONS } from './RangeSelector';
+import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface ItemDetailContentProps {
   item: Item;
@@ -31,6 +26,11 @@ export interface ItemDetailContentProps {
 
 const REFRESH_ERROR = 'Unable to refresh items. Try again.';
 
+const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
+
+const SCORE_CLASS =
+  'text-[20px] leading-6 font-semibold text-accent-text dark:text-accent-text-dark';
+
 export function ItemDetailContent({
   item,
   rank,
@@ -49,13 +49,15 @@ export function ItemDetailContent({
   onRetryRefresh,
   onClose,
 }: ItemDetailContentProps) {
+  const colors = useThemeColors();
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const imageFailed =
     item.image_url !== null && failedImageUrl === item.image_url;
 
-  const rangeLabel =
-    RANGE_OPTIONS.find((option) => option.value === item.tier_set)?.label ??
-    'Range not selected';
+  const rangeOption = RANGE_OPTIONS.find(
+    (option) => option.value === item.tier_set
+  );
+  const rangeLabel = rangeOption?.label ?? 'Range not selected';
   const liveSession =
     session && ['active', 'ready_to_commit'].includes(session.status)
       ? session
@@ -80,20 +82,20 @@ export function ItemDetailContent({
       presentation={presentation}
       onClose={onClose}
       footer={
-        <View style={styles.footerActions}>
+        <View className="gap-2">
           <Button
             title={rankTitle}
             onPress={liveSession ? onResume : onRank}
             disabled={actionsBlocked}
             fullWidth
           />
-          <View style={styles.secondaryActions}>
+          <View className="flex-row flex-wrap gap-2">
             <Button
               title="Edit"
               variant="secondary"
               onPress={onEdit}
               disabled={isBusy || refreshPending}
-              style={styles.secondaryAction}
+              className="flex-1 min-w-[120px]"
             />
             <Button
               title={deleteTitle}
@@ -105,8 +107,12 @@ export function ItemDetailContent({
                 Boolean(sessionError) ||
                 (refreshPending && !onRetryRefresh)
               }
-              textStyle={canRetryRefresh ? undefined : styles.deleteText}
-              style={styles.secondaryAction}
+              textClassName={
+                canRetryRefresh
+                  ? undefined
+                  : 'text-danger-text dark:text-danger-text-dark'
+              }
+              className="flex-1 min-w-[120px]"
             />
           </View>
           <Button
@@ -119,49 +125,68 @@ export function ItemDetailContent({
         </View>
       }
     >
-      <View style={styles.content}>
+      <View className="gap-4 pb-4">
         {item.rating === null ? (
-          <Text style={styles.score}>Not ranked yet</Text>
+          <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
+            Not ranked yet
+          </Text>
         ) : (
-          <View style={styles.rankingSummary}>
-            <Text style={styles.score}>{item.rating.toFixed(1)}</Text>
+          <View className="flex-row items-baseline flex-wrap gap-4">
+            <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
+              {item.rating.toFixed(1)}
+            </Text>
             {rank !== null ? (
-              <Text style={styles.rank}>
+              <Text className="text-body-medium text-ink dark:text-ink-dark">
                 Rank #{rank} of {rankedCount}
               </Text>
             ) : null}
           </View>
         )}
-        <Text style={styles.range}>{rangeLabel}</Text>
-        <Text style={styles.scoreExplanation}>
+        {rangeOption ? (
+          <RangeBadge tierSet={item.tier_set} />
+        ) : (
+          <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark">
+            {rangeLabel}
+          </Text>
+        )}
+        <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
           Scores reflect position within each range. Adding, removing or
           re-ranking items can change scores.
         </Text>
         {item.description ? (
-          <Text style={styles.description}>{item.description}</Text>
+          <Text className="text-body-large text-ink dark:text-ink-dark">
+            {item.description}
+          </Text>
         ) : null}
         {item.image_url ? (
           imageFailed ? (
-            <Text style={styles.imageUnavailable}>Image unavailable</Text>
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+              Image unavailable
+            </Text>
           ) : (
             <Image
               source={{ uri: item.image_url }}
               accessibilityLabel={item.name}
               onError={() => setFailedImageUrl(item.image_url)}
               resizeMode="cover"
-              style={styles.image}
+              className="w-full h-[220px] rounded-lg bg-canvas dark:bg-canvas-dark border border-line dark:border-line-dark"
             />
           )
         ) : null}
 
         {isLoadingSession ? (
-          <View style={styles.sessionStatus}>
-            <ActivityIndicator color={AppColors.accent.dark} />
-            <Text style={styles.secondaryText}>Checking ranking status</Text>
+          <View className="gap-2">
+            <ActivityIndicator color={colors['accent-text']} />
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark text-center">
+              Checking ranking status
+            </Text>
           </View>
         ) : sessionError ? (
-          <View style={styles.sessionStatus}>
-            <Text accessibilityRole="alert" style={styles.error}>
+          <View className="gap-2">
+            <Text
+              accessibilityRole="alert"
+              className="text-body-small text-danger-text dark:text-danger-text-dark"
+            >
               {sessionError}
             </Text>
             <Button
@@ -177,76 +202,3 @@ export function ItemDetailContent({
     </BaseModalContent>
   );
 }
-
-const styles = StyleSheet.create({
-  content: {
-    gap: AppSpacing.md,
-    paddingBottom: AppSpacing.md,
-  },
-  rankingSummary: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: AppSpacing.md,
-    flexWrap: 'wrap',
-  },
-  score: {
-    ...AppTypography.titleMedium,
-    color: AppColors.accent.dark,
-    fontSize: 20,
-    lineHeight: 24,
-    fontVariant: ['tabular-nums'],
-  },
-  rank: {
-    ...AppTypography.bodyMedium,
-    color: AppColors.secondary.primary,
-  },
-  range: {
-    ...AppTypography.labelMedium,
-    color: AppColors.textSecondary,
-  },
-  scoreExplanation: {
-    ...AppTypography.bodySmall,
-    color: AppColors.secondary.muted,
-  },
-  description: {
-    ...AppTypography.bodyLarge,
-    color: AppColors.secondary.primary,
-  },
-  image: {
-    width: '100%',
-    height: 220,
-    borderRadius: AppBorders.radiusMd,
-    backgroundColor: AppColors.surfaceLight,
-  },
-  imageUnavailable: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
-  },
-  sessionStatus: {
-    gap: AppSpacing.sm,
-  },
-  secondaryText: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
-    textAlign: 'center',
-  },
-  error: {
-    ...AppTypography.bodySmall,
-    color: AppColors.error,
-  },
-  footerActions: {
-    gap: AppSpacing.sm,
-  },
-  secondaryActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: AppSpacing.sm,
-  },
-  secondaryAction: {
-    flex: 1,
-    minWidth: 120,
-  },
-  deleteText: {
-    color: AppColors.error,
-  },
-});

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { ComparisonSession, Item } from './itemsService';
+import type { ComparisonSession, Item } from './itemsService.ts';
+import { shouldAutoCommitRanking } from './itemWorkspaceActions.ts';
 import { hasSavedRankChanged } from './rankSnapshot.ts';
 
 const candidate: Item = {
@@ -33,6 +34,40 @@ const session: ComparisonSession = {
   created_at: '',
   updated_at: '',
 };
+const readySession: ComparisonSession = {
+  ...session,
+  status: 'ready_to_commit',
+  preview: { score: 5, rank: 1, ranked_count: 1, tier_set: 'good' },
+};
+
+test('auto-commits each fresh ready revision only once', () => {
+  assert.equal(shouldAutoCommitRanking(readySession, false, null), true);
+  assert.equal(shouldAutoCommitRanking(session, false, null), false);
+  assert.equal(
+    shouldAutoCommitRanking({ ...readySession, is_stale: true }, false, null),
+    false
+  );
+  assert.equal(
+    shouldAutoCommitRanking({ ...readySession, preview: null }, false, null),
+    false
+  );
+  assert.equal(shouldAutoCommitRanking(null, false, null), false);
+  assert.equal(shouldAutoCommitRanking(readySession, true, null), false);
+  assert.equal(
+    shouldAutoCommitRanking(readySession, false, {
+      sessionId: readySession.session_id,
+      revision: readySession.revision,
+    }),
+    false
+  );
+  assert.equal(
+    shouldAutoCommitRanking(readySession, false, {
+      sessionId: readySession.session_id,
+      revision: readySession.revision - 1,
+    }),
+    true
+  );
+});
 
 test('detects saved-rank changes but ignores metadata edits', () => {
   assert.equal(

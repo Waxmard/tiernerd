@@ -2,16 +2,13 @@ import type React from 'react';
 import { forwardRef, useId } from 'react';
 import {
   Platform,
-  StyleSheet,
   Text,
   TextInput,
   type TextInputProps,
-  type TextStyle,
   TouchableOpacity,
   View,
-  type ViewStyle,
 } from 'react-native';
-import { AppBorders, AppColors, AppSpacing, AppTypography } from '../tokens';
+import { useThemeColors } from '../../providers/ThemeProvider';
 
 interface InputProps extends TextInputProps {
   'aria-invalid'?: boolean;
@@ -21,8 +18,8 @@ interface InputProps extends TextInputProps {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   rightIconAccessibilityLabel?: string;
-  containerStyle?: ViewStyle;
-  inputStyle?: TextStyle;
+  containerClassName?: string;
+  inputClassName?: string;
   onRightIconPress?: () => void;
 }
 
@@ -33,38 +30,52 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
     leftIcon,
     rightIcon,
     rightIconAccessibilityLabel,
-    containerStyle,
-    inputStyle,
+    containerClassName,
+    inputClassName,
     onRightIconPress,
     ...textInputProps
   },
   ref
 ) {
+  const colors = useThemeColors();
   const labelId = useId();
   const errorId = useId();
   const containerId = `tiernerd-input-container-${useId()}`;
 
   return (
-    <View style={[styles.container, containerStyle]}>
+    <View className={['mb-4', containerClassName ?? ''].join(' ')}>
       {label && (
-        <Text nativeID={labelId} style={styles.label}>
+        <Text
+          nativeID={labelId}
+          className="text-label-medium text-ink dark:text-ink-dark mb-1"
+        >
           {label}
         </Text>
       )}
       <View
         nativeID={containerId}
-        style={[styles.inputContainer, error && styles.inputContainerError]}
+        className={[
+          'flex-row items-center border rounded-lg px-3 py-2 min-h-[48px]',
+          'bg-surface dark:bg-surface-dark',
+          error
+            ? 'border-danger-text dark:border-danger-text-dark'
+            : 'border-control dark:border-control-dark',
+        ].join(' ')}
         collapsable={false}
       >
         {leftIcon && (
-          <View accessible={false} style={styles.leftIcon}>
+          <View accessible={false} className="mr-2 h-6 justify-center">
             {leftIcon}
           </View>
         )}
         <TextInput
           ref={ref}
-          style={[styles.input, inputStyle]}
-          placeholderTextColor={AppColors.secondary.light}
+          className={[
+            'flex-1 py-1 m-0 text-[16px]',
+            'text-ink dark:text-ink-dark',
+            inputClassName ?? '',
+          ].join(' ')}
+          placeholderTextColor={colors['ink-disabled']}
           {...textInputProps}
           accessibilityLabel={textInputProps.accessibilityLabel ?? label}
           accessibilityLabelledBy={
@@ -97,14 +108,17 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel={rightIconAccessibilityLabel}
-            style={styles.rightIcon}
+            className="w-11 h-11 items-center justify-center -mr-2"
             onPress={onRightIconPress}
           >
             <View accessible={false}>{rightIcon}</View>
           </TouchableOpacity>
         ) : (
           rightIcon && (
-            <View accessible={false} style={styles.rightIcon}>
+            <View
+              accessible={false}
+              className="w-11 h-11 items-center justify-center -mr-2"
+            >
               {rightIcon}
             </View>
           )
@@ -114,61 +128,11 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         <Text
           nativeID={errorId}
           accessibilityLiveRegion="polite"
-          style={styles.error}
+          className="text-body-small text-danger-text dark:text-danger-text-dark mt-1"
         >
           {error}
         </Text>
       )}
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: AppSpacing.md,
-  },
-  label: {
-    ...AppTypography.labelMedium,
-    color: AppColors.secondary.primary,
-    marginBottom: AppSpacing.xs,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: AppColors.controlBorder,
-    borderRadius: AppBorders.radiusMd,
-    backgroundColor: AppColors.dominant.primary,
-    paddingHorizontal: AppSpacing.inputPadding.horizontal,
-    paddingVertical: AppSpacing.inputPadding.vertical,
-    minHeight: 48,
-  },
-  inputContainerError: {
-    borderColor: AppColors.error,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '400',
-    color: AppColors.secondary.primary,
-    paddingVertical: 4,
-    margin: 0,
-  },
-  leftIcon: {
-    marginRight: AppSpacing.sm,
-    height: 24,
-    justifyContent: 'center',
-  },
-  rightIcon: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: -AppSpacing.sm,
-  },
-  error: {
-    ...AppTypography.bodySmall,
-    color: AppColors.error,
-    marginTop: AppSpacing.xs,
-  },
 });

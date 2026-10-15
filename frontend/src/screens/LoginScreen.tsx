@@ -6,23 +6,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   type TextInput,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input } from '../design-system/components';
-import { AppColors, AppSpacing, AppTypography } from '../design-system/tokens';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
+import { useThemeColors } from '../providers/ThemeProvider';
 
 type LoginScreenProps = RootStackScreenProps<'Login'>;
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { width } = useWindowDimensions();
+  const colors = useThemeColors();
   const { signIn, signInWithGoogle, googleAvailable, isLoading, error } =
     useAuth();
   const [email, setEmail] = useState('');
@@ -52,32 +50,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+    <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
+      <SafeAreaView className="flex-1">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
+          className="flex-1"
         >
           <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              width >= 1024 && styles.desktopScrollContent,
-            ]}
+            contentContainerClassName="grow w-full max-w-[420px] self-center px-4 pt-6 desktop:pt-12"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={false}
           >
-            <View style={styles.content}>
-              <View style={styles.logoContainer}>
+            <View className="grow">
+              <View className="items-center mb-4">
                 <Image
                   source={require('../../assets/logo-transparent.png')}
-                  style={styles.logo}
+                  className="w-12 h-12"
                   resizeMode="contain"
                   accessible={false}
                 />
               </View>
-              <View style={styles.formContainer} collapsable={false}>
-                <Text style={styles.formTitle} accessibilityRole="header">
+              <View className="w-full" collapsable={false}>
+                <Text
+                  className="text-title-large text-ink dark:text-ink-dark text-left mb-4"
+                  accessibilityRole="header"
+                >
                   TierNerd
                 </Text>
                 <Input
@@ -103,7 +101,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                       accessible={false}
                       name="mail-outline"
                       size={20}
-                      color={AppColors.neutral[600]}
+                      color={colors['ink-muted']}
                     />
                   }
                 />
@@ -127,7 +125,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                       accessible={false}
                       name="lock-closed-outline"
                       size={20}
-                      color={AppColors.neutral[600]}
+                      color={colors['ink-muted']}
                     />
                   }
                   rightIcon={
@@ -135,7 +133,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                       accessible={false}
                       name={passwordVisible ? 'eye-outline' : 'eye-off-outline'}
                       size={20}
-                      color={AppColors.neutral[600]}
+                      color={colors['ink-muted']}
                     />
                   }
                   rightIconAccessibilityLabel={
@@ -144,8 +142,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   onRightIconPress={() => setPasswordVisible(!passwordVisible)}
                 />
                 {error && (
-                  <View style={styles.errorContainer}>
-                    <Text style={styles.errorText} accessibilityRole="alert">
+                  <View className="mt-4 p-4 bg-danger-text dark:bg-danger-text-dark rounded-lg">
+                    <Text
+                      className="text-body-small text-on-accent dark:text-canvas text-center"
+                      accessibilityRole="alert"
+                    >
                       {error}
                     </Text>
                   </View>
@@ -156,14 +157,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   size="large"
                   fullWidth
                   loading={isLoading}
-                  style={styles.loginButton}
+                  className="mt-4"
                 />
                 {googleAvailable && (
                   <>
-                    <View style={styles.divider}>
-                      <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>OR</Text>
-                      <View style={styles.dividerLine} />
+                    <View className="flex-row items-center my-4">
+                      <View className="flex-1 h-px bg-line dark:bg-line-dark" />
+                      <Text className="text-label-small text-ink-muted dark:text-ink-muted-dark mx-4">
+                        OR
+                      </Text>
+                      <View className="flex-1 h-px bg-line dark:bg-line-dark" />
                     </View>
                     <Button
                       title="Sign in with Google"
@@ -176,23 +179,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                       icon={
                         <Image
                           source={require('../../assets/google-logo.png')}
-                          style={styles.googleIcon}
+                          className="w-5 h-5"
                           accessible={false}
                         />
                       }
                     />
                   </>
                 )}
-                <View style={styles.signUpContainer}>
-                  <Text style={styles.signUpText}>Don't have an account? </Text>
+                <View className="flex-row items-center justify-center mt-4">
+                  <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+                    Don't have an account?{' '}
+                  </Text>
                   <TouchableOpacity
                     accessibilityRole="button"
                     accessibilityLabel="Sign Up"
                     activeOpacity={0.7}
-                    style={styles.linkTarget}
+                    className="min-h-[44px] justify-center"
                     onPress={navigateToRegister}
                   >
-                    <Text style={styles.signUpLink}>Sign Up</Text>
+                    <Text className="text-body-medium text-accent-text dark:text-accent-text-dark font-semibold underline">
+                      Sign Up
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -203,100 +210,3 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: AppColors.dominant.secondary,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: 420,
-    alignSelf: 'center',
-    paddingHorizontal: AppSpacing.md,
-    paddingTop: AppSpacing.lg,
-  },
-  desktopScrollContent: {
-    paddingTop: AppSpacing.xxxl,
-  },
-  content: {
-    flexGrow: 1,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: AppSpacing.md,
-  },
-  logo: {
-    width: 48,
-    height: 48,
-  },
-  formTitle: {
-    ...AppTypography.titleLarge,
-    color: AppColors.secondary.emphasis,
-    textAlign: 'left',
-    marginBottom: AppSpacing.md,
-  },
-  formContainer: {
-    width: '100%',
-  },
-  loginButton: {
-    marginTop: AppSpacing.md,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: AppSpacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: AppColors.neutral[300],
-  },
-  dividerText: {
-    ...AppTypography.labelSmall,
-    color: AppColors.textSecondary,
-    marginHorizontal: AppSpacing.md,
-  },
-  googleIcon: {
-    width: 20,
-    height: 20,
-  },
-  signUpContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: AppSpacing.md,
-  },
-  linkTarget: {
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  signUpText: {
-    ...AppTypography.bodyMedium,
-    color: AppColors.textSecondary,
-  },
-  signUpLink: {
-    ...AppTypography.bodyMedium,
-    color: AppColors.accent.dark,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-  errorContainer: {
-    marginTop: AppSpacing.md,
-    padding: AppSpacing.md,
-    backgroundColor: AppColors.error,
-    borderRadius: AppSpacing.sm,
-  },
-  errorText: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textOnPrimary,
-    textAlign: 'center',
-  },
-});

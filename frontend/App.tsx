@@ -1,10 +1,14 @@
+import './global.css';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/providers/AuthContext';
+import { ThemeProvider, useTheme } from './src/providers/ThemeProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { AppColors } from './src/design-system/tokens';
-import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from 'react-native-reanimated';
 
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
@@ -22,13 +26,14 @@ if (__DEV__) {
   };
 }
 
-export default function App() {
+const AppShell = () => {
+  const { scheme } = useTheme();
+
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
     const root = document.documentElement;
     root.dataset.inputModality = 'pointer';
-    root.style.setProperty('--tiernerd-focus-color', AppColors.accent.dark);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Tab') root.dataset.inputModality = 'keyboard';
     };
@@ -41,16 +46,25 @@ export default function App() {
       window.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('pointerdown', onPointerDown, true);
       delete root.dataset.inputModality;
-      root.style.removeProperty('--tiernerd-focus-color');
     };
   }, []);
 
   return (
+    <>
+      <AppNavigator />
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+    </>
+  );
+};
+
+export default function App() {
+  return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <AppNavigator />
-        <StatusBar style="dark" />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

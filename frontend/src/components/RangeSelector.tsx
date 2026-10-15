@@ -1,19 +1,41 @@
 import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import {
-  AppBorders,
-  AppColors,
-  AppSpacing,
-  AppTypography,
-} from '../design-system/tokens';
+import { Pressable, Text, View } from 'react-native';
+import { useThemeColors } from '../providers/ThemeProvider';
 import type { TierSet } from '../services/itemsService';
 
 export const RANGE_OPTIONS = [
-  { label: 'Great (7.0–10.0)', value: 'good' },
-  { label: 'Okay (4.0–6.9)', value: 'mid' },
-  { label: 'Bad (1.0–3.9)', value: 'bad' },
-] as const satisfies ReadonlyArray<{ label: string; value: TierSet }>;
+  { label: 'Good', value: 'good', icon: 'happy-outline' },
+  { label: 'Mid', value: 'mid', icon: 'remove-circle-outline' },
+  { label: 'Bad', value: 'bad', icon: 'sad-outline' },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  value: TierSet;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+}>;
+
+export const RangeBadge = ({
+  tierSet,
+}: {
+  tierSet: TierSet | null;
+}): React.ReactElement | null => {
+  const colors = useThemeColors();
+  const option = RANGE_OPTIONS.find((entry) => entry.value === tierSet);
+  if (!option) return null;
+  return (
+    <View className="self-start flex-row items-center gap-1 border border-line dark:border-line-dark rounded-full px-2 py-0.5 bg-accent-tint dark:bg-accent-tint-dark">
+      <Ionicons
+        name={option.icon}
+        size={16}
+        color={colors['ink-muted']}
+        accessible={false}
+      />
+      <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark">
+        {option.label}
+      </Text>
+    </View>
+  );
+};
 
 interface RangeSelectorProps {
   value: TierSet | null;
@@ -27,98 +49,92 @@ export const RangeSelector: React.FC<RangeSelectorProps> = ({
   onChange,
   error,
   disabled = false,
-}) => (
-  <View style={styles.container}>
-    <View style={styles.options}>
-      {RANGE_OPTIONS.map((option) => {
-        const selected = value === option.value;
-        return (
-          <Pressable
-            key={option.value}
-            accessibilityRole="button"
-            accessibilityLabel={option.label}
-            accessibilityState={{ selected, disabled }}
-            aria-pressed={selected}
-            disabled={disabled}
-            onPress={() => onChange(option.value)}
-            style={[
-              styles.option,
-              selected && styles.selectedOption,
-              disabled && styles.disabledOption,
-            ]}
-          >
-            <Text
-              style={[
-                styles.optionText,
-                selected && styles.selectedText,
-                disabled && styles.disabledText,
-              ]}
+}) => {
+  const colors = useThemeColors();
+  return (
+    <View className="gap-2">
+      <View className="flex-row gap-2">
+        {RANGE_OPTIONS.map((option) => {
+          const selected = value === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="button"
+              accessibilityLabel={option.label}
+              accessibilityState={{ selected, disabled }}
+              aria-pressed={selected}
+              disabled={disabled}
+              onPress={() => {
+                if (!disabled) onChange(option.value);
+              }}
+              className={[
+                'flex-1 min-w-0 min-h-[104px] flex-col items-center justify-center gap-0.5 p-3 rounded-2xl border',
+                selected
+                  ? 'border-2 border-accent dark:border-accent-dark bg-accent-tint dark:bg-accent-tint-dark'
+                  : 'border-line dark:border-line-dark bg-surface dark:bg-surface-dark',
+                disabled
+                  ? 'bg-surface-muted dark:bg-surface-muted-dark border-control dark:border-control-dark'
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              style={({ pressed }) =>
+                pressed && !disabled
+                  ? { transform: [{ scale: 0.96 }] }
+                  : undefined
+              }
             >
-              {option.label}
-            </Text>
-            {selected && (
+              <View className="w-5 h-5 items-center justify-center">
+                {selected ? (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={20}
+                    color={
+                      disabled ? colors['ink-disabled'] : colors['accent-text']
+                    }
+                    accessible={false}
+                  />
+                ) : null}
+              </View>
               <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={AppColors.accent.dark}
+                name={option.icon}
+                size={28}
+                color={
+                  disabled
+                    ? colors['ink-disabled']
+                    : selected
+                      ? colors['accent-text']
+                      : colors['ink-muted']
+                }
                 accessible={false}
               />
-            )}
-          </Pressable>
-        );
-      })}
-    </View>
-    <Text style={styles.caption}>Ranges are approximate after rounding.</Text>
-    {error && (
-      <Text style={styles.error} accessibilityRole="alert">
-        {error}
+              <Text
+                className={[
+                  'text-title-medium text-center',
+                  disabled
+                    ? 'text-ink-disabled dark:text-ink-disabled-dark'
+                    : selected
+                      ? 'text-accent-text dark:text-accent-text-dark'
+                      : 'text-ink-muted dark:text-ink-muted-dark',
+                ].join(' ')}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+        Choose a starting category.
       </Text>
-    )}
-  </View>
-);
-
-const styles = StyleSheet.create({
-  container: {
-    gap: AppSpacing.sm,
-  },
-  options: {
-    gap: AppSpacing.sm,
-  },
-  option: {
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: AppColors.controlBorder,
-    borderRadius: AppBorders.radiusMd,
-    backgroundColor: AppColors.dominant.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: AppSpacing.md,
-  },
-  selectedOption: {
-    backgroundColor: AppColors.selectedSurface,
-    borderColor: AppColors.accent.dark,
-  },
-  disabledOption: {
-    backgroundColor: AppColors.disabledSurface,
-    borderColor: AppColors.controlBorder,
-  },
-  optionText: {
-    ...AppTypography.labelMedium,
-    color: AppColors.secondary.primary,
-  },
-  selectedText: {
-    color: AppColors.accent.dark,
-  },
-  disabledText: {
-    color: AppColors.disabledText,
-  },
-  caption: {
-    ...AppTypography.bodySmall,
-    color: AppColors.textSecondary,
-  },
-  error: {
-    ...AppTypography.bodySmall,
-    color: AppColors.error,
-  },
-});
+      {error && (
+        <Text
+          className="text-body-small text-danger-text dark:text-danger-text-dark"
+          accessibilityRole="alert"
+        >
+          {error}
+        </Text>
+      )}
+    </View>
+  );
+};

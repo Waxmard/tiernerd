@@ -1,14 +1,13 @@
 import type React from 'react';
 import { ActivityIndicator, Modal, Text, View } from 'react-native';
 import { BaseModalContent } from '../design-system/components';
-import { AppColors } from '../design-system/tokens';
+import { useThemeColors } from '../providers/ThemeProvider';
 import type { ComparisonSession, Item } from '../services/itemsService';
 import { AddItemContent } from './AddItemContent';
 import { ItemDetailContent } from './ItemDetailContent';
-import { styles } from './ListDetailScreen.styles';
+import type { ItemWorkspace } from './itemWorkspaceTypes';
 import { RangeSelector } from './RangeSelector';
 import { RankingContent } from './RankingContent';
-import type { ItemWorkspace } from './useItemWorkspace';
 
 interface ListDetailWorkspaceHostProps {
   isDesktop: boolean;
@@ -63,6 +62,7 @@ export const ListDetailWorkspaceHost: React.FC<
   onStartRanking,
   children,
 }) => {
+  const colors = useThemeColors();
   const isBusy = workspace.isBusy || isScreenBusy;
 
   const renderRange = (presentation: 'modal' | 'panel') => {
@@ -80,7 +80,7 @@ export const ListDetailWorkspaceHost: React.FC<
         onSubmit={onStartRanking}
       >
         {isReRanking && workspace.item ? (
-          <Text style={styles.savedScore}>
+          <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mb-4">
             Saved score {workspace.item.rating?.toFixed(1)}
           </Text>
         ) : null}
@@ -103,9 +103,10 @@ export const ListDetailWorkspaceHost: React.FC<
           presentation={presentation}
           isBusy={isBusy}
           error={workspace.error}
+          recoveryRequired={workspace.recoveryRequired}
           onAnswer={workspace.answer}
           onUndo={workspace.undo}
-          onCommit={workspace.commit}
+          onRetryCommit={workspace.retryCommit}
           onCancel={() => workspace.requestClose().catch(() => false)}
           onRestart={workspace.restart}
           onReload={workspace.reloadSession}
@@ -136,8 +137,8 @@ export const ListDetailWorkspaceHost: React.FC<
     if (!selectedItem) {
       if (selectedItemId && (isLoadingItems || !itemsLoaded)) {
         return (
-          <View style={styles.loadingWorkspace}>
-            <ActivityIndicator size="large" color={AppColors.accent.primary} />
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color={colors.accent} />
           </View>
         );
       }
@@ -168,13 +169,15 @@ export const ListDetailWorkspaceHost: React.FC<
 
   return (
     <>
-      <View style={[styles.contentRow, isDesktop && styles.desktopContentRow]}>
-        <View style={styles.listColumn}>{children}</View>
+      <View className="flex-1 min-h-0 desktop:flex-row desktop:gap-6">
+        <View className="flex-1 min-h-0 min-w-0">{children}</View>
         {isDesktop &&
         (selectedItemId !== null || workspace.mode !== 'closed') ? (
-          <View style={styles.workspacePane}>
+          <View className="w-[400px] shrink-0 min-h-0">
             {workspace.mode === 'closed' ? (
-              <View style={styles.paneRegion}>{renderWorkspace('panel')}</View>
+              <View className="flex-1 min-h-0 min-w-0">
+                {renderWorkspace('panel')}
+              </View>
             ) : (
               renderWorkspace('panel')
             )}
@@ -193,7 +196,7 @@ export const ListDetailWorkspaceHost: React.FC<
           accessibilityLabel={
             workspace.mode === 'ranking'
               ? workspace.session?.status === 'ready_to_commit'
-                ? 'Ready to save'
+                ? 'Saving ranking…'
                 : 'Which is better?'
               : workspace.mode === 'range'
                 ? workspace.item?.rating !== null &&

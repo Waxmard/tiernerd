@@ -1,29 +1,48 @@
 import type React from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  type TextStyle,
-  TouchableOpacity,
-  View,
-  type ViewStyle,
-} from 'react-native';
-import { AppBorders, AppColors, AppSpacing, AppTypography } from '../tokens';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { useThemeColors } from '../../providers/ThemeProvider';
+
+type ButtonVariant = 'primary' | 'secondary' | 'text';
+type ButtonSize = 'small' | 'medium' | 'large';
 
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'text';
-  size?: 'small' | 'medium' | 'large';
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   fullWidth?: boolean;
   disabled?: boolean;
   loading?: boolean;
   icon?: React.ReactNode;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  className?: string;
+  textClassName?: string;
   testID?: string;
   accessibilityLabel?: string;
 }
+
+const VARIANT_CLASS: Record<ButtonVariant, string> = {
+  primary: 'bg-accent dark:bg-accent-dark',
+  secondary: 'border border-control dark:border-control-dark',
+  text: '',
+};
+
+const SIZE_CLASS: Record<ButtonSize, string> = {
+  small: 'px-4 py-2 min-h-[44px]',
+  medium: 'px-4 py-2 min-h-[44px]',
+  large: 'px-4 py-3 min-h-[48px]',
+};
+
+const TEXT_SIZE_CLASS: Record<ButtonSize, string> = {
+  small: 'text-[14px] leading-5',
+  medium: 'text-[16px] leading-6',
+  large: 'text-[18px] leading-6',
+};
+
+const VARIANT_TEXT_CLASS: Record<ButtonVariant, string> = {
+  primary: 'text-on-accent dark:text-on-accent-dark',
+  secondary: 'text-ink dark:text-ink-dark',
+  text: 'text-accent-text dark:text-accent-text-dark',
+};
 
 export const Button: React.FC<ButtonProps> = ({
   title,
@@ -34,28 +53,36 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   loading = false,
   icon,
-  style,
-  textStyle,
+  className,
+  textClassName,
   testID,
   accessibilityLabel,
 }) => {
+  const colors = useThemeColors();
   const isDisabled = disabled || loading;
-  const buttonStyles = [
-    styles.base,
-    variant === 'text' ? styles.textVariant : styles[variant],
-    styles[size],
-    fullWidth && styles.fullWidth,
-    style,
-    isDisabled &&
-      (variant === 'text' ? styles.disabledTextVariant : styles.disabled),
-  ];
-  const textStyles = [
-    styles.text,
-    styles[`${variant}Text`],
-    styles[`${size}Text`],
-    textStyle,
-    isDisabled && styles.disabledText,
-  ];
+  const classes = [
+    'flex-row items-center justify-center rounded-lg',
+    VARIANT_CLASS[variant],
+    SIZE_CLASS[size],
+    fullWidth ? 'w-full' : '',
+    isDisabled
+      ? variant === 'text'
+        ? ''
+        : 'bg-surface-muted dark:bg-surface-muted-dark border border-control dark:border-control-dark'
+      : '',
+    className ?? '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const textClasses = [
+    'shrink font-semibold',
+    TEXT_SIZE_CLASS[size],
+    VARIANT_TEXT_CLASS[variant],
+    isDisabled ? 'text-ink-disabled dark:text-ink-disabled-dark' : '',
+    textClassName ?? '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <TouchableOpacity
@@ -64,120 +91,36 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       aria-busy={loading}
       testID={testID}
-      style={buttonStyles}
+      className={classes}
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.8}
       delayPressIn={0}
       delayPressOut={0}
     >
-      <View style={styles.content}>
+      <View className="flex-row items-center shrink">
         {icon && (
-          <View accessible={false} style={styles.icon}>
+          <View accessible={false} className="mr-2">
             {icon}
           </View>
         )}
-        <Text style={textStyles} numberOfLines={2}>
+        <Text className={textClasses} numberOfLines={2}>
           {title}
         </Text>
         {loading && (
           <ActivityIndicator
             color={
               isDisabled
-                ? AppColors.disabledText
+                ? colors['ink-disabled']
                 : variant === 'primary'
-                  ? AppColors.textOnPrimary
-                  : AppColors.accent.dark
+                  ? colors['on-accent']
+                  : colors['accent-text']
             }
             size="small"
-            style={styles.loadingIndicator}
+            className="ml-2"
           />
         )}
       </View>
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: AppBorders.radiusMd,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 1,
-  },
-  icon: {
-    marginRight: AppSpacing.sm,
-  },
-  loadingIndicator: {
-    marginLeft: AppSpacing.sm,
-  },
-  primary: {
-    backgroundColor: AppColors.accent.dark,
-  },
-  secondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: AppColors.controlBorder,
-  },
-  textVariant: {
-    backgroundColor: 'transparent',
-  },
-  small: {
-    paddingHorizontal: AppSpacing.md,
-    paddingVertical: AppSpacing.sm,
-    minHeight: 44,
-  },
-  medium: {
-    paddingHorizontal: AppSpacing.md,
-    paddingVertical: AppSpacing.sm,
-    minHeight: 44,
-  },
-  large: {
-    paddingHorizontal: AppSpacing.md,
-    paddingVertical: 12,
-    minHeight: 48,
-  },
-  fullWidth: {
-    width: '100%',
-  },
-  disabled: {
-    backgroundColor: AppColors.disabledSurface,
-    borderWidth: 1,
-    borderColor: AppColors.controlBorder,
-  },
-  disabledTextVariant: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-  },
-  text: {
-    ...AppTypography.labelLarge,
-    fontWeight: '600',
-    flexShrink: 1,
-  },
-  primaryText: {
-    color: AppColors.textOnPrimary,
-  },
-  secondaryText: {
-    color: AppColors.secondary.primary,
-  },
-  textText: {
-    color: AppColors.accent.dark,
-  },
-  smallText: {
-    fontSize: 14,
-  },
-  mediumText: {
-    fontSize: 16,
-  },
-  largeText: {
-    fontSize: 18,
-  },
-  disabledText: {
-    color: AppColors.disabledText,
-  },
-});

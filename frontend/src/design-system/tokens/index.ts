@@ -1,4 +1,2 @@
-export { AppBorders } from './borders';
-export { AppColors, AppGradients } from './colors';
-export { AppLayout, AppSpacing } from './spacing';
-export { AppTypography } from './typography';
+export type { ColorSchemeName, ListColor, ThemeColors } from './colors';
+export { LIST_COLORS, palette, themeColors } from './colors';

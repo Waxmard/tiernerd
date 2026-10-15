@@ -1,3 +1,4 @@
+import type { ListColor } from '../design-system/tokens/colors';
 import { api } from './api';
 import type { Item } from './itemsService';
 
@@ -5,6 +6,7 @@ export interface ListSimple {
   list_id: string;
   title: string;
   description: string | null;
+  color: ListColor | null;
   created_at: string;
   updated_at: string;
   item_count: number;
@@ -18,9 +20,14 @@ export const listsService = {
     api.get<ListMetadata>(`/api/lists/${listId}`, token),
   getListItems: (listId: string, token: string) =>
     api.get<Item[]>(`/api/lists/${listId}/items`, token),
-  createList: (name: string, description: string, token: string) =>
+  createList: (
+    name: string,
+    description: string,
+    color: ListColor | null,
+    token: string
+  ) =>
     api.post<ListSimple>(
-      `/api/lists/?name=${encodeURIComponent(name)}&description=${encodeURIComponent(description)}`,
+      `/api/lists/?name=${encodeURIComponent(name)}&description=${encodeURIComponent(description)}${color ? `&color=${color}` : ''}`,
       undefined,
       token
     ),

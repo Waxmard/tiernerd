@@ -13,7 +13,7 @@ your items ──1v1 comparisons──▶ TierNerd ──▶ ranked list, scored
 - Rank items through simple better/worse comparisons
 - Eliminate arbitrary rating bias
 - View ranked items best first with scores out of 10
-- Choose a starting range: Great (7–10), Okay (4–7), or Bad (1–4)
+- Choose a starting category: Good, Mid, or Bad
 
 ## Screenshots
 

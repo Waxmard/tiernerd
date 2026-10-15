@@ -1,0 +1,100 @@
+{
+  "light": {
+    "canvas": "#F1F7F0",
+    "surface": "#FFFFFF",
+    "surface-muted": "#E7EFE8",
+    "line": "#D3DED4",
+    "control": "#6B7C70",
+    "ink": "#25352B",
+    "ink-muted": "#4A5B50",
+    "ink-disabled": "#8E9C91",
+    "accent": "#25352B",
+    "on-accent": "#F1F7F0",
+    "accent-text": "#25352B",
+    "accent-tint": "#E3EBE4",
+    "accent-line": "#7F8F83",
+    "danger-text": "#B91C1C",
+    "preference-1": "#15613B",
+    "preference-2": "#307352",
+    "preference-3": "#4B8568",
+    "preference-4": "#6D9C85"
+  },
+  "dark": {
+    "canvas": "#151e1a",
+    "surface": "#223128",
+    "surface-muted": "#223128",
+    "line": "#526357",
+    "control": "#93A79A",
+    "ink": "#edf5ee",
+    "ink-muted": "#edf5ee",
+    "ink-disabled": "#6E8375",
+    "accent": "#EDF5EE",
+    "on-accent": "#151E1A",
+    "accent-text": "#EDF5EE",
+    "accent-tint": "#3C4A42",
+    "accent-line": "#929D95",
+    "danger-text": "#FCA5A5",
+    "preference-1": "#2e7d50",
+    "preference-2": "#69a77c",
+    "preference-3": "#a1c9ac",
+    "preference-4": "#d8eadd"
+  },
+  "list": {
+    "blue": {
+      "light": {
+        "solid": "#3F6E96",
+        "on-solid": "#FFFFFF",
+        "tint": "#E6EDF4",
+        "on-tint": "#2C5677"
+      },
+      "dark": {
+        "solid": "#7FA3C4",
+        "on-solid": "#101A16",
+        "tint": "#2C3E4C",
+        "on-tint": "#A9C6DF"
+      }
+    },
+    "teal": {
+      "light": {
+        "solid": "#35776A",
+        "on-solid": "#FFFFFF",
+        "tint": "#E4F0EC",
+        "on-tint": "#245C51"
+      },
+      "dark": {
+        "solid": "#7BB3A2",
+        "on-solid": "#101A16",
+        "tint": "#2A4038",
+        "on-tint": "#A8D4C6"
+      }
+    },
+    "amber": {
+      "light": {
+        "solid": "#8A6A2F",
+        "on-solid": "#FFFFFF",
+        "tint": "#F4EDE0",
+        "on-tint": "#6B5122"
+      },
+      "dark": {
+        "solid": "#C9A772",
+        "on-solid": "#101A16",
+        "tint": "#443B28",
+        "on-tint": "#E4CB9E"
+      }
+    },
+    "pink": {
+      "light": {
+        "solid": "#96607A",
+        "on-solid": "#FFFFFF",
+        "tint": "#F4E8EE",
+        "on-tint": "#7A4A61"
+      },
+      "dark": {
+        "solid": "#C294A6",
+        "on-solid": "#101A16",
+        "tint": "#4B3540",
+        "on-tint": "#E5BDCB"
+      }
+    }
+  }
+}

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Four distinct TierNerd concept directions for the same sample favorites. Nothing is saved.">
+  <title>TierNerd UI directions</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap">
+  <style>
+    :root {
+      color-scheme: light;
+      --preference-first: #2e7d50;
+      --preference-second: #69a77c;
+      --preference-third: #a1c9ac;
+      --preference-fourth: #d8eadd;
+      font-family: system-ui, sans-serif;
+      color: #524f67;
+      background: #faf4ed;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none; }
+    body { margin: 0; }
+    main { max-width: 1440px; margin: auto; padding: 32px; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font: 600 32px/1.2 system-ui, sans-serif; }
+    h2 { font: 600 20px/1.4 system-ui, sans-serif; }
+    h3 { font-size: 18px; }
+    .intro { max-width: 760px; }
+    .intro > p { margin-top: 12px; }
+    .notice { display: inline-block; padding: 8px 12px; background: #f2e9e1; }
+    .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 16px 32px; margin: 24px 0 16px; }
+    .scene-control { display: grid; gap: 8px; }
+    select { min-height: 44px; max-width: 100%; padding: 8px 40px 8px 12px; border: 1px solid #524f67; border-radius: 4px; font: inherit; color: #524f67; background: #faf4ed; }
+    .sticker-control { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; }
+    input[type="checkbox"] { width: 24px; height: 24px; margin: 0; accent-color: #524f67; }
+    :focus-visible { outline: 3px solid #524f67; outline-offset: 4px; }
+    .gallery { display: grid; grid-template-columns: 1fr; gap: 32px; align-items: start; margin-top: 32px; }
+    .concept { min-width: 0; --paper: #faf4ed; --ink: #524f67; --quiet: #f2e9e1; --rule: #cfc3b6; }
+    .concept-header { padding-bottom: 20px; color: #524f67; }
+    .concept-header p { margin-top: 8px; max-width: 40ch; }
+    .concept-header h2 { color: #24251f; }
+    .page { min-width: 0; padding: 24px; border: 1px solid var(--rule); color: var(--ink); background: var(--paper); }
+    .page-heading { margin-bottom: 24px; }
+    .page-heading > p { margin-top: 12px; }
+    .page-title { overflow-wrap: anywhere; }
+    .sticker { display: inline-block; margin-right: 8px; font: 22px/1.25 system-ui, sans-serif; vertical-align: middle; }
+    .sticker[hidden] { display: none; }
+    .entries { list-style: none; margin: 0; padding: 0; }
+    .entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 16px 0; }
+    .entry-name { font: 600 18px/1.4 system-ui, sans-serif; overflow-wrap: anywhere; }
+    .annotation { grid-column: 1; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+    .score, .item-count { grid-column: 2; grid-row: 1; white-space: nowrap; font: 400 14px/1.5 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+    .gradient .entry { position: relative; padding-inline-start: 18px; }
+    .gradient .entry:nth-child(1) { --order-color: var(--preference-first); }
+    .gradient .entry:nth-child(2) { --order-color: var(--preference-second); }
+    .gradient .entry:nth-child(3) { --order-color: var(--preference-third); }
+    .gradient .entry:nth-child(4) { --order-color: var(--preference-fourth); }
+    .order-mark { position: absolute; background: var(--order-color); }
+    #preference-key { margin-top: 16px; font-size: 14px; }
+    .preference-strip { display: flex; width: 72px; margin-bottom: 8px; }
+    .preference-strip span { width: 18px; height: 8px; }
+    .preference-strip span:nth-child(1) { background: var(--preference-first); }
+    .preference-strip span:nth-child(2) { background: var(--preference-second); }
+    .preference-strip span:nth-child(3) { background: var(--preference-third); }
+    .preference-strip span:nth-child(4) { background: var(--preference-fourth); }
+    .action-specimen { display: inline-block; margin-top: 24px; padding: 12px 20px; color: var(--paper); background: var(--ink); border-radius: 4px; }
+    .specimen-note { font-size: 14px; margin-top: 12px; }
+    .journal { --paper: #faf4ed; --ink: #524f67; --quiet: #f2e9e1; --rule: #cfc3b6; }
+    .journal .page { position: relative; padding-inline-start: 32px; }
+    .journal .page::before { content: ""; position: absolute; inset: 0 auto 0 20px; width: 1px; background: var(--rule); }
+    .journal .page-title, .journal .entry-name { font: 600 26px/1.25 Caveat, cursive; }
+    .journal .page-title { font-size: 36px; line-height: 1.15; }
+    .journal .entry { padding-block: 24px; border-bottom: 1px solid var(--rule); }
+    .journal .entry-name { grid-column: 1; }
+    .journal .annotation { font-size: 16px; line-height: 1.5; }
+    .journal .score, .journal .item-count { padding-top: 6px; }
+    .journal .gradient .entry { padding-inline-start: 18px; }
+    .journal .order-mark { inset: 28px auto auto 0; width: 6px; height: 24px; }
+    .journal .choice { border-bottom: 1px solid var(--rule); }
+    .journal .choice .entry-name { font: 600 26px/1.25 Caveat, cursive; }
+    .editorial { --paper: #fffef9; --ink: #24251f; --quiet: #f1f1e8; --rule: #d4d5ca; }
+    .editorial .page-title { font: 600 40px/1.15 Georgia, serif; }
+    .editorial .page-heading { padding-bottom: 24px; border-bottom: 2px solid var(--ink); }
+    .editorial .entry { padding-block: 20px; border-bottom: 1px solid var(--quiet); }
+    .editorial .entry-name { font: 600 24px/1.3 Georgia, serif; }
+    .editorial .annotation { font: 400 14px/1.5 system-ui, sans-serif; }
+    .editorial .lead-entry { padding-block: 28px; }
+    .editorial .lead-entry .entry-name { font-size: 34px; line-height: 1.2; }
+    .editorial .order-mark { inset: auto auto 8px 0; width: 32px; height: 6px; }
+    .editorial .gradient .entry { padding-inline-start: 0; padding-bottom: 24px; }
+    .editorial .gradient .lead-entry { padding-bottom: 28px; }
+    .editorial .choice { border-bottom: 1px solid var(--rule); }
+    .editorial .choice .entry-name { font: 600 24px/1.3 Georgia, serif; }
+    .playlist { --paper: #151e1a; --ink: #edf5ee; --quiet: #223128; --rule: #526357; color-scheme: dark; }
+    .playlist .page-title { font: 600 30px/1.2 system-ui, sans-serif; }
+    .playlist .entry-name { font: 600 18px/1.4 system-ui, sans-serif; }
+    .playlist .annotation { font: 400 14px/1.5 system-ui, sans-serif; }
+    .playlist .entries { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    .playlist .entry { padding: 14px; background: var(--quiet); border-radius: 8px; }
+    .playlist .gradient .entry { padding-inline-start: 20px; }
+    .playlist .order-mark { inset: 0 auto 0 0; width: 6px; border-radius: 8px 0 0 8px; }
+    .playlist .choice { padding: 14px; background: var(--quiet); border-radius: 8px; }
+    .playlist .choice .entry-name { font: 600 18px/1.4 system-ui, sans-serif; }
+    .playlist .choice-role { color: var(--ink); }
+    .playful { --paper: #f1f7f0; --ink: #25352b; --quiet: #ffffff; --rule: #b3c4b3; }
+    .playful .page-title { font: 700 30px/1.2 system-ui, sans-serif; }
+    .playful .entry-name { font: 600 18px/1.4 system-ui, sans-serif; }
+    .playful .annotation { font: 400 14px/1.5 system-ui, sans-serif; }
+    .playful .entries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .playful .entry { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 16px; border: 1px solid var(--rule); border-radius: 16px; background: var(--quiet); }
+    .playful .entry-name, .playful .annotation, .playful .score, .playful .item-count { grid-column: auto; grid-row: auto; }
+    .playful .entry-name .sticker { display: block; margin: 0 0 4px; font-size: 28px; line-height: 1.25; }
+    .playful .entry-name .sticker[hidden] { display: none; }
+    .playful .score, .playful .item-count { align-self: flex-end; margin-top: 8px; }
+    .playful .gradient .entry { padding: 26px 16px 16px; }
+    .playful .order-mark { inset: 1px 1px auto; height: 6px; border-radius: 15px 15px 0 0; }
+    .reading-cue { margin: 0 0 12px; font-size: 14px; }
+    .playful .choice { padding: 16px; border: 1px solid var(--rule); border-radius: 16px; background: var(--quiet); }
+    .playful .choice .entry-name { font: 600 18px/1.4 system-ui, sans-serif; }
+    .choices { display: grid; gap: 20px; }
+    .choice { padding-block: 24px; }
+    .choice .entry-name { margin-top: 12px; }
+    .choice-role { font-size: 14px; }
+    .imagery { border-top: 1px solid #cfc3b6; margin-top: 40px; padding-top: 24px; }
+    .imagery > p { margin-top: 12px; max-width: 80ch; }
+    .imagery-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 20px; }
+    .imagery-options p { margin-top: 8px; }
+    .study-note { font-size: 14px; }
+    @media (min-width: 1050px) {
+      .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 600px) {
+      main { padding: 24px 16px; }
+      .page { padding: 16px; }
+      .imagery-options { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 359px) {
+      .playful .entries { grid-template-columns: 1fr; }
+      .playful .reading-cue { display: none; }
+    }
+    @media (forced-colors: active) {
+      :focus-visible { outline-color: Highlight; }
+      .order-mark, .preference-strip { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="intro">
+      <h1>TierNerd UI directions</h1>
+      <p class="notice">Design study — sample data, nothing is saved</p>
+      <p>Four directions for the same favorites: handwritten, editorial, after-dark and playful. Stronger green means more preferred; bare scores are available for reference.</p>
+    </header>
+    <div class="controls" aria-label="Concept preview controls">
+      <label class="scene-control" for="scene">Preview scene
+        <select id="scene">
+          <option>My lists</option>
+          <option selected>Ranked list</option>
+          <option>Comparison</option>
+        </select>
+      </label>
+      <label class="scene-control" for="score-display">Score display
+        <select id="score-display" aria-describedby="score-help">
+          <option value="bare">Bare score</option>
+          <option value="gradient" selected>Order + color</option>
+        </select>
+      </label>
+      <label class="sticker-control" for="stickers"><input id="stickers" type="checkbox" checked>Show emoji stickers</label>
+    </div>
+    <p id="score-help" class="study-note">Applies to Ranked list. Order shows preference, not an exact score scale.</p>
+    <p class="study-note">Only completed rankings appear in these lists. This study assumes unfinished additions are discarded; it does not change the app’s storage.</p>
+    <div id="preference-key">
+      <div class="preference-strip" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <p>Stronger green = more preferred. Paler green = less preferred.</p>
+    </div>
+    <div class="gallery">
+      <section class="concept journal" aria-labelledby="journal-title">
+        <header class="concept-header"><h2 id="journal-title">Handwritten journal</h2><p>A personal, ruled page for the favorites you keep coming back to.</p></header>
+        <div class="page"></div>
+      </section>
+      <section class="concept editorial" aria-labelledby="editorial-title">
+        <header class="concept-header"><h2 id="editorial-title">Editorial ranking</h2><p>A considered shortlist, with a strong lead and a quieter supporting cast.</p></header>
+        <div class="page"></div>
+      </section>
+      <section class="concept playlist" aria-labelledby="playlist-title">
+        <header class="concept-header"><h2 id="playlist-title">Dark playlist</h2><p>A compact after-dark collection, with clear rows and a steady rhythm.</p></header>
+        <div class="page"></div>
+      </section>
+      <section class="concept playful" aria-labelledby="playful-title">
+        <header class="concept-header"><h2 id="playful-title">Playful collection</h2><p>A small collection of keepsakes, arranged as bright, tactile tiles.</p></header>
+        <div class="page"></div>
+      </section>
+    </div>
+    <aside class="imagery" aria-labelledby="imagery-title">
+      <h2 id="imagery-title">What could go in the margins?</h2>
+      <p>These native emoji are decorative samples, not saved customization. Their appearance varies by platform. The checkbox changes all four previews without changing names, ranks or scores.</p>
+      <div class="imagery-options">
+        <section><h3>Native emoji</h3><p>No library needed to display them. Saving choices for lists and items still needs validated fields, forms, API contracts and a migration.</p></section>
+        <section><h3>Existing Ionicons</h3><p>Already installed, with consistent rendering. Choosing your own would still need a selector and persisted icon identifiers.</p></section>
+        <section><h3>Real item images</h3><p>A separate feature could reuse the existing item <code>image_url</code> contract. The inspected client has no list-artwork contract. Image search adds provider access, privacy, content rights, attribution and hosting decisions—not Google scraping or a portable Siri integration.</p></section>
+      </div>
+      <p class="study-note">The four directions use different surface and type treatments while sharing the strong-to-pale preference colors. Caveat is the only external font, loaded from Google Fonts; other text uses system fonts. No private data or application services are used.</p>
+      <p class="study-note">Action and choice specimens are static, not working app controls. This study does not change the app’s theme preferences, ranking, saved stickers or image search.</p>
+    </aside>
+    <p id="preview-status" role="status"></p>
+  </main>
+  <script>
+    const sample = {
+      title: 'Comfort movies',
+      note: 'The ones I always come back to.',
+      emoji: '🎬',
+      lists: [
+        { name: 'Comfort movies', count: 4, note: 'The ones I always come back to.', emoji: '🎬' },
+        { name: 'Weekend breakfasts', count: 3, note: 'Slow mornings, something good.', emoji: '🥞' },
+        { name: 'Favorite walks', count: 4, note: 'A little fresh air, close to home.', emoji: '🌿' }
+      ],
+      items: [
+        { name: 'Spirited Away', score: '9.4', note: 'A whole little world.', emoji: '🌿' },
+        { name: 'Paddington 2', score: '9.1', note: 'Comfort viewing.', emoji: '🍊' },
+        { name: 'The Grand Budapest Hotel', score: '8.8', note: 'Every frame a postcard.', emoji: '🏨' },
+        { name: 'Kiki’s Delivery Service', score: '8.5', note: 'A gentle reset.', emoji: '🐈‍⬛' }
+      ],
+      candidate: { name: 'Fantastic Mr. Fox', emoji: '🦊' }
+    };
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+    function named(tag, className, name, emoji) {
+      const node = element(tag, className);
+      const sticker = element('span', 'sticker', emoji);
+      sticker.setAttribute('aria-hidden', 'true');
+      node.append(sticker, document.createTextNode(name));
+      return node;
+    }
+    function renderRanked(page) {
+      const heading = element('header', 'page-heading');
+      heading.append(named('h3', 'page-title', sample.title, sample.emoji), element('p', '', sample.note));
+      const gradient = scoreControl.value === 'gradient';
+      const entries = element('ol', gradient ? 'entries gradient' : 'entries');
+      entries.setAttribute('role', 'list');
+      for (const item of sample.items) {
+        const entry = element('li', item === sample.items[0] ? 'entry lead-entry' : 'entry');
+        if (gradient) {
+          const mark = element('span', 'order-mark');
+          mark.setAttribute('aria-hidden', 'true');
+          entry.append(mark);
+        }
+        entry.append(named('p', 'entry-name', item.name, item.emoji), element('p', 'annotation', item.note));
+        if (!gradient) entry.append(element('p', 'score', item.score));
+        entries.append(entry);
+      }
+      page.append(heading);
+      if (page.closest('.playful')) page.append(element('p', 'reading-cue', 'Read across, then down.'));
+      page.append(entries, element('span', 'action-specimen', 'Add item'), element('p', 'specimen-note', 'Static action specimen'));
+    }
+    function renderLists(page) {
+      const heading = element('header', 'page-heading');
+      heading.append(element('h3', 'page-title', 'My lists'), element('p', '', 'Little collections of things I love.'));
+      const entries = element('ul', 'entries');
+      for (const list of sample.lists) {
+        const entry = element('li', list === sample.lists[0] ? 'entry lead-entry' : 'entry');
+        entry.append(named('p', 'entry-name', list.name, list.emoji), element('p', 'annotation', list.note), element('p', 'item-count', `${list.count} items`));
+        entries.append(entry);
+      }
+      page.append(heading, entries, element('span', 'action-specimen', 'New list'), element('p', 'specimen-note', 'Static action specimen'));
+    }
+    function renderComparison(page) {
+      const heading = element('header', 'page-heading');
+      heading.append(element('h3', 'page-title', 'Which is better?'), named('p', '', sample.title, sample.emoji), element('p', 'specimen-note', 'Two static choice specimens; no scores change.'));
+      const choices = element('div', 'choices');
+      const pair = [
+        { item: sample.candidate, role: 'Item being ranked' },
+        { item: sample.items.at(-1), role: 'Existing item' }
+      ];
+      for (const { item, role } of pair) {
+        const choice = element('div', 'choice');
+        choice.append(element('p', 'choice-role', role), named('p', 'entry-name', item.name, item.emoji));
+        choices.append(choice);
+      }
+      page.append(heading, choices);
+    }
+    const sceneControl = document.querySelector('#scene');
+    const scoreControl = document.querySelector('#score-display');
+    const stickerControl = document.querySelector('#stickers');
+    const status = document.querySelector('#preview-status');
+    function updateStickers() {
+      document.querySelectorAll('.sticker').forEach(sticker => { sticker.hidden = !stickerControl.checked; });
+    }
+    function renderScene() {
+      scoreControl.disabled = sceneControl.value !== 'Ranked list';
+      document.querySelector('#preference-key').hidden = scoreControl.disabled || scoreControl.value !== 'gradient';
+      const render = { 'My lists': renderLists, 'Ranked list': renderRanked, 'Comparison': renderComparison }[sceneControl.value];
+      document.querySelectorAll('.page').forEach(page => {
+        page.replaceChildren();
+        render(page);
+      });
+      updateStickers();
+    }
+    sceneControl.addEventListener('change', () => {
+      renderScene();
+      status.textContent = `All four concepts now show ${sceneControl.value}.`;
+    });
+    scoreControl.addEventListener('change', () => {
+      renderScene();
+      status.textContent = `All four ranked lists now use ${scoreControl.selectedOptions[0].textContent}.`;
+    });
+    stickerControl.addEventListener('change', () => {
+      updateStickers();
+      status.textContent = `Decorative emoji ${stickerControl.checked ? 'shown' : 'hidden'} in all four concepts.`;
+    });
+    renderScene();
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('create list, add great item, delete the list', async ({ page }) => {
+test('create list, add good item, delete the list', async ({ page }) => {
   const stamp = Date.now();
   const listTitle = `E2E ${stamp}`;
   const itemName = `Item ${stamp}`;
@@ -19,11 +19,14 @@ test('create list, add great item, delete the list', async ({ page }) => {
   // HomeScreen chains a successful create straight into the add-item step.
   await expect(page.getByRole('heading', { name: 'Add item', exact: true })).toBeVisible();
   await page.getByPlaceholder('Enter item name').fill(itemName);
-  await page.getByText('Great (7.0–10.0)').click();
+  await page.getByRole('button', { name: 'Good', exact: true }).click();
   await page.getByRole('button', { name: 'Add item', exact: true }).click();
 
   const row = page.getByTestId('ranked-item').filter({ hasText: itemName });
-  await expect(row).toContainText('8.5');
+  await expect(row).toBeVisible();
+  await row.click();
+  await expect(page.getByText('8.5', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close details', exact: true }).click();
 
   // Regression guard: react-native-web's Alert is a no-op stub, so the delete
   // confirmation must open a real browser dialog.

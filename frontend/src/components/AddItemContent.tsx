@@ -1,9 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
-import { StyleSheet, Text, type TextInput } from 'react-native';
+import { Text, type TextInput } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
-import { AppColors, AppSpacing, AppTypography } from '../design-system/tokens';
+import { useThemeColors } from '../providers/ThemeProvider';
+import type { ItemFormDraft } from './itemWorkspaceTypes';
 import { RangeSelector } from './RangeSelector';
-import type { ItemFormDraft } from './useItemWorkspace';
 
 export interface AddItemFieldErrors {
   name?: string;
@@ -27,6 +28,8 @@ export interface AddItemContentProps {
 const REFRESH_ERROR = 'Unable to refresh items. Try again.';
 const MAX_NAME_LENGTH = 100;
 
+const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
+
 export function AddItemContent({
   mode,
   form,
@@ -41,6 +44,7 @@ export function AddItemContent({
   introText,
 }: AddItemContentProps) {
   const nameRef = useRef<TextInput>(null);
+  const colors = useThemeColors();
   const isEdit = mode === 'edit';
 
   useEffect(() => {
@@ -62,7 +66,11 @@ export function AddItemContent({
         error === REFRESH_ERROR && onRetryRefresh ? onRetryRefresh : onSubmit
       }
     >
-      {introText ? <Text style={styles.intro}>{introText}</Text> : null}
+      {introText ? (
+        <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mb-4">
+          {introText}
+        </Text>
+      ) : null}
       <Input
         ref={nameRef}
         label="Name"
@@ -73,6 +81,14 @@ export function AddItemContent({
         maxLength={MAX_NAME_LENGTH}
         editable={!isBusy}
         autoFocus
+        inputClassName="text-headline-small font-semibold min-h-12 min-w-0"
+        leftIcon={
+          <Ionicons
+            name="sparkles-outline"
+            size={24}
+            color={colors['accent-text']}
+          />
+        }
       />
       {!isEdit ? (
         <RangeSelector
@@ -90,21 +106,10 @@ export function AddItemContent({
         multiline
         numberOfLines={3}
         editable={!isBusy}
-        inputStyle={styles.descriptionInput}
+        inputClassName="min-h-20 text-[16px]"
+        style={MULTILINE_INPUT_STYLE}
+        containerClassName={!isEdit ? 'mt-4' : undefined}
       />
     </BaseModalContent>
   );
 }
-
-const styles = StyleSheet.create({
-  intro: {
-    ...AppTypography.bodyMedium,
-    color: AppColors.textSecondary,
-    marginBottom: AppSpacing.md,
-  },
-  descriptionInput: {
-    minHeight: 80,
-    fontSize: 16,
-    textAlignVertical: 'top',
-  },
-});
