@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/Waxmard/tiernerd/compare/v0.3.0...v0.4.0) (2026-10-15)
+
+
+### Features
+
+* add relative preference rails, auto-save ranking, and list colors ([#95](https://github.com/Waxmard/tiernerd/issues/95)) ([7c078c4](https://github.com/Waxmard/tiernerd/commit/7c078c41531524abb0fbea82814c29bc214415f7))
+
 ## [0.3.0](https://github.com/Waxmard/tiernerd/compare/v0.2.0...v0.3.0) (2026-10-13)
 
 
