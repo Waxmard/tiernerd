@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Waxmard/tiernerd/compare/v0.4.0...v0.5.0) (2026-10-17)
+
+
+### Features
+
+* persist mid-comparison sessions and auto-prompt unranked drafts ([95d0010](https://github.com/Waxmard/tiernerd/commit/95d0010d4c4cd865f8e934987bfbbf67857d678b))
+
 ## [0.4.0](https://github.com/Waxmard/tiernerd/compare/v0.3.0...v0.4.0) (2026-10-15)
 
 
