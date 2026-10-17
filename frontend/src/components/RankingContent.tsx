@@ -15,6 +15,7 @@ export interface RankingContentProps {
   onUndo: () => void;
   onRetryCommit: () => void;
   onCancel: () => void;
+  onPause?: () => void;
   onRestart: () => void;
   onReload: () => void;
   onRetryRefresh?: () => void;
@@ -107,6 +108,7 @@ export function RankingContent({
   onUndo,
   onRetryCommit,
   onCancel,
+  onPause,
   onRestart,
   onReload,
   onRetryRefresh,
@@ -142,6 +144,7 @@ export function RankingContent({
           ? 'Unable to save ranking'
           : 'Saving ranking…'
         : 'Which is better?';
+  const canPause = Boolean(onPause && !isCompleted && !isCancelled);
   const closeText =
     isCompleted || isCancelled
       ? 'Close'
@@ -156,7 +159,28 @@ export function RankingContent({
       isLoading={isBusy}
       closeText={closeText}
       presentation={presentation}
-      onClose={onCancel}
+      onClose={canPause && onPause ? onPause : onCancel}
+      footer={
+        canPause && onPause ? (
+          <View className="flex-row flex-wrap items-center justify-between gap-2">
+            <Button
+              title={closeText}
+              variant="text"
+              onPress={onCancel}
+              disabled={isBusy}
+              textClassName="text-danger-text dark:text-danger-text-dark"
+              className="shrink"
+            />
+            <Button
+              title="Finish later"
+              variant="secondary"
+              onPress={onPause}
+              disabled={isBusy}
+              className="shrink"
+            />
+          </View>
+        ) : undefined
+      }
     >
       <View className="gap-2 mb-4">
         <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">

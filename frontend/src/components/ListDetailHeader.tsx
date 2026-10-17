@@ -59,7 +59,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
     : colors['danger-text'];
   return (
     <>
-      <View className="flex-row flex-wrap items-start gap-2 py-2 pt-6 desktop:pt-0 bg-surface dark:bg-surface-dark shrink-0">
+      <View className="flex-row flex-wrap items-start gap-2 py-2 pt-6 desktop:pt-4 bg-surface dark:bg-surface-dark shrink-0">
         <TouchableOpacity
           onPress={onBack}
           accessibilityRole="button"

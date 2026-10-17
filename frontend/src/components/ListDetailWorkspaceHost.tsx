@@ -108,6 +108,7 @@ export const ListDetailWorkspaceHost: React.FC<
           onUndo={workspace.undo}
           onRetryCommit={workspace.retryCommit}
           onCancel={() => workspace.requestClose().catch(() => false)}
+          onPause={workspace.pauseRanking}
           onRestart={workspace.restart}
           onReload={workspace.reloadSession}
           onRetryRefresh={workspace.retryRefresh}

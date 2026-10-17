@@ -183,7 +183,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         const close =
           modalStep === 'create'
             ? createListRef.current?.requestClose()
-            : workspace.requestClose();
+            : workspace.mode === 'ranking'
+              ? workspace.pauseRanking()
+              : workspace.requestClose();
         void Promise.resolve(close)
           .catch(() => false)
           .then((canLeave) => {
@@ -196,7 +198,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             closingForNavigationRef.current = false;
           });
       }),
-    [modalStep, navigation, workspace.requestClose]
+    [
+      modalStep,
+      navigation,
+      workspace.mode,
+      workspace.pauseRanking,
+      workspace.requestClose,
+    ]
   );
   const formatDate = (date: Date) => {
     const age = Math.floor((Date.now() - date.getTime()) / 86400000);
@@ -394,8 +402,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onRequestClose={() => {
             if (modalStep === 'create')
               void createListRef.current?.requestClose().catch(() => false);
-            else if (modalStep === 'addItem')
-              void workspace.requestClose().catch(() => false);
+            else if (modalStep === 'addItem') {
+              if (workspace.mode === 'ranking') {
+                const list = pendingList;
+                if (workspace.pauseRanking() && list)
+                  navigation.navigate('ListDetail', {
+                    listId: list.listId,
+                    listTitle: list.title,
+                  });
+              } else void workspace.requestClose().catch(() => false);
+            }
           }}
         >
           {modalStep === 'create' && (
@@ -424,6 +440,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 onCancel={() =>
                   void workspace.requestClose().catch(() => false)
                 }
+                onPause={() => {
+                  const list = pendingList;
+                  if (workspace.pauseRanking() && list) {
+                    navigation.navigate('ListDetail', {
+                      listId: list.listId,
+                      listTitle: list.title,
+                    });
+                  }
+                }}
                 onRestart={() => void workspace.restart()}
                 onReload={workspace.reloadSession}
                 onRetryRefresh={workspace.retryRefresh}
