@@ -41,6 +41,7 @@ export interface ItemWorkspace extends ItemWorkspaceState {
   deleteItem: (item: Item) => Promise<void>;
   retryRefresh: () => Promise<void>;
   requestClose: () => Promise<boolean>;
+  pauseRanking: () => boolean;
   reloadSession: () => Promise<void>;
   closeMissingItem: (itemId: string) => boolean;
 }

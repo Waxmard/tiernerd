@@ -21,6 +21,35 @@ export type DraftCancellation =
   | { kind: 'missing' }
   | { kind: 'unknown' };
 
+export async function findNextDraftSession(
+  items: Item[],
+  skippedIds: ReadonlySet<string>,
+  token: string
+): Promise<ComparisonSession | null> {
+  const { itemsService } = await import('./itemsService.ts');
+  for (const item of items) {
+    if (item.rating !== null || skippedIds.has(item.item_id)) continue;
+    try {
+      const session = await itemsService.getComparison(item.item_id, token);
+      if (session && ['active', 'ready_to_commit'].includes(session.status)) {
+        if (session.is_stale && session.comparisons_answered === 0) {
+          return await itemsService.startComparison(
+            item.item_id,
+            session.tier_set,
+            true,
+            session.revision,
+            token
+          );
+        }
+        return session;
+      }
+    } catch {
+      // ignore fetch errors for individual items
+    }
+  }
+  return null;
+}
+
 export function shouldAutoCommitRanking(
   session: ComparisonSession | null,
   blocked: boolean,
@@ -108,12 +137,28 @@ async function resolveMissingSession(
 export async function cancelComparisonSession(
   session: ComparisonSession,
   token: string,
-  recoveryRequired: boolean
-): Promise<DraftCancellation> {
-  const { itemsService } = await import('./itemsService.ts');
+  recoveryRequired: boolean,
+  skipConfirm = false
+): Promise<DraftCancellation | { kind: 'aborted' }> {
+  const [{ itemsService }, { confirmDestructive }] = await Promise.all([
+    import('./itemsService.ts'),
+    import('../utils/confirm.ts'),
+  ]);
   if (session.status === 'cancelled') return { kind: 'cancelled' };
   if (session.status === 'completed')
     return { kind: 'completed', item: session.item };
+  if (!skipConfirm) {
+    const confirmed = await confirmDestructive(
+      session.discard_on_cancel
+        ? 'Cancel and discard item?'
+        : 'Cancel ranking?',
+      session.discard_on_cancel
+        ? `Cancel ranking and discard "${session.item.name}"?`
+        : `Cancel ranking for "${session.item.name}"? Your saved rank will be kept.`,
+      session.discard_on_cancel ? 'Discard item' : 'Cancel ranking'
+    );
+    if (!confirmed) return { kind: 'aborted' };
+  }
   let current = session;
   if (recoveryRequired) {
     try {
@@ -334,10 +379,15 @@ export async function deleteItemWithDraft(
     const cancelled = await cancelComparisonSession(
       active,
       token,
-      recoveryRequired
+      recoveryRequired,
+      true
     );
     if (cancelled.kind === 'missing') return { kind: 'missing' };
-    if (cancelled.kind === 'active' || cancelled.kind === 'unknown')
+    if (
+      cancelled.kind === 'active' ||
+      cancelled.kind === 'unknown' ||
+      cancelled.kind === 'aborted'
+    )
       return { kind: 'cancel-failed', discard: active.discard_on_cancel };
     if (cancelled.kind === 'cancelled' && active.discard_on_cancel)
       return { kind: 'deleted' };

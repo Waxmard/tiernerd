@@ -86,7 +86,6 @@ export function useItemWorkspace({
     setBusy(true);
     return true;
   }, [setBusy]);
-
   const closeWorkspace = useCallback(() => {
     autoCommitAttemptRef.current = null;
     pendingRefreshRef.current = null;
@@ -222,7 +221,6 @@ export function useItemWorkspace({
     },
     [updateWorkspace]
   );
-
   const openAdd = useCallback(() => {
     if (busyRef.current) return;
     initialFormRef.current = { ...EMPTY_FORM };
@@ -302,7 +300,6 @@ export function useItemWorkspace({
     },
     [updateWorkspace]
   );
-
   const submitMetadata = useCallback(async () => {
     if (busyRef.current) return;
     if (pendingRefreshRef.current) {
@@ -681,6 +678,12 @@ export function useItemWorkspace({
     [beginBusy, performPendingRefresh, setBusy, updateWorkspace]
   );
 
+  const pauseRanking = useCallback(() => {
+    if (busyRef.current) return false;
+    closeWorkspace();
+    return true;
+  }, [closeWorkspace]);
+
   const requestClose = useCallback(async () => {
     if (busyRef.current) return false;
     let current = workspaceRef.current;
@@ -721,14 +724,13 @@ export function useItemWorkspace({
       if (!beginBusy()) return false;
       try {
         const result = await cancelSession(session);
+        if (result.kind === 'aborted') return false;
         if (result.kind === 'active' || result.kind === 'unknown') {
+          const cancelError = session.discard_on_cancel
+            ? CANCEL_NEW_ERROR
+            : CANCEL_EXISTING_ERROR;
           updateWorkspace({
-            error:
-              result.kind === 'unknown'
-                ? session.discard_on_cancel
-                  ? CANCEL_NEW_ERROR
-                  : CANCEL_EXISTING_ERROR
-                : RECOVERY_ERROR,
+            error: result.kind === 'unknown' ? cancelError : RECOVERY_ERROR,
           });
           return false;
         }
@@ -789,6 +791,7 @@ export function useItemWorkspace({
     deleteItem,
     retryRefresh,
     requestClose,
+    pauseRanking,
     reloadSession,
     closeMissingItem,
   };

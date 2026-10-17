@@ -39,6 +39,7 @@ import {
   type Item,
   itemsService,
 } from '../services/itemsService';
+import { findNextDraftSession } from '../services/itemWorkspaceActions';
 import { listsService } from '../services/listsService';
 import { confirmDestructive, notifyError } from '../utils/confirm';
 
@@ -109,6 +110,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const skipWorkspaceCloseFocusRef = useRef(false);
   const deletingListInFlightRef = useRef(false);
   const previousDesktopRef = useRef(isDesktop);
+  const skippedDraftIdsRef = useRef(new Set<string>());
 
   selectedItemIdRef.current = selectedItemId;
 
@@ -169,6 +171,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setScrollTargetId(null);
     pendingScrollRef.current = null;
     setDismissedDetailsItemId(null);
+    skippedDraftIdsRef.current.clear();
     void fetchItems().catch(() => {});
     return () => {
       itemsRequestRef.current += 1;
@@ -221,9 +224,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       if (
         item &&
         !refreshedItems.some((entry) => entry.item_id === item.item_id)
-      ) {
+      )
         return;
-      }
 
       if (item) {
         pendingScrollRef.current = {
@@ -280,6 +282,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   );
 
   const handleWorkspaceClosed = useCallback(() => {
+    if (rankingCandidateIdRef.current) {
+      skippedDraftIdsRef.current.add(rankingCandidateIdRef.current);
+    }
     rankingCandidateIdRef.current = null;
     if (selectedItemId) {
       void refreshSessionLookup(selectedItemId);
@@ -313,19 +318,73 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     if (skipWorkspaceCloseFocusRef.current) return false;
     skipWorkspaceCloseFocusRef.current = true;
     try {
+      if (workspace.mode === 'ranking') {
+        if (workspace.item)
+          skippedDraftIdsRef.current.add(workspace.item.item_id);
+        return workspace.pauseRanking();
+      }
       return await workspace.requestClose();
     } catch {
       return false;
     } finally {
       skipWorkspaceCloseFocusRef.current = false;
     }
-  }, [workspace.requestClose]);
+  }, [
+    workspace.item,
+    workspace.mode,
+    workspace.pauseRanking,
+    workspace.requestClose,
+  ]);
 
   useEffect(() => {
     if (workspace.mode === 'ranking' && workspace.item) {
       rankingCandidateIdRef.current = workspace.item.item_id;
     }
   }, [workspace.item, workspace.mode]);
+
+  useEffect(() => {
+    if (
+      !itemsLoaded ||
+      !token ||
+      promptAddItem ||
+      completedItemId ||
+      workspace.mode !== 'closed' ||
+      workspace.isBusy ||
+      isDeletingList
+    )
+      return;
+    if (
+      !items.some(
+        (item) =>
+          item.rating === null && !skippedDraftIdsRef.current.has(item.item_id)
+      )
+    )
+      return;
+    let cancelled = false;
+    void findNextDraftSession(items, skippedDraftIdsRef.current, token).then(
+      (session) => {
+        if (cancelled || !session) return;
+        skippedDraftIdsRef.current.add(session.item_id);
+        rankingCandidateIdRef.current = session.item_id;
+        setSelectedItemId(session.item_id);
+        setDismissedDetailsItemId(null);
+        workspace.resume(session);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    completedItemId,
+    isDeletingList,
+    items,
+    itemsLoaded,
+    promptAddItem,
+    token,
+    workspace.isBusy,
+    workspace.mode,
+    workspace.resume,
+  ]);
 
   const selectedItem =
     items.find((item) => item.item_id === selectedItemId) ?? null;
@@ -348,10 +407,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     selectedItemId !== null &&
     (!matchedSessionLookup || sessionLookup.isLoading);
   const sessionError = matchedSessionLookup ? sessionLookup.error : null;
-
-  const retrySessionLookup = useCallback(() => {
-    if (selectedItemId) void refreshSessionLookup(selectedItemId);
-  }, [refreshSessionLookup, selectedItemId]);
 
   useEffect(() => {
     if (selectedItemId && hasSelectedItem) {
@@ -454,10 +509,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     []
   );
 
-  const handleBack = useCallback(() => {
-    navigation.goBack();
-  }, [navigation]);
-
   const handleDeleteList = useCallback(async () => {
     if (deletingListInFlightRef.current || workspaceBusyRef.current || !token)
       return;
@@ -485,7 +536,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       }
     }
   }, [listId, navigation, token]);
-
   const handleItemPress = useCallback(
     async (item: Item) => {
       if (deletingListInFlightRef.current) return;
@@ -498,7 +548,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     },
     [requestCloseForSwitch, workspace.mode]
   );
-
   const handleAddPress = useCallback(async () => {
     if (deletingListInFlightRef.current) return;
     const canClose = await requestCloseForSwitch();
@@ -507,7 +556,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setDismissedDetailsItemId(null);
     workspace.openAdd();
   }, [requestCloseForSwitch, workspace.openAdd]);
-
   const handleWorkspaceContentClose = useCallback(() => {
     if (deletingListInFlightRef.current) return;
     if (workspace.mode !== 'closed') {
@@ -518,48 +566,24 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setDismissedDetailsItemId(null);
     focusItemRow(selectedItemId);
   }, [focusItemRow, selectedItemId, workspace.mode, workspace.requestClose]);
-
   const handleOpenRange = useCallback(() => {
     if (!selectedItem) return;
     rankingCandidateIdRef.current = selectedItem.item_id;
     workspace.openRange(selectedItem);
   }, [selectedItem, workspace.openRange]);
-
   const handleResume = useCallback(() => {
     if (!selectedSession) return;
     rankingCandidateIdRef.current = selectedSession.item_id;
     workspace.resume(selectedSession);
   }, [selectedSession, workspace.resume]);
-
-  const handleEditItem = useCallback(() => {
-    if (selectedItem) workspace.openEdit(selectedItem);
-  }, [selectedItem, workspace.openEdit]);
-
-  const handleDeleteItem = useCallback(() => {
-    if (selectedItem) void workspace.deleteItem(selectedItem);
-  }, [selectedItem, workspace.deleteItem]);
-
-  const handleStartRanking = useCallback(() => {
-    void workspace.startRanking();
-  }, [workspace.startRanking]);
-
-  const handleMetadataRetry = useCallback(() => {
-    void refreshMetadata();
-  }, [refreshMetadata]);
-
-  const handleListItemsRetry = useCallback(() => {
-    void fetchItems().catch(() => {});
-  }, [fetchItems]);
-
   const handleMobileClose = useCallback(() => {
     if (deletingListInFlightRef.current) return;
     if (workspace.mode !== 'closed') {
-      void workspace.requestClose().catch(() => false);
+      void requestCloseForSwitch().catch(() => false);
       return;
     }
     handleWorkspaceContentClose();
-  }, [handleWorkspaceContentClose, workspace.mode, workspace.requestClose]);
-
+  }, [handleWorkspaceContentClose, requestCloseForSwitch, workspace.mode]);
   useEffect(
     () =>
       navigation.addListener('beforeRemove', (event) => {
@@ -586,7 +610,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           }
           return;
         }
-
         event.preventDefault();
         closingForNavigationRef.current = true;
         const action = event.data.action;
@@ -611,7 +634,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       requestCloseForSwitch,
     ]
   );
-
   useEffect(() => {
     if (!promptAddItem) {
       promptHandledRef.current = false;
@@ -656,7 +678,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
             {itemsError}
           </Text>
           <TouchableOpacity
-            onPress={handleListItemsRetry}
+            onPress={() => void fetchItems().catch(() => {})}
             accessibilityRole="button"
             accessibilityLabel="Retry loading items"
             className="border border-control dark:border-control-dark rounded px-4 py-1 min-h-11 justify-center"
@@ -698,12 +720,14 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               metadataError={metadataError}
               itemCount={items.length}
               rankedCount={rankedCount}
-              addDisabled={isDeletingList}
+              addDisabled={
+                isDeletingList || workspace.isBusy || workspace.mode === 'add'
+              }
               onAdd={() => void handleAddPress()}
               deleteDisabled={workspace.isBusy || isDeletingList}
-              onBack={handleBack}
+              onBack={() => navigation.goBack()}
               onDelete={() => void handleDeleteList()}
-              onRetryMetadata={handleMetadataRetry}
+              onRetryMetadata={() => void refreshMetadata()}
             />
             {itemsError && items.length > 0 ? (
               <View className="flex-row items-center justify-between py-1">
@@ -714,7 +738,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
                   {itemsError}
                 </Text>
                 <TouchableOpacity
-                  onPress={handleListItemsRetry}
+                  onPress={() => void fetchItems().catch(() => {})}
                   accessibilityRole="button"
                   accessibilityLabel="Retry refreshing items"
                   className="px-4 py-1 min-h-11 justify-center"
@@ -740,14 +764,20 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               isLoadingItems={isLoadingItems}
               itemsLoaded={itemsLoaded}
               workspace={workspace}
-              onRetrySession={retrySessionLookup}
+              onRetrySession={() => {
+                if (selectedItemId) void refreshSessionLookup(selectedItemId);
+              }}
               onOpenRange={handleOpenRange}
               onResume={handleResume}
-              onEdit={handleEditItem}
-              onDelete={handleDeleteItem}
+              onEdit={() => {
+                if (selectedItem) workspace.openEdit(selectedItem);
+              }}
+              onDelete={() => {
+                if (selectedItem) void workspace.deleteItem(selectedItem);
+              }}
               onDetailsClose={handleWorkspaceContentClose}
               onMobileClose={handleMobileClose}
-              onStartRanking={handleStartRanking}
+              onStartRanking={() => void workspace.startRanking()}
             >
               {renderListItems()}
             </ListDetailWorkspaceHost>
