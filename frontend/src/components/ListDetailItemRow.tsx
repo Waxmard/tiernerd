@@ -1,5 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import {
   type PreferenceBand,
@@ -29,7 +31,7 @@ interface ListDetailItemRowProps {
 }
 
 const ROW_CLASS =
-  'flex-row items-center border-2 p-[14px] mb-2 min-h-16 rounded-lg bg-surface dark:bg-surface-dark';
+  'flex-row items-center border-2 px-4 py-3 mb-2 min-h-16 rounded-2xl bg-surface dark:bg-surface-dark';
 
 export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
@@ -78,7 +80,6 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
           selected
             ? 'border-accent-text dark:border-accent-text-dark'
             : 'border-transparent',
-          band !== null ? 'pl-5' : '',
         ].join(' ')}
       >
         {band !== null ? (
@@ -94,11 +95,14 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
           />
         ) : null}
         <View className="flex-1 min-w-0">
-          <Text className="text-[18px] leading-[25.2px] font-semibold text-ink dark:text-ink-dark">
+          <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
             {item.name}
           </Text>
           {item.description?.trim() ? (
-            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
+            <Text
+              numberOfLines={2}
+              className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+            >
               {item.description}
             </Text>
           ) : null}
@@ -107,7 +111,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
               <RangeBadge tierSet={item.tier_set} />
             ) : null
           ) : (
-            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark mt-0.5">
+            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
               Not ranked yet
             </Text>
           )}
@@ -117,18 +121,34 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   );
 };
 
-export const ListItemEmptyState: React.FC = () => (
-  <View className="flex-1 items-center justify-center px-6">
-    <Image
-      source={require('../../assets/logo-transparent.png')}
-      className="w-[100px] h-[100px] opacity-30 mb-6"
-      accessible={false}
-    />
-    <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark mb-2">
-      No items yet
-    </Text>
-    <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark text-center">
-      Select Add item to add your first item
-    </Text>
-  </View>
-);
+export const ListItemEmptyState: React.FC<{
+  onAdd: () => void;
+  disabled?: boolean;
+}> = ({ onAdd, disabled = false }) => {
+  const colors = useThemeColors();
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel="Add your first item. Choose a starting category, then compare."
+      disabled={disabled}
+      onPress={onAdd}
+      activeOpacity={0.7}
+      className="w-full min-h-24 flex-row items-center gap-3 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-3 dark:border-control-dark dark:bg-surface-muted-dark"
+    >
+      <Ionicons
+        name="add-circle-outline"
+        size={24}
+        color={colors['accent-text']}
+        accessible={false}
+      />
+      <View className="flex-1 min-w-0 gap-1">
+        <Text className="text-title-small font-semibold text-ink dark:text-ink-dark">
+          Add your first item
+        </Text>
+        <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+          Choose a starting category, then compare.
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+};

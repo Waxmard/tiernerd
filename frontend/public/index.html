@@ -14,17 +14,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="TierNerd" />
-    <meta name="theme-color" content="#151e1a" />
+    <meta name="theme-color" content="#15263F" />
     <style id="expo-reset">
       html,
       body {
         height: 100%;
-        background-color: #F1F7F0;
+        background-color: #EFF7FF;
       }
       html[data-theme="dark"],
       html[data-theme="dark"] body,
       html[data-theme="dark"] #root {
-        background-color: #151e1a;
+        background-color: #15263F;
       }
       body {
         margin: 0;
@@ -37,12 +37,15 @@
         flex: 1;
         min-height: 0;
         overflow: hidden;
-        background-color: #F1F7F0;
+        background-color: #EFF7FF;
       }
       [id^="tiernerd-input-container-"] input,
       [id^="tiernerd-input-container-"] textarea {
         outline: none;
       }
+      html[data-input-modality="keyboard"] button:focus-visible,
+      html[data-input-modality="keyboard"] a:focus-visible,
+      html[data-input-modality="keyboard"] [role="button"]:focus-visible,
       html[data-input-modality="keyboard"] [id^="tiernerd-input-container-"]:has(input:focus-visible),
       html[data-input-modality="keyboard"] [id^="tiernerd-input-container-"]:has(textarea:focus-visible) {
         outline: 2px solid var(--tiernerd-focus-color);
@@ -52,6 +55,9 @@
         [id^="tiernerd-preference-rail-"] {
           display: none;
         }
+        html[data-input-modality="keyboard"] button:focus-visible,
+        html[data-input-modality="keyboard"] a:focus-visible,
+        html[data-input-modality="keyboard"] [role="button"]:focus-visible,
         html[data-input-modality="keyboard"] [id^="tiernerd-input-container-"]:has(input:focus-visible),
         html[data-input-modality="keyboard"] [id^="tiernerd-input-container-"]:has(textarea:focus-visible) {
           outline-color: Highlight;

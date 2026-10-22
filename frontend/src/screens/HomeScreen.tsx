@@ -9,8 +9,10 @@ import {
   Image,
   type ListRenderItemInfo,
   Modal,
+  Platform,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import {
@@ -60,9 +62,19 @@ const toTierList = (list: ListSimple): TierList => ({
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
+  const userId = user?.id ?? null;
   const { scheme } = useTheme();
   const colors = useThemeColors();
   const safeAreaInsets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const columns = windowWidth >= 1280 ? 3 : windowWidth >= 768 ? 2 : 1;
+  const horizontalGutter = windowWidth >= 1024 ? 24 : 16;
+  const availableWidth = Math.min(
+    windowWidth - safeAreaInsets.left - safeAreaInsets.right,
+    1280
+  );
+  const cardWidth =
+    (availableWidth - 2 * horizontalGutter - 12 * (columns - 1)) / columns;
   const [lists, setLists] = useState<TierList[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,9 +94,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (requestId !== listsRequestRef.current) return;
         setLists(result.map(toTierList));
         setError(null);
-        if (user)
+        if (userId)
           void AsyncStorage.setItem(
-            listsCacheKey(user.id),
+            listsCacheKey(userId),
             JSON.stringify(result)
           ).catch(() => {});
       } catch (err: unknown) {
@@ -95,13 +107,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (requestId === listsRequestRef.current) setIsLoading(false);
       }
     },
-    [token, user]
+    [token, userId]
   );
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     let cancelled = false;
     void (async () => {
-      const raw = await AsyncStorage.getItem(listsCacheKey(user.id)).catch(
+      const raw = await AsyncStorage.getItem(listsCacheKey(userId)).catch(
         () => null
       );
       if (cancelled) return;
@@ -113,7 +125,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [userId]);
   const fetchLists = useCallback(async () => {
     try {
       await refreshLists(true);
@@ -233,53 +245,60 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           })
         }
         activeOpacity={0.7}
-        className="flex-row items-center gap-2 p-[14px] mb-2 bg-surface dark:bg-surface-dark rounded-lg"
+        style={{ width: cardWidth }}
+        className="shrink-0 overflow-hidden rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
       >
-        <View
-          className={[
-            'w-10 h-10 items-center justify-center rounded-lg',
-            item.color
-              ? CHIP_CLASS[item.color]
-              : 'bg-accent-tint dark:bg-accent-tint-dark',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          <Ionicons
-            name="layers-outline"
-            size={20}
-            color={chipIconColor}
-            accessible={false}
-          />
-        </View>
-        <View className="flex-1 min-w-0 gap-2">
-          <Text className="text-[18px] leading-[25.2px] font-semibold text-ink dark:text-ink-dark">
-            {item.title}
-          </Text>
-          {item.description?.trim() ? (
-            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
-              {item.description}
+        <View className="flex-row items-center gap-3 p-4">
+          <View
+            className={[
+              'w-8 h-8 items-center justify-center rounded-lg',
+              item.color
+                ? CHIP_CLASS[item.color]
+                : 'bg-accent-tint dark:bg-accent-tint-dark',
+            ].join(' ')}
+          >
+            <Ionicons
+              name="layers-outline"
+              size={20}
+              color={chipIconColor}
+              accessible={false}
+            />
+          </View>
+          <View className="flex-1 min-w-0 gap-1">
+            <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
+              {item.title}
             </Text>
-          ) : null}
-          <View className="flex-row flex-wrap items-center gap-2">
-            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
+            {item.description?.trim() ? (
+              <Text
+                numberOfLines={2}
+                className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+              >
+                {item.description}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+        <View className="flex-row items-center justify-between gap-2 border-t border-line px-3 py-2 dark:border-line-dark">
+          <View className="flex-1 min-w-0 flex-row flex-wrap items-center gap-3">
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
               {item.itemCount} items
             </Text>
-            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
               Modified {formatDate(item.updatedAt)}
             </Text>
           </View>
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={colors['ink-muted']}
+            accessible={false}
+          />
         </View>
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={colors['ink-muted']}
-        />
       </TouchableOpacity>
     );
   };
   const content =
-    !token || isLoading ? (
+    !token || (isLoading && lists.length === 0) ? (
       <View className="flex-1 items-center justify-center px-6">
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
@@ -300,55 +319,76 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       </View>
     ) : (
       <FlatList
+        key={columns}
         className="flex-1 min-h-0"
         data={lists}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
         renderItem={renderRow}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 16 + safeAreaInsets.bottom }}
+        contentContainerStyle={{
+          paddingBottom: 16 + safeAreaInsets.bottom,
+          gap: 12,
+        }}
         ListHeaderComponent={
           <Text
             accessibilityRole="header"
-            className="text-[30px] leading-[36px] font-semibold text-ink dark:text-ink-dark mb-3"
+            className="text-headline-small text-ink dark:text-ink-dark"
           >
             My lists
           </Text>
         }
         ListEmptyComponent={
-          <View className="items-start pt-0.5">
-            <Image
-              source={require('../../assets/logo-transparent.png')}
-              className="w-14 h-14 mb-2"
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Create a list. Start ranking what you love."
+            onPress={() => setModalStep('create')}
+            activeOpacity={0.7}
+            className="w-full min-h-24 flex-row items-center gap-3 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-3 dark:border-control-dark dark:bg-surface-muted-dark"
+          >
+            <Ionicons
+              name="add-circle-outline"
+              size={24}
+              color={colors['accent-text']}
               accessible={false}
             />
-            <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark mb-1">
-              Your lists start here
-            </Text>
-            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-              Create a list to start ranking what you love.
-            </Text>
-          </View>
+            <View className="flex-1 min-w-0 gap-1">
+              <Text className="text-title-small font-semibold text-ink dark:text-ink-dark">
+                Create a list
+              </Text>
+              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+                Start ranking what you love.
+              </Text>
+            </View>
+          </TouchableOpacity>
         }
       />
     );
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView className="min-h-0 flex-1" edges={['top']}>
+      <SafeAreaView
+        className={`min-h-0 flex-1${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+        edges={['top', 'left', 'right']}
+      >
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
-          <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
-            <View className="pt-8 desktop:pt-4 pb-4 flex-row flex-wrap justify-between items-center shrink-0 bg-canvas dark:bg-canvas-dark">
-              <View className="flex-row items-center gap-1">
+          <View
+            className="flex-1 min-h-0"
+            style={{ marginHorizontal: horizontalGutter }}
+          >
+            <View className="py-2 flex-row flex-wrap justify-between items-center gap-2 shrink-0 bg-canvas dark:bg-canvas-dark">
+              <View className="flex-row items-center gap-1 shrink-0">
                 <Ionicons
                   name="layers-outline"
                   size={20}
                   color={colors['accent-text']}
                   accessible={false}
                 />
-                <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark">
+                <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
                   TierNerd
                 </Text>
               </View>
-              <View className="flex-row flex-wrap items-center gap-2">
+              <View className="flex-row items-center gap-2 shrink-0">
                 <Button
                   title="New list"
                   onPress={() => setModalStep('create')}
@@ -389,9 +429,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
             </View>
-            <View className="w-full max-w-[800px] self-center flex-1 min-h-0">
-              {content}
-            </View>
+            <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>
         <Modal

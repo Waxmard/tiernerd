@@ -110,7 +110,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const skipWorkspaceCloseFocusRef = useRef(false);
   const deletingListInFlightRef = useRef(false);
   const previousDesktopRef = useRef(isDesktop);
-  const skippedDraftIdsRef = useRef(new Set<string>());
+  const resolvedDraftIdsRef = useRef(new Set<string>());
 
   selectedItemIdRef.current = selectedItemId;
 
@@ -171,7 +171,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setScrollTargetId(null);
     pendingScrollRef.current = null;
     setDismissedDetailsItemId(null);
-    skippedDraftIdsRef.current.clear();
+    resolvedDraftIdsRef.current.clear();
     void fetchItems().catch(() => {});
     return () => {
       itemsRequestRef.current += 1;
@@ -283,7 +283,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 
   const handleWorkspaceClosed = useCallback(() => {
     if (rankingCandidateIdRef.current) {
-      skippedDraftIdsRef.current.add(rankingCandidateIdRef.current);
+      resolvedDraftIdsRef.current.add(rankingCandidateIdRef.current);
     }
     rankingCandidateIdRef.current = null;
     if (selectedItemId) {
@@ -320,7 +320,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     try {
       if (workspace.mode === 'ranking') {
         if (workspace.item)
-          skippedDraftIdsRef.current.add(workspace.item.item_id);
+          resolvedDraftIdsRef.current.add(workspace.item.item_id);
         return workspace.pauseRanking();
       }
       return await workspace.requestClose();
@@ -356,15 +356,15 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     if (
       !items.some(
         (item) =>
-          item.rating === null && !skippedDraftIdsRef.current.has(item.item_id)
+          item.rating === null && !resolvedDraftIdsRef.current.has(item.item_id)
       )
     )
       return;
     let cancelled = false;
-    void findNextDraftSession(items, skippedDraftIdsRef.current, token).then(
+    void findNextDraftSession(items, resolvedDraftIdsRef.current, token).then(
       (session) => {
         if (cancelled || !session) return;
-        skippedDraftIdsRef.current.add(session.item_id);
+        resolvedDraftIdsRef.current.add(session.item_id);
         rankingCandidateIdRef.current = session.item_id;
         setSelectedItemId(session.item_id);
         setDismissedDetailsItemId(null);
@@ -667,7 +667,15 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         </View>
       );
     }
-    if (items.length === 0 && !itemsError) return <ListItemEmptyState />;
+    if (items.length === 0 && !itemsError)
+      return (
+        <ListItemEmptyState
+          onAdd={() => void handleAddPress()}
+          disabled={
+            isDeletingList || workspace.isBusy || workspace.mode === 'add'
+          }
+        />
+      );
     if (items.length === 0 && itemsError) {
       return (
         <View className="flex-1 items-center justify-center px-6">
@@ -710,7 +718,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
+      <SafeAreaView
+        className={`flex-1 min-h-0${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+        edges={['top']}
+      >
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
             <ListDetailHeader

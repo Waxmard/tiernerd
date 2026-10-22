@@ -51,156 +51,165 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView className="flex-1">
+      <SafeAreaView
+        className={`flex-1${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           className="flex-1"
         >
           <ScrollView
-            contentContainerClassName="grow w-full max-w-[420px] self-center px-4 pt-6 desktop:pt-12"
+            contentContainerClassName="grow w-full items-center justify-center px-4 py-4"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={false}
           >
-            <View className="grow">
-              <View className="items-center mb-4">
-                <Image
-                  source={require('../../assets/logo-transparent.png')}
-                  className="w-12 h-12"
-                  resizeMode="contain"
-                  accessible={false}
-                />
-              </View>
-              <View className="w-full" collapsable={false}>
-                <Text
-                  className="text-title-large text-ink dark:text-ink-dark text-left mb-4"
-                  accessibilityRole="header"
-                >
-                  TierNerd
-                </Text>
-                <Input
-                  label="Email"
-                  ref={emailInputRef}
-                  value={email}
-                  onChangeText={(value) => {
-                    setEmail(value);
-                    if (value.trim()) setEmailError(undefined);
-                  }}
-                  error={emailError}
-                  placeholder="name@example.com"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  spellCheck={false}
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordInputRef.current?.focus()}
-                  leftIcon={
-                    <Ionicons
-                      accessible={false}
-                      name="mail-outline"
-                      size={20}
-                      color={colors['ink-muted']}
-                    />
-                  }
-                />
-                <Input
-                  label="Password"
-                  ref={passwordInputRef}
-                  value={password}
-                  onChangeText={(value) => {
-                    setPassword(value);
-                    if (value) setPasswordError(undefined);
-                  }}
-                  error={passwordError}
-                  placeholder="••••••••"
-                  secureTextEntry={!passwordVisible}
-                  autoComplete="current-password"
-                  textContentType="password"
-                  returnKeyType="done"
-                  onSubmitEditing={handleEmailSignIn}
-                  leftIcon={
-                    <Ionicons
-                      accessible={false}
-                      name="lock-closed-outline"
-                      size={20}
-                      color={colors['ink-muted']}
-                    />
-                  }
-                  rightIcon={
-                    <Ionicons
-                      accessible={false}
-                      name={passwordVisible ? 'eye-outline' : 'eye-off-outline'}
-                      size={20}
-                      color={colors['ink-muted']}
-                    />
-                  }
-                  rightIconAccessibilityLabel={
-                    passwordVisible ? 'Hide password' : 'Show password'
-                  }
-                  onRightIconPress={() => setPasswordVisible(!passwordVisible)}
-                />
-                {error && (
-                  <View className="mt-4 p-4 bg-danger-text dark:bg-danger-text-dark rounded-lg">
-                    <Text
-                      className="text-body-small text-on-accent dark:text-canvas text-center"
-                      accessibilityRole="alert"
-                    >
-                      {error}
-                    </Text>
-                  </View>
-                )}
-                <Button
-                  title="Log In"
-                  onPress={handleEmailSignIn}
-                  size="large"
-                  fullWidth
-                  loading={isLoading}
-                  className="mt-4"
-                />
-                {googleAvailable && (
-                  <>
-                    <View className="flex-row items-center my-4">
-                      <View className="flex-1 h-px bg-line dark:bg-line-dark" />
-                      <Text className="text-label-small text-ink-muted dark:text-ink-muted-dark mx-4">
-                        OR
-                      </Text>
-                      <View className="flex-1 h-px bg-line dark:bg-line-dark" />
-                    </View>
-                    <Button
-                      title="Sign in with Google"
-                      accessibilityLabel="Sign in with Google"
-                      onPress={signInWithGoogle}
-                      variant="secondary"
-                      size="large"
-                      fullWidth
-                      loading={isLoading}
-                      icon={
-                        <Image
-                          source={require('../../assets/google-logo.png')}
-                          className="w-5 h-5"
-                          accessible={false}
-                        />
-                      }
-                    />
-                  </>
-                )}
-                <View className="flex-row items-center justify-center mt-4">
-                  <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-                    Don't have an account?{' '}
-                  </Text>
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel="Sign Up"
-                    activeOpacity={0.7}
-                    className="min-h-[44px] justify-center"
-                    onPress={navigateToRegister}
+            <View className="w-full max-w-[420px] rounded-2xl border border-line dark:border-line-dark bg-surface dark:bg-surface-dark p-5">
+              <View className="gap-4">
+                <View className="items-center">
+                  <Ionicons
+                    name="layers-outline"
+                    size={32}
+                    color={colors.ink}
+                    accessible={false}
+                  />
+                </View>
+                <View className="w-full gap-4" collapsable={false}>
+                  <Text
+                    className="text-title-large text-ink dark:text-ink-dark"
+                    accessibilityRole="header"
                   >
-                    <Text className="text-body-medium text-accent-text dark:text-accent-text-dark font-semibold underline">
-                      Sign Up
+                    TierNerd
+                  </Text>
+                  <Input
+                    label="Email"
+                    ref={emailInputRef}
+                    value={email}
+                    onChangeText={(value) => {
+                      setEmail(value);
+                      if (value.trim()) setEmailError(undefined);
+                    }}
+                    error={emailError}
+                    placeholder="name@example.com"
+                    keyboardType="email-address"
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordInputRef.current?.focus()}
+                    leftIcon={
+                      <Ionicons
+                        accessible={false}
+                        name="mail-outline"
+                        size={20}
+                        color={colors['ink-muted']}
+                      />
+                    }
+                    containerClassName="!mb-0"
+                  />
+                  <Input
+                    label="Password"
+                    ref={passwordInputRef}
+                    value={password}
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      if (value) setPasswordError(undefined);
+                    }}
+                    error={passwordError}
+                    placeholder="••••••••"
+                    secureTextEntry={!passwordVisible}
+                    autoComplete="current-password"
+                    textContentType="password"
+                    returnKeyType="done"
+                    onSubmitEditing={handleEmailSignIn}
+                    leftIcon={
+                      <Ionicons
+                        accessible={false}
+                        name="lock-closed-outline"
+                        size={20}
+                        color={colors['ink-muted']}
+                      />
+                    }
+                    rightIcon={
+                      <Ionicons
+                        accessible={false}
+                        name={
+                          passwordVisible ? 'eye-outline' : 'eye-off-outline'
+                        }
+                        size={20}
+                        color={colors['ink-muted']}
+                      />
+                    }
+                    rightIconAccessibilityLabel={
+                      passwordVisible ? 'Hide password' : 'Show password'
+                    }
+                    onRightIconPress={() =>
+                      setPasswordVisible(!passwordVisible)
+                    }
+                    containerClassName="!mb-0"
+                  />
+                  {error && (
+                    <View className="border border-danger-text dark:border-danger-text-dark bg-surface-muted dark:bg-surface-muted-dark rounded-lg p-4">
+                      <Text
+                        className="text-body-small text-danger-text dark:text-danger-text-dark text-center"
+                        accessibilityRole="alert"
+                      >
+                        {error}
+                      </Text>
+                    </View>
+                  )}
+                  <Button
+                    title="Log In"
+                    onPress={handleEmailSignIn}
+                    size="large"
+                    fullWidth
+                    loading={isLoading}
+                  />
+                  {googleAvailable && (
+                    <>
+                      <View className="flex-row items-center my-0">
+                        <View className="flex-1 h-px bg-line dark:bg-line-dark" />
+                        <Text className="text-label-small text-ink-muted dark:text-ink-muted-dark mx-4">
+                          OR
+                        </Text>
+                        <View className="flex-1 h-px bg-line dark:bg-line-dark" />
+                      </View>
+                      <Button
+                        title="Sign in with Google"
+                        accessibilityLabel="Sign in with Google"
+                        onPress={signInWithGoogle}
+                        variant="secondary"
+                        size="large"
+                        fullWidth
+                        loading={isLoading}
+                        icon={
+                          <Image
+                            source={require('../../assets/google-logo.png')}
+                            style={{ width: 20, height: 20 }}
+                            accessible={false}
+                          />
+                        }
+                      />
+                    </>
+                  )}
+                  <View className="flex-row items-center justify-center -mt-1">
+                    <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+                      Don't have an account?{' '}
                     </Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Sign Up"
+                      activeOpacity={0.7}
+                      className="min-h-[44px] justify-center"
+                      onPress={navigateToRegister}
+                    >
+                      <Text className="text-body-medium text-accent-text dark:text-accent-text-dark font-semibold underline">
+                        Sign Up
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </View>

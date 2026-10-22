@@ -68,7 +68,7 @@ export const RangeSelector: React.FC<RangeSelectorProps> = ({
                 if (!disabled) onChange(option.value);
               }}
               className={[
-                'flex-1 min-w-0 min-h-[104px] flex-col items-center justify-center gap-0.5 p-3 rounded-2xl border',
+                'flex-1 min-w-0 min-h-12 flex-row items-center justify-center gap-2 px-3 rounded-[10px] border',
                 selected
                   ? 'border-2 border-accent dark:border-accent-dark bg-accent-tint dark:bg-accent-tint-dark'
                   : 'border-line dark:border-line-dark bg-surface dark:bg-surface-dark',
@@ -84,21 +84,9 @@ export const RangeSelector: React.FC<RangeSelectorProps> = ({
                   : undefined
               }
             >
-              <View className="w-5 h-5 items-center justify-center">
-                {selected ? (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={20}
-                    color={
-                      disabled ? colors['ink-disabled'] : colors['accent-text']
-                    }
-                    accessible={false}
-                  />
-                ) : null}
-              </View>
               <Ionicons
                 name={option.icon}
-                size={28}
+                size={20}
                 color={
                   disabled
                     ? colors['ink-disabled']
@@ -110,7 +98,7 @@ export const RangeSelector: React.FC<RangeSelectorProps> = ({
               />
               <Text
                 className={[
-                  'text-title-medium text-center',
+                  'text-body-medium font-semibold text-center',
                   disabled
                     ? 'text-ink-disabled dark:text-ink-disabled-dark'
                     : selected
