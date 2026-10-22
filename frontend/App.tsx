@@ -6,7 +6,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/providers/AuthContext';
 import { ThemeProvider, useTheme } from './src/providers/ThemeProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { usePwaTopInset } from './src/utils/pwaTopInset';
 import { useAppUpdate } from './src/utils/useAppUpdate';
 import {
   configureReanimatedLogger,
@@ -31,7 +30,6 @@ if (__DEV__) {
 
 const AppShell = () => {
   const { scheme } = useTheme();
-  const pwaTopInset = usePwaTopInset();
   useAppUpdate();
 
   useEffect(() => {
@@ -56,10 +54,7 @@ const AppShell = () => {
 
   return (
     <>
-      <View
-        className="flex-1 min-h-0"
-        style={pwaTopInset ? { paddingTop: pwaTopInset } : undefined}
-      >
+      <View className="flex-1 min-h-0">
         <AppNavigator />
       </View>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />

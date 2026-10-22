@@ -10,7 +10,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { usePwaTopInset } from '../../utils/pwaTopInset';
 import { Button } from './Button';
 
 const CARD_SHADOW = {
@@ -54,7 +53,6 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   const headingId = titleId ?? generatedTitleId;
   const isPanel = presentation === 'panel';
   const safeAreaInsets = useSafeAreaInsets();
-  const pwaTopInset = usePwaTopInset();
   const content = (
     <View
       className={[
@@ -129,7 +127,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View
         className="flex-1 bg-black/50 desktop:px-4"
-        style={{ paddingTop: safeAreaInsets.top + pwaTopInset }}
+        style={{ paddingTop: safeAreaInsets.top }}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
