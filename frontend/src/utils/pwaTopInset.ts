@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // iOS draws its status-bar blur band over an installed PWA's page, and some
 // devices report env(safe-area-inset-top) as 0 there. Screens already add
 // insets.top, so this returns only the shortfall below the band.
-export const PWA_TOP_INSET_FLOOR = 56;
+export const PWA_TOP_INSET_FLOOR = 44;
 
 const isStandalone = (): boolean => {
   if (typeof window === 'undefined') return false;
