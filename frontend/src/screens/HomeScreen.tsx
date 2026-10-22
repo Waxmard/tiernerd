@@ -9,6 +9,7 @@ import {
   Image,
   type ListRenderItemInfo,
   Modal,
+  Platform,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -366,7 +367,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     );
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView className="min-h-0 flex-1" edges={['top', 'left', 'right']}>
+      <SafeAreaView
+        className={`min-h-0 flex-1${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+        edges={['top', 'left', 'right']}
+      >
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View
             className="flex-1 min-h-0"

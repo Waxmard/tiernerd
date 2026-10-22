@@ -126,7 +126,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View
-        className="flex-1 bg-black/50 desktop:px-4"
+        className={`flex-1 bg-black/50 desktop:px-4${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
         style={{ paddingTop: safeAreaInsets.top }}
       >
         <KeyboardAvoidingView

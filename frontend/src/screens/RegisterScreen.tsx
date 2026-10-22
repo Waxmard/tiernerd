@@ -75,7 +75,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView className="flex-1">
+      <SafeAreaView
+        className={`flex-1${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           className="flex-1"

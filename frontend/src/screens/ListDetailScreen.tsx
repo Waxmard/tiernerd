@@ -718,7 +718,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
+      <SafeAreaView
+        className={`flex-1 min-h-0${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+        edges={['top']}
+      >
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
             <ListDetailHeader

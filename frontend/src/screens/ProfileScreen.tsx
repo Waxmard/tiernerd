@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import type React from 'react';
 import {
   Image,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -38,7 +39,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView className="flex-1">
+      <SafeAreaView
+        className={`flex-1${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+      >
         <ScrollView
           contentContainerClassName="w-full grow"
           showsVerticalScrollIndicator={false}
