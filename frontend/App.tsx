@@ -7,6 +7,7 @@ import { AuthProvider } from './src/providers/AuthContext';
 import { ThemeProvider, useTheme } from './src/providers/ThemeProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { usePwaTopInset } from './src/utils/pwaTopInset';
+import { useAppUpdate } from './src/utils/useAppUpdate';
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -31,6 +32,7 @@ if (__DEV__) {
 const AppShell = () => {
   const { scheme } = useTheme();
   const pwaTopInset = usePwaTopInset();
+  useAppUpdate();
 
   useEffect(() => {
     if (typeof document === 'undefined') return;

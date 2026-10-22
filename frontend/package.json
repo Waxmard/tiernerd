@@ -7,7 +7,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build:web": "expo export --platform web --clear && node scripts/fix-pages-assets.mjs && printf '/* /index.html 200\\n' > dist/_redirects",
+    "build:web": "expo export --platform web --clear && node scripts/fix-pages-assets.mjs && node scripts/write-build-version.mjs && printf '/* /index.html 200\\n' > dist/_redirects",
     "preview": "expo serve --port 8081",
     "lint": "biome lint src/",
     "lint:fix": "biome lint --write src/",
@@ -17,7 +17,7 @@
     "check:fix": "biome check --write src/",
     "check:staged": "biome check --write --no-errors-on-unmatched",
     "typecheck": "tsc --noEmit",
-    "test:unit": "node --test src/services/*.test.ts",
+    "test:unit": "node --test src/services/*.test.ts src/utils/*.test.ts",
     "e2e": "playwright test"
   },
   "dependencies": {
