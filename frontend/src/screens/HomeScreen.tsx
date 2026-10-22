@@ -61,6 +61,7 @@ const toTierList = (list: ListSimple): TierList => ({
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
+  const userId = user?.id ?? null;
   const { scheme } = useTheme();
   const colors = useThemeColors();
   const safeAreaInsets = useSafeAreaInsets();
@@ -92,9 +93,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (requestId !== listsRequestRef.current) return;
         setLists(result.map(toTierList));
         setError(null);
-        if (user)
+        if (userId)
           void AsyncStorage.setItem(
-            listsCacheKey(user.id),
+            listsCacheKey(userId),
             JSON.stringify(result)
           ).catch(() => {});
       } catch (err: unknown) {
@@ -105,13 +106,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (requestId === listsRequestRef.current) setIsLoading(false);
       }
     },
-    [token, user]
+    [token, userId]
   );
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     let cancelled = false;
     void (async () => {
-      const raw = await AsyncStorage.getItem(listsCacheKey(user.id)).catch(
+      const raw = await AsyncStorage.getItem(listsCacheKey(userId)).catch(
         () => null
       );
       if (cancelled) return;
@@ -123,7 +124,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [userId]);
   const fetchLists = useCallback(async () => {
     try {
       await refreshLists(true);
@@ -296,7 +297,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     );
   };
   const content =
-    !token || isLoading ? (
+    !token || (isLoading && lists.length === 0) ? (
       <View className="flex-1 items-center justify-center px-6">
         <ActivityIndicator size="large" color={colors.accent} />
       </View>

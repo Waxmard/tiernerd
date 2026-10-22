@@ -23,29 +23,38 @@ export type DraftCancellation =
 
 export async function findNextDraftSession(
   items: Item[],
-  skippedIds: ReadonlySet<string>,
+  resolvedIds: Set<string>,
   token: string
 ): Promise<ComparisonSession | null> {
   const { itemsService } = await import('./itemsService.ts');
-  for (const item of items) {
-    if (item.rating !== null || skippedIds.has(item.item_id)) continue;
-    try {
-      const session = await itemsService.getComparison(item.item_id, token);
-      if (session && ['active', 'ready_to_commit'].includes(session.status)) {
-        if (session.is_stale && session.comparisons_answered === 0) {
-          return await itemsService.startComparison(
-            item.item_id,
-            session.tier_set,
-            true,
-            session.revision,
-            token
-          );
-        }
-        return session;
-      }
-    } catch {
-      // ignore fetch errors for individual items
+  const candidates = items.filter(
+    (item) => item.rating === null && !resolvedIds.has(item.item_id)
+  );
+  const results = await Promise.all(
+    candidates.map((item) =>
+      itemsService.getComparison(item.item_id, token).catch(() => undefined)
+    )
+  );
+  for (const [index, item] of candidates.entries()) {
+    const session = results[index];
+    if (session === undefined) continue;
+    if (
+      session === null ||
+      !['active', 'ready_to_commit'].includes(session.status)
+    ) {
+      resolvedIds.add(item.item_id);
+      continue;
     }
+    if (session.is_stale && session.comparisons_answered === 0) {
+      return await itemsService.startComparison(
+        item.item_id,
+        session.tier_set,
+        true,
+        session.revision,
+        token
+      );
+    }
+    return session;
   }
   return null;
 }
