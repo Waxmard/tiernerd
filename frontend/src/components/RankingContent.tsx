@@ -49,7 +49,7 @@ function ComparisonChoice({
       accessibilityState={{ disabled: isBusy }}
       disabled={isBusy}
       onPress={onPress}
-      className="min-h-16 border border-control dark:border-control-dark rounded-lg p-[14px] gap-2 bg-surface dark:bg-surface-dark"
+      className="min-h-16 border border-control dark:border-control-dark rounded-2xl p-3 gap-2 bg-surface dark:bg-surface-dark"
       style={({ pressed }) =>
         pressed && !isBusy
           ? { transform: [{ scale: 0.96 }], borderColor: colors['accent-text'] }
@@ -66,18 +66,12 @@ function ComparisonChoice({
         ) : null}
         <View className="flex-1 min-w-0 gap-0.5">
           <Text
-            className={[
-              'text-[18px] leading-[25.2px] font-semibold',
-              choiceTextClass(isBusy),
-            ].join(' ')}
+            className={['text-title-medium', choiceTextClass(isBusy)].join(' ')}
           >
             {item.name}
           </Text>
           <Text
-            className={[
-              'text-[14px] leading-[21px]',
-              choiceTextClass(isBusy),
-            ].join(' ')}
+            className={['text-body-medium', choiceTextClass(isBusy)].join(' ')}
           >
             {label}
           </Text>
@@ -85,10 +79,7 @@ function ComparisonChoice({
       </View>
       {item.description ? (
         <Text
-          className={[
-            'text-[14px] leading-[21px]',
-            choiceTextClass(isBusy),
-          ].join(' ')}
+          className={['text-body-medium', choiceTextClass(isBusy)].join(' ')}
         >
           {item.description}
         </Text>
@@ -182,11 +173,11 @@ export function RankingContent({
         ) : undefined
       }
     >
-      <View className="gap-2 mb-4">
+      <View className="gap-1 mb-4">
         <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
           {listTitle}
         </Text>
-        <View className="flex-row flex-wrap items-center gap-2">
+        <View className="flex-row flex-wrap items-center gap-1">
           <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
             Ranking into
           </Text>

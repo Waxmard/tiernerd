@@ -170,7 +170,7 @@ export const ListDetailWorkspaceHost: React.FC<
 
   return (
     <>
-      <View className="flex-1 min-h-0 desktop:flex-row desktop:gap-6">
+      <View className="flex-1 min-h-0 desktop:flex-row desktop:gap-4">
         <View className="flex-1 min-h-0 min-w-0">{children}</View>
         {isDesktop &&
         (selectedItemId !== null || workspace.mode !== 'closed') ? (

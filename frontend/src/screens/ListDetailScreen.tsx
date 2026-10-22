@@ -667,7 +667,15 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         </View>
       );
     }
-    if (items.length === 0 && !itemsError) return <ListItemEmptyState />;
+    if (items.length === 0 && !itemsError)
+      return (
+        <ListItemEmptyState
+          onAdd={() => void handleAddPress()}
+          disabled={
+            isDeletingList || workspace.isBusy || workspace.mode === 'add'
+          }
+        />
+      );
     if (items.length === 0 && itemsError) {
       return (
         <View className="flex-1 items-center justify-center px-6">

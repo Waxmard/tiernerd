@@ -43,13 +43,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           contentContainerClassName="w-full grow"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full max-w-[1280px] self-center grow pb-8 desktop:px-6 px-4">
-            <View className="flex-row items-center justify-between py-4 mb-6">
+          <View className="w-full max-w-[560px] self-center px-4 pb-4">
+            <View className="flex-row items-center justify-between py-4 mb-4">
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel="Back"
                 onPress={handleBack}
-                className="w-10 h-10 justify-center items-center"
+                className="min-w-[44px] min-h-[44px] justify-center items-center"
                 activeOpacity={0.7}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
@@ -66,14 +66,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               >
                 Profile
               </Text>
-              <View className="w-10 h-10" />
+              <View className="w-11 h-11" />
             </View>
 
-            <View className="flex-row items-center gap-4 mb-8">
+            <View className="flex-row items-center gap-4 mb-4">
               {user?.photoUrl ? (
                 <Image
                   source={{ uri: user.photoUrl }}
-                  className="w-14 h-14 rounded-full"
+                  className="w-11 h-11 rounded-full"
                   accessibilityLabel={
                     user?.displayName
                       ? `${user.displayName} profile photo`
@@ -81,10 +81,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   }
                 />
               ) : (
-                <View className="w-14 h-14 rounded-full bg-surface dark:bg-surface-dark items-center justify-center border border-line dark:border-line-dark">
+                <View className="w-11 h-11 rounded-full bg-surface dark:bg-surface-dark items-center justify-center border border-line dark:border-line-dark">
                   <Ionicons
                     name="person"
-                    size={28}
+                    size={22}
                     color={colors['ink-muted']}
                     accessible={false}
                   />
@@ -100,11 +100,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               </View>
             </View>
 
-            <View className="mb-6">
+            <View className="mb-4">
               <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark uppercase mb-2">
                 Account
               </Text>
-              <View className="bg-surface dark:bg-surface-dark border-t border-b border-line dark:border-line-dark py-4 gap-1">
+              <View className="bg-surface dark:bg-surface-dark border border-line dark:border-line-dark rounded-2xl p-4 gap-1">
                 <Text className="text-label-medium text-ink dark:text-ink-dark">
                   Email address
                 </Text>
@@ -114,7 +114,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               </View>
             </View>
 
-            <View className="mb-6">
+            <View className="mb-4">
               <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark uppercase mb-2">
                 Appearance
               </Text>
@@ -131,7 +131,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       testID={`theme-${option.value}`}
                       onPress={() => setPreference(option.value)}
                       className={[
-                        'flex-1 flex-row items-center justify-center gap-1 border rounded-xl px-3 py-2',
+                        'flex-1 min-h-[44px] flex-row items-center justify-center gap-1 border rounded-[10px] px-3 py-2',
                         selected
                           ? 'bg-accent-tint dark:bg-accent-tint-dark border-accent dark:border-accent-dark'
                           : 'bg-surface dark:bg-surface-dark border-line dark:border-line-dark',
@@ -164,7 +164,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <TouchableOpacity
               accessibilityRole="button"
               accessibilityLabel="Sign out"
-              className="flex-row items-center justify-between min-h-[48px] bg-surface dark:bg-surface-dark border border-line dark:border-line-dark rounded-lg py-4 px-6"
+              className="flex-row items-center justify-between min-h-[48px] bg-surface dark:bg-surface-dark border border-line dark:border-line-dark rounded-[10px] py-3 px-4"
               onPress={handleSignOut}
               activeOpacity={0.8}
             >
@@ -185,7 +185,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               />
             </TouchableOpacity>
 
-            <View className="items-start justify-center mt-auto pt-8">
+            <View className="items-start mt-4">
               <Text className="text-label-small text-ink-muted dark:text-ink-muted-dark">
                 {Constants.expoConfig?.version
                   ? `${Constants.expoConfig.version} · `

@@ -7,7 +7,14 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Modal, Pressable, Text, type TextInput, View } from 'react-native';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  Text,
+  type TextInput,
+  View,
+} from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import {
   LIST_COLORS,
@@ -48,6 +55,9 @@ const SWATCH_CLASS: Record<ListColor, string> = {
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
+type FocusTarget = { focus?: () => void };
+type CreateListView = 'overview' | 'description' | 'color';
+
 export const CreateListContent = forwardRef<
   CreateListContentHandle,
   CreateListContentProps
@@ -57,20 +67,36 @@ export const CreateListContent = forwardRef<
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState<ListColor | null>(null);
+  const [view, setView] = useState<CreateListView>('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
+  const descriptionSummaryRef = useRef<FocusTarget | null>(null);
+  const colorSummaryRef = useRef<FocusTarget | null>(null);
+  const colorRef = useRef<FocusTarget | null>(null);
+  const returnFocusRef = useRef<'description' | 'color'>('description');
+  const hasVisitedOptionalFieldRef = useRef(false);
   const loadingRef = useRef(false);
 
   useEffect(() => {
     if (fieldError) titleRef.current?.focus();
   }, [fieldError]);
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (view === 'description') {
+      requestAnimationFrame(() => descriptionRef.current?.focus());
+    } else if (view === 'color') {
+      requestAnimationFrame(() => colorRef.current?.focus?.());
+    }
+  }, [view]);
 
   const clearForm = useCallback(() => {
     setTitle('');
     setDescription('');
     setColor(null);
+    setView('overview');
     setFieldError(null);
     setError(null);
   }, []);
@@ -83,6 +109,31 @@ export const CreateListContent = forwardRef<
   }, [clearForm, onClose]);
 
   useImperativeHandle(ref, () => ({ requestClose }), [requestClose]);
+
+  const openDescription = () => {
+    hasVisitedOptionalFieldRef.current = true;
+    returnFocusRef.current = 'description';
+    setView('description');
+  };
+
+  const openColor = () => {
+    hasVisitedOptionalFieldRef.current = true;
+    returnFocusRef.current = 'color';
+    setView('color');
+  };
+
+  const returnToOverview = () => {
+    setView('overview');
+    if (Platform.OS === 'web') {
+      requestAnimationFrame(() => {
+        const target =
+          returnFocusRef.current === 'description'
+            ? descriptionSummaryRef.current
+            : colorSummaryRef.current;
+        target?.focus?.();
+      });
+    }
+  };
 
   const handleCreate = async () => {
     const trimmedTitle = title.trim();
@@ -132,60 +183,149 @@ export const CreateListContent = forwardRef<
 
   return (
     <BaseModalContent
-      title="Create New List"
+      title={
+        view === 'overview'
+          ? 'Create New List'
+          : view === 'description'
+            ? 'Description'
+            : 'List color'
+      }
       error={error}
       isLoading={isLoading}
-      submitText="Create"
+      submitText={view === 'overview' ? 'Create' : 'Done'}
+      closeText={view === 'overview' ? 'Cancel' : 'Back'}
       onClose={() => {
-        void requestClose();
+        if (view === 'overview') {
+          void requestClose();
+        } else {
+          returnToOverview();
+        }
       }}
-      onSubmit={handleCreate}
+      onSubmit={view === 'overview' ? handleCreate : returnToOverview}
     >
-      <Input
-        ref={titleRef}
-        label="Title"
-        placeholder="Enter list title"
-        value={title}
-        onChangeText={(value) => {
-          setTitle(value);
-          setFieldError(null);
-          setError(null);
-        }}
-        error={fieldError ?? undefined}
-        maxLength={MAX_TITLE_LENGTH}
-        editable={!isLoading}
-        autoFocus
-      />
-      <Input
-        label="Description (optional)"
-        placeholder="Add a description"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        numberOfLines={3}
-        editable={!isLoading}
-        inputClassName="min-h-20 text-[16px]"
-        style={MULTILINE_INPUT_STYLE}
-      />
-      <View className="mb-4">
-        <Text className="text-label-medium text-ink dark:text-ink-dark mb-1">
-          Color
-        </Text>
-        <View className="flex-row gap-3">
+      {view === 'overview' ? (
+        <>
+          <Input
+            ref={titleRef}
+            label="Title"
+            placeholder="Enter list title"
+            value={title}
+            onChangeText={(value) => {
+              setTitle(value);
+              setFieldError(null);
+              setError(null);
+            }}
+            error={fieldError ?? undefined}
+            maxLength={MAX_TITLE_LENGTH}
+            editable={!isLoading}
+            autoFocus={!hasVisitedOptionalFieldRef.current}
+          />
+          <Pressable
+            ref={(element) => {
+              descriptionSummaryRef.current =
+                element as unknown as FocusTarget | null;
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Description (optional): ${description.trim() || 'Not set'}`}
+            accessibilityHint="Edit the list description"
+            accessibilityState={{ disabled: isLoading }}
+            disabled={isLoading}
+            onPress={openDescription}
+            className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4"
+          >
+            <View className="flex-1 min-w-0">
+              <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+                Description (optional)
+              </Text>
+              <Text
+                numberOfLines={2}
+                className="text-body-small text-ink-muted dark:text-ink-muted-dark"
+              >
+                {description.trim() || 'Not set'}
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={palette[scheme]['ink-muted']}
+              accessible={false}
+            />
+          </Pressable>
+          <Pressable
+            ref={(element) => {
+              colorSummaryRef.current =
+                element as unknown as FocusTarget | null;
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Color (optional): ${color ?? 'None'}`}
+            accessibilityHint="Choose a list color"
+            accessibilityState={{ disabled: isLoading }}
+            disabled={isLoading}
+            onPress={openColor}
+            className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4"
+          >
+            <View className="flex-1 min-w-0">
+              <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+                Color (optional)
+              </Text>
+              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+                {color ?? 'None'}
+              </Text>
+            </View>
+            {color ? (
+              <View
+                accessible={false}
+                className={['w-4 h-4 rounded-full', SWATCH_CLASS[color]].join(
+                  ' '
+                )}
+              />
+            ) : null}
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={palette[scheme]['ink-muted']}
+              accessible={false}
+            />
+          </Pressable>
+        </>
+      ) : view === 'description' ? (
+        <Input
+          ref={descriptionRef}
+          label="Description (optional)"
+          placeholder="Add a description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={5}
+          editable={!isLoading}
+          autoFocus
+          inputClassName="!min-h-[120px] text-[16px]"
+          style={MULTILINE_INPUT_STYLE}
+        />
+      ) : (
+        <View className="flex-row flex-wrap gap-3">
           {LIST_COLORS.map((hue) => {
             const selected = color === hue;
             return (
               <Pressable
                 key={hue}
+                ref={
+                  hue === (color ?? LIST_COLORS[0])
+                    ? (element) => {
+                        colorRef.current =
+                          element as unknown as FocusTarget | null;
+                      }
+                    : undefined
+                }
                 accessibilityRole="button"
-                accessibilityLabel={'Color ' + hue}
+                accessibilityLabel={`Color ${hue}`}
                 accessibilityState={{ selected }}
                 aria-pressed={selected}
-                testID={'color-' + hue}
+                testID={`color-${hue}`}
                 disabled={isLoading}
                 onPress={() => setColor(selected ? null : hue)}
                 className={[
-                  'w-10 h-10 rounded-full items-center justify-center',
+                  'w-11 h-11 rounded-full items-center justify-center',
                   SWATCH_CLASS[hue],
                 ].join(' ')}
               >
@@ -201,7 +341,7 @@ export const CreateListContent = forwardRef<
             );
           })}
         </View>
-      </View>
+      )}
     </BaseModalContent>
   );
 });

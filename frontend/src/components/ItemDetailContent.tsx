@@ -125,13 +125,13 @@ export function ItemDetailContent({
         </View>
       }
     >
-      <View className="gap-4 pb-4">
+      <View className="gap-3 pb-4">
         {item.rating === null ? (
           <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
             Not ranked yet
           </Text>
         ) : (
-          <View className="flex-row items-baseline flex-wrap gap-4">
+          <View className="flex-row items-baseline flex-wrap gap-3">
             <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
               {item.rating.toFixed(1)}
             </Text>
@@ -169,7 +169,7 @@ export function ItemDetailContent({
               accessibilityLabel={item.name}
               onError={() => setFailedImageUrl(item.image_url)}
               resizeMode="cover"
-              className="w-full h-[220px] rounded-lg bg-canvas dark:bg-canvas-dark border border-line dark:border-line-dark"
+              className="w-full h-[220px] rounded-2xl bg-canvas dark:bg-canvas-dark border border-line dark:border-line-dark"
             />
           )
         ) : null}

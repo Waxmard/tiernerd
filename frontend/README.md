@@ -6,17 +6,19 @@ React Native mobile app built with Expo SDK 54.
 
 ## Browsing and ranking
 
-Choose **New list** to create a list and add its first item. Home displays lists in a single column. Each list shows items best first with relative green preference rails, with **Add item** in its header. Select an item to view its score and rank or resume a ranking draft. Unranked rows and comparison choices have no preference rail.
+Choose **New list** or the **Create a list** empty-state action to create a list and add its first item. Home displays compact list cards in one column on phones, two columns from 768px, and three columns from 1280px. Each list shows items best first with relative green preference rails, with **Add item** in its header. Empty lists offer **Add your first item**. Select an item to view its score and rank or resume a ranking draft. Unranked rows and comparison choices have no preference rail.
 
-Enter a name and choose **Good**, **Mid**, or **Bad** from the colored category tiles. Compare items with the neutral choice rows; ranking saves automatically after the final comparison, or immediately when the destination range is empty. The refreshed list confirms the saved order without an extra success banner or sheet. **Undo last answer** is available before the final answer, not after saving. If saving fails, choose **Retry saving**; if the item refresh fails, choose **Retry refresh**. Category badges identify the starting category without replacing saved scores or ranks.
+Enter a name and choose **Good**, **Mid**, or **Bad** from the compact category controls. Compare items with the neutral choice rows; ranking saves automatically after the final comparison, or immediately when the destination range is empty. The refreshed list confirms the saved order without an extra success banner or sheet. **Undo last answer** is available before the final answer, not after saving. If saving fails, choose **Retry saving**; if the item refresh fails, choose **Retry refresh**. Category badges identify the starting category without replacing saved scores or ranks.
 
-On phones, forms and item details open in bottom sheets with scrolling content and separate action controls. The web shell follows the dynamic viewport, with safe-area insets owned by the screens and modal footers. Desktop item details open in a 400px side pane only when you select an item or start a workspace action.
+On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. Desktop dialogs stay centered; item details open in a 400px side pane only when you select an item or start a workspace action. The web shell follows the dynamic viewport, with safe-area insets owned by the screens and modal footers.
+
+Edit optional descriptions and list colors in focused views. **Back** and **Done** return to the overview without saving or discarding the draft. Submit from the overview to save. Canceling list creation clears its draft immediately; canceling a changed item asks before discarding it.
 
 If ranking status fails to load, the item stays open with an error and **Retry**. An item without a draft is different from a missing API route; update the dev backend before publishing a frontend that uses the persistent-ranking API.
 
-Inputs keep a neutral border when you type with a pointer or touch. Tab navigation shows a keyboard-only focus outline.
+Inputs keep a neutral border when you type with a pointer or touch. Tab navigation shows a keyboard-only focus outline on inputs and actions.
 
-The default appearance is **Dark**. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads.
+The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. Authentication forms use a bounded card; account and appearance settings stay centered within 560px on desktop.
 
 ## Prerequisites
 
