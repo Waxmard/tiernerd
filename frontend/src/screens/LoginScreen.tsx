@@ -67,10 +67,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             <View className="w-full max-w-[420px] rounded-2xl border border-line dark:border-line-dark bg-surface dark:bg-surface-dark p-5">
               <View className="gap-4">
                 <View className="items-center">
-                  <Ionicons
-                    name="layers-outline"
-                    size={32}
-                    color={colors.ink}
+                  <Image
+                    source={require('../../assets/brand-mark.png')}
+                    resizeMode="contain"
+                    style={{ width: 48, height: 48, borderRadius: 12 }}
                     accessible={false}
                   />
                 </View>

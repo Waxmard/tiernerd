@@ -555,11 +555,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             style={{ marginHorizontal: horizontalGutter }}
           >
             <View className="py-2 flex-row flex-wrap justify-between items-center gap-2 shrink-0 bg-canvas dark:bg-canvas-dark">
-              <View className="flex-row items-center gap-1 shrink-0">
-                <Ionicons
-                  name="layers-outline"
-                  size={20}
-                  color={colors['accent-text']}
+              <View className="flex-row items-center gap-2 shrink-0">
+                <Image
+                  source={require('../../assets/brand-mark.png')}
+                  resizeMode="contain"
+                  style={{ width: 32, height: 32, borderRadius: 8 }}
                   accessible={false}
                 />
                 <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
