@@ -14,6 +14,9 @@ interface ListDetailHeaderProps {
   onAdd: () => void;
   description: string | null;
   metadataError: boolean;
+  itemsError: string | null;
+  showingSavedItems: boolean;
+  onRetryItems: () => void;
   deleteDisabled: boolean;
   onBack: () => void;
   onDelete: () => void;
@@ -42,6 +45,9 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   onAdd,
   description,
   metadataError,
+  itemsError,
+  showingSavedItems,
+  onRetryItems,
   deleteDisabled,
   onBack,
   onDelete,
@@ -167,6 +173,32 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           testID="fab-add-item"
         />
       </View>
+      {showingSavedItems ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-body-small text-ink-muted dark:text-ink-muted-dark"
+        >
+          Showing saved items. Refreshing…
+        </Text>
+      ) : null}
+      {itemsError ? (
+        <View className="flex-row items-center justify-between">
+          <Text
+            accessibilityRole="alert"
+            className="text-body-small text-danger-text dark:text-danger-text-dark shrink"
+          >
+            {itemsError}
+          </Text>
+          <TouchableOpacity
+            onPress={onRetryItems}
+            accessibilityRole="button"
+            accessibilityLabel="Retry refreshing items"
+            className={RETRY_BUTTON_CLASS}
+          >
+            <Text className={RETRY_TEXT_CLASS}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </View>
   );
 };

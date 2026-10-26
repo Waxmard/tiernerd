@@ -23,6 +23,7 @@ interface ListDetailWorkspaceHostProps {
   sessionError: string | null;
   isLoadingItems: boolean;
   itemsLoaded: boolean;
+  canMutate: boolean;
   workspace: ItemWorkspace;
   onRetrySession: () => void;
   onOpenRange: () => void;
@@ -51,6 +52,7 @@ export const ListDetailWorkspaceHost: React.FC<
   sessionError,
   isLoadingItems,
   itemsLoaded,
+  canMutate,
   workspace,
   onRetrySession,
   onOpenRange,
@@ -149,6 +151,7 @@ export const ListDetailWorkspaceHost: React.FC<
     return (
       <ItemDetailContent
         item={selectedItem}
+        canMutate={canMutate}
         rank={selectedRank}
         rankedCount={rankedCount}
         presentation={presentation}

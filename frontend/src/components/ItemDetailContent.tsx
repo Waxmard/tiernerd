@@ -9,6 +9,7 @@ export interface ItemDetailContentProps {
   item: Item;
   rank: number | null;
   rankedCount: number;
+  canMutate: boolean;
   session: ComparisonSession | null;
   isLoadingSession: boolean;
   isBusy: boolean;
@@ -35,6 +36,7 @@ export function ItemDetailContent({
   item,
   rank,
   rankedCount,
+  canMutate,
   session,
   isLoadingSession,
   isBusy,
@@ -64,7 +66,11 @@ export function ItemDetailContent({
       : null;
   const refreshPending = error === REFRESH_ERROR;
   const actionsBlocked =
-    isBusy || isLoadingSession || Boolean(sessionError) || refreshPending;
+    !canMutate ||
+    isBusy ||
+    isLoadingSession ||
+    Boolean(sessionError) ||
+    refreshPending;
   const rankTitle = liveSession
     ? liveSession.is_stale
       ? 'Restart ranking'
@@ -74,7 +80,6 @@ export function ItemDetailContent({
       : 'Re-rank';
   const canRetryRefresh = refreshPending && onRetryRefresh !== undefined;
   const deleteTitle = canRetryRefresh ? 'Retry refresh' : 'Delete Item';
-
   return (
     <BaseModalContent
       title={item.name}
@@ -94,7 +99,7 @@ export function ItemDetailContent({
               title="Edit"
               variant="secondary"
               onPress={onEdit}
-              disabled={isBusy || refreshPending}
+              disabled={!canMutate || isBusy || refreshPending}
               className="flex-1 min-w-[120px]"
             />
             <Button
@@ -103,9 +108,11 @@ export function ItemDetailContent({
               onPress={canRetryRefresh ? onRetryRefresh : onDelete}
               disabled={
                 isBusy ||
-                isLoadingSession ||
-                Boolean(sessionError) ||
-                (refreshPending && !onRetryRefresh)
+                (!canRetryRefresh &&
+                  (!canMutate ||
+                    isLoadingSession ||
+                    Boolean(sessionError) ||
+                    refreshPending))
               }
               textClassName={
                 canRetryRefresh

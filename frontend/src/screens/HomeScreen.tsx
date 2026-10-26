@@ -32,8 +32,14 @@ import { type ListColor, palette } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useTheme, useThemeColors } from '../providers/ThemeProvider';
+import { ApiError } from '../services/apiError';
 import type { Item } from '../services/itemsService';
-import { listsCacheKey, parseCachedLists } from '../services/listsCache';
+import {
+  enqueueListCacheWrite,
+  listItemsCacheKey,
+  listsCacheKey,
+  parseCachedLists,
+} from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
 
 type ModalStep = 'create' | 'addItem' | null;
@@ -76,6 +82,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const cardWidth =
     (availableWidth - 2 * horizontalGutter - 12 * (columns - 1)) / columns;
   const [lists, setLists] = useState<TierList[]>([]);
+  const [hasSnapshot, setHasSnapshot] = useState(false);
+  const [snapshotIdentity, setSnapshotIdentity] = useState<{
+    userId: string | null;
+    token: string | null;
+  } | null>(null);
+  const currentSnapshot =
+    hasSnapshot &&
+    snapshotIdentity !== null &&
+    snapshotIdentity.userId === userId &&
+    snapshotIdentity.token === token;
+  const visibleLists = currentSnapshot ? lists : [];
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
@@ -84,48 +101,78 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const bypassBeforeRemoveRef = useRef(false);
   const closingForNavigationRef = useRef(false);
   const listsRequestRef = useRef(0);
+  const overviewLifecycleRef = useRef(0);
+  const liveResponseRef = useRef(0);
+  const identityRef = useRef({ userId, token });
+  identityRef.current = { userId, token };
+  const isIdentityCurrent = useCallback(
+    (expectedUserId: string | null, expectedToken: string | null) =>
+      identityRef.current.userId === expectedUserId &&
+      identityRef.current.token === expectedToken,
+    []
+  );
+  useEffect(() => {
+    overviewLifecycleRef.current += 1;
+    listsRequestRef.current += 1;
+    setLists([]);
+    setHasSnapshot(false);
+    setSnapshotIdentity({ userId, token });
+    setError(null);
+    setIsLoading(Boolean(token));
+  }, [token, userId]);
   const refreshLists = useCallback(
     async (showLoading = false) => {
       if (!token) return;
       const requestId = ++listsRequestRef.current;
+      const lifecycleId = overviewLifecycleRef.current;
+      const isCurrent = () =>
+        requestId === listsRequestRef.current &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(userId, token);
       if (showLoading) setIsLoading(true);
       try {
         const result = await listsService.getLists(token);
-        if (requestId !== listsRequestRef.current) return;
+        if (!isCurrent()) return;
+        liveResponseRef.current += 1;
         setLists(result.map(toTierList));
+        setSnapshotIdentity({ userId, token });
+        setHasSnapshot(true);
         setError(null);
-        if (userId)
-          void AsyncStorage.setItem(
-            listsCacheKey(userId),
-            JSON.stringify(result)
-          ).catch(() => {});
+        if (userId) {
+          const key = listsCacheKey(userId);
+          if (isCurrent())
+            void enqueueListCacheWrite(key, async () => {
+              if (isCurrent())
+                await AsyncStorage.setItem(key, JSON.stringify(result));
+            }).catch(() => {});
+        }
       } catch (err: unknown) {
-        if (requestId === listsRequestRef.current)
+        if (isCurrent()) {
           setError(err instanceof Error ? err.message : 'Failed to load lists');
+          if (
+            err instanceof ApiError &&
+            (err.status === 401 || err.status === 403)
+          ) {
+            liveResponseRef.current += 1;
+            setLists([]);
+            setHasSnapshot(false);
+            setSnapshotIdentity({ userId, token });
+            if (userId) {
+              const key = listsCacheKey(userId);
+              if (isCurrent())
+                void enqueueListCacheWrite(key, async () => {
+                  if (isCurrent()) await AsyncStorage.removeItem(key);
+                }).catch(() => {});
+            }
+          }
+        }
         throw err;
       } finally {
-        if (requestId === listsRequestRef.current) setIsLoading(false);
+        if (isCurrent()) setIsLoading(false);
       }
     },
-    [token, userId]
+    [isIdentityCurrent, token, userId]
   );
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    void (async () => {
-      const raw = await AsyncStorage.getItem(listsCacheKey(userId)).catch(
-        () => null
-      );
-      if (cancelled) return;
-      const cached = parseCachedLists(raw);
-      if (!cached) return;
-      setLists(cached.map(toTierList));
-      setIsLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
   const fetchLists = useCallback(async () => {
     try {
       await refreshLists(true);
@@ -135,20 +182,102 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   }, [refreshLists]);
   useFocusEffect(
     useCallback(() => {
+      const lifecycleId = ++overviewLifecycleRef.current;
+      const identityUserId = userId;
+      const identityToken = token;
+      const cacheRevision = liveResponseRef.current;
+      let active = true;
+      const isCurrent = () =>
+        active &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(identityUserId, identityToken);
       void fetchLists();
-    }, [fetchLists])
+      if (identityUserId) {
+        void (async () => {
+          const raw = await AsyncStorage.getItem(
+            listsCacheKey(identityUserId)
+          ).catch(() => null);
+          if (!isCurrent() || cacheRevision !== liveResponseRef.current) return;
+          const cached = parseCachedLists(raw);
+          if (cached) {
+            setLists(cached.map(toTierList));
+            setSnapshotIdentity({
+              userId: identityUserId,
+              token: identityToken,
+            });
+            setHasSnapshot(true);
+            setIsLoading(false);
+          } else {
+            setLists([]);
+            setSnapshotIdentity({
+              userId: identityUserId,
+              token: identityToken,
+            });
+            setHasSnapshot(false);
+          }
+        })();
+      }
+      return () => {
+        active = false;
+        ++overviewLifecycleRef.current;
+        ++listsRequestRef.current;
+      };
+    }, [fetchLists, isIdentityCurrent, token, userId])
   );
   const handleWorkspaceItemsChanged = useCallback(
     async (item?: Item) => {
+      const expectedUserId = userId;
+      const expectedToken = token;
+      const lifecycleId = ++overviewLifecycleRef.current;
+      const requestId = ++listsRequestRef.current;
+      setIsLoading(false);
+      if (expectedUserId) {
+        const overviewKey = listsCacheKey(expectedUserId);
+        const itemKey = pendingList
+          ? listItemsCacheKey(expectedUserId, pendingList.listId)
+          : null;
+        const keys = [overviewKey, itemKey].filter(
+          (key): key is string => key !== null
+        );
+        await Promise.all(
+          keys.map((key) => {
+            if (
+              requestId !== listsRequestRef.current ||
+              lifecycleId !== overviewLifecycleRef.current ||
+              !isIdentityCurrent(expectedUserId, expectedToken)
+            )
+              return Promise.resolve();
+            return enqueueListCacheWrite(key, async () => {
+              if (
+                requestId === listsRequestRef.current &&
+                lifecycleId === overviewLifecycleRef.current &&
+                isIdentityCurrent(expectedUserId, expectedToken)
+              )
+                await AsyncStorage.removeItem(key);
+            }).catch(() => {});
+          })
+        );
+      }
+      if (
+        requestId !== listsRequestRef.current ||
+        lifecycleId !== overviewLifecycleRef.current ||
+        !isIdentityCurrent(expectedUserId, expectedToken)
+      )
+        return;
       await refreshLists();
-      if (item && pendingList)
+      if (
+        item &&
+        pendingList &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(expectedUserId, expectedToken)
+      )
         navigation.navigate('ListDetail', {
           listId: pendingList.listId,
           listTitle: pendingList.title,
           completedItemId: item.item_id,
         });
     },
-    [navigation, pendingList, refreshLists]
+    [isIdentityCurrent, navigation, pendingList, refreshLists, token, userId]
   );
   const handleWorkspaceClosed = useCallback(() => {
     setModalStep(null);
@@ -162,12 +291,48 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   });
   const handleListCreated = useCallback(
     (list: CreatedList) => {
-      void fetchLists();
+      const expectedUserId = userId;
+      const expectedToken = token;
+      const lifecycleId = ++overviewLifecycleRef.current;
+      const requestId = ++listsRequestRef.current;
+      setIsLoading(false);
       setPendingList(list);
       workspace.openAdd();
       setModalStep('addItem');
+      if (
+        expectedUserId &&
+        requestId === listsRequestRef.current &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(expectedUserId, expectedToken)
+      ) {
+        const key = listsCacheKey(expectedUserId);
+        void enqueueListCacheWrite(key, async () => {
+          if (
+            requestId === listsRequestRef.current &&
+            lifecycleId === overviewLifecycleRef.current &&
+            isIdentityCurrent(expectedUserId, expectedToken)
+          )
+            await AsyncStorage.removeItem(key);
+        })
+          .catch(() => {})
+          .then(() => {
+            if (
+              requestId === listsRequestRef.current &&
+              lifecycleId === overviewLifecycleRef.current &&
+              isIdentityCurrent(expectedUserId, expectedToken)
+            )
+              return refreshLists();
+          })
+          .catch(() => {});
+      } else if (
+        requestId === listsRequestRef.current &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(expectedUserId, expectedToken)
+      ) {
+        void refreshLists().catch(() => {});
+      }
     },
-    [fetchLists, workspace.openAdd]
+    [isIdentityCurrent, refreshLists, token, userId, workspace.openAdd]
   );
   const getModalTitle = () =>
     modalStep === 'create'
@@ -298,11 +463,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     );
   };
   const content =
-    !token || (isLoading && lists.length === 0) ? (
+    !token || (isLoading && !currentSnapshot) ? (
       <View className="flex-1 items-center justify-center px-6">
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
-    ) : error && !lists.length ? (
+    ) : error && !currentSnapshot ? (
       <View className="flex-1 items-center justify-center px-6">
         <Ionicons
           name="alert-circle-outline"
@@ -321,7 +486,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <FlatList
         key={columns}
         className="flex-1 min-h-0"
-        data={lists}
+        data={visibleLists}
         numColumns={columns}
         columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
         renderItem={renderRow}
@@ -332,12 +497,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           gap: 12,
         }}
         ListHeaderComponent={
-          <Text
-            accessibilityRole="header"
-            className="text-headline-small text-ink dark:text-ink-dark"
-          >
-            My lists
-          </Text>
+          <View className="gap-2">
+            <Text
+              accessibilityRole="header"
+              className="text-headline-small text-ink dark:text-ink-dark"
+            >
+              My lists
+            </Text>
+            {error ? (
+              <View className="flex-row items-center justify-between gap-3 rounded-xl border border-danger-text p-3">
+                <Text
+                  accessibilityLiveRegion="polite"
+                  className="flex-1 text-body-medium text-danger-text dark:text-danger-text-dark"
+                >
+                  {error}
+                </Text>
+                <Button title="Try again" onPress={() => void fetchLists()} />
+              </View>
+            ) : null}
+          </View>
         }
         ListEmptyComponent={
           <TouchableOpacity
