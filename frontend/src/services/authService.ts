@@ -6,6 +6,7 @@ export interface User {
   user_id: string;
   email: string;
   username?: string;
+  photo_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -13,12 +14,6 @@ export interface User {
 export interface TokenResponse {
   access_token: string;
   token_type: string;
-}
-
-export interface RegisterData {
-  email: string;
-  password: string;
-  username?: string;
 }
 
 export interface AuthResult {
@@ -30,68 +25,6 @@ export interface AuthResult {
 }
 
 export const authService = {
-  /**
-   * Register a new user
-   * POST /api/users/
-   */
-  async register(data: RegisterData): Promise<AuthResult> {
-    try {
-      const user = await api.post<User>('/api/users/', data);
-
-      // After registration, login to get token
-      const loginResult = await authService.login(data.email, data.password);
-      if (!loginResult.success) {
-        return { success: true, user, error: 'Registered but failed to login' };
-      }
-
-      return {
-        success: true,
-        user,
-        token: loginResult.token,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: getApiErrorMessage(error, 'Registration failed'),
-      };
-    }
-  },
-
-  /**
-   * Login with email/username and password
-   * POST /api/users/token (form-encoded)
-   */
-  async login(emailOrUsername: string, password: string): Promise<AuthResult> {
-    try {
-      // Backend expects form-encoded data, not JSON
-      const formData = new URLSearchParams();
-      formData.append('username', emailOrUsername);
-      formData.append('password', password);
-
-      const tokenResponse = await api.post<TokenResponse>(
-        '/api/users/token',
-        formData
-      );
-
-      // Fetch user info with the new token
-      const user = await authService.getCurrentUser(tokenResponse.access_token);
-      if (!user) {
-        return { success: false, error: 'Failed to fetch user info' };
-      }
-
-      return {
-        success: true,
-        user,
-        token: tokenResponse.access_token,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: getApiErrorMessage(error, 'Login failed'),
-      };
-    }
-  },
-
   /**
    * Login with a Google ID token
    * POST /api/users/google

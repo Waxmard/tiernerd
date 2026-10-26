@@ -32,7 +32,7 @@ End-to-end smoke test — Playwright drives the **built** web bundle, so the API
 make frontend-e2e                 # boots a throwaway backend, builds the bundle, runs the spec
 ```
 
-`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. Set `EXPO_PUBLIC_API_URL` to target something else instead; the shell value wins over `frontend/.env.local`:
+`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. It creates a test-only app token for the disposable backend. To target an external API instead, supply a valid `E2E_AUTH_TOKEN` for that API securely in the environment and set `EXPO_PUBLIC_API_URL`; the shell value wins over `frontend/.env.local`:
 
 ```bash
 EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-…run.app make frontend-e2e   # deployed dev API

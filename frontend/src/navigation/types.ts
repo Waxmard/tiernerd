@@ -10,7 +10,6 @@ export type RootStackParamList = {
     completedItemId?: string;
   };
   Login: undefined;
-  Register: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

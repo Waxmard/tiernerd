@@ -7,7 +7,7 @@ cd frontend
 EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run web
 ```
 
-Open `http://localhost:8081` and log in with the seeded dev credentials. `EXPO_PUBLIC_API_URL` also goes in `frontend/.env.local` to make it the default for every `npm run web`. Unset it to fall back to a backend on `localhost:8000`.
+Open `http://localhost:8081` and sign in with Google. `EXPO_PUBLIC_API_URL` also goes in `frontend/.env.local` to make it the default for every `npm run web`. Unset it to fall back to a backend on `localhost:8000`.
 
 Deploy (from `fastapi/`):
 
@@ -28,7 +28,7 @@ Config lives in `fastapi/cloud/env.dev.yaml` (non-secret) and Secret Manager (`S
 
 `DATABASE_URL` must be `postgresql+asyncpg://…?ssl=require`. A Neon string's `?sslmode=require&channel_binding=require` crashes asyncpg (`unexpected keyword argument`), because SQLAlchemy forwards DSN query parameters to the driver as keyword arguments.
 
-Testing against the deployed API:
+Testing against the deployed API requires a valid `E2E_AUTH_TOKEN` for that API. Supply the token securely in the environment, then run:
 
 ```bash
 cd frontend && EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run e2e

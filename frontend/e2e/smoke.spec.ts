@@ -1,4 +1,50 @@
 import { expect, test } from '@playwright/test';
+import type { User as ApiUser } from '../src/services/authService';
+
+test.use({
+  trace: 'off',
+  storageState: async ({ baseURL }, use) => {
+    const token = process.env.E2E_AUTH_TOKEN;
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+    if (!token) {
+      throw new Error('E2E_AUTH_TOKEN is required for the smoke test');
+    }
+    if (!apiUrl) {
+      throw new Error('EXPO_PUBLIC_API_URL is required for the smoke test');
+    }
+    if (!baseURL) {
+      throw new Error('Playwright baseURL is required for the smoke test');
+    }
+
+    const response = await fetch(`${apiUrl}/api/users/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      throw new Error(`E2E authentication failed: /api/users/me returned ${response.status}`);
+    }
+    const apiUser = (await response.json()) as ApiUser;
+    await use({
+      cookies: [],
+      origins: [
+        {
+          origin: new URL(baseURL).origin,
+          localStorage: [
+            { name: 'authToken', value: token },
+            {
+              name: 'userData',
+              value: JSON.stringify({
+                id: apiUser.user_id,
+                email: apiUser.email,
+                displayName: apiUser.username || apiUser.email.split('@')[0] || apiUser.email,
+                photoUrl: apiUser.photo_url ?? undefined,
+              }),
+            },
+          ],
+        },
+      ],
+    });
+  },
+});
 
 test('create list, add good item, delete the list', async ({ page }) => {
   const stamp = Date.now();
@@ -6,9 +52,6 @@ test('create list, add good item, delete the list', async ({ page }) => {
   const itemName = `Item ${stamp}`;
 
   await page.goto('/');
-  await page.getByPlaceholder('name@example.com').fill('dev@tiernerd.com');
-  await page.getByPlaceholder('••••••••').fill('devpassword');
-  await page.getByText('Log In').click();
   await expect(page.getByTestId('fab-create')).toBeVisible();
 
   await page.getByTestId('fab-create').click();

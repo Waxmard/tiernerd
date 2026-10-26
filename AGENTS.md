@@ -125,7 +125,7 @@ End-to-end smoke test — Playwright drives the **built** web bundle, so the API
 make frontend-e2e                 # boots a throwaway backend, builds the bundle, runs the spec
 ```
 
-`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. Set `EXPO_PUBLIC_API_URL` to target something else instead; the shell value wins over `frontend/.env.local`:
+`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. It creates a test-only app token for the disposable backend. To target an external API instead, supply a valid `E2E_AUTH_TOKEN` for that API securely in the environment and set `EXPO_PUBLIC_API_URL`; the shell value wins over `frontend/.env.local`:
 
 ```bash
 EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-…run.app make frontend-e2e   # deployed dev API
@@ -161,7 +161,7 @@ cd frontend
 EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run web
 ```
 
-Open `http://localhost:8081` and log in with the seeded dev credentials. `EXPO_PUBLIC_API_URL` also goes in `frontend/.env.local` to make it the default for every `npm run web`. Unset it to fall back to a backend on `localhost:8000`.
+Open `http://localhost:8081` and sign in with Google. `EXPO_PUBLIC_API_URL` also goes in `frontend/.env.local` to make it the default for every `npm run web`. Unset it to fall back to a backend on `localhost:8000`.
 
 Deploy (from `fastapi/`):
 
@@ -182,7 +182,7 @@ Config lives in `fastapi/cloud/env.dev.yaml` (non-secret) and Secret Manager (`S
 
 `DATABASE_URL` must be `postgresql+asyncpg://…?ssl=require`. A Neon string's `?sslmode=require&channel_binding=require` crashes asyncpg (`unexpected keyword argument`), because SQLAlchemy forwards DSN query parameters to the driver as keyword arguments.
 
-Testing against the deployed API:
+Testing against the deployed API requires a valid `E2E_AUTH_TOKEN` for that API. Supply the token securely in the environment, then run:
 
 ```bash
 cd frontend && EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run e2e
@@ -213,17 +213,17 @@ Autofixed files are re-staged automatically (`stage_fixed: true`). Hooks install
 
 - `api/endpoints/` — Route handlers (users, lists, items)
 - `services/` — Business logic (auth/JWT, comparison, list, ranking)
-- `core/` — Pure utilities (security/argon2, constants, ranking algorithm, fractional index)
+- `core/` — Pure utilities (constants, ranking algorithm, fractional index)
 - `crud/` — Database operations
 - `db/` — SQLAlchemy models and async database setup
 - `schemas/` — Pydantic request/response models
 - `settings.py` — Configuration via pydantic-settings
 
-Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml`). Layering: `main → api → services → crud → db`. `api` may also call `crud` directly (endpoint handlers use `crud_*` helpers); this is intentional, not a violation. `core` is a pure leaf (constants, security, algorithm, fractional_index) reachable from `api`/`services`/`crud`. `schemas`/`settings`/`utils` are cross-cutting. Run `make backend-boundaries` (or `uv run tach check` in `fastapi/`) to verify.
+Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml`). Layering: `main → api → services → crud → db`. `api` may also call `crud` directly (endpoint handlers use `crud_*` helpers); this is intentional, not a violation. `core` is a pure leaf (constants, algorithm, fractional_index) reachable from `api`/`services`/`crud`. `schemas`/`settings`/`utils` are cross-cutting. Run `make backend-boundaries` (or `uv run tach check` in `fastapi/`) to verify.
 
 ### Frontend Structure (`frontend/src/`)
 
-- `screens/` — Screen components (Login, Register, Home, ListDetail, Profile)
+- `screens/` — Screen components (Login, Home, ListDetail, Profile)
 - `navigation/` — React Navigation stack setup
 - `providers/` — Context providers (AuthContext)
 - `design-system/` — Reusable components and design tokens
@@ -239,19 +239,19 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 - PostgreSQL with async (asyncpg)
 - UUID primary keys throughout
-- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Existing PostgreSQL databases require the explicit, non-destructive `scripts/migrate_ui_ranking.py` upgrade for item identity and ranking drafts; do not wipe application data.
+- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Existing databases need explicit schema upgrades; see the backend README. The Google auth migration permanently removes password hashes: back up the database, stop the old backend, check and apply the migration, then deploy the matching backend. Do not wipe application data.
 
 ## Development Notes for AI Agents
 
 - Check for TypeScript errors after frontend changes.
-- Google sign-in is real: the web client obtains a Google ID token and exchanges it at `POST /api/users/google`. Setting `EXPO_PUBLIC_USE_MOCK_AUTH=true` switches auth to mocks for frontend-only work.
+- Google is the only sign-in method: the web client obtains a Google ID token and exchanges it at `POST /api/users/google`. Native sign-in is unsupported. Setting `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a frontend-only web mock.
 - Comparison sessions are persistent database drafts; answers do not change saved ranks until commit.
 - API endpoints are prefixed with `/api/`.
 - Do **not** run `npm run ios`, `npm run android`, or `npx expo start` — the user runs these in a separate terminal.
 - The browser target (`npm run web`, served at `http://localhost:8081`) is the primary frontend loop. If it is already serving, use it to verify UI changes instead of asking for a simulator run.
 - The deployed dev API is the default backend for frontend work; point `npm run web` at it with `EXPO_PUBLIC_API_URL` instead of starting containers locally.
 - Do **not** run `make cloud-deploy` unless asked — it mutates shared cloud state.
-- Run `make frontend-e2e` after changing frontend behavior — it boots a throwaway SQLite backend, builds the web bundle, then drives it with Playwright, so it needs neither a local container nor a deployed API (pass `EXPO_PUBLIC_API_URL` to target the deployed dev API instead).
+- Run `make frontend-e2e` after changing frontend behavior — it boots a throwaway SQLite backend, builds the web bundle, then drives it with Playwright. To target an external API, pass `EXPO_PUBLIC_API_URL` and a valid `E2E_AUTH_TOKEN` for that API.
 - Do **not** run `git commit`, `git add`, or `git push` — the user handles staging, committing, and pushing.
 - Do **not** run `make clean`, `make dev`, `make fresh`, `make restart`, or `make reset` — the user runs these themselves.
 - Backend package management: use `uv`, not `pip`.

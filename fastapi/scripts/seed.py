@@ -2,7 +2,7 @@
 """
 Database seed script for local development.
 
-Creates dev users with known credentials for testing.
+Creates dev users for testing.
 Run with: make seed
 """
 
@@ -13,29 +13,25 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from datetime import datetime  # noqa: E402
-import uuid  # noqa: E402
+import uuid
+from datetime import datetime
 
-from sqlalchemy import text, select  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import SessionLocal, engine  # noqa: E402
-from app.db.models import Base, User  # noqa: E402
-from app.core.security import get_password_hash  # noqa: E402
-
+from app.db.database import SessionLocal, engine
+from app.db.models import Base, User
 
 # Dev users to seed
 DEV_USERS = [
     {
         "email": "dev@tiernerd.com",
         "username": "devuser",
-        "password": "devpassword",
         "is_admin": True,
     },
     {
         "email": "user@tiernerd.com",
         "username": "testuser",
-        "password": "userpassword",
         "is_admin": False,
     },
 ]
@@ -66,13 +62,12 @@ async def seed_users(session: AsyncSession) -> None:
             user_id=uuid.uuid4(),
             email=user_data["email"],
             username=user_data["username"],
-            password_hash=get_password_hash(user_data["password"]),
             is_admin=user_data.get("is_admin", False),
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
         session.add(user)
-        print(f"Created user: {user_data['email']} / {user_data['password']}")
+        print(f"Created user: {user_data['email']}")
 
     await session.commit()
 
@@ -91,11 +86,6 @@ async def main(clear: bool = False) -> None:
 
         await seed_users(session)
 
-    print("\nDev credentials:")
-    print("-" * 40)
-    for user in DEV_USERS:
-        print(f"  {user['email']} / {user['password']}")
-    print("-" * 40)
     print("Seed complete!")
 
 

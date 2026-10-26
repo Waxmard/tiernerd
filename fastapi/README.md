@@ -16,13 +16,9 @@ make dev DETACHED=1
 
 The API is now running at <http://localhost:8000>.
 
-## Dev Credentials
+## Development accounts
 
-The dev user is auto-created on startup:
-
-| Email | Password |
-|-------|----------|
-| dev@tiernerd.com | devpassword |
+Development startup seeds accounts for fixture data, not password sign-in. Sign in on the web with a verified Google account. The Google account email must match an existing account to access its saved data.
 
 ## API Documentation
 
@@ -84,7 +80,7 @@ cd frontend
 EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run web
 ```
 
-Open `http://localhost:8081` and log in with the seeded dev credentials. `EXPO_PUBLIC_API_URL` also goes in `frontend/.env.local` to make it the default for every `npm run web`. Unset it to fall back to a backend on `localhost:8000`.
+Open `http://localhost:8081` and sign in with Google. `EXPO_PUBLIC_API_URL` also goes in `frontend/.env.local` to make it the default for every `npm run web`. Unset it to fall back to a backend on `localhost:8000`.
 
 Deploy (from `fastapi/`):
 
@@ -105,7 +101,7 @@ Config lives in `fastapi/cloud/env.dev.yaml` (non-secret) and Secret Manager (`S
 
 `DATABASE_URL` must be `postgresql+asyncpg://…?ssl=require`. A Neon string's `?sslmode=require&channel_binding=require` crashes asyncpg (`unexpected keyword argument`), because SQLAlchemy forwards DSN query parameters to the driver as keyword arguments.
 
-Testing against the deployed API:
+Testing against the deployed API requires a valid `E2E_AUTH_TOKEN` for that API. Supply the token securely in the environment, then run:
 
 ```bash
 cd frontend && EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run e2e
@@ -135,13 +131,13 @@ psql -h localhost -p 55432 -U tiernerd tiernerd
 uv sync --group dev                                 # Install dev deps
 uv run pytest                                       # All tests
 uv run pytest tests/test_users.py -v                # Single file
-uv run pytest tests/test_users.py::TestUserCreation # Single class
+uv run pytest tests/test_users.py -k google           # Google sign-in tests
 uv run pytest --cov=app --cov-report=html           # Coverage report
 ```
 
 ### Coverage Areas
 
-- **Users**: registration, login (email + username), tokens, current user, invalid tokens
+- **Users**: Google sign-in, tokens, current user, invalid tokens, and authorization
 - **Lists**: CRUD, pagination, authorization (cross-user access denied)
 - **Items**: CRUD, comparison workflow (better/worse), session management, authorization
 - **Algorithm**: binary search ranking, winner/loser logic, range narrowing, edge cases
@@ -151,7 +147,7 @@ uv run pytest --cov=app --cov-report=html           # Coverage report
 ```
 app/
 ├── api/endpoints/   # Route handlers
-├── core/            # Auth, security, algorithms
+├── core/            # Constants and algorithms
 ├── crud/            # Database operations
 ├── db/              # Models and database setup
 ├── schemas/         # Pydantic request/response models
@@ -163,7 +159,7 @@ app/
 - **FastAPI** — Web framework
 - **PostgreSQL** — Database (via asyncpg)
 - **SQLAlchemy 2.0** — Async ORM
-- **JWT** — Authentication
+- **Google and JWT** — Authentication
 - **Docker** — Containerization
 
 ## Ranking Algorithm
@@ -191,6 +187,24 @@ uv run python scripts/migrate_ui_ranking.py --apply
 ```
 
 The migration trims display names, backfills normalized identity keys, and adds uniqueness and draft-session constraints in one locked transaction. Legacy active sessions become cancelled without deleting items or changing ranks; historical completed sessions remain completed. Previously unranked items can start a fresh ranking. Unknown partial schemas are rejected. A verified upgraded schema is a no-op on rerun.
+
+## Upgrade the Google authentication schema
+
+Applying this migration permanently discards password hashes. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from the environment's existing secret store; do not put credentials in commands or tracked files. Fresh databases use the model schema; `create_all` does not upgrade existing tables.
+
+From `fastapi/`, inspect the existing schema without changing it:
+
+```bash
+uv run python scripts/migrate_google_auth.py --check
+```
+
+After the backup is complete and the old backend is stopped, apply the migration:
+
+```bash
+uv run python scripts/migrate_google_auth.py --apply
+```
+
+The migration preserves accounts and their relationships, adds a nullable Google photo URL, and removes password hashes. Reapplying it is a no-op. Deploy the matching backend after the migration. Accounts can sign in only with a verified Google account matching their email; existing app sessions remain valid.
 
 ## Documentation Automation
 

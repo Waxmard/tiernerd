@@ -45,7 +45,7 @@ depends_on = []
 
 [[modules]]
 path = "app.crud"
-depends_on = ["app.core", "app.db", "app.schemas"]
+depends_on = ["app.db", "app.schemas"]
 
 [[modules]]
 path = "app.utils"

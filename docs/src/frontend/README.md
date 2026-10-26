@@ -20,7 +20,9 @@ If ranking status fails to load, the item stays open with an error and **Retry**
 
 Inputs keep a neutral border when you type with a pointer or touch. Tab navigation shows a keyboard-only focus outline on inputs and actions.
 
-The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. Authentication forms use a bounded card; account and appearance settings stay centered within 560px on desktop.
+The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on desktop.
+
+Sign-in is available on the web with Google. Native sign-in is not supported. Set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to the same Google OAuth web client ID as the backend's `GOOGLE_CLIENT_ID`. For frontend-only work, `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a mock Google sign-in on the web.
 
 ## Prerequisites
 

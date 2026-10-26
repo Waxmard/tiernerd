@@ -40,7 +40,7 @@ The API is structured around the following resources:
 ```
 app/
 ├── api/endpoints/   # Route handlers
-├── core/            # Auth, security, algorithms
+├── core/            # Constants and algorithms
 ├── crud/            # Database operations
 ├── db/              # Models and database setup
 ├── schemas/         # Pydantic request/response models
@@ -52,7 +52,7 @@ app/
 - **FastAPI** — Web framework
 - **PostgreSQL** — Database (via asyncpg)
 - **SQLAlchemy 2.0** — Async ORM
-- **JWT** — Authentication
+- **Google and JWT** — Authentication
 - **Docker** — Containerization
 
 ## Ranking Algorithm
@@ -80,5 +80,23 @@ uv run python scripts/migrate_ui_ranking.py --apply
 ```
 
 The migration trims display names, backfills normalized identity keys, and adds uniqueness and draft-session constraints in one locked transaction. Legacy active sessions become cancelled without deleting items or changing ranks; historical completed sessions remain completed. Previously unranked items can start a fresh ranking. Unknown partial schemas are rejected. A verified upgraded schema is a no-op on rerun.
+
+## Upgrade the Google authentication schema
+
+Applying this migration permanently discards password hashes. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from the environment's existing secret store; do not put credentials in commands or tracked files. Fresh databases use the model schema; `create_all` does not upgrade existing tables.
+
+From `fastapi/`, inspect the existing schema without changing it:
+
+```bash
+uv run python scripts/migrate_google_auth.py --check
+```
+
+After the backup is complete and the old backend is stopped, apply the migration:
+
+```bash
+uv run python scripts/migrate_google_auth.py --apply
+```
+
+The migration preserves accounts and their relationships, adds a nullable Google photo URL, and removes password hashes. Reapplying it is a no-op. Deploy the matching backend after the migration. Accounts can sign in only with a verified Google account matching their email; existing app sessions remain valid.
 
 {{ include:partials/docs_automation.md }}

@@ -96,6 +96,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
   const createListRef = useRef<CreateListContentHandle | null>(null);
   const bypassBeforeRemoveRef = useRef(false);
@@ -498,12 +499,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }}
         ListHeaderComponent={
           <View className="gap-2">
-            <Text
-              accessibilityRole="header"
-              className="text-headline-small text-ink dark:text-ink-dark"
-            >
-              My lists
-            </Text>
+            <View className="w-full flex-row flex-wrap items-center justify-between gap-2">
+              <Text
+                accessibilityRole="header"
+                className="text-headline-small text-ink dark:text-ink-dark"
+              >
+                My lists
+              </Text>
+              <Button
+                title="New list"
+                onPress={() => setModalStep('create')}
+                size="small"
+                icon={
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={20}
+                    color={colors['on-accent']}
+                    accessible={false}
+                  />
+                }
+                testID="fab-create"
+                accessibilityLabel="Create new list"
+              />
+            </View>
             {error ? (
               <View className="flex-row items-center justify-between gap-3 rounded-xl border border-danger-text p-3">
                 <Text
@@ -554,58 +572,46 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             className="flex-1 min-h-0"
             style={{ marginHorizontal: horizontalGutter }}
           >
-            <View className="py-2 flex-row flex-wrap justify-between items-center gap-2 shrink-0 bg-canvas dark:bg-canvas-dark">
-              <View className="flex-row items-center gap-2 shrink-0">
+            <View className="py-2 flex-row justify-between items-center gap-2 shrink-0 bg-canvas dark:bg-canvas-dark">
+              <View className="flex-row items-center gap-2 shrink min-w-0">
                 <Image
                   source={require('../../assets/brand-mark.png')}
                   resizeMode="contain"
                   style={{ width: 32, height: 32, borderRadius: 8 }}
                   accessible={false}
                 />
-                <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
+                <Text
+                  numberOfLines={1}
+                  className="shrink min-w-0 text-title-medium font-semibold text-ink dark:text-ink-dark"
+                >
                   TierNerd
                 </Text>
               </View>
-              <View className="flex-row items-center gap-2 shrink-0">
-                <Button
-                  title="New list"
-                  onPress={() => setModalStep('create')}
-                  size="small"
-                  icon={
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Profile')}
+                className="w-11 h-11 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Open profile"
+              >
+                {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
+                  <Image
+                    source={{ uri: user.photoUrl }}
+                    onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
+                    resizeMode="cover"
+                    className="w-full h-full"
+                    accessible={false}
+                  />
+                ) : (
+                  <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
                     <Ionicons
-                      name="add-circle-outline"
+                      name="person"
                       size={20}
-                      color={colors['on-accent']}
-                      accessible={false}
+                      color={colors['accent-text']}
                     />
-                  }
-                  testID="fab-create"
-                  accessibilityLabel="Create new list"
-                />
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Profile')}
-                  className="w-11 h-11 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="Open profile"
-                >
-                  {user?.photoUrl ? (
-                    <Image
-                      source={{ uri: user.photoUrl }}
-                      className="w-full h-full"
-                      accessible={false}
-                    />
-                  ) : (
-                    <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
-                      <Ionicons
-                        name="person"
-                        size={20}
-                        color={colors['accent-text']}
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
             <View className="flex-1 min-h-0">{content}</View>
           </View>

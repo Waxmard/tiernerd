@@ -12,13 +12,6 @@ class UserBase(BaseModel):
     username: str | None = Field(None, min_length=3, max_length=50)
 
 
-# Properties to receive via API on creation
-class UserCreate(UserBase):
-    """Schema for user creation."""
-
-    password: str = Field(..., min_length=8)
-
-
 class GoogleLogin(BaseModel):
     """Schema for Google ID token login."""
 
@@ -31,7 +24,8 @@ class UserUpdate(BaseModel):
 
     email: EmailStr | None = None
     username: str | None = Field(None, min_length=3, max_length=50)
-    password: str | None = Field(None, min_length=8)
+
+    model_config = ConfigDict(extra="forbid")
 
 
 # Properties to return to client
@@ -42,6 +36,7 @@ class User(UserBase):
     created_at: datetime
     updated_at: datetime
     is_admin: bool
+    photo_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -56,14 +51,6 @@ class UserPublic(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-# Properties stored in token
-class UserInDB(User):
-    """Schema for user in database."""
-
-    user_id: UUID
-    password_hash: str
 
 
 class Token(BaseModel):

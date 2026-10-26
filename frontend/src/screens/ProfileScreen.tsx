@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import type React from 'react';
+import { useState } from 'react';
 import {
   Image,
   Platform,
@@ -28,6 +29,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
   const { preference, setPreference } = useTheme();
   const colors = useThemeColors();
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await signOut();
@@ -73,9 +75,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             </View>
 
             <View className="flex-row items-center gap-4 mb-4">
-              {user?.photoUrl ? (
+              {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
                 <Image
                   source={{ uri: user.photoUrl }}
+                  onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
+                  resizeMode="cover"
                   className="w-11 h-11 rounded-full"
                   accessibilityLabel={
                     user?.displayName

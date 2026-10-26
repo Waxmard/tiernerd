@@ -2,39 +2,18 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import INVALID_CREDENTIALS_ERROR
-from app.core.security import verify_password
-from app.crud.crud_user import get_user_by_email, get_user_by_id, get_user_by_username
+from app.crud.crud_user import get_user_by_id
 from app.db.database import get_db
 from app.db.models import User as UserModel
 from app.schemas.user import TokenPayload
 from app.settings import get_settings
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/token")
-
-
-async def authenticate_user(
-    db: AsyncSession, username_or_email: str, password: str
-) -> UserModel | None:
-    """Authenticate a user with email or username."""
-    # Check if it looks like an email
-    if "@" in username_or_email and "." in username_or_email:
-        user = await get_user_by_email(db, username_or_email)
-    else:
-        # Try username first, then email as fallback
-        user = await get_user_by_username(db, username_or_email)
-        if not user:
-            user = await get_user_by_email(db, username_or_email)
-
-    if not user:
-        return None
-    if not verify_password(password, user.password_hash):
-        return None
-    return user
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def create_access_token(
@@ -56,7 +35,8 @@ def create_access_token(
 
 
 async def get_current_user(
-    db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)
+    db: AsyncSession = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> UserModel:
     """Get the current authenticated user."""
     settings = get_settings()
@@ -65,18 +45,22 @@ async def get_current_user(
         detail=INVALID_CREDENTIALS_ERROR,
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise credentials_exception
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            credentials.credentials,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
         )
-        user_id: str | None = payload.get("sub")
-        if user_id is None:
+        token_data = TokenPayload(sub=payload.get("sub"))
+        if token_data.sub is None:
             raise credentials_exception
-        token_data = TokenPayload(sub=user_id)
-    except JWTError:
+        user_id = UUID(token_data.sub)
+    except JWTError, ValueError:
         raise credentials_exception from None
 
-    user = await get_user_by_id(db, UUID(token_data.sub))
+    user = await get_user_by_id(db, user_id)
     if user is None:
         raise credentials_exception
     return user

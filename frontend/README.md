@@ -22,7 +22,9 @@ If ranking status fails to load, the item stays open with an error and **Retry**
 
 Inputs keep a neutral border when you type with a pointer or touch. Tab navigation shows a keyboard-only focus outline on inputs and actions.
 
-The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. Authentication forms use a bounded card; account and appearance settings stay centered within 560px on desktop.
+The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on desktop.
+
+Sign-in is available on the web with Google. Native sign-in is not supported. Set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to the same Google OAuth web client ID as the backend's `GOOGLE_CLIENT_ID`. For frontend-only work, `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a mock Google sign-in on the web.
 
 ## Prerequisites
 
@@ -101,7 +103,7 @@ End-to-end smoke test — Playwright drives the **built** web bundle, so the API
 make frontend-e2e                 # boots a throwaway backend, builds the bundle, runs the spec
 ```
 
-`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. Set `EXPO_PUBLIC_API_URL` to target something else instead; the shell value wins over `frontend/.env.local`:
+`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. It creates a test-only app token for the disposable backend. To target an external API instead, supply a valid `E2E_AUTH_TOKEN` for that API securely in the environment and set `EXPO_PUBLIC_API_URL`; the shell value wins over `frontend/.env.local`:
 
 ```bash
 EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-…run.app make frontend-e2e   # deployed dev API

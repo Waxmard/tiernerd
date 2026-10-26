@@ -1,18 +1,14 @@
 import asyncio
-import secrets
-from datetime import timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import (
     GOOGLE_AUTH_NOT_CONFIGURED_ERROR,
-    INCORRECT_LOGIN_ERROR,
     INVALID_GOOGLE_TOKEN_ERROR,
-    USER_ALREADY_EXISTS_ERROR,
 )
 from app.crud.crud_user import (
     create_user as crud_create_user,
@@ -25,12 +21,10 @@ from app.schemas.user import (
     GoogleLogin,
     Token,
     User,
-    UserCreate,
     UserPublic,
     UserUpdate,
 )
 from app.services.auth import (
-    authenticate_user,
     create_access_token,
     get_current_admin_user,
     get_current_user,
@@ -39,49 +33,6 @@ from app.services.google_auth import verify_google_id_token
 from app.settings import get_settings
 
 router = APIRouter()
-
-
-@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
-async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> Any:
-    """
-    Create a new user.
-    """
-    # Check if user exists
-    user = await get_user_by_email(db, email=user_in.email)
-    if user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=USER_ALREADY_EXISTS_ERROR,
-        )
-
-    # Create new user
-    user = await crud_create_user(db, obj_in=user_in)
-    return user
-
-
-@router.post("/token", response_model=Token)
-async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
-) -> Any:
-    """
-    OAuth2 compatible token login, get an access token for future requests.
-    """
-    user = await authenticate_user(db, form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=INCORRECT_LOGIN_ERROR,
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    access_token_expires = timedelta(minutes=get_settings().ACCESS_TOKEN_EXPIRE_MINUTES)
-    return {
-        "access_token": create_access_token(
-            user.user_id, expires_delta=access_token_expires
-        ),
-        "token_type": "bearer",
-    }
 
 
 @router.post("/google", response_model=Token)
@@ -112,16 +63,34 @@ async def login_with_google(
             detail=INVALID_GOOGLE_TOKEN_ERROR,
         )
 
+    picture = claims.get("picture")
+    photo_url = None
+    if (
+        isinstance(picture, str)
+        and picture
+        and picture.isprintable()
+        and not any(char.isspace() for char in picture)
+    ):
+        try:
+            parsed_picture = urlsplit(picture)
+            if (
+                parsed_picture.scheme == "https"
+                and parsed_picture.hostname
+                and parsed_picture.username is None
+                and parsed_picture.password is None
+            ):
+                _ = parsed_picture.port
+                photo_url = picture
+        except ValueError:
+            photo_url = None
+
     user = await get_user_by_email(db, email)
     if user is None:
-        # Google-only accounts still need a password_hash: the column is NOT
-        # NULL and `authenticate_user` runs passlib against it unconditionally.
-        # An unguessable random password keeps password login working (it always
-        # fails) without touching verify_password or the user schema.
-        user = await crud_create_user(
-            db,
-            UserCreate(email=email, username=None, password=secrets.token_urlsafe(32)),
-        )
+        user = await crud_create_user(db, email=email, photo_url=photo_url)
+    else:
+        user.photo_url = photo_url
+        await db.commit()
+        await db.refresh(user)
 
     return {
         "access_token": create_access_token(user.user_id),

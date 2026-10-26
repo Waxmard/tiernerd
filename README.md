@@ -30,7 +30,7 @@ See the [screenshots/](screenshots/) directory for all available screenshots.
 - **Frontend:** React Native with Expo (SDK 54)
 - **Backend:** Python with FastAPI
 - **Database:** PostgreSQL (async via asyncpg)
-- **Auth:** JWT with argon2 password hashing
+- **Auth:** Google sign-in and JWT sessions
 
 ## Getting Started
 
@@ -43,6 +43,8 @@ npx expo start                    # Scan QR with Expo Go app
 # or
 npm run ios                       # iOS Simulator
 ```
+
+Sign-in is available on the web with Google; native sign-in is not supported.
 
 ### Backend
 
