@@ -14,6 +14,9 @@ interface ListDetailHeaderProps {
   onAdd: () => void;
   description: string | null;
   metadataError: boolean;
+  itemsError: string | null;
+  showingSavedItems: boolean;
+  onRetryItems: () => void;
   deleteDisabled: boolean;
   onBack: () => void;
   onDelete: () => void;
@@ -42,6 +45,9 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   onAdd,
   description,
   metadataError,
+  itemsError,
+  showingSavedItems,
+  onRetryItems,
   deleteDisabled,
   onBack,
   onDelete,
@@ -58,8 +64,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
     ? colors['ink-disabled']
     : colors['danger-text'];
   return (
-    <>
-      <View className="flex-row flex-wrap items-start gap-2 py-2 pt-6 desktop:pt-4 bg-surface dark:bg-surface-dark shrink-0">
+    <View className="gap-2 pt-2 pb-3 bg-canvas dark:bg-canvas-dark border-b border-line dark:border-line-dark shrink-0">
+      <View className="flex-row items-start gap-2">
         <TouchableOpacity
           onPress={onBack}
           accessibilityRole="button"
@@ -76,7 +82,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         </TouchableOpacity>
         <View
           className={[
-            'w-7 h-7 rounded-lg shrink-0 items-center justify-center',
+            'w-6 h-6 rounded-lg shrink-0 items-center justify-center mt-2',
             chipClass,
           ].join(' ')}
         >
@@ -90,7 +96,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         <View className="flex-1 min-w-0 gap-1">
           <Text
             accessibilityRole="header"
-            className="text-[30px] leading-[36px] font-semibold text-ink dark:text-ink-dark text-left"
+            className="text-headline-small text-ink dark:text-ink-dark text-left"
           >
             {title}
           </Text>
@@ -100,7 +106,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
               nestedScrollEnabled
               showsVerticalScrollIndicator
             >
-              <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
+              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
                 {description}
               </Text>
             </ScrollView>
@@ -142,16 +148,20 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           </TouchableOpacity>
         </View>
       ) : null}
-      <View className="flex-row flex-wrap items-center justify-between gap-2 py-2 bg-surface dark:bg-surface-dark border-b border-line dark:border-line-dark shrink-0">
-        <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark shrink">
-          {rankedCount} of {itemCount} ranked
-        </Text>
+      <View className="flex-row items-center gap-2">
+        <View className="flex-1 min-w-0 gap-1">
+          <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+            {rankedCount} of {itemCount} ranked
+          </Text>
+          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            Stronger green = more preferred. Paler green = less preferred.
+          </Text>
+        </View>
         <Button
           title="Add item"
           onPress={onAdd}
           disabled={addDisabled}
-          size="large"
-          className="min-h-14"
+          size="small"
           icon={
             <Ionicons
               name="add-circle-outline"
@@ -163,9 +173,32 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           testID="fab-add-item"
         />
       </View>
-      <Text className="text-[14px] leading-[21px] text-ink dark:text-ink-dark py-2 shrink-0">
-        Stronger green = more preferred. Paler green = less preferred.
-      </Text>
-    </>
+      {showingSavedItems ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-body-small text-ink-muted dark:text-ink-muted-dark"
+        >
+          Showing saved items. Refreshing…
+        </Text>
+      ) : null}
+      {itemsError ? (
+        <View className="flex-row items-center justify-between">
+          <Text
+            accessibilityRole="alert"
+            className="text-body-small text-danger-text dark:text-danger-text-dark shrink"
+          >
+            {itemsError}
+          </Text>
+          <TouchableOpacity
+            onPress={onRetryItems}
+            accessibilityRole="button"
+            accessibilityLabel="Retry refreshing items"
+            className={RETRY_BUTTON_CLASS}
+          >
+            <Text className={RETRY_TEXT_CLASS}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+    </View>
   );
 };

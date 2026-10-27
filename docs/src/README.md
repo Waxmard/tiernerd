@@ -37,6 +37,8 @@ npx expo start                    # Scan QR with Expo Go app
 npm run ios                       # iOS Simulator
 ```
 
+Sign-in is available on the web with Google; native sign-in is not supported.
+
 ### Backend
 
 ```bash

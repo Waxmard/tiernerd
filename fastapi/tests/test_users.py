@@ -12,198 +12,18 @@ from app.core.constants import (
     GOOGLE_AUTH_NOT_CONFIGURED_ERROR,
     INVALID_GOOGLE_TOKEN_ERROR,
 )
-from app.core.security import verify_password
 from app.crud import crud_user
-from app.db.models import User
-from app.schemas.user import UserCreate, UserUpdate
+from app.db.models import List as ListModel, User
+from app.schemas.user import UserUpdate
+from app.services.auth import create_access_token
 from app.settings import get_settings
 
 
 @pytest.mark.asyncio
-class TestUserCreation:
-    """Tests for user creation endpoint."""
-
-    async def test_create_user_success(
-        self, client: AsyncClient, test_db: AsyncSession
-    ):
-        """Test successful user creation."""
-        response = await client.post(
-            "/api/users/",
-            json={
-                "email": "newuser@example.com",
-                "username": "newuser",
-                "password": "securepassword123",
-            },
-        )
-        assert response.status_code == 201
-        data = response.json()
-        assert data["email"] == "newuser@example.com"
-        assert data["username"] == "newuser"
-        assert "user_id" in data
-        assert "password" not in data
-        assert "password_hash" not in data
-
-        # Verify user was created in database
-        result = await test_db.execute(
-            select(User).where(User.email == "newuser@example.com")
-        )
-        db_user = result.scalar_one_or_none()
-        assert db_user is not None
-        assert db_user.email == "newuser@example.com"
-        assert db_user.username == "newuser"
-        assert db_user.password_hash is not None
-        assert verify_password("securepassword123", db_user.password_hash)
-        assert str(db_user.user_id) == data["user_id"]
-
-    async def test_create_user_duplicate_email(
-        self, client: AsyncClient, test_user: User, test_db: AsyncSession
-    ):
-        """Test user creation with duplicate email fails."""
-        # Count users before attempt
-        result = await test_db.execute(select(User))
-        users_before = len(result.scalars().all())
-
-        response = await client.post(
-            "/api/users/",
-            json={
-                "email": test_user.email,
-                "username": "differentusername",
-                "password": "securepassword123",
-            },
-        )
-        assert response.status_code == 400
-        assert "email already exists" in response.json()["detail"].lower()
-
-        # Verify no new user was created in database
-        result = await test_db.execute(select(User))
-        users_after = len(result.scalars().all())
-        assert users_after == users_before
-
-    async def test_create_user_invalid_email(self, client: AsyncClient):
-        """Test user creation with invalid email fails."""
-        response = await client.post(
-            "/api/users/",
-            json={
-                "email": "notanemail",
-                "username": "newuser",
-                "password": "securepassword123",
-            },
-        )
-        assert response.status_code == 422
-
-    async def test_create_user_short_password(self, client: AsyncClient):
-        """Test user creation with short password fails."""
-        response = await client.post(
-            "/api/users/",
-            json={
-                "email": "newuser@example.com",
-                "username": "newuser",
-                "password": "short",
-            },
-        )
-        assert response.status_code == 422
-
-    async def test_create_user_missing_fields(self, client: AsyncClient):
-        """Test user creation with missing required fields fails."""
-        response = await client.post(
-            "/api/users/",
-            json={
-                "email": "newuser@example.com",
-            },
-        )
-        assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-class TestUserLogin:
-    """Tests for user login endpoint."""
-
-    async def test_login_success_with_email(self, client: AsyncClient, test_user: User):
-        """Test successful login with email."""
-        response = await client.post(
-            "/api/users/token",
-            data={
-                "username": test_user.email,
-                "password": "testpassword123",
-            },
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert "access_token" in data
-        assert data["token_type"] == "bearer"
-
-    async def test_login_success_with_username(
-        self, client: AsyncClient, test_user: User
-    ):
-        """Test successful login with username."""
-        response = await client.post(
-            "/api/users/token",
-            data={
-                "username": test_user.username,
-                "password": "testpassword123",
-            },
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert "access_token" in data
-        assert data["token_type"] == "bearer"
-
-    async def test_login_wrong_password(self, client: AsyncClient, test_user: User):
-        """Test login with wrong password fails."""
-        response = await client.post(
-            "/api/users/token",
-            data={
-                "username": test_user.email,
-                "password": "wrongpassword",
-            },
-        )
-        assert response.status_code == 401
-        assert "incorrect" in response.json()["detail"].lower()
-
-    async def test_login_nonexistent_user(self, client: AsyncClient):
-        """Test login with non-existent user fails."""
-        response = await client.post(
-            "/api/users/token",
-            data={
-                "username": "nonexistent@example.com",
-                "password": "somepassword",
-            },
-        )
-        assert response.status_code == 401
-
-    async def test_login_username_fallback_to_email(
-        self, client: AsyncClient, test_db: AsyncSession
-    ):
-        """Test login where username lookup misses and email lookup succeeds."""
-        import uuid
-        from datetime import datetime
-
-        from app.core.security import get_password_hash
-
-        # Create a user with a username that doesn't match their email
-        user = User(
-            user_id=uuid.uuid4(),
-            email="fallback_test",  # Email without @ or . so username lookup runs first
-            username="different_username",
-            password_hash=get_password_hash("fallbackpassword123"),
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        test_db.add(user)
-        await test_db.commit()
-
-        # Login with the email value (which doesn't have @ or .)
-        # This will try username lookup first (fail), then email lookup (succeed)
-        response = await client.post(
-            "/api/users/token",
-            data={
-                # Looks like a username, but is actually the email value
-                "username": "fallback_test",
-                "password": "fallbackpassword123",
-            },
-        )
-        assert response.status_code == 200
-        assert "access_token" in response.json()
+@pytest.mark.parametrize("path", ["/api/users/", "/api/users/token"])
+async def test_removed_user_endpoints(client: AsyncClient, path: str):
+    response = await client.post(path)
+    assert response.status_code in {404, 405}
 
 
 @pytest.mark.asyncio
@@ -228,8 +48,6 @@ class TestReadUsers:
         user_data = data[0]
         assert "user_id" in user_data
         assert "email" in user_data
-        assert "password" not in user_data
-        assert "password_hash" not in user_data
 
         # Verify data matches database
         result = await test_db.execute(select(User))
@@ -298,20 +116,33 @@ class TestReadCurrentUser:
         assert data["email"] == test_user.email
         assert data["username"] == test_user.username
         assert str(data["user_id"]) == str(test_user.user_id)
-        assert "password" not in data
-        assert "password_hash" not in data
 
-    async def test_read_current_user_unauthenticated(self, client: AsyncClient):
-        """Test reading current user without authentication fails."""
-        response = await client.get("/api/users/me")
-        assert response.status_code == 401
-
-    async def test_read_current_user_invalid_token(self, client: AsyncClient):
-        """Test reading current user with invalid token fails."""
-        response = await client.get(
-            "/api/users/me", headers={"Authorization": "Bearer invalid_token"}
+    @pytest.mark.parametrize(
+        "authorization",
+        [
+            None,
+            "",
+            "Bearer",
+            "Bearer ",
+            "Bearer invalid_token",
+            "Bearer too many parts",
+            "Bearer {token} extra",
+            "Basic {token}",
+            "{token}",
+        ],
+    )
+    async def test_read_current_user_rejects_invalid_authorization(
+        self, client: AsyncClient, auth_headers: dict, authorization: str | None
+    ):
+        token = auth_headers["Authorization"].removeprefix("Bearer ")
+        headers = (
+            {}
+            if authorization is None
+            else {"Authorization": authorization.replace("{token}", token)}
         )
+        response = await client.get("/api/users/me", headers=headers)
         assert response.status_code == 401
+        assert response.headers["WWW-Authenticate"] == "Bearer"
 
     async def test_read_current_user_token_missing_subject(self, client: AsyncClient):
         """Test reading current user with token missing 'sub' claim."""
@@ -332,41 +163,28 @@ class TestReadCurrentUser:
             "/api/users/me", headers={"Authorization": f"Bearer {malformed_token}"}
         )
         assert response.status_code == 401
+        assert response.headers["WWW-Authenticate"] == "Bearer"
 
-    async def test_read_current_user_after_user_deleted(
-        self, client: AsyncClient, test_db: AsyncSession
+    async def test_read_current_user_token_with_non_uuid_subject(
+        self, client: AsyncClient
     ):
-        """Test accessing endpoint after user is deleted."""
-        import uuid
-        from datetime import datetime
-
-        from app.core.security import get_password_hash
-        from app.services.auth import create_access_token
-
-        # Create a temporary user
-        temp_user = User(
-            user_id=uuid.uuid4(),
-            email="temp@example.com",
-            username="tempuser",
-            password_hash=get_password_hash("temppassword123"),
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        test_db.add(temp_user)
-        await test_db.commit()
-        await test_db.refresh(temp_user)
-
-        # Create token for this user
-        token = create_access_token(subject=temp_user.user_id)
-
-        # Delete the user
-        await test_db.delete(temp_user)
-        await test_db.commit()
-
-        # Try to access endpoint with the token
+        token = create_access_token(subject="not-a-uuid")
         response = await client.get(
             "/api/users/me", headers={"Authorization": f"Bearer {token}"}
         )
+        assert response.status_code == 401
+        assert response.headers["WWW-Authenticate"] == "Bearer"
+
+    async def test_read_current_user_after_user_deleted(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        await test_db.delete(test_user)
+        await test_db.commit()
+        response = await client.get("/api/users/me", headers=auth_headers)
         assert response.status_code == 401
 
 
@@ -388,20 +206,6 @@ class TestUserCRUD:
         user = await crud_user.get_user_by_email(test_db, "nonexistent@example.com")
         assert user is None
 
-    async def test_get_user_by_username_exists(
-        self, test_db: AsyncSession, test_user: User
-    ):
-        """Test getting user by username that exists."""
-        user = await crud_user.get_user_by_username(test_db, test_user.username)
-        assert user is not None
-        assert user.username == test_user.username
-        assert user.user_id == test_user.user_id
-
-    async def test_get_user_by_username_not_exists(self, test_db: AsyncSession):
-        """Test getting user by username that doesn't exist."""
-        user = await crud_user.get_user_by_username(test_db, "nonexistentuser")
-        assert user is None
-
     async def test_get_user_by_id_exists(self, test_db: AsyncSession, test_user: User):
         """Test getting user by ID that exists."""
         user = await crud_user.get_user_by_id(test_db, test_user.user_id)
@@ -415,26 +219,6 @@ class TestUserCRUD:
         fake_id = uuid.uuid4()
         user = await crud_user.get_user_by_id(test_db, fake_id)
         assert user is None
-
-    async def test_update_user_with_password(
-        self, test_db: AsyncSession, test_user: User
-    ):
-        """Test updating user with new password."""
-        old_password_hash = test_user.password_hash
-        update_data = UserUpdate(password="newpassword123")
-        updated_user = await crud_user.update_user(test_db, test_user, update_data)
-
-        assert updated_user.password_hash != old_password_hash
-        assert verify_password("newpassword123", updated_user.password_hash)
-
-    async def test_update_user_partial(self, test_db: AsyncSession, test_user: User):
-        """Test partial user update (only email)."""
-        original_username = test_user.username
-        update_data = UserUpdate(email="newemail@example.com")
-        updated_user = await crud_user.update_user(test_db, test_user, update_data)
-
-        assert updated_user.email == "newemail@example.com"
-        assert updated_user.username == original_username
 
     async def test_update_user_username_only(
         self, test_db: AsyncSession, test_user: User
@@ -472,17 +256,16 @@ class TestUserCRUD:
 
     async def test_create_user_crud(self, test_db: AsyncSession):
         """Test creating user via CRUD function."""
-        user_data = UserCreate(
+        user = await crud_user.create_user(
+            test_db,
             email="crudtest@example.com",
             username="crudtestuser",
-            password="testpassword123",
+            photo_url="https://example.com/photo.png",
         )
-        user = await crud_user.create_user(test_db, user_data)
 
         assert user.email == "crudtest@example.com"
         assert user.username == "crudtestuser"
-        assert user.password_hash is not None
-        assert verify_password("testpassword123", user.password_hash)
+        assert user.photo_url == "https://example.com/photo.png"
         assert user.user_id is not None
         assert user.created_at is not None
         assert user.updated_at is not None
@@ -492,18 +275,30 @@ class TestUserCRUD:
 class TestUpdateCurrentUser:
     """Tests for updating current user endpoint."""
 
-    async def test_update_current_user_email(
-        self, client: AsyncClient, test_user: User, auth_headers: dict
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"email": "updated@example.com"},
+            {"email": "updated@example.com", "username": "changedusername"},
+        ],
+    )
+    async def test_update_current_user_rejects_email(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_user: User,
+        auth_headers: dict,
+        payload: dict[str, str],
     ):
-        """Test updating current user email."""
-        response = await client.put(
-            "/api/users/me",
-            json={"email": "updated@example.com"},
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["email"] == "updated@example.com"
+        original_id = test_user.user_id
+        original_email = test_user.email
+        original_username = test_user.username
+        response = await client.put("/api/users/me", json=payload, headers=auth_headers)
+        assert response.status_code == 422
+        await test_db.refresh(test_user)
+        assert test_user.user_id == original_id
+        assert test_user.email == original_email
+        assert test_user.username == original_username
 
     async def test_update_current_user_username(
         self, client: AsyncClient, test_user: User, auth_headers: dict
@@ -518,27 +313,41 @@ class TestUpdateCurrentUser:
         data = response.json()
         assert data["username"] == "newusername"
 
-    async def test_update_current_user_password(
-        self, client: AsyncClient, test_user: User, auth_headers: dict
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("password", "newpassword123"),
+            ("password", None),
+            ("password_hash", "forged-hash"),
+            ("photo_url", "https://example.com/forged.png"),
+            ("photo_url", None),
+        ],
+    )
+    async def test_update_current_user_rejects_protected_fields(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_user: User,
+        auth_headers: dict,
+        field: str,
+        value: str | None,
     ):
-        """Test updating current user password."""
+        picture = "https://example.com/original.png"
+        test_user.photo_url = picture
+        await test_db.commit()
+        original_email = test_user.email
+        original_username = test_user.username
         response = await client.put(
             "/api/users/me",
-            json={"password": "newpassword123"},
+            json={"username": "changedusername", field: value},
             headers=auth_headers,
         )
-        assert response.status_code == 200
-
-        # Verify can login with new password
-        login_response = await client.post(
-            "/api/users/token",
-            data={
-                "username": test_user.email,
-                "password": "newpassword123",
-            },
-        )
-        assert login_response.status_code == 200
-        assert "access_token" in login_response.json()
+        assert response.status_code == 422
+        me = await client.get("/api/users/me", headers=auth_headers)
+        assert me.status_code == 200
+        assert me.json()["email"] == original_email
+        assert me.json()["username"] == original_username
+        assert me.json()["photo_url"] == picture
 
     async def test_update_current_user_unauthenticated(self, client: AsyncClient):
         """Test updating user without authentication fails."""
@@ -547,24 +356,6 @@ class TestUpdateCurrentUser:
             json={"email": "hacker@example.com"},
         )
         assert response.status_code == 401
-
-    async def test_update_current_user_all_fields(
-        self, client: AsyncClient, test_user: User, auth_headers: dict
-    ):
-        """Test updating all user fields at once."""
-        response = await client.put(
-            "/api/users/me",
-            json={
-                "email": "all@example.com",
-                "username": "allupdated",
-                "password": "allnewpass123",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["email"] == "all@example.com"
-        assert data["username"] == "allupdated"
 
 
 @pytest.mark.asyncio
@@ -582,19 +373,22 @@ class TestGoogleLogin:
 
         monkeypatch.setattr(users_endpoint, "verify_google_id_token", fake_verify)
 
-    async def test_google_login_creates_passwordless_user(
+    async def test_google_login_creates_user_with_picture(
         self, client: AsyncClient, test_db: AsyncSession, monkeypatch
     ):
-        """A new Google account is created with an unusable password."""
+        picture = "https://images.example.com/fresh.png"
         self._patch_verifier(
             monkeypatch,
-            {"email": "fresh.google@example.com", "email_verified": True},
+            {
+                "email": "fresh.google@example.com",
+                "email_verified": True,
+                "picture": picture,
+            },
         )
 
         response = await client.post(
             "/api/users/google", json={"id_token": "google-id-token"}
         )
-
         assert response.status_code == 200
         data = response.json()
         assert data["token_type"] == "bearer"
@@ -604,48 +398,154 @@ class TestGoogleLogin:
             "/api/users/me",
             headers={"Authorization": f"Bearer {data['access_token']}"},
         )
+        assert me.status_code == 200
         assert me.json()["email"] == "fresh.google@example.com"
+        assert me.json()["username"] is None
+        assert me.json()["photo_url"] == picture
 
         result = await test_db.execute(
             select(User).where(User.email == "fresh.google@example.com")
         )
         row = result.scalar_one()
+        await test_db.refresh(row)
+        assert str(row.user_id) == me.json()["user_id"]
         assert row.username is None
-        assert not verify_password("anything", row.password_hash)
+        assert row.photo_url == picture
 
-    async def test_google_login_existing_email_signs_into_that_account(
-        self, client: AsyncClient, test_db: AsyncSession, monkeypatch
+    async def test_google_login_reuses_account_list_and_replaces_picture(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_user: User,
+        test_list: ListModel,
+        auth_headers: dict,
+        monkeypatch,
     ):
-        """An existing password account with the same email is reused."""
-        existing = await crud_user.create_user(
-            test_db,
-            UserCreate(
-                email="existing.google@example.com",
-                username="existinguser",
-                password="existingpassword123",
-            ),
-        )
-        self._patch_verifier(
-            monkeypatch,
-            {"email": "existing.google@example.com", "email_verified": True},
-        )
+        user_id = str(test_user.user_id)
+        username = test_user.username
+        claims = {
+            "email": test_user.email,
+            "email_verified": True,
+            "picture": "https://images.example.com/first.png",
+        }
+        self._patch_verifier(monkeypatch, claims)
 
-        response = await client.post(
+        first = await client.post(
             "/api/users/google", json={"id_token": "google-id-token"}
         )
+        assert first.status_code == 200
+        first_me = await client.get(
+            "/api/users/me",
+            headers={"Authorization": f"Bearer {first.json()['access_token']}"},
+        )
+        assert first_me.status_code == 200
+        assert first_me.json()["user_id"] == user_id
+        assert first_me.json()["username"] == username
+        assert first_me.json()["photo_url"] == claims["picture"]
 
-        assert response.status_code == 200
+        claims["picture"] = "https://images.example.com/replacement.png"
+        second = await client.post(
+            "/api/users/google", json={"id_token": "google-id-token"}
+        )
+        assert second.status_code == 200
+        headers = {"Authorization": f"Bearer {second.json()['access_token']}"}
+        me = await client.get("/api/users/me", headers=headers)
+        assert me.status_code == 200
+        assert me.json()["user_id"] == user_id
+        assert me.json()["username"] == username
+        assert me.json()["photo_url"] == claims["picture"]
+
+        old_me = await client.get("/api/users/me", headers=auth_headers)
+        assert old_me.status_code == 200
+        assert old_me.json()["user_id"] == user_id
+        assert old_me.json()["username"] == username
+        assert old_me.json()["photo_url"] == claims["picture"]
+
+        lists = await client.get("/api/lists/", headers=headers)
+        assert lists.status_code == 200
+        assert [item["list_id"] for item in lists.json()] == [str(test_list.list_id)]
+        old_lists = await client.get("/api/lists/", headers=auth_headers)
+        assert old_lists.status_code == 200
+        assert [item["list_id"] for item in old_lists.json()] == [
+            str(test_list.list_id)
+        ]
         result = await test_db.execute(
-            select(User).where(User.email == "existing.google@example.com")
+            select(User).where(User.email == claims["email"])
         )
         rows = result.scalars().all()
         assert len(rows) == 1
+        await test_db.refresh(rows[0])
+        assert str(rows[0].user_id) == user_id
+        assert rows[0].photo_url == claims["picture"]
 
+    @pytest.mark.parametrize("existing", [False, True], ids=["new", "existing"])
+    @pytest.mark.parametrize(
+        "picture_claim",
+        [
+            pytest.param({}, id="missing"),
+            pytest.param({"picture": None}, id="null"),
+            pytest.param({"picture": ""}, id="empty"),
+            pytest.param({"picture": 123}, id="non-string"),
+            pytest.param({"picture": []}, id="list"),
+            pytest.param({"picture": "not a url"}, id="malformed"),
+            pytest.param({"picture": "https:///image.png"}, id="missing-host"),
+            pytest.param({"picture": "https://[bad"}, id="malformed-ipv6"),
+            pytest.param(
+                {"picture": "https://exa mple.com/image.png"}, id="invalid-host"
+            ),
+            pytest.param(
+                {"picture": "https://example.com/a\nb.png"}, id="embedded-newline"
+            ),
+            pytest.param(
+                {"picture": "https://example.com:not-a-port/image.png"},
+                id="non-numeric-port",
+            ),
+            pytest.param(
+                {"picture": "https://example.com:99999/image.png"},
+                id="out-of-range-port",
+            ),
+            pytest.param({"picture": "http://example.com/image.png"}, id="http"),
+            pytest.param(
+                {"picture": "https://user:pass@example.com/image.png"},
+                id="credentials",
+            ),
+            pytest.param(
+                {"picture": "https://user@example.com/image.png"}, id="username"
+            ),
+        ],
+    )
+    async def test_google_login_discards_invalid_picture(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_user: User,
+        monkeypatch,
+        picture_claim: dict,
+        existing: bool,
+    ):
+        if existing:
+            test_user.photo_url = "https://images.example.com/original.png"
+            await test_db.commit()
+        email = test_user.email if existing else "fresh.google@example.com"
+        self._patch_verifier(
+            monkeypatch,
+            {"email": email, "email_verified": True} | picture_claim,
+        )
+        response = await client.post(
+            "/api/users/google", json={"id_token": "google-id-token"}
+        )
+        assert response.status_code == 200
         me = await client.get(
             "/api/users/me",
             headers={"Authorization": f"Bearer {response.json()['access_token']}"},
         )
-        assert me.json()["user_id"] == str(existing.user_id)
+        assert me.status_code == 200
+        assert me.json()["email"] == email
+        assert me.json()["photo_url"] is None
+        result = await test_db.execute(select(User).where(User.email == email))
+        row = result.scalar_one()
+        await test_db.refresh(row)
+        assert row.photo_url is None
 
     async def test_google_login_unverified_email_rejected(
         self, client: AsyncClient, monkeypatch

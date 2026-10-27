@@ -55,7 +55,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
       <View
         nativeID={containerId}
         className={[
-          'flex-row items-center border rounded-lg px-3 py-2 min-h-[48px]',
+          'flex-row items-center border rounded-[10px] px-3 min-h-[48px]',
           'bg-surface dark:bg-surface-dark',
           error
             ? 'border-danger-text dark:border-danger-text-dark'
@@ -71,7 +71,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         <TextInput
           ref={ref}
           className={[
-            'flex-1 py-1 m-0 text-[16px]',
+            'flex-1 min-h-[46px] py-2 m-0 text-[16px] leading-6',
             'text-ink dark:text-ink-dark',
             inputClassName ?? '',
           ].join(' ')}

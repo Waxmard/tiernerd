@@ -70,33 +70,6 @@ async def create_tables() -> None:
             await seed_users(session)
 
 
-async def create_user(
-    db: AsyncSession, username: str, email: str, password_hash: str
-) -> User:
-    """
-    Create a new user.
-
-    Args:
-        db: Database session
-        username: Username for the user
-        email: Email address for the user
-        password_hash: Hashed password for the user
-
-    Returns:
-        Created User object
-    """
-    user = User(
-        user_id=uuid.uuid4(),
-        username=username,
-        email=email,
-        password_hash=password_hash,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
-
-
 async def create_user_list(
     db: AsyncSession, user: User, title: str, description: str | None = None
 ) -> List:
@@ -158,21 +131,6 @@ async def add_item_to_user_list(
     await db.commit()
     await db.refresh(item)
     return item
-
-
-async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
-    """
-    Get a user by username.
-
-    Args:
-        db: Database session
-        username: Username to search for
-
-    Returns:
-        User object if found, None otherwise
-    """
-    result = await db.execute(select(User).where(User.username == username))
-    return result.scalar_one_or_none()
 
 
 async def get_user_lists_with_items(

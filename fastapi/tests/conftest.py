@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core.security import get_password_hash
 from app.db.database import get_db
 from app.db.models import Base, Item as ItemModel, List as ListModel, User
 from app.main import app
@@ -93,7 +92,6 @@ async def test_user(test_db: AsyncSession) -> User:
         user_id=uuid.uuid4(),
         email="test@example.com",
         username="testuser",
-        password_hash=get_password_hash("testpassword123"),
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
@@ -113,7 +111,6 @@ async def test_user2(test_db: AsyncSession) -> User:
         user_id=uuid.uuid4(),
         email="test2@example.com",
         username="testuser2",
-        password_hash=get_password_hash("testpassword456"),
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
@@ -147,7 +144,6 @@ async def admin_user(test_db: AsyncSession) -> User:
         user_id=uuid.uuid4(),
         email="admin@example.com",
         username="adminuser",
-        password_hash=get_password_hash("adminpassword123"),
         is_admin=True,
         created_at=datetime.now(),
         updated_at=datetime.now(),

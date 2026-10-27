@@ -9,8 +9,10 @@ import {
   Image,
   type ListRenderItemInfo,
   Modal,
+  Platform,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import {
@@ -30,9 +32,16 @@ import { type ListColor, palette } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useTheme, useThemeColors } from '../providers/ThemeProvider';
+import { ApiError } from '../services/apiError';
 import type { Item } from '../services/itemsService';
-import { listsCacheKey, parseCachedLists } from '../services/listsCache';
+import {
+  enqueueListCacheWrite,
+  listItemsCacheKey,
+  listsCacheKey,
+  parseCachedLists,
+} from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
+import { useUpdateBlocker } from '../utils/useAppUpdate';
 
 type ModalStep = 'create' | 'addItem' | null;
 interface TierList {
@@ -60,60 +69,113 @@ const toTierList = (list: ListSimple): TierList => ({
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
+  const userId = user?.id ?? null;
   const { scheme } = useTheme();
   const colors = useThemeColors();
   const safeAreaInsets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const columns = windowWidth >= 1280 ? 3 : windowWidth >= 768 ? 2 : 1;
+  const horizontalGutter = windowWidth >= 1024 ? 24 : 16;
+  const availableWidth = Math.min(
+    windowWidth - safeAreaInsets.left - safeAreaInsets.right,
+    1280
+  );
+  const cardWidth =
+    (availableWidth - 2 * horizontalGutter - 12 * (columns - 1)) / columns;
   const [lists, setLists] = useState<TierList[]>([]);
+  const [hasSnapshot, setHasSnapshot] = useState(false);
+  const [snapshotIdentity, setSnapshotIdentity] = useState<{
+    userId: string | null;
+    token: string | null;
+  } | null>(null);
+  const currentSnapshot =
+    hasSnapshot &&
+    snapshotIdentity !== null &&
+    snapshotIdentity.userId === userId &&
+    snapshotIdentity.token === token;
+  const visibleLists = currentSnapshot ? lists : [];
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
+  useUpdateBlocker(modalStep === 'create');
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
   const createListRef = useRef<CreateListContentHandle | null>(null);
   const bypassBeforeRemoveRef = useRef(false);
   const closingForNavigationRef = useRef(false);
   const listsRequestRef = useRef(0);
+  const overviewLifecycleRef = useRef(0);
+  const liveResponseRef = useRef(0);
+  const identityRef = useRef({ userId, token });
+  identityRef.current = { userId, token };
+  const isIdentityCurrent = useCallback(
+    (expectedUserId: string | null, expectedToken: string | null) =>
+      identityRef.current.userId === expectedUserId &&
+      identityRef.current.token === expectedToken,
+    []
+  );
+  useEffect(() => {
+    overviewLifecycleRef.current += 1;
+    listsRequestRef.current += 1;
+    setLists([]);
+    setHasSnapshot(false);
+    setSnapshotIdentity({ userId, token });
+    setError(null);
+    setIsLoading(Boolean(token));
+  }, [token, userId]);
   const refreshLists = useCallback(
     async (showLoading = false) => {
       if (!token) return;
       const requestId = ++listsRequestRef.current;
+      const lifecycleId = overviewLifecycleRef.current;
+      const isCurrent = () =>
+        requestId === listsRequestRef.current &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(userId, token);
       if (showLoading) setIsLoading(true);
       try {
         const result = await listsService.getLists(token);
-        if (requestId !== listsRequestRef.current) return;
+        if (!isCurrent()) return;
+        liveResponseRef.current += 1;
         setLists(result.map(toTierList));
+        setSnapshotIdentity({ userId, token });
+        setHasSnapshot(true);
         setError(null);
-        if (user)
-          void AsyncStorage.setItem(
-            listsCacheKey(user.id),
-            JSON.stringify(result)
-          ).catch(() => {});
+        if (userId) {
+          const key = listsCacheKey(userId);
+          if (isCurrent())
+            void enqueueListCacheWrite(key, async () => {
+              if (isCurrent())
+                await AsyncStorage.setItem(key, JSON.stringify(result));
+            }).catch(() => {});
+        }
       } catch (err: unknown) {
-        if (requestId === listsRequestRef.current)
+        if (isCurrent()) {
           setError(err instanceof Error ? err.message : 'Failed to load lists');
+          if (
+            err instanceof ApiError &&
+            (err.status === 401 || err.status === 403)
+          ) {
+            liveResponseRef.current += 1;
+            setLists([]);
+            setHasSnapshot(false);
+            setSnapshotIdentity({ userId, token });
+            if (userId) {
+              const key = listsCacheKey(userId);
+              if (isCurrent())
+                void enqueueListCacheWrite(key, async () => {
+                  if (isCurrent()) await AsyncStorage.removeItem(key);
+                }).catch(() => {});
+            }
+          }
+        }
         throw err;
       } finally {
-        if (requestId === listsRequestRef.current) setIsLoading(false);
+        if (isCurrent()) setIsLoading(false);
       }
     },
-    [token, user]
+    [isIdentityCurrent, token, userId]
   );
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    void (async () => {
-      const raw = await AsyncStorage.getItem(listsCacheKey(user.id)).catch(
-        () => null
-      );
-      if (cancelled) return;
-      const cached = parseCachedLists(raw);
-      if (!cached) return;
-      setLists(cached.map(toTierList));
-      setIsLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
   const fetchLists = useCallback(async () => {
     try {
       await refreshLists(true);
@@ -123,20 +185,102 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   }, [refreshLists]);
   useFocusEffect(
     useCallback(() => {
+      const lifecycleId = ++overviewLifecycleRef.current;
+      const identityUserId = userId;
+      const identityToken = token;
+      const cacheRevision = liveResponseRef.current;
+      let active = true;
+      const isCurrent = () =>
+        active &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(identityUserId, identityToken);
       void fetchLists();
-    }, [fetchLists])
+      if (identityUserId) {
+        void (async () => {
+          const raw = await AsyncStorage.getItem(
+            listsCacheKey(identityUserId)
+          ).catch(() => null);
+          if (!isCurrent() || cacheRevision !== liveResponseRef.current) return;
+          const cached = parseCachedLists(raw);
+          if (cached) {
+            setLists(cached.map(toTierList));
+            setSnapshotIdentity({
+              userId: identityUserId,
+              token: identityToken,
+            });
+            setHasSnapshot(true);
+            setIsLoading(false);
+          } else {
+            setLists([]);
+            setSnapshotIdentity({
+              userId: identityUserId,
+              token: identityToken,
+            });
+            setHasSnapshot(false);
+          }
+        })();
+      }
+      return () => {
+        active = false;
+        ++overviewLifecycleRef.current;
+        ++listsRequestRef.current;
+      };
+    }, [fetchLists, isIdentityCurrent, token, userId])
   );
   const handleWorkspaceItemsChanged = useCallback(
     async (item?: Item) => {
+      const expectedUserId = userId;
+      const expectedToken = token;
+      const lifecycleId = ++overviewLifecycleRef.current;
+      const requestId = ++listsRequestRef.current;
+      setIsLoading(false);
+      if (expectedUserId) {
+        const overviewKey = listsCacheKey(expectedUserId);
+        const itemKey = pendingList
+          ? listItemsCacheKey(expectedUserId, pendingList.listId)
+          : null;
+        const keys = [overviewKey, itemKey].filter(
+          (key): key is string => key !== null
+        );
+        await Promise.all(
+          keys.map((key) => {
+            if (
+              requestId !== listsRequestRef.current ||
+              lifecycleId !== overviewLifecycleRef.current ||
+              !isIdentityCurrent(expectedUserId, expectedToken)
+            )
+              return Promise.resolve();
+            return enqueueListCacheWrite(key, async () => {
+              if (
+                requestId === listsRequestRef.current &&
+                lifecycleId === overviewLifecycleRef.current &&
+                isIdentityCurrent(expectedUserId, expectedToken)
+              )
+                await AsyncStorage.removeItem(key);
+            }).catch(() => {});
+          })
+        );
+      }
+      if (
+        requestId !== listsRequestRef.current ||
+        lifecycleId !== overviewLifecycleRef.current ||
+        !isIdentityCurrent(expectedUserId, expectedToken)
+      )
+        return;
       await refreshLists();
-      if (item && pendingList)
+      if (
+        item &&
+        pendingList &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(expectedUserId, expectedToken)
+      )
         navigation.navigate('ListDetail', {
           listId: pendingList.listId,
           listTitle: pendingList.title,
           completedItemId: item.item_id,
         });
     },
-    [navigation, pendingList, refreshLists]
+    [isIdentityCurrent, navigation, pendingList, refreshLists, token, userId]
   );
   const handleWorkspaceClosed = useCallback(() => {
     setModalStep(null);
@@ -150,12 +294,48 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   });
   const handleListCreated = useCallback(
     (list: CreatedList) => {
-      void fetchLists();
+      const expectedUserId = userId;
+      const expectedToken = token;
+      const lifecycleId = ++overviewLifecycleRef.current;
+      const requestId = ++listsRequestRef.current;
+      setIsLoading(false);
       setPendingList(list);
       workspace.openAdd();
       setModalStep('addItem');
+      if (
+        expectedUserId &&
+        requestId === listsRequestRef.current &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(expectedUserId, expectedToken)
+      ) {
+        const key = listsCacheKey(expectedUserId);
+        void enqueueListCacheWrite(key, async () => {
+          if (
+            requestId === listsRequestRef.current &&
+            lifecycleId === overviewLifecycleRef.current &&
+            isIdentityCurrent(expectedUserId, expectedToken)
+          )
+            await AsyncStorage.removeItem(key);
+        })
+          .catch(() => {})
+          .then(() => {
+            if (
+              requestId === listsRequestRef.current &&
+              lifecycleId === overviewLifecycleRef.current &&
+              isIdentityCurrent(expectedUserId, expectedToken)
+            )
+              return refreshLists();
+          })
+          .catch(() => {});
+      } else if (
+        requestId === listsRequestRef.current &&
+        lifecycleId === overviewLifecycleRef.current &&
+        isIdentityCurrent(expectedUserId, expectedToken)
+      ) {
+        void refreshLists().catch(() => {});
+      }
     },
-    [fetchLists, workspace.openAdd]
+    [isIdentityCurrent, refreshLists, token, userId, workspace.openAdd]
   );
   const getModalTitle = () =>
     modalStep === 'create'
@@ -233,57 +413,64 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           })
         }
         activeOpacity={0.7}
-        className="flex-row items-center gap-2 p-[14px] mb-2 bg-surface dark:bg-surface-dark rounded-lg"
+        style={{ width: cardWidth }}
+        className="shrink-0 overflow-hidden rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
       >
-        <View
-          className={[
-            'w-10 h-10 items-center justify-center rounded-lg',
-            item.color
-              ? CHIP_CLASS[item.color]
-              : 'bg-accent-tint dark:bg-accent-tint-dark',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          <Ionicons
-            name="layers-outline"
-            size={20}
-            color={chipIconColor}
-            accessible={false}
-          />
-        </View>
-        <View className="flex-1 min-w-0 gap-2">
-          <Text className="text-[18px] leading-[25.2px] font-semibold text-ink dark:text-ink-dark">
-            {item.title}
-          </Text>
-          {item.description?.trim() ? (
-            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
-              {item.description}
+        <View className="flex-row items-center gap-3 p-4">
+          <View
+            className={[
+              'w-8 h-8 items-center justify-center rounded-lg',
+              item.color
+                ? CHIP_CLASS[item.color]
+                : 'bg-accent-tint dark:bg-accent-tint-dark',
+            ].join(' ')}
+          >
+            <Ionicons
+              name="layers-outline"
+              size={20}
+              color={chipIconColor}
+              accessible={false}
+            />
+          </View>
+          <View className="flex-1 min-w-0 gap-1">
+            <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
+              {item.title}
             </Text>
-          ) : null}
-          <View className="flex-row flex-wrap items-center gap-2">
-            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
+            {item.description?.trim() ? (
+              <Text
+                numberOfLines={2}
+                className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+              >
+                {item.description}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+        <View className="flex-row items-center justify-between gap-2 border-t border-line px-3 py-2 dark:border-line-dark">
+          <View className="flex-1 min-w-0 flex-row flex-wrap items-center gap-3">
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
               {item.itemCount} items
             </Text>
-            <Text className="text-[14px] leading-[21px] text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
               Modified {formatDate(item.updatedAt)}
             </Text>
           </View>
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={colors['ink-muted']}
+            accessible={false}
+          />
         </View>
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={colors['ink-muted']}
-        />
       </TouchableOpacity>
     );
   };
   const content =
-    !token || isLoading ? (
+    !token || (isLoading && !currentSnapshot) ? (
       <View className="flex-1 items-center justify-center px-6">
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
-    ) : error && !lists.length ? (
+    ) : error && !currentSnapshot ? (
       <View className="flex-1 items-center justify-center px-6">
         <Ionicons
           name="alert-circle-outline"
@@ -300,98 +487,135 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       </View>
     ) : (
       <FlatList
+        key={columns}
         className="flex-1 min-h-0"
-        data={lists}
+        data={visibleLists}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
         renderItem={renderRow}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 16 + safeAreaInsets.bottom }}
+        contentContainerStyle={{
+          paddingBottom: 16 + safeAreaInsets.bottom,
+          gap: 12,
+        }}
         ListHeaderComponent={
-          <Text
-            accessibilityRole="header"
-            className="text-[30px] leading-[36px] font-semibold text-ink dark:text-ink-dark mb-3"
-          >
-            My lists
-          </Text>
+          <View className="gap-2">
+            <View className="w-full flex-row flex-wrap items-center justify-between gap-2">
+              <Text
+                accessibilityRole="header"
+                className="text-headline-small text-ink dark:text-ink-dark"
+              >
+                My lists
+              </Text>
+              <Button
+                title="New list"
+                onPress={() => setModalStep('create')}
+                size="small"
+                icon={
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={20}
+                    color={colors['on-accent']}
+                    accessible={false}
+                  />
+                }
+                testID="fab-create"
+                accessibilityLabel="Create new list"
+              />
+            </View>
+            {error ? (
+              <View className="flex-row items-center justify-between gap-3 rounded-xl border border-danger-text p-3">
+                <Text
+                  accessibilityLiveRegion="polite"
+                  className="flex-1 text-body-medium text-danger-text dark:text-danger-text-dark"
+                >
+                  {error}
+                </Text>
+                <Button title="Try again" onPress={() => void fetchLists()} />
+              </View>
+            ) : null}
+          </View>
         }
         ListEmptyComponent={
-          <View className="items-start pt-0.5">
-            <Image
-              source={require('../../assets/logo-transparent.png')}
-              className="w-14 h-14 mb-2"
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Create a list. Start ranking what you love."
+            onPress={() => setModalStep('create')}
+            activeOpacity={0.7}
+            className="w-full min-h-24 flex-row items-center gap-3 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-3 dark:border-control-dark dark:bg-surface-muted-dark"
+          >
+            <Ionicons
+              name="add-circle-outline"
+              size={24}
+              color={colors['accent-text']}
               accessible={false}
             />
-            <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark mb-1">
-              Your lists start here
-            </Text>
-            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-              Create a list to start ranking what you love.
-            </Text>
-          </View>
+            <View className="flex-1 min-w-0 gap-1">
+              <Text className="text-title-small font-semibold text-ink dark:text-ink-dark">
+                Create a list
+              </Text>
+              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+                Start ranking what you love.
+              </Text>
+            </View>
+          </TouchableOpacity>
         }
       />
     );
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView className="min-h-0 flex-1" edges={['top']}>
+      <SafeAreaView
+        className={`min-h-0 flex-1${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+        edges={['top', 'left', 'right']}
+      >
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
-          <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
-            <View className="pt-8 desktop:pt-4 pb-4 flex-row flex-wrap justify-between items-center shrink-0 bg-canvas dark:bg-canvas-dark">
-              <View className="flex-row items-center gap-1">
-                <Ionicons
-                  name="layers-outline"
-                  size={20}
-                  color={colors['accent-text']}
+          <View
+            className="flex-1 min-h-0"
+            style={{ marginHorizontal: horizontalGutter }}
+          >
+            <View className="py-2 flex-row justify-between items-center gap-2 shrink-0 bg-canvas dark:bg-canvas-dark">
+              <View className="flex-row items-center gap-2 shrink min-w-0">
+                <Image
+                  source={require('../../assets/brand-mark.png')}
+                  resizeMode="contain"
+                  style={{ width: 32, height: 32, borderRadius: 8 }}
                   accessible={false}
                 />
-                <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark">
+                <Text
+                  numberOfLines={1}
+                  className="shrink min-w-0 text-title-medium font-semibold text-ink dark:text-ink-dark"
+                >
                   TierNerd
                 </Text>
               </View>
-              <View className="flex-row flex-wrap items-center gap-2">
-                <Button
-                  title="New list"
-                  onPress={() => setModalStep('create')}
-                  size="small"
-                  icon={
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Profile')}
+                className="w-11 h-11 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Open profile"
+              >
+                {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
+                  <Image
+                    source={{ uri: user.photoUrl }}
+                    onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
+                    resizeMode="cover"
+                    className="w-full h-full"
+                    accessible={false}
+                  />
+                ) : (
+                  <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
                     <Ionicons
-                      name="add-circle-outline"
+                      name="person"
                       size={20}
-                      color={colors['on-accent']}
-                      accessible={false}
+                      color={colors['accent-text']}
                     />
-                  }
-                  testID="fab-create"
-                  accessibilityLabel="Create new list"
-                />
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Profile')}
-                  className="w-11 h-11 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="Open profile"
-                >
-                  {user?.photoUrl ? (
-                    <Image
-                      source={{ uri: user.photoUrl }}
-                      className="w-full h-full"
-                      accessible={false}
-                    />
-                  ) : (
-                    <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
-                      <Ionicons
-                        name="person"
-                        size={20}
-                        color={colors['accent-text']}
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
-            <View className="w-full max-w-[800px] self-center flex-1 min-h-0">
-              {content}
-            </View>
+            <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>
         <Modal

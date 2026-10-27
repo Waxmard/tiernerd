@@ -3,10 +3,13 @@ name: Frontend
 on:
   push:
     branches: [main]
-    paths: ['frontend/**']
+    paths: ['frontend/**', '.github/workflows/frontend.yml']
   pull_request:
     branches: [main]
-    paths: ['frontend/**']
+    paths: ['frontend/**', '.github/workflows/frontend.yml']
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,7 +24,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -37,7 +40,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -54,7 +57,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'

@@ -8,6 +8,12 @@ on:
     branches: [main]
     paths: ["fastapi/**", "frontend/**", "scripts/**", ".github/workflows/e2e.yml"]
 
+permissions:
+  contents: read
+
+env:
+  UV_LOCKED: "true"
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -20,7 +26,7 @@ jobs:
       - uses: actions/checkout@v7
 
       # runs-on has no uv; scripts/e2e_backend.sh syncs and boots the backend with it.
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"

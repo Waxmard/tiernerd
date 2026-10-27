@@ -139,9 +139,7 @@ async def get_item_comparison_session(
     )
     if session is None:
         return None
-    if session.list_id != item_obj.list_id or not await list_crud.get_by_id_and_user(
-        db, session.list_id, current_user.user_id
-    ):
+    if session.list_id != item_obj.list_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
         )

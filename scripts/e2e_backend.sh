@@ -16,6 +16,7 @@ port="${E2E_BACKEND_PORT:-$(python3 -c 'import socket; s = socket.socket(); s.bi
 api_url="http://localhost:$port"
 health_url="http://127.0.0.1:$port"
 db_dir="$(mktemp -d)"
+database_url="sqlite+aiosqlite:///$db_dir/e2e.db"
 backend_pid=""
 
 cleanup() {
@@ -26,7 +27,7 @@ trap cleanup EXIT
 
 cd "$root/fastapi"
 uv sync --extra dev --group dev
-DATABASE_URL="sqlite+aiosqlite:///$db_dir/e2e.db" \
+DATABASE_URL="$database_url" \
   APP_ENV=development \
   SECRET_KEY=e2e-backend-secret \
   CORS_ORIGINS_STR="http://localhost:8081" \
@@ -45,6 +46,31 @@ curl -sf "$health_url/health" >/dev/null || {
   echo "backend did not become healthy on $health_url" >&2
   exit 1
 }
+
+set +x
+e2e_auth_token="$(
+  DATABASE_URL="$database_url" \
+    APP_ENV=development \
+    SECRET_KEY=e2e-backend-secret \
+    CORS_ORIGINS_STR="http://localhost:8081" \
+    uv run python - "$db_dir/e2e.db" <<'PY'
+import sqlite3
+import sys
+from pathlib import Path
+from uuid import UUID
+
+from app.services.auth import create_access_token
+
+with sqlite3.connect(f"{Path(sys.argv[1]).as_uri()}?mode=ro", uri=True) as db:
+    user = db.execute(
+        "SELECT user_id FROM users WHERE email = ?", ("dev@tiernerd.com",)
+    ).fetchone()
+if user is None:
+    raise SystemExit("Seeded e2e user not found")
+print(create_access_token(UUID(user[0])))
+PY
+)"
+export E2E_AUTH_TOKEN="$e2e_auth_token" E2E_DATABASE_URL="$database_url"
 
 echo "e2e backend: $api_url (sqlite, seeded dev users)"
 export EXPO_PUBLIC_API_URL="$api_url"

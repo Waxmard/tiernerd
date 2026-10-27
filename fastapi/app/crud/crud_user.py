@@ -4,9 +4,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_password_hash
 from app.db.models import User
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserUpdate
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
@@ -14,14 +13,6 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     Get a user by email.
     """
     result = await db.execute(select(User).where(User.email == email))
-    return result.scalar_one_or_none()
-
-
-async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
-    """
-    Get a user by username.
-    """
-    result = await db.execute(select(User).where(User.username == username))
     return result.scalar_one_or_none()
 
 
@@ -33,15 +24,21 @@ async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> User | None:
     return result.scalar_one_or_none()
 
 
-async def create_user(db: AsyncSession, obj_in: UserCreate) -> User:
+async def create_user(
+    db: AsyncSession,
+    *,
+    email: str,
+    username: str | None = None,
+    photo_url: str | None = None,
+) -> User:
     """
     Create a new user.
     """
     db_obj = User(
         user_id=uuid.uuid4(),
-        email=obj_in.email,
-        username=obj_in.username,
-        password_hash=get_password_hash(obj_in.password),
+        email=email,
+        username=username,
+        photo_url=photo_url,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
@@ -56,12 +53,6 @@ async def update_user(db: AsyncSession, db_obj: User, obj_in: UserUpdate) -> Use
     Update a user.
     """
     update_data = obj_in.model_dump(exclude_unset=True)
-
-    # Handle password update separately
-    if "password" in update_data:
-        hashed_password = get_password_hash(update_data["password"])
-        del update_data["password"]
-        update_data["password_hash"] = hashed_password
 
     # Update attributes
     for field, value in update_data.items():

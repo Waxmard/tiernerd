@@ -3,10 +3,16 @@ name: Backend
 on:
   push:
     branches: [main]
-    paths: ["fastapi/**"]
+    paths: ["fastapi/**", ".github/workflows/backend.yml"]
   pull_request:
     branches: [main]
-    paths: ["fastapi/**"]
+    paths: ["fastapi/**", ".github/workflows/backend.yml"]
+
+permissions:
+  contents: read
+
+env:
+  UV_LOCKED: "true"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,7 +27,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -37,7 +43,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -53,7 +59,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -68,7 +74,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"

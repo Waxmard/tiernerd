@@ -12,8 +12,6 @@ import {
   FlatList,
   type ListRenderItemInfo,
   Platform,
-  Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -29,7 +27,10 @@ import {
 } from '../components/ListDetailItemRow';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
 import { useItemWorkspace } from '../components/useItemWorkspace';
-import type { ListColor } from '../design-system/tokens/colors';
+import {
+  useDraftLookup,
+  useListDetailData,
+} from '../components/useListDetailData';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useThemeColors } from '../providers/ThemeProvider';
@@ -39,7 +40,6 @@ import {
   type Item,
   itemsService,
 } from '../services/itemsService';
-import { findNextDraftSession } from '../services/itemWorkspaceActions';
 import { listsService } from '../services/listsService';
 import { confirmDestructive, notifyError } from '../utils/confirm';
 
@@ -54,6 +54,7 @@ interface PendingScroll {
 
 interface SessionLookup {
   itemId: string | null;
+  requestId: number;
   session: ComparisonSession | null;
   isLoading: boolean;
   error: string | null;
@@ -63,7 +64,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   route,
   navigation,
 }) => {
-  const { token } = useAuth();
+  const { user, token } = useAuth();
+  const userId = user?.id ?? null;
   const colors = useThemeColors();
   const { width: windowWidth } = useWindowDimensions();
   const safeAreaInsets = useSafeAreaInsets();
@@ -74,21 +76,46 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     completedItemId,
   } = route.params;
   const isDesktop = windowWidth >= 1024;
-  const [items, setItems] = useState<Item[]>([]);
-  const itemsRef = useRef<Item[]>([]);
-  const [isLoadingItems, setIsLoadingItems] = useState(true);
-  const [itemsLoaded, setItemsLoaded] = useState(false);
-  const [itemsError, setItemsError] = useState<string | null>(null);
-  const [detailsTitle, setDetailsTitle] = useState(routeTitle);
-  const [listDescription, setListDescription] = useState<string | null>(null);
-  const [listColor, setListColor] = useState<ListColor | null>(null);
-  const [metadataError, setMetadataError] = useState(false);
+  const screenIdentity = JSON.stringify([userId, token, listId]);
+  const {
+    items,
+    itemsRef,
+    isLoadingItems,
+    itemsLoaded,
+    hasItemsSnapshot,
+    itemsError,
+    detailsTitle,
+    listDescription,
+    listColor,
+    metadataError,
+    metadataLoaded,
+    fetchItems,
+    refreshMetadata,
+    refreshAfterMutation,
+    evictDeletedList,
+  } = useListDetailData({ userId, token, listId, routeTitle });
+  const canMutate =
+    itemsLoaded && metadataLoaded && !itemsError && !metadataError;
+  const sessionLookupRequestRef = useRef(0);
+  const identityRef = useRef(screenIdentity);
+  if (identityRef.current !== screenIdentity) {
+    identityRef.current = screenIdentity;
+    sessionLookupRequestRef.current++;
+  }
+  const canMutateRef = useRef(canMutate);
+  canMutateRef.current = canMutate;
+  const canMutateFor = useCallback(
+    (identity: string) =>
+      identityRef.current === identity && canMutateRef.current,
+    []
+  );
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [dismissedDetailsItemId, setDismissedDetailsItemId] = useState<
     string | null
   >(null);
   const [sessionLookup, setSessionLookup] = useState<SessionLookup>({
     itemId: null,
+    requestId: 0,
     session: null,
     isLoading: false,
     error: null,
@@ -98,9 +125,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const listRef = useRef<FlatList<Item> | null>(null);
   const itemRowRefs = useRef(new Map<string, FocusTarget>());
   const pendingScrollRef = useRef<PendingScroll | null>(null);
-  const itemsRequestRef = useRef(0);
-  const metadataRequestRef = useRef(0);
-  const hasLoadedItemsRef = useRef(false);
   const selectedItemIdRef = useRef<string | null>(null);
   const rankingCandidateIdRef = useRef<string | null>(null);
   const consumedCompletedItemIdRef = useRef<string | null>(null);
@@ -110,9 +134,20 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const skipWorkspaceCloseFocusRef = useRef(false);
   const deletingListInFlightRef = useRef(false);
   const previousDesktopRef = useRef(isDesktop);
-  const skippedDraftIdsRef = useRef(new Set<string>());
-
-  selectedItemIdRef.current = selectedItemId;
+  const resolvedDraftIdsRef = useRef(new Set<string>());
+  const liveItemsSnapshot = useMemo(
+    () => ({ items, itemsLoaded, screenIdentity }),
+    [items, itemsLoaded, screenIdentity]
+  );
+  const liveItemsSnapshotRef = useRef(liveItemsSnapshot);
+  if (liveItemsSnapshotRef.current !== liveItemsSnapshot) {
+    sessionLookupRequestRef.current++;
+    liveItemsSnapshotRef.current = liveItemsSnapshot;
+  }
+  if (selectedItemIdRef.current !== selectedItemId) {
+    selectedItemIdRef.current = selectedItemId;
+    sessionLookupRequestRef.current++;
+  }
 
   const focusItemRow = useCallback((itemId: string | null) => {
     if (Platform.OS !== 'web' || !itemId) return;
@@ -125,33 +160,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     );
   }, []);
 
-  const fetchItems = useCallback(async () => {
-    if (!token) {
-      setIsLoadingItems(false);
-      return [];
-    }
-    const requestId = ++itemsRequestRef.current;
-    if (!hasLoadedItemsRef.current) setIsLoadingItems(true);
-
-    try {
-      const nextItems = await listsService.getListItems(listId, token);
-      if (requestId !== itemsRequestRef.current) return itemsRef.current;
-      itemsRef.current = nextItems;
-      setItems(nextItems);
-      setItemsLoaded(true);
-      setItemsError(null);
-      hasLoadedItemsRef.current = true;
-      return nextItems;
-    } catch {
-      if (requestId === itemsRequestRef.current) {
-        setItemsError('Unable to refresh items. Try again.');
-      }
-      throw new Error('Unable to refresh items. Try again.');
-    } finally {
-      if (requestId === itemsRequestRef.current) setIsLoadingItems(false);
-    }
-  }, [listId, token]);
-
   useEffect(() => {
     if (previousDesktopRef.current && !isDesktop) {
       setDismissedDetailsItemId(null);
@@ -160,149 +168,108 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   }, [isDesktop]);
 
   useEffect(() => {
-    itemsRequestRef.current += 1;
-    hasLoadedItemsRef.current = false;
-    itemsRef.current = [];
-    setItems([]);
-    setItemsLoaded(false);
-    setIsLoadingItems(true);
-    setItemsError(null);
+    identityRef.current = screenIdentity;
     setSelectedItemId(null);
     setScrollTargetId(null);
     pendingScrollRef.current = null;
     setDismissedDetailsItemId(null);
-    skippedDraftIdsRef.current.clear();
-    void fetchItems().catch(() => {});
+    resolvedDraftIdsRef.current.clear();
     return () => {
-      itemsRequestRef.current += 1;
+      sessionLookupRequestRef.current++;
     };
-  }, [fetchItems]);
-
-  useEffect(() => {
-    setDetailsTitle(routeTitle);
-    setListDescription(null);
-    setListColor(null);
-    setMetadataError(false);
-  }, [routeTitle]);
-
-  const refreshMetadata = useCallback(async () => {
-    const requestId = ++metadataRequestRef.current;
-    if (!token) {
-      setMetadataError(true);
-      return;
-    }
-    setMetadataError(false);
-    try {
-      const list = await listsService.getList(listId, token);
-      if (requestId === metadataRequestRef.current) {
-        setDetailsTitle(list.title);
-        setListDescription(list.description);
-        setListColor(list.color);
-      }
-    } catch {
-      if (requestId === metadataRequestRef.current) setMetadataError(true);
-    }
-  }, [listId, token]);
-
-  useEffect(() => {
-    void refreshMetadata();
-    return () => {
-      metadataRequestRef.current += 1;
-    };
-  }, [refreshMetadata]);
+  }, [screenIdentity]);
 
   const handleWorkspaceItemsChanged = useCallback(
     async (item?: Item) => {
-      const existedBeforeRefresh = item
-        ? itemsRef.current.some((existing) => existing.item_id === item.item_id)
-        : false;
-      const isCompletedRankingCandidate =
+      const identity = screenIdentity;
+      const existed = Boolean(
+        item && itemsRef.current.some((entry) => entry.item_id === item.item_id)
+      );
+      const isCompleted =
         item !== undefined &&
-        (!existedBeforeRefresh ||
-          rankingCandidateIdRef.current === item.item_id);
-      const refreshedItems = await fetchItems();
+        (!existed || rankingCandidateIdRef.current === item.item_id);
+      const refreshedItems = await refreshAfterMutation();
+      if (identityRef.current !== identity) return;
       if (
         item &&
         !refreshedItems.some((entry) => entry.item_id === item.item_id)
       )
         return;
-
-      if (item) {
-        pendingScrollRef.current = {
-          itemId: item.item_id,
-          index: -1,
-          attempted: false,
-          retried: false,
-        };
-        setScrollTargetId(item.item_id);
-        setSelectedItemId(item.item_id);
-        if (isCompletedRankingCandidate) {
-          setDismissedDetailsItemId(item.item_id);
-          focusItemRow(item.item_id);
-        }
+      if (!item) return;
+      pendingScrollRef.current = {
+        itemId: item.item_id,
+        index: -1,
+        attempted: false,
+        retried: false,
+      };
+      setScrollTargetId(item.item_id);
+      setSelectedItemId(item.item_id);
+      if (isCompleted) {
+        setDismissedDetailsItemId(item.item_id);
+        focusItemRow(item.item_id);
       }
     },
-    [fetchItems, focusItemRow]
+    [refreshAfterMutation, focusItemRow, itemsRef, screenIdentity]
   );
 
   const refreshSessionLookup = useCallback(
     async (itemId: string) => {
+      const identity = screenIdentity;
+      const lookup: SessionLookup = {
+        itemId,
+        requestId: ++sessionLookupRequestRef.current,
+        session: null,
+        isLoading: true,
+        error: null,
+      };
+      const isCurrent = () =>
+        lookup.requestId === sessionLookupRequestRef.current &&
+        identity === identityRef.current &&
+        selectedItemIdRef.current === itemId;
+      if (!isCurrent()) return;
+      setSessionLookup(lookup);
       if (!token) {
-        if (selectedItemIdRef.current === itemId) {
-          setSessionLookup({
-            itemId,
-            session: null,
-            isLoading: false,
-            error: 'Sign in again to check ranking status.',
-          });
-        }
+        setSessionLookup({
+          ...lookup,
+          isLoading: false,
+          error: 'Sign in again to check ranking status.',
+        });
         return;
       }
-
-      setSessionLookup({ itemId, session: null, isLoading: true, error: null });
       try {
         const session = await itemsService.getComparison(itemId, token);
-        if (selectedItemIdRef.current === itemId) {
-          setSessionLookup({ itemId, session, isLoading: false, error: null });
-        }
+        if (isCurrent())
+          setSessionLookup({ ...lookup, session, isLoading: false });
       } catch (error: unknown) {
-        if (selectedItemIdRef.current !== itemId) return;
+        if (!isCurrent()) return;
+        if (error instanceof ApiError && error.status === 404)
+          void fetchItems().catch(() => {});
         setSessionLookup({
-          itemId,
-          session: null,
+          ...lookup,
           isLoading: false,
           error: `Unable to check ranking status. ${getApiErrorMessage(error, 'Try again.')}`,
         });
-        if (error instanceof ApiError && error.status === 404) {
-          void fetchItems().catch(() => {});
-        }
       }
     },
-    [fetchItems, token]
+    [fetchItems, screenIdentity, token]
   );
-
   const handleWorkspaceClosed = useCallback(() => {
-    if (rankingCandidateIdRef.current) {
-      skippedDraftIdsRef.current.add(rankingCandidateIdRef.current);
-    }
+    if (rankingCandidateIdRef.current)
+      resolvedDraftIdsRef.current.add(rankingCandidateIdRef.current);
     rankingCandidateIdRef.current = null;
-    if (selectedItemId) {
-      void refreshSessionLookup(selectedItemId);
-      if (
-        !skipWorkspaceCloseFocusRef.current &&
-        (isDesktop || dismissedDetailsItemId === selectedItemId)
-      ) {
-        focusItemRow(selectedItemId);
-      }
-    } else if (!skipWorkspaceCloseFocusRef.current) {
+    if (
+      selectedItemId &&
+      !skipWorkspaceCloseFocusRef.current &&
+      (isDesktop || dismissedDetailsItemId === selectedItemId)
+    )
+      focusItemRow(selectedItemId);
+    else if (!selectedItemId && !skipWorkspaceCloseFocusRef.current)
       focusAddButton();
-    }
   }, [
     dismissedDetailsItemId,
     focusAddButton,
     focusItemRow,
     isDesktop,
-    refreshSessionLookup,
     selectedItemId,
   ]);
 
@@ -312,6 +279,11 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     onItemsChanged: handleWorkspaceItemsChanged,
     onClosed: handleWorkspaceClosed,
   });
+  const workspaceModeRef = useRef(workspace.mode);
+  if (workspaceModeRef.current !== workspace.mode) {
+    workspaceModeRef.current = workspace.mode;
+    sessionLookupRequestRef.current++;
+  }
   const workspaceBusyRef = useRef(workspace.isBusy);
   workspaceBusyRef.current = workspace.isBusy;
   const requestCloseForSwitch = useCallback(async () => {
@@ -320,7 +292,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     try {
       if (workspace.mode === 'ranking') {
         if (workspace.item)
-          skippedDraftIdsRef.current.add(workspace.item.item_id);
+          resolvedDraftIdsRef.current.add(workspace.item.item_id);
         return workspace.pauseRanking();
       }
       return await workspace.requestClose();
@@ -341,51 +313,47 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       rankingCandidateIdRef.current = workspace.item.item_id;
     }
   }, [workspace.item, workspace.mode]);
-
-  useEffect(() => {
-    if (
-      !itemsLoaded ||
-      !token ||
-      promptAddItem ||
-      completedItemId ||
-      workspace.mode !== 'closed' ||
-      workspace.isBusy ||
-      isDeletingList
-    )
-      return;
-    if (
-      !items.some(
-        (item) =>
-          item.rating === null && !skippedDraftIdsRef.current.has(item.item_id)
-      )
-    )
-      return;
-    let cancelled = false;
-    void findNextDraftSession(items, skippedDraftIdsRef.current, token).then(
-      (session) => {
-        if (cancelled || !session) return;
-        skippedDraftIdsRef.current.add(session.item_id);
-        rankingCandidateIdRef.current = session.item_id;
-        setSelectedItemId(session.item_id);
-        setDismissedDetailsItemId(null);
-        workspace.resume(session);
-      }
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    completedItemId,
-    isDeletingList,
+  const draftLookupEnabled =
+    canMutate &&
+    Boolean(token) &&
+    !promptAddItem &&
+    !completedItemId &&
+    workspace.mode === 'closed' &&
+    !workspace.isBusy &&
+    !isDeletingList;
+  const draftLookup = useDraftLookup({
+    identity: screenIdentity,
     items,
     itemsLoaded,
-    promptAddItem,
     token,
-    workspace.isBusy,
-    workspace.mode,
-    workspace.resume,
-  ]);
+    enabled: draftLookupEnabled,
+    selectedItemId,
+    resolvedIds: resolvedDraftIdsRef,
+    onFound: (session) => {
+      if (
+        !canMutateFor(screenIdentity) ||
+        workspaceModeRef.current !== 'closed'
+      )
+        return;
+      resolvedDraftIdsRef.current.add(session.item_id);
+      rankingCandidateIdRef.current = session.item_id;
+      setSelectedItemId(session.item_id);
+      setDismissedDetailsItemId(null);
+      workspace.resume(session);
+    },
+    onFailure: (item) => {
+      if (
+        !canMutateFor(screenIdentity) ||
+        workspaceModeRef.current !== 'closed'
+      )
+        return;
+      setSelectedItemId(item.item_id);
+      setDismissedDetailsItemId(null);
+    },
+  });
 
+  const isFailedDraftItem =
+    selectedItemId !== null && selectedItemId === draftLookup.failedItemId;
   const selectedItem =
     items.find((item) => item.item_id === selectedItemId) ?? null;
   const hasSelectedItem = selectedItem !== null;
@@ -401,18 +369,36 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     ? (rankByItemId.get(selectedItemId) ?? null)
     : null;
   const matchedSessionLookup =
-    selectedItemId !== null && sessionLookup.itemId === selectedItemId;
+    itemsLoaded &&
+    selectedItemId !== null &&
+    sessionLookup.itemId === selectedItemId &&
+    sessionLookup.requestId === sessionLookupRequestRef.current;
   const selectedSession = matchedSessionLookup ? sessionLookup.session : null;
   const isLoadingSession =
     selectedItemId !== null &&
-    (!matchedSessionLookup || sessionLookup.isLoading);
-  const sessionError = matchedSessionLookup ? sessionLookup.error : null;
-
+    (isFailedDraftItem
+      ? draftLookup.isRetryingDraft
+      : !matchedSessionLookup || sessionLookup.isLoading);
+  const sessionError = isFailedDraftItem
+    ? 'Unable to resume ranking. Try again.'
+    : matchedSessionLookup
+      ? sessionLookup.error
+      : null;
   useEffect(() => {
-    if (selectedItemId && hasSelectedItem) {
+    if (
+      liveItemsSnapshot.itemsLoaded &&
+      selectedItemId &&
+      hasSelectedItem &&
+      workspace.mode === 'closed'
+    )
       void refreshSessionLookup(selectedItemId);
-    }
-  }, [refreshSessionLookup, hasSelectedItem, selectedItemId]);
+  }, [
+    hasSelectedItem,
+    liveItemsSnapshot,
+    refreshSessionLookup,
+    selectedItemId,
+    workspace.mode,
+  ]);
 
   useEffect(() => {
     if (!selectedItemId || !itemsLoaded) return;
@@ -488,29 +474,35 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   }, [items, itemsLoaded, scrollTargetId]);
 
   const handleScrollToIndexFailed = useCallback(
-    (info: { index: number; averageItemLength: number }) => {
+    ({ averageItemLength }: { index: number; averageItemLength: number }) => {
       const pending = pendingScrollRef.current;
       if (!pending || pending.retried) return;
       pending.retried = true;
       listRef.current?.scrollToOffset({
-        offset: info.averageItemLength * pending.index,
+        offset: averageItemLength * pending.index,
         animated: false,
       });
-      requestAnimationFrame(() => {
-        if (pendingScrollRef.current === pending) {
+      requestAnimationFrame(
+        () =>
+          pendingScrollRef.current === pending &&
           listRef.current?.scrollToIndex({
             index: pending.index,
             animated: false,
             viewPosition: 0,
-          });
-        }
-      });
+          })
+      );
     },
     []
   );
 
   const handleDeleteList = useCallback(async () => {
-    if (deletingListInFlightRef.current || workspaceBusyRef.current || !token)
+    const identity = screenIdentity;
+    if (
+      deletingListInFlightRef.current ||
+      workspaceBusyRef.current ||
+      !token ||
+      !canMutateFor(identity)
+    )
       return;
     deletingListInFlightRef.current = true;
     setIsDeletingList(true);
@@ -520,8 +512,11 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         'Are you sure you want to delete this list? All items will be permanently deleted.',
         'Delete'
       );
-      if (!confirmed || workspaceBusyRef.current) return;
+      if (!confirmed || workspaceBusyRef.current || !canMutateFor(identity))
+        return;
       await listsService.deleteList(listId, token);
+      if (identityRef.current !== identity) return;
+      await evictDeletedList();
       bypassBeforeRemoveRef.current = true;
       navigation.goBack();
     } catch (err: unknown) {
@@ -535,27 +530,38 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         setIsDeletingList(false);
       }
     }
-  }, [listId, navigation, token]);
-  const handleItemPress = useCallback(
-    async (item: Item) => {
-      if (deletingListInFlightRef.current) return;
-      if (workspace.mode !== 'closed') {
-        const canClose = await requestCloseForSwitch();
-        if (!canClose) return;
-      }
-      setSelectedItemId(item.item_id);
-      setDismissedDetailsItemId(null);
-    },
-    [requestCloseForSwitch, workspace.mode]
-  );
-  const handleAddPress = useCallback(async () => {
+  }, [
+    canMutateFor,
+    evictDeletedList,
+    listId,
+    navigation,
+    screenIdentity,
+    token,
+  ]);
+  const handleItemPress = async (item: Item) => {
+    const identity = screenIdentity;
     if (deletingListInFlightRef.current) return;
-    const canClose = await requestCloseForSwitch();
-    if (!canClose) return;
+    if (workspace.mode !== 'closed' && !(await requestCloseForSwitch())) return;
+    if (identityRef.current !== identity || deletingListInFlightRef.current)
+      return;
+    setSelectedItemId(item.item_id);
+    setDismissedDetailsItemId(null);
+  };
+  const handleAddPress = useCallback(async () => {
+    const identity = screenIdentity;
+    if (
+      deletingListInFlightRef.current ||
+      !canMutateFor(identity) ||
+      !(await requestCloseForSwitch()) ||
+      deletingListInFlightRef.current ||
+      !canMutateFor(identity)
+    )
+      return false;
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
     workspace.openAdd();
-  }, [requestCloseForSwitch, workspace.openAdd]);
+    return true;
+  }, [canMutateFor, requestCloseForSwitch, screenIdentity, workspace.openAdd]);
   const handleWorkspaceContentClose = useCallback(() => {
     if (deletingListInFlightRef.current) return;
     if (workspace.mode !== 'closed') {
@@ -566,16 +572,22 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setDismissedDetailsItemId(null);
     focusItemRow(selectedItemId);
   }, [focusItemRow, selectedItemId, workspace.mode, workspace.requestClose]);
-  const handleOpenRange = useCallback(() => {
-    if (!selectedItem) return;
+  const handleOpenRange = () => {
+    if (!selectedItem || !canMutateFor(screenIdentity)) return;
     rankingCandidateIdRef.current = selectedItem.item_id;
     workspace.openRange(selectedItem);
-  }, [selectedItem, workspace.openRange]);
-  const handleResume = useCallback(() => {
-    if (!selectedSession) return;
+  };
+  const handleResume = () => {
+    if (
+      !selectedSession ||
+      !canMutateFor(screenIdentity) ||
+      selectedItemIdRef.current !== selectedSession.item_id ||
+      sessionLookup.requestId !== sessionLookupRequestRef.current
+    )
+      return;
     rankingCandidateIdRef.current = selectedSession.item_id;
     workspace.resume(selectedSession);
-  }, [selectedSession, workspace.resume]);
+  };
   const handleMobileClose = useCallback(() => {
     if (deletingListInFlightRef.current) return;
     if (workspace.mode !== 'closed') {
@@ -639,11 +651,15 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       promptHandledRef.current = false;
       return;
     }
-    if (promptHandledRef.current) return;
+    if (!canMutate || promptHandledRef.current) return;
     promptHandledRef.current = true;
-    void handleAddPress();
-    navigation.setParams({ promptAddItem: undefined });
-  }, [handleAddPress, navigation, promptAddItem]);
+    const identity = screenIdentity;
+    void handleAddPress().then((opened) => {
+      if (opened) navigation.setParams({ promptAddItem: undefined });
+      else if (identityRef.current === identity)
+        promptHandledRef.current = false;
+    });
+  }, [canMutate, handleAddPress, navigation, promptAddItem, screenIdentity]);
 
   const renderItem = ({ item }: ListRenderItemInfo<Item>) => (
     <ListDetailItemRow
@@ -660,36 +676,25 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     />
   );
   const renderListItems = () => {
-    if (isLoadingItems && !itemsLoaded) {
+    if (isLoadingItems && !hasItemsSnapshot) {
       return (
         <View className="flex-1 items-center justify-center px-6">
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
       );
     }
-    if (items.length === 0 && !itemsError) return <ListItemEmptyState />;
-    if (items.length === 0 && itemsError) {
+    if (items.length === 0 && (hasItemsSnapshot || !itemsError))
       return (
-        <View className="flex-1 items-center justify-center px-6">
-          <Text
-            className="text-body-small text-danger-text dark:text-danger-text-dark shrink"
-            accessibilityRole="alert"
-          >
-            {itemsError}
-          </Text>
-          <TouchableOpacity
-            onPress={() => void fetchItems().catch(() => {})}
-            accessibilityRole="button"
-            accessibilityLabel="Retry loading items"
-            className="border border-control dark:border-control-dark rounded px-4 py-1 min-h-11 justify-center"
-          >
-            <Text className="text-label-medium font-semibold text-accent-text dark:text-accent-text-dark">
-              Retry
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <ListItemEmptyState
+          onAdd={() => void handleAddPress()}
+          disabled={
+            !canMutate ||
+            isDeletingList ||
+            workspace.isBusy ||
+            workspace.mode === 'add'
+          }
+        />
       );
-    }
 
     return (
       <FlatList
@@ -710,7 +715,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
+      <SafeAreaView
+        className={`flex-1 min-h-0${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+        edges={['top']}
+      >
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
             <ListDetailHeader
@@ -718,38 +726,27 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               color={listColor}
               description={listDescription}
               metadataError={metadataError}
+              itemsError={itemsError}
+              showingSavedItems={
+                hasItemsSnapshot && !itemsLoaded && !itemsError
+              }
+              onRetryItems={() => void fetchItems().catch(() => {})}
               itemCount={items.length}
               rankedCount={rankedCount}
               addDisabled={
-                isDeletingList || workspace.isBusy || workspace.mode === 'add'
+                !canMutate ||
+                isDeletingList ||
+                workspace.isBusy ||
+                workspace.mode === 'add'
               }
               onAdd={() => void handleAddPress()}
-              deleteDisabled={workspace.isBusy || isDeletingList}
+              deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
               onBack={() => navigation.goBack()}
               onDelete={() => void handleDeleteList()}
               onRetryMetadata={() => void refreshMetadata()}
             />
-            {itemsError && items.length > 0 ? (
-              <View className="flex-row items-center justify-between py-1">
-                <Text
-                  className="text-body-small text-danger-text dark:text-danger-text-dark shrink"
-                  accessibilityRole="alert"
-                >
-                  {itemsError}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => void fetchItems().catch(() => {})}
-                  accessibilityRole="button"
-                  accessibilityLabel="Retry refreshing items"
-                  className="px-4 py-1 min-h-11 justify-center"
-                >
-                  <Text className="text-label-medium font-semibold text-accent-text dark:text-accent-text-dark">
-                    Retry
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
             <ListDetailWorkspaceHost
+              canMutate={canMutate}
               isDesktop={isDesktop}
               isScreenBusy={isDeletingList}
               listTitle={detailsTitle}
@@ -765,15 +762,21 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               itemsLoaded={itemsLoaded}
               workspace={workspace}
               onRetrySession={() => {
-                if (selectedItemId) void refreshSessionLookup(selectedItemId);
+                if (isFailedDraftItem) {
+                  draftLookup.retryDraft();
+                } else if (selectedItemId) {
+                  void refreshSessionLookup(selectedItemId);
+                }
               }}
               onOpenRange={handleOpenRange}
               onResume={handleResume}
               onEdit={() => {
-                if (selectedItem) workspace.openEdit(selectedItem);
+                if (selectedItem && canMutateFor(screenIdentity))
+                  workspace.openEdit(selectedItem);
               }}
               onDelete={() => {
-                if (selectedItem) void workspace.deleteItem(selectedItem);
+                if (selectedItem && canMutateFor(screenIdentity))
+                  void workspace.deleteItem(selectedItem);
               }}
               onDetailsClose={handleWorkspaceContentClose}
               onMobileClose={handleMobileClose}

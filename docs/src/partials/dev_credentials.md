@@ -1,7 +1,3 @@
-## Dev Credentials
+## Development accounts
 
-The dev user is auto-created on startup:
-
-| Email | Password |
-|-------|----------|
-| dev@tiernerd.com | devpassword |
+Development startup seeds accounts for fixture data, not password sign-in. Sign in on the web with a verified Google account. The Google account email must match an existing account to access its saved data.

@@ -8,7 +8,6 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { ListDetailScreen } from '../screens/ListDetailScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
-import { RegisterScreen } from '../screens/RegisterScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -46,10 +45,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="ListDetail" component={ListDetailScreen} />
           </>
         ) : (
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
-          </>
+          <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

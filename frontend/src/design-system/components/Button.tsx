@@ -35,7 +35,7 @@ const SIZE_CLASS: Record<ButtonSize, string> = {
 const TEXT_SIZE_CLASS: Record<ButtonSize, string> = {
   small: 'text-[14px] leading-5',
   medium: 'text-[16px] leading-6',
-  large: 'text-[18px] leading-6',
+  large: 'text-[16px] leading-6',
 };
 
 const VARIANT_TEXT_CLASS: Record<ButtonVariant, string> = {
@@ -61,7 +61,7 @@ export const Button: React.FC<ButtonProps> = ({
   const colors = useThemeColors();
   const isDisabled = disabled || loading;
   const classes = [
-    'flex-row items-center justify-center rounded-lg',
+    'flex-row items-center justify-center rounded-[10px]',
     VARIANT_CLASS[variant],
     SIZE_CLASS[size],
     fullWidth ? 'w-full' : '',

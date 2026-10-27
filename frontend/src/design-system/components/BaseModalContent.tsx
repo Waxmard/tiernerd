@@ -56,10 +56,10 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   const content = (
     <View
       className={[
-        'w-full p-4 bg-surface dark:bg-surface-dark',
+        'w-full flex-1 min-h-0 p-4 bg-surface dark:bg-surface-dark',
         isPanel
-          ? 'flex-1 rounded-none'
-          : 'max-h-[96%] shrink rounded-t-2xl desktop:max-w-[480px] desktop:rounded-2xl',
+          ? 'rounded-2xl'
+          : 'shrink rounded-none desktop:flex-none desktop:max-h-[96%] desktop:max-w-[480px] desktop:rounded-2xl',
         contentClassName ?? '',
       ]
         .filter(Boolean)
@@ -77,7 +77,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
         {title}
       </Text>
       <ScrollView
-        className={['shrink min-h-0 -m-1', isPanel ? 'flex-1' : ''].join(' ')}
+        className="flex-1 min-h-0 -m-1"
         contentContainerClassName="grow p-1"
         keyboardShouldPersistTaps="handled"
       >
@@ -126,7 +126,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View
-        className="flex-1 bg-black/50 desktop:px-4"
+        className={`flex-1 bg-black/50 desktop:px-4${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
         style={{ paddingTop: safeAreaInsets.top }}
       >
         <KeyboardAvoidingView

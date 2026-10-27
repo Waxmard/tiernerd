@@ -1,10 +1,12 @@
 import './global.css';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/providers/AuthContext';
 import { ThemeProvider, useTheme } from './src/providers/ThemeProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { useAppUpdate } from './src/utils/useAppUpdate';
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -28,6 +30,7 @@ if (__DEV__) {
 
 const AppShell = () => {
   const { scheme } = useTheme();
+  useAppUpdate();
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -51,7 +54,9 @@ const AppShell = () => {
 
   return (
     <>
-      <AppNavigator />
+      <View className="flex-1 min-h-0">
+        <AppNavigator />
+      </View>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </>
   );

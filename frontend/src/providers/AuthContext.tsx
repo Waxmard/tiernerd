@@ -7,8 +7,10 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { Platform } from 'react-native';
 import { USE_MOCK_AUTH } from '../config/api';
 import { type User as ApiUser, authService } from '../services/authService';
 import {
@@ -30,12 +32,6 @@ interface AuthContextType {
   isLoading: boolean;
   isRestoring: boolean;
   error: string | null;
-  signIn: (email: string, password: string) => Promise<boolean>;
-  register: (
-    email: string,
-    password: string,
-    username?: string
-  ) => Promise<boolean>;
   signInWithGoogle: () => Promise<void>;
   googleAvailable: boolean;
   signOut: () => Promise<void>;
@@ -64,7 +60,7 @@ const toLocalUser = (apiUser: ApiUser): User => ({
   id: apiUser.user_id,
   email: apiUser.email,
   displayName: apiUser.username || apiUser.email.split('@')[0] || apiUser.email,
-  photoUrl: undefined,
+  photoUrl: apiUser.photo_url ?? undefined,
 });
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -73,6 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRestoring, setIsRestoring] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const signInPending = useRef(false);
 
   // Helper to persist auth state to storage and update state
   const saveAuthState = useCallback(async (newToken: string, newUser: User) => {
@@ -91,8 +88,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     let cancelled = false;
 
-    // `isLoading` gates the login/register buttons, so it must start false once
-    // the boot read settles or the button spins forever.
     const settle = () => {
       setIsLoading(false);
       setIsRestoring(false);
@@ -172,103 +167,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [clearAuthState, saveAuthState]);
 
-  const signIn = useCallback(
-    async (email: string, password: string): Promise<boolean> => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        if (USE_MOCK_AUTH) {
-          // Mock authentication
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          const mockUser: User = {
-            id: '123456789',
-            email: email,
-            displayName: email.split('@')[0] || email,
-            photoUrl: undefined,
-          };
-          await saveAuthState('mock-auth-token', mockUser);
-          return true;
-        }
-
-        // Real authentication
-        const result = await authService.login(email, password);
-        if (result.success && result.user && result.token) {
-          await saveAuthState(result.token, toLocalUser(result.user));
-          return true;
-        } else {
-          setError(result.error || 'Login failed');
-          return false;
-        }
-      } catch (error: unknown) {
-        setError(
-          error instanceof Error ? error.message : 'Authentication failed'
-        );
-        return false;
-      } finally {
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && signInPending.current) {
+        signInPending.current = false;
         setIsLoading(false);
       }
-    },
-    [saveAuthState]
-  );
-
-  const register = useCallback(
-    async (
-      email: string,
-      password: string,
-      username?: string
-    ): Promise<boolean> => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        if (USE_MOCK_AUTH) {
-          // Mock registration (same as login for mock)
-          return signIn(email, password);
-        }
-
-        // Real registration
-        const result = await authService.register({
-          email,
-          password,
-          username,
-        });
-        if (result.success && result.user && result.token) {
-          await saveAuthState(result.token, toLocalUser(result.user));
-          return true;
-        } else {
-          setError(result.error || 'Registration failed');
-          return false;
-        }
-      } catch (error: unknown) {
-        setError(
-          error instanceof Error ? error.message : 'Registration failed'
-        );
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [signIn, saveAuthState]
-  );
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
 
   const signInWithGoogle = useCallback(async (): Promise<void> => {
-    if (USE_MOCK_AUTH) {
-      await signIn('google.user@tiernerd.com', 'mock-google-password');
+    if (Platform.OS !== 'web') {
+      setError('Sign-in is available in the TierNerd web app.');
       return;
     }
-    if (!googleSignInAvailable) {
-      setError('Google sign-in is not configured');
+    if (signInPending.current) {
       return;
     }
+    signInPending.current = true;
+    setIsLoading(true);
+    setError(null);
+    let redirecting = false;
     try {
-      await startGoogleRedirect();
+      if (USE_MOCK_AUTH) {
+        await saveAuthState('mock-auth-token', {
+          id: '123456789',
+          email: 'google.user@tiernerd.com',
+          displayName: 'google.user',
+        });
+      } else if (googleSignInAvailable) {
+        await startGoogleRedirect();
+        redirecting = true;
+      } else {
+        setError('Google sign-in is not configured.');
+      }
     } catch (error: unknown) {
       setError(
         error instanceof Error ? error.message : 'Google sign-in failed'
       );
+    } finally {
+      if (!redirecting) {
+        signInPending.current = false;
+        setIsLoading(false);
+      }
     }
-  }, [signIn]);
+  }, [saveAuthState]);
 
   const signOut = useCallback(async () => {
     try {
@@ -288,23 +236,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isLoading,
       isRestoring,
       error,
-      signIn,
-      register,
       signInWithGoogle,
-      googleAvailable: googleSignInAvailable,
+      googleAvailable:
+        Platform.OS === 'web' && (USE_MOCK_AUTH || googleSignInAvailable),
       signOut,
     }),
-    [
-      user,
-      token,
-      isLoading,
-      isRestoring,
-      error,
-      signIn,
-      register,
-      signInWithGoogle,
-      signOut,
-    ]
+    [user, token, isLoading, isRestoring, error, signInWithGoogle, signOut]
   );
 
   return (
