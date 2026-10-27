@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.0](https://github.com/Waxmard/tiernerd/compare/v0.5.0...v0.6.0) (2026-10-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop password sign-in for Google auth and cache list details ([#102](https://github.com/Waxmard/tiernerd/issues/102))
+
+### Features
+
+* drop password sign-in for Google auth and cache list details ([#102](https://github.com/Waxmard/tiernerd/issues/102)) ([981bf7f](https://github.com/Waxmard/tiernerd/commit/981bf7fb0021ec575b697665c0d09b2d2c351f66))
+
 ## [0.5.0](https://github.com/Waxmard/tiernerd/compare/v0.4.0...v0.5.0) (2026-10-17)
 
 
