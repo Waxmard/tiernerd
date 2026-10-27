@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { ComparisonSession, Item } from './itemsService.ts';
-import { shouldAutoCommitRanking } from './itemWorkspaceActions.ts';
+import {
+  findNextDraftSession,
+  shouldAutoCommitRanking,
+} from './itemWorkspaceActions.ts';
 import { hasSavedRankChanged } from './rankSnapshot.ts';
 
 const candidate: Item = {
@@ -90,4 +93,70 @@ test('detects saved-rank changes but ignores metadata edits', () => {
     hasSavedRankChanged(session, { ...candidate, tier_set: 'bad' }),
     true
   );
+});
+
+test('findNextDraftSession catches restart failure and identifies failed item', async () => {
+  const staleSession: ComparisonSession = {
+    ...session,
+    is_stale: true,
+    comparisons_answered: 0,
+  };
+  const service = {
+    getComparison: async () => staleSession,
+    startComparison: async () => {
+      throw new Error('network down');
+    },
+  };
+  const resolved = new Set<string>();
+  const result = await findNextDraftSession(
+    [candidate],
+    resolved,
+    'token-1',
+    service,
+    () => true
+  );
+  assert.deepEqual(result, { failedItem: candidate });
+  assert.equal(resolved.has(candidate.item_id), false);
+});
+
+test('findNextDraftSession returns restarted session when restart succeeds', async () => {
+  const staleSession: ComparisonSession = {
+    ...session,
+    is_stale: true,
+    comparisons_answered: 0,
+  };
+  const restartedSession: ComparisonSession = {
+    ...session,
+    session_id: 'session-restarted',
+    is_stale: false,
+  };
+  const service = {
+    getComparison: async () => staleSession,
+    startComparison: async () => restartedSession,
+  };
+  const resolved = new Set<string>();
+  const result = await findNextDraftSession(
+    [candidate],
+    resolved,
+    'token-1',
+    service,
+    () => true
+  );
+  assert.deepEqual(result, restartedSession);
+});
+
+test('findNextDraftSession aborts when isCurrent becomes false', async () => {
+  const service = {
+    getComparison: async () => session,
+    startComparison: async () => session,
+  };
+  const resolved = new Set<string>();
+  const result = await findNextDraftSession(
+    [candidate],
+    resolved,
+    'token-1',
+    service,
+    () => false
+  );
+  assert.equal(result, null);
 });

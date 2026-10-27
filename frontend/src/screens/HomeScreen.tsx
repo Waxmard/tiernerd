@@ -41,6 +41,7 @@ import {
   parseCachedLists,
 } from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
+import { useUpdateBlocker } from '../utils/useAppUpdate';
 
 type ModalStep = 'create' | 'addItem' | null;
 interface TierList {
@@ -96,6 +97,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
+  useUpdateBlocker(modalStep === 'create');
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
   const createListRef = useRef<CreateListContentHandle | null>(null);

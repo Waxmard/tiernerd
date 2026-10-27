@@ -3,10 +3,16 @@ name: Backend
 on:
   push:
     branches: [main]
-    paths: ["fastapi/**"]
+    paths: ["fastapi/**", ".github/workflows/backend.yml"]
   pull_request:
     branches: [main]
-    paths: ["fastapi/**"]
+    paths: ["fastapi/**", ".github/workflows/backend.yml"]
+
+permissions:
+  contents: read
+
+env:
+  UV_LOCKED: "true"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

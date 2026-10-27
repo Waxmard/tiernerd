@@ -8,6 +8,12 @@ on:
     branches: [main]
     paths: ["fastapi/**", "frontend/**", "scripts/**", ".github/workflows/e2e.yml"]
 
+permissions:
+  contents: read
+
+env:
+  UV_LOCKED: "true"
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

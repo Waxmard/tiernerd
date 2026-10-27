@@ -27,7 +27,10 @@ import {
 } from '../components/ListDetailItemRow';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
 import { useItemWorkspace } from '../components/useItemWorkspace';
-import { useListDetailData } from '../components/useListDetailData';
+import {
+  useDraftLookup,
+  useListDetailData,
+} from '../components/useListDetailData';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useThemeColors } from '../providers/ThemeProvider';
@@ -37,7 +40,6 @@ import {
   type Item,
   itemsService,
 } from '../services/itemsService';
-import { findNextDraftSession } from '../services/itemWorkspaceActions';
 import { listsService } from '../services/listsService';
 import { confirmDestructive, notifyError } from '../utils/confirm';
 
@@ -311,63 +313,47 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       rankingCandidateIdRef.current = workspace.item.item_id;
     }
   }, [workspace.item, workspace.mode]);
-  const liveItemsGeneration = liveItemsSnapshot;
-
-  useEffect(() => {
-    if (
-      !canMutate ||
-      !token ||
-      promptAddItem ||
-      completedItemId ||
-      workspace.mode !== 'closed' ||
-      workspace.isBusy ||
-      isDeletingList
-    )
-      return;
-    if (
-      !items.some(
-        (item) =>
-          item.rating === null && !resolvedDraftIdsRef.current.has(item.item_id)
-      )
-    )
-      return;
-    let cancelled = false;
-    void findNextDraftSession(items, resolvedDraftIdsRef.current, token).then(
-      (session) => {
-        if (
-          cancelled ||
-          !session ||
-          !canMutateFor(screenIdentity) ||
-          liveItemsSnapshotRef.current !== liveItemsGeneration ||
-          !liveItemsSnapshotRef.current.itemsLoaded ||
-          workspaceModeRef.current !== 'closed'
-        )
-          return;
-        resolvedDraftIdsRef.current.add(session.item_id);
-        rankingCandidateIdRef.current = session.item_id;
-        setSelectedItemId(session.item_id);
-        setDismissedDetailsItemId(null);
-        workspace.resume(session);
-      }
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    canMutate,
-    canMutateFor,
-    completedItemId,
-    isDeletingList,
+  const draftLookupEnabled =
+    canMutate &&
+    Boolean(token) &&
+    !promptAddItem &&
+    !completedItemId &&
+    workspace.mode === 'closed' &&
+    !workspace.isBusy &&
+    !isDeletingList;
+  const draftLookup = useDraftLookup({
+    identity: screenIdentity,
     items,
-    liveItemsGeneration,
-    promptAddItem,
-    screenIdentity,
+    itemsLoaded,
     token,
-    workspace.isBusy,
-    workspace.mode,
-    workspace.resume,
-  ]);
+    enabled: draftLookupEnabled,
+    selectedItemId,
+    resolvedIds: resolvedDraftIdsRef,
+    onFound: (session) => {
+      if (
+        !canMutateFor(screenIdentity) ||
+        workspaceModeRef.current !== 'closed'
+      )
+        return;
+      resolvedDraftIdsRef.current.add(session.item_id);
+      rankingCandidateIdRef.current = session.item_id;
+      setSelectedItemId(session.item_id);
+      setDismissedDetailsItemId(null);
+      workspace.resume(session);
+    },
+    onFailure: (item) => {
+      if (
+        !canMutateFor(screenIdentity) ||
+        workspaceModeRef.current !== 'closed'
+      )
+        return;
+      setSelectedItemId(item.item_id);
+      setDismissedDetailsItemId(null);
+    },
+  });
 
+  const isFailedDraftItem =
+    selectedItemId !== null && selectedItemId === draftLookup.failedItemId;
   const selectedItem =
     items.find((item) => item.item_id === selectedItemId) ?? null;
   const hasSelectedItem = selectedItem !== null;
@@ -390,9 +376,14 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const selectedSession = matchedSessionLookup ? sessionLookup.session : null;
   const isLoadingSession =
     selectedItemId !== null &&
-    (!matchedSessionLookup || sessionLookup.isLoading);
-  const sessionError = matchedSessionLookup ? sessionLookup.error : null;
-
+    (isFailedDraftItem
+      ? draftLookup.isRetryingDraft
+      : !matchedSessionLookup || sessionLookup.isLoading);
+  const sessionError = isFailedDraftItem
+    ? 'Unable to resume ranking. Try again.'
+    : matchedSessionLookup
+      ? sessionLookup.error
+      : null;
   useEffect(() => {
     if (
       liveItemsSnapshot.itemsLoaded &&
@@ -771,7 +762,11 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               itemsLoaded={itemsLoaded}
               workspace={workspace}
               onRetrySession={() => {
-                if (selectedItemId) void refreshSessionLookup(selectedItemId);
+                if (isFailedDraftItem) {
+                  draftLookup.retryDraft();
+                } else if (selectedItemId) {
+                  void refreshSessionLookup(selectedItemId);
+                }
               }}
               onOpenRange={handleOpenRange}
               onResume={handleResume}

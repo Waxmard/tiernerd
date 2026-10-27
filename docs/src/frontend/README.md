@@ -16,6 +16,8 @@ The Home Screen icons and browser favicon use a mascot crop of the existing Tier
 
 Edit optional descriptions and list colors in focused views. **Back** and **Done** return to the overview without saving or discarding the draft. Submit from the overview to save. Canceling list creation clears its draft immediately; canceling a changed item asks before discarding it.
 
+On the web, an available app update reloads the page only when it is visible and all create-list, add-item, edit-item, and ranking-range editors are closed.
+
 If ranking status fails to load, the item stays open with an error and **Retry**. An item without a draft is different from a missing API route; update the dev backend before publishing a frontend that uses the persistent-ranking API.
 
 Inputs keep a neutral border when you type with a pointer or touch. Tab navigation shows a keyboard-only focus outline on inputs and actions.

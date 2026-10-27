@@ -29,11 +29,11 @@ export function shouldReload(running: string, served: string | null): boolean {
 }
 
 export async function readServedBuildId(
-  options: { url?: string; fetchImpl?: typeof fetch } = {}
+  options: { fetchImpl?: typeof fetch } = {}
 ): Promise<string | null> {
-  const { url = VERSION_URL, fetchImpl = fetch } = options;
+  const { fetchImpl = fetch } = options;
   try {
-    const response = await fetchImpl(url, { cache: 'no-store' });
+    const response = await fetchImpl(VERSION_URL, { cache: 'no-store' });
     if (!response.ok) return null;
     return parseBuildId(await response.text());
   } catch {
@@ -74,4 +74,72 @@ export function reloadForUpdate(served: string): void {
   const url = new URL(window.location.href);
   url.searchParams.set('v', served);
   window.location.replace(url.toString());
+}
+
+const updateBlockers = new Set<symbol>();
+const unblockedListeners = new Set<() => void>();
+
+export function blockAppUpdate(): () => void {
+  const blocker = Symbol();
+  updateBlockers.add(blocker);
+  return () => {
+    if (!updateBlockers.delete(blocker) || updateBlockers.size > 0) return;
+    queueMicrotask(() => {
+      if (updateBlockers.size === 0) {
+        for (const listener of unblockedListeners) listener();
+      }
+    });
+  };
+}
+
+export function createAppUpdateChecker({
+  runningBuildId,
+  isVisible,
+  reload = reloadForUpdate,
+  readBuildId = readServedBuildId,
+  claimReload = claimAutoReload,
+}: {
+  runningBuildId: string;
+  isVisible: () => boolean;
+  reload?: (served: string) => void;
+  readBuildId?: () => Promise<string | null>;
+  claimReload?: (served: string) => boolean;
+}) {
+  let active = true;
+  let pending: string | null = null;
+  let probing = false;
+  let lastEventProbe = 0;
+
+  const attemptReload = () => {
+    if (!active || !pending || !isVisible() || updateBlockers.size > 0)
+      return false;
+    const served = pending;
+    pending = null;
+    if (claimReload(served)) reload(served);
+    return true;
+  };
+  unblockedListeners.add(attemptReload);
+
+  return {
+    probe: async (fromEvent: boolean) => {
+      if (attemptReload() || !active || probing || !isVisible()) return;
+      if (fromEvent && Date.now() - lastEventProbe < MINIMUM_PROBE_INTERVAL_MS)
+        return;
+      probing = true;
+      if (fromEvent) lastEventProbe = Date.now();
+      try {
+        const served = await readBuildId();
+        if (!active) return;
+        if (served !== null)
+          pending = shouldReload(runningBuildId, served) ? served : null;
+        attemptReload();
+      } finally {
+        probing = false;
+      }
+    },
+    dispose: () => {
+      active = false;
+      unblockedListeners.delete(attemptReload);
+    },
+  };
 }

@@ -3,6 +3,7 @@ import type {
   ComparisonSession,
   CreateItemResponse,
   Item,
+  itemsService,
   TierSet,
   UpdateItemRequest,
 } from './itemsService.ts';
@@ -24,17 +25,23 @@ export type DraftCancellation =
 export async function findNextDraftSession(
   items: Item[],
   resolvedIds: Set<string>,
-  token: string
-): Promise<ComparisonSession | null> {
-  const { itemsService } = await import('./itemsService.ts');
+  token: string,
+  service: Pick<typeof itemsService, 'getComparison' | 'startComparison'>,
+  isCurrent: () => boolean
+): Promise<ComparisonSession | { failedItem: Item } | null> {
   const candidates = items.filter(
     (item) => item.rating === null && !resolvedIds.has(item.item_id)
   );
   const results = await Promise.all(
-    candidates.map((item) =>
-      itemsService.getComparison(item.item_id, token).catch(() => undefined)
-    )
+    candidates.map(async (item) => {
+      try {
+        return await service.getComparison(item.item_id, token);
+      } catch {
+        return undefined;
+      }
+    })
   );
+  if (!isCurrent()) return null;
   for (const [index, item] of candidates.entries()) {
     const session = results[index];
     if (session === undefined) continue;
@@ -46,13 +53,17 @@ export async function findNextDraftSession(
       continue;
     }
     if (session.is_stale && session.comparisons_answered === 0) {
-      return await itemsService.startComparison(
-        item.item_id,
-        session.tier_set,
-        true,
-        session.revision,
-        token
-      );
+      try {
+        return await service.startComparison(
+          item.item_id,
+          session.tier_set,
+          true,
+          session.revision,
+          token
+        );
+      } catch {
+        return { failedItem: item };
+      }
     }
     return session;
   }

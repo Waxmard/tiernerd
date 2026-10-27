@@ -220,15 +220,6 @@ class TestUserCRUD:
         user = await crud_user.get_user_by_id(test_db, fake_id)
         assert user is None
 
-    async def test_update_user_partial(self, test_db: AsyncSession, test_user: User):
-        """Test partial user update (only email)."""
-        original_username = test_user.username
-        update_data = UserUpdate(email="newemail@example.com")
-        updated_user = await crud_user.update_user(test_db, test_user, update_data)
-
-        assert updated_user.email == "newemail@example.com"
-        assert updated_user.username == original_username
-
     async def test_update_user_username_only(
         self, test_db: AsyncSession, test_user: User
     ):
@@ -284,18 +275,30 @@ class TestUserCRUD:
 class TestUpdateCurrentUser:
     """Tests for updating current user endpoint."""
 
-    async def test_update_current_user_email(
-        self, client: AsyncClient, test_user: User, auth_headers: dict
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"email": "updated@example.com"},
+            {"email": "updated@example.com", "username": "changedusername"},
+        ],
+    )
+    async def test_update_current_user_rejects_email(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_user: User,
+        auth_headers: dict,
+        payload: dict[str, str],
     ):
-        """Test updating current user email."""
-        response = await client.put(
-            "/api/users/me",
-            json={"email": "updated@example.com"},
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["email"] == "updated@example.com"
+        original_id = test_user.user_id
+        original_email = test_user.email
+        original_username = test_user.username
+        response = await client.put("/api/users/me", json=payload, headers=auth_headers)
+        assert response.status_code == 422
+        await test_db.refresh(test_user)
+        assert test_user.user_id == original_id
+        assert test_user.email == original_email
+        assert test_user.username == original_username
 
     async def test_update_current_user_username(
         self, client: AsyncClient, test_user: User, auth_headers: dict
@@ -353,31 +356,6 @@ class TestUpdateCurrentUser:
             json={"email": "hacker@example.com"},
         )
         assert response.status_code == 401
-
-    async def test_update_current_user_all_fields(
-        self,
-        client: AsyncClient,
-        test_db: AsyncSession,
-        test_user: User,
-        auth_headers: dict,
-    ):
-        """Test updating all user fields at once."""
-        picture = "https://example.com/original.png"
-        test_user.photo_url = picture
-        await test_db.commit()
-        response = await client.put(
-            "/api/users/me",
-            json={
-                "email": "all@example.com",
-                "username": "allupdated",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["email"] == "all@example.com"
-        assert data["username"] == "allupdated"
-        assert data["photo_url"] == picture
 
 
 @pytest.mark.asyncio

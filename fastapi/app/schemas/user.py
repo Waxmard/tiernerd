@@ -22,7 +22,6 @@ class GoogleLogin(BaseModel):
 class UserUpdate(BaseModel):
     """Schema for user update."""
 
-    email: EmailStr | None = None
     username: str | None = Field(None, min_length=3, max_length=50)
 
     model_config = ConfigDict(extra="forbid")
