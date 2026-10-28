@@ -2,6 +2,7 @@
 # Backend targets delegate to fastapi/Makefile. Frontend targets call npm scripts.
 
 .DEFAULT_GOAL := help
+IOS_DEVICE ?= Gengar Phone
 
 .PHONY: help
 help:
@@ -25,6 +26,7 @@ help:
 	@echo "Frontend (delegates to frontend/package.json scripts):"
 	@echo "  frontend-lint frontend-fix frontend-typecheck"
 	@echo "  frontend-e2e     - Playwright smoke spec against the built web bundle"
+	@echo "  ios             - Build, install and launch a standalone iOS Release app"
 
 # ----- Setup -----
 
@@ -63,6 +65,9 @@ backend-%:
 	$(MAKE) -C fastapi $*
 
 # ----- Frontend -----
+.PHONY: ios
+ios:
+	EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="$${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID-1015723670625-v0h15l5cj1eotf9h4u539q878e2mclm6.apps.googleusercontent.com}" bash scripts/ios.sh "$(IOS_DEVICE)"
 
 .PHONY: frontend-lint frontend-fix frontend-typecheck frontend-unit frontend-e2e
 frontend-lint:
@@ -76,6 +81,7 @@ frontend-typecheck:
 
 frontend-unit:
 	cd frontend && npm run test:unit
+	node --test scripts/ios-config.test.mjs
 
 frontend-e2e:
 	@if [ -n "$$EXPO_PUBLIC_API_URL" ]; then \

@@ -132,6 +132,17 @@ EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-…run.app make frontend-e2e   # de
 EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e               # a running container
 ```
 
+To build and install a standalone iOS Release app, install Xcode and CocoaPods, pair and trust the iPhone, and configure Apple team `48TY2FP59S` for signing. Run from the repository root:
+
+```bash
+make ios                          # build, install and launch on Gengar Phone
+make ios IOS_DEVICE="Other Phone" # choose another paired device
+```
+
+The command uses development Google OAuth web and iOS client IDs by default. To use another iOS client for bundle ID `com.maxwellward.tiernerd`, set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` in the environment. To use another web client, set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to the same client ID as the backend's `GOOGLE_CLIENT_ID`.
+
+The Release app uses the hosted development API by default and embeds its JavaScript, so it needs no Metro server after installation. Set `EXPO_PUBLIC_API_URL` to another public HTTPS API if needed. The command ignores Expo dotenv files and disables mock authentication. Re-running it replaces the app without deliberately removing its data. `npm run ios` remains the separate Expo development command.
+
 Reserved for native-only changes and pre-release checks:
 
 ```bash
@@ -244,7 +255,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 ## Development Notes for AI Agents
 
 - Check for TypeScript errors after frontend changes.
-- Google is the only sign-in method: the web client obtains a Google ID token and exchanges it at `POST /api/users/google`. Native sign-in is unsupported. Setting `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a frontend-only web mock.
+- Google is the only sign-in method on web and iOS: the client obtains a Google ID token and exchanges it at `POST /api/users/google`. Android sign-in is unsupported. Setting `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a frontend-only web mock.
 - Comparison sessions are persistent database drafts; answers do not change saved ranks until commit.
 - API endpoints are prefixed with `/api/`.
 - Do **not** run `npm run ios`, `npm run android`, or `npx expo start` — the user runs these in a separate terminal.

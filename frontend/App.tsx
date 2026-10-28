@@ -12,6 +12,8 @@ import {
   ReanimatedLogLevel,
 } from 'react-native-reanimated';
 
+console.info('TierNerdBoot App module evaluated');
+
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
   strict: false,
@@ -54,7 +56,12 @@ const AppShell = () => {
 
   return (
     <>
-      <View className="flex-1 min-h-0">
+      <View
+        className="flex-1 min-h-0"
+        onLayout={({ nativeEvent: { layout } }) => {
+          console.info(`TierNerdBoot AppShell layout ${layout.width}x${layout.height}`);
+        }}
+      >
         <AppNavigator />
       </View>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
@@ -63,6 +70,11 @@ const AppShell = () => {
 };
 
 export default function App() {
+  console.info('TierNerdBoot App render entered');
+  useEffect(() => {
+    console.info('TierNerdBoot App committed');
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>

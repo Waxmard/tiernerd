@@ -73,3 +73,9 @@ export async function consumeGoogleRedirect(): Promise<ConsumedRedirect> {
   }
   return { status: 'error', error: 'Google sign-in failed' };
 }
+
+export async function signInNativeGoogle(): Promise<string | null> {
+  throw new Error('Native Google sign-in is unavailable on this platform.');
+}
+
+export async function signOutNativeGoogle(): Promise<void> {}

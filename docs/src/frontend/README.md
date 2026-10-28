@@ -24,14 +24,15 @@ Inputs keep a neutral border when you type with a pointer or touch. Tab navigati
 
 The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on desktop.
 
-Sign-in is available on the web with Google. Native sign-in is not supported. Set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to the same Google OAuth web client ID as the backend's `GOOGLE_CLIENT_ID`. For frontend-only work, `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a mock Google sign-in on the web.
+Sign-in is available on the web and iOS with Google. The Google OAuth web client ID in `EXPO_PUBLIC_GOOGLE_CLIENT_ID` must match the backend's `GOOGLE_CLIENT_ID`. iOS also requires an iOS OAuth client ID for `com.maxwellward.tiernerd`; `make ios` supplies development defaults for both client IDs. Android sign-in is not supported. For frontend-only work, `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a mock Google sign-in on the web.
 
 ## Prerequisites
 
 - Node.js 18+
 - npm
-- Xcode (for iOS Simulator)
-- Expo Go app (for physical device testing)
+- Xcode and CocoaPods for native iOS builds
+- A paired iPhone, Apple team access and provisioning for standalone installation
+- Expo Go app (for development on a physical device)
 
 ## Setup
 

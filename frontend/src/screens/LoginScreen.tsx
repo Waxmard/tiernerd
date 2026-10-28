@@ -63,9 +63,9 @@ export const LoginScreen: React.FC = () => {
                   />
                 ) : (
                   <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-                    {Platform.OS === 'web'
-                      ? 'Google sign-in is not configured.'
-                      : 'Sign-in is available in the TierNerd web app.'}
+                    {Platform.OS === 'android'
+                      ? 'Sign-in is available in the TierNerd web app.'
+                      : 'Google sign-in is not configured.'}
                   </Text>
                 )}
               </View>

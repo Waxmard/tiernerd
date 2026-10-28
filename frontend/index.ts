@@ -1,8 +1,7 @@
-import { registerRootComponent } from 'expo';
-
-import App from './App';
-
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
+console.info('TierNerdBoot JS entry reached');
+const { registerRootComponent } = require('expo');
+console.info('TierNerdBoot Expo loaded');
+const App = require('./App').default;
+console.info('TierNerdBoot App loaded');
 registerRootComponent(App);
+console.info('TierNerdBoot main registered');

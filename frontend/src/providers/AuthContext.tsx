@@ -16,6 +16,8 @@ import { type User as ApiUser, authService } from '../services/authService';
 import {
   consumeGoogleRedirect,
   googleSignInAvailable,
+  signInNativeGoogle,
+  signOutNativeGoogle,
   startGoogleRedirect,
 } from '../services/googleSignIn';
 
@@ -182,7 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const signInWithGoogle = useCallback(async (): Promise<void> => {
-    if (Platform.OS !== 'web') {
+    if (Platform.OS !== 'web' && Platform.OS !== 'ios') {
       setError('Sign-in is available in the TierNerd web app.');
       return;
     }
@@ -194,13 +196,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
     let redirecting = false;
     try {
-      if (USE_MOCK_AUTH) {
+      if (Platform.OS === 'web' && USE_MOCK_AUTH) {
         await saveAuthState('mock-auth-token', {
           id: '123456789',
           email: 'google.user@tiernerd.com',
           displayName: 'google.user',
         });
-      } else if (googleSignInAvailable) {
+      } else if (Platform.OS === 'ios' && googleSignInAvailable) {
+        const idToken = await signInNativeGoogle();
+        if (idToken) {
+          const result = await authService.loginWithGoogle(idToken);
+          if (result.success && result.user && result.token) {
+            await saveAuthState(result.token, toLocalUser(result.user));
+          } else {
+            setError(result.error ?? 'Google sign-in failed');
+          }
+        }
+      } else if (Platform.OS === 'web' && googleSignInAvailable) {
         await startGoogleRedirect();
         redirecting = true;
       } else {
@@ -222,8 +234,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       await clearAuthState();
+      if (Platform.OS === 'ios') {
+        await signOutNativeGoogle();
+      }
     } catch (error) {
       console.error('Error signing out:', error);
+      if (Platform.OS === 'ios') {
+        setError(
+          error instanceof Error ? error.message : 'Google sign-out failed.'
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -238,7 +258,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       error,
       signInWithGoogle,
       googleAvailable:
-        Platform.OS === 'web' && (USE_MOCK_AUTH || googleSignInAvailable),
+        (Platform.OS === 'web' && (USE_MOCK_AUTH || googleSignInAvailable)) ||
+        (Platform.OS === 'ios' && googleSignInAvailable),
       signOut,
     }),
     [user, token, isLoading, isRestoring, error, signInWithGoogle, signOut]
