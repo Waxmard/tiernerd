@@ -12,8 +12,7 @@ Monorepo with React Native/Expo frontend and FastAPI backend.
 
 - `fastapi/` — Python backend (uv, pyproject.toml, Dockerfile, Makefile)
 - `frontend/` — React Native/Expo app (package.json, biome)
-- `docs/src/` — documentation templates and partials (rendered by `scripts/build_docs.py`)
-- `scripts/` — repo-wide tooling (e.g. `build_docs.py`)
+- `scripts/` — repo-wide tooling (line-limit check, iOS and TestFlight builds)
 - `/package.json` — root dev-tooling only (lefthook). Not a JS project.
 - `lefthook.yml` — git hooks (biome for frontend, ruff for backend)
 
@@ -45,9 +44,7 @@ make lint          # backend + frontend lint
 make fix           # autofix both
 make typecheck     # mypy + tsc
 make test          # backend pytest w/ coverage
-make ci            # lint + typecheck + boundaries + test + docs-check
-make docs-build    # render docs/src → README.md, sub-READMEs
-make docs-check    # fail if generated docs are stale
+make ci            # lint + typecheck + boundaries + test + line-limit
 make backend-<X>   # delegates to fastapi/Makefile target X (e.g. backend-logs, backend-health, backend-lint)
 ```
 
@@ -213,15 +210,6 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 - Do **not** run `make clean`, `make dev`, `make fresh`, `make restart`, or `make reset` — the user runs these themselves.
 - Backend package management: use `uv`, not `pip`.
 
-## Documentation Automation
+## Documentation
 
-`README.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
-
-```bash
-make docs-build    # render templates → generated files
-make docs-check    # fail if generated docs are stale
-```
-
-Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives.
-
-`AGENTS.md` is **not** generated — it is the hand-maintained source for agent guidance. The partials it inlines are shared with the generated READMEs, so a partial edit can leave this file stale; when you change a shared partial, update `AGENTS.md` by hand to match.
+`README.md`, `fastapi/README.md`, `frontend/README.md`, and `AGENTS.md` are all hand-maintained. Edit them directly; there is no template, partial, or render step.

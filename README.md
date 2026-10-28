@@ -1,5 +1,3 @@
-<!-- Generated from docs/src. Run `make docs-build` to update. Do not edit directly. -->
-
 # TierNerd
 
 TierNerd is a cross-platform mobile app for ranking items through 1v1 comparisons and displaying scores out of 10. Pick a starting range, then compare items to establish their order within it; each item's score follows from its position, and the highest scores come first.
@@ -58,8 +56,7 @@ See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/REA
 |---|---|
 |`fastapi/`|FastAPI backend — async SQLAlchemy on PostgreSQL, with the comparison and ranking services|
 |`frontend/`|Expo / React Native app (iOS, Android)|
-|`docs/src/`|Templates and partials that generate this README and the sub-READMEs|
-|`scripts/`|Repo-wide tooling — docs build, line-limit check, iOS and TestFlight builds|
+|`scripts/`|Repo-wide tooling — line-limit check, iOS and TestFlight builds|
 |`screenshots/`|Screenshots referenced above|
 
 ## Scores out of 10
@@ -82,19 +79,7 @@ The API stores scores in `rating`. An item without a position has a null score a
 
 Persistent PostgreSQL databases require the explicit UI-ranking schema migration before you run the updated application. See the backend migration instructions. Fresh test SQLite databases use current model metadata.
 
-## Project Status
 
-Currently in initial development phase.
+## Contributing
 
-## Documentation Automation
-
-`README.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
-
-```bash
-make docs-build    # render templates → generated files
-make docs-check    # fail if generated docs are stale
-```
-
-Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives.
-
-`AGENTS.md` is hand-maintained, not generated — it is the source of truth for agent-facing guidance.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, commit, and PR conventions.
