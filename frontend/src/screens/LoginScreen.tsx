@@ -9,9 +9,7 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView
-        className={`flex-1${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
-      >
+      <SafeAreaView className="flex-1">
         <ScrollView
           contentContainerClassName="grow w-full items-center justify-center px-4 py-4"
           showsVerticalScrollIndicator={false}
@@ -63,9 +61,9 @@ export const LoginScreen: React.FC = () => {
                   />
                 ) : (
                   <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-                    {Platform.OS === 'android'
-                      ? 'Sign-in is available in the TierNerd web app.'
-                      : 'Google sign-in is not configured.'}
+                    {Platform.OS === 'ios'
+                      ? 'Google sign-in is not configured.'
+                      : 'Google sign-in is only available on iOS.'}
                   </Text>
                 )}
               </View>

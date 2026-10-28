@@ -31,11 +31,3 @@ export async function signOutNativeGoogle(): Promise<void> {
     }
   }
 }
-
-export async function consumeGoogleRedirect(): Promise<{ status: 'none' }> {
-  return { status: 'none' };
-}
-
-export async function startGoogleRedirect(): Promise<void> {
-  throw new Error('Google redirect sign-in is unavailable on iOS.');
-}

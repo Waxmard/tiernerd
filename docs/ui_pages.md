@@ -256,5 +256,4 @@ Interface for creating a new list or editing an existing one.
 - Built with React Native (Expo)
 - TypeScript for type safety
 - Design system with tokens for consistency
-- Real authentication: Google ID token exchange at `POST /api/users/google`, plus email/password sign-in
-- Opt-in mock auth via `EXPO_PUBLIC_USE_MOCK_AUTH=true` for frontend-only work
+- Real authentication: Google ID token exchange at `POST /api/users/google` on iOS

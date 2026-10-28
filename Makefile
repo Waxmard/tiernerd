@@ -25,7 +25,6 @@ help:
 	@echo ""
 	@echo "Frontend (delegates to frontend/package.json scripts):"
 	@echo "  frontend-lint frontend-fix frontend-typecheck"
-	@echo "  frontend-e2e     - Playwright smoke spec against the built web bundle"
 	@echo "  ios             - Build, install and launch a standalone iOS Release app"
 
 # ----- Setup -----
@@ -69,7 +68,7 @@ backend-%:
 ios:
 	EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="$${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID-1015723670625-v0h15l5cj1eotf9h4u539q878e2mclm6.apps.googleusercontent.com}" bash scripts/ios.sh "$(IOS_DEVICE)"
 
-.PHONY: frontend-lint frontend-fix frontend-typecheck frontend-unit frontend-e2e
+.PHONY: frontend-lint frontend-fix frontend-typecheck frontend-unit
 frontend-lint:
 	cd frontend && npm run lint && npm run format:check
 
@@ -82,11 +81,3 @@ frontend-typecheck:
 frontend-unit:
 	cd frontend && npm run test:unit
 	node --test scripts/ios-config.test.mjs
-
-frontend-e2e:
-	@if [ -n "$$EXPO_PUBLIC_API_URL" ]; then \
-		echo "frontend-e2e: against $$EXPO_PUBLIC_API_URL"; \
-		cd frontend && npm run build:web && npm run e2e; \
-	else \
-		scripts/e2e_backend.sh; \
-	fi

@@ -37,15 +37,12 @@ See the [screenshots/](screenshots/) directory for all available screenshots.
 ### Frontend
 
 ```bash
-cd frontend
-npm install --legacy-peer-deps
-npx expo start                    # Scan QR with Expo Go app
+make ios                          # Build, install, and launch on a paired iPhone
 # or
-npm run ios                       # iOS Simulator
+cd frontend && npm run ios        # iOS Simulator
 ```
 
-Sign-in is available on the web with Google; native sign-in is not supported.
-
+Sign-in is available on iOS with Google.
 ### Backend
 
 ```bash
@@ -60,9 +57,9 @@ See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/REA
 |Path|What|
 |---|---|
 |`fastapi/`|FastAPI backend — async SQLAlchemy on PostgreSQL, with the comparison and ranking services|
-|`frontend/`|Expo / React Native app (iOS, Android, web)|
+|`frontend/`|Expo / React Native app (iOS, Android)|
 |`docs/src/`|Templates and partials that generate this README and the sub-READMEs|
-|`scripts/`|Repo-wide tooling — docs build, line-limit check, e2e backend|
+|`scripts/`|Repo-wide tooling — docs build, line-limit check, iOS and TestFlight builds|
 |`screenshots/`|Screenshots referenced above|
 
 ## Scores out of 10

@@ -52,18 +52,6 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   const colors = useMemo(() => themeColors(scheme), [scheme]);
 
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const root = document.documentElement;
-    root.dataset.theme = scheme;
-    root.style.setProperty('--tiernerd-focus-color', colors['accent-text']);
-    root.style.colorScheme = scheme;
-    root.classList.toggle('dark', scheme === 'dark');
-    document
-      .querySelector('meta[name="theme-color"]')
-      ?.setAttribute('content', colors.canvas);
-  }, [scheme, colors]);
-
   const setPreference = useCallback((next: ThemePreference) => {
     setPreferenceState(next);
     void AsyncStorage.setItem(THEME_PREFERENCE_KEY, next);

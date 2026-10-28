@@ -11,14 +11,11 @@ import {
   useState,
 } from 'react';
 import { Platform } from 'react-native';
-import { USE_MOCK_AUTH } from '../config/api';
 import { type User as ApiUser, authService } from '../services/authService';
 import {
-  consumeGoogleRedirect,
   googleSignInAvailable,
   signInNativeGoogle,
   signOutNativeGoogle,
-  startGoogleRedirect,
 } from '../services/googleSignIn';
 
 interface User {
@@ -115,29 +112,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     const restore = async () => {
-      const redirect = await consumeGoogleRedirect();
-      if (cancelled) {
-        return;
-      }
-      if (redirect.status === 'error') {
-        setError(redirect.error);
-        settle();
-        return;
-      }
-      if (redirect.status === 'token') {
-        const result = await authService.loginWithGoogle(redirect.idToken);
-        if (cancelled) {
-          return;
-        }
-        if (result.success && result.user && result.token) {
-          await saveAuthState(result.token, toLocalUser(result.user));
-        } else {
-          setError(result.error ?? 'Google sign-in failed');
-        }
-        settle();
-        return;
-      }
-
       const [storedToken, storedUser] = await Promise.all([
         AsyncStorage.getItem(AUTH_TOKEN_KEY),
         AsyncStorage.getItem(USER_DATA_KEY),
@@ -155,9 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
         settle();
-        if (!USE_MOCK_AUTH) {
-          void revalidate(storedToken);
-        }
+        void revalidate(storedToken);
         return;
       }
       settle();
@@ -167,25 +139,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       cancelled = true;
     };
-  }, [clearAuthState, saveAuthState]);
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') {
-      return;
-    }
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted && signInPending.current) {
-        signInPending.current = false;
-        setIsLoading(false);
-      }
-    };
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
-  }, []);
+  }, [clearAuthState]);
 
   const signInWithGoogle = useCallback(async (): Promise<void> => {
-    if (Platform.OS !== 'web' && Platform.OS !== 'ios') {
-      setError('Sign-in is available in the TierNerd web app.');
+    if (Platform.OS !== 'ios') {
+      setError('Google sign-in is only available on iOS.');
+      return;
+    }
+    if (!googleSignInAvailable) {
+      setError('Google sign-in is not configured.');
       return;
     }
     if (signInPending.current) {
@@ -194,39 +156,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signInPending.current = true;
     setIsLoading(true);
     setError(null);
-    let redirecting = false;
     try {
-      if (Platform.OS === 'web' && USE_MOCK_AUTH) {
-        await saveAuthState('mock-auth-token', {
-          id: '123456789',
-          email: 'google.user@tiernerd.com',
-          displayName: 'google.user',
-        });
-      } else if (Platform.OS === 'ios' && googleSignInAvailable) {
-        const idToken = await signInNativeGoogle();
-        if (idToken) {
-          const result = await authService.loginWithGoogle(idToken);
-          if (result.success && result.user && result.token) {
-            await saveAuthState(result.token, toLocalUser(result.user));
-          } else {
-            setError(result.error ?? 'Google sign-in failed');
-          }
+      const idToken = await signInNativeGoogle();
+      if (idToken) {
+        const result = await authService.loginWithGoogle(idToken);
+        if (result.success && result.user && result.token) {
+          await saveAuthState(result.token, toLocalUser(result.user));
+        } else {
+          setError(result.error ?? 'Google sign-in failed');
         }
-      } else if (Platform.OS === 'web' && googleSignInAvailable) {
-        await startGoogleRedirect();
-        redirecting = true;
-      } else {
-        setError('Google sign-in is not configured.');
       }
     } catch (error: unknown) {
       setError(
         error instanceof Error ? error.message : 'Google sign-in failed'
       );
     } finally {
-      if (!redirecting) {
-        signInPending.current = false;
-        setIsLoading(false);
-      }
+      signInPending.current = false;
+      setIsLoading(false);
     }
   }, [saveAuthState]);
 
@@ -257,9 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isRestoring,
       error,
       signInWithGoogle,
-      googleAvailable:
-        (Platform.OS === 'web' && (USE_MOCK_AUTH || googleSignInAvailable)) ||
-        (Platform.OS === 'ios' && googleSignInAvailable),
+      googleAvailable: Platform.OS === 'ios' && googleSignInAvailable,
       signOut,
     }),
     [user, token, isLoading, isRestoring, error, signInWithGoogle, signOut]

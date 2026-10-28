@@ -1,0 +1,42 @@
+name: Deploy TestFlight
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-testflight-main
+  cancel-in-progress: false
+
+jobs:
+  deploy-ios-testflight:
+    name: Upload iOS to TestFlight
+    runs-on: macos-26
+    environment: preview
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v4
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Upload to TestFlight
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_PRIVATE_KEY" ] || [ -z "$APPLE_CERTIFICATE_P12_BASE64" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ]; then
+            echo '::error::TestFlight upload requires ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY, APPLE_CERTIFICATE_P12_BASE64, and APPLE_CERTIFICATE_PASSWORD in the preview environment.'
+            exit 1
+          fi
+          bash scripts/build-ios-testflight.sh
+        env:
+          IOS_BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}
+          EXPO_PUBLIC_API_URL: https://tiernerd-api-dev-1015723670625.us-east1.run.app
+          EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID || '1015723670625-c2nlt7fbkh28odv6557bvfhgrfjnd1k2.apps.googleusercontent.com' }}
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: 1015723670625-v0h15l5cj1eotf9h4u539q878e2mclm6.apps.googleusercontent.com
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}

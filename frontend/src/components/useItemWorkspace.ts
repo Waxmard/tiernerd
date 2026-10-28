@@ -17,7 +17,6 @@ import {
   startItemRanking,
 } from '../services/itemWorkspaceActions';
 import { confirmDestructive } from '../utils/confirm';
-import { useUpdateBlocker } from '../utils/useAppUpdate';
 import type {
   ItemFormDraft,
   ItemWorkspace,
@@ -54,7 +53,6 @@ export function useItemWorkspace({
 }: UseItemWorkspaceOptions): ItemWorkspace {
   const [workspace, setWorkspace] =
     useState<ItemWorkspaceState>(EMPTY_WORKSPACE);
-  useUpdateBlocker(workspace.mode !== 'closed' && workspace.mode !== 'ranking');
   const workspaceRef = useRef(workspace);
   const optionsRef = useRef({ listTitle, token, onItemsChanged, onClosed });
   optionsRef.current = { listTitle, token, onItemsChanged, onClosed };

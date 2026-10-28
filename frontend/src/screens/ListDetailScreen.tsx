@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   FlatList,
   type ListRenderItemInfo,
-  Platform,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -21,7 +20,6 @@ import {
 } from 'react-native-safe-area-context';
 import { ListDetailHeader } from '../components/ListDetailHeader';
 import {
-  type FocusTarget,
   ListDetailItemRow,
   ListItemEmptyState,
 } from '../components/ListDetailItemRow';
@@ -123,7 +121,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const [isDeletingList, setIsDeletingList] = useState(false);
   const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
   const listRef = useRef<FlatList<Item> | null>(null);
-  const itemRowRefs = useRef(new Map<string, FocusTarget>());
   const pendingScrollRef = useRef<PendingScroll | null>(null);
   const selectedItemIdRef = useRef<string | null>(null);
   const rankingCandidateIdRef = useRef<string | null>(null);
@@ -148,17 +145,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     selectedItemIdRef.current = selectedItemId;
     sessionLookupRequestRef.current++;
   }
-
-  const focusItemRow = useCallback((itemId: string | null) => {
-    if (Platform.OS !== 'web' || !itemId) return;
-    requestAnimationFrame(() => itemRowRefs.current.get(itemId)?.focus?.());
-  }, []);
-  const focusAddButton = useCallback(() => {
-    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-    requestAnimationFrame(() =>
-      document.querySelector<HTMLElement>('[data-testid=fab-add-item]')?.focus()
-    );
-  }, []);
 
   useEffect(() => {
     if (previousDesktopRef.current && !isDesktop) {
@@ -206,10 +192,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       setSelectedItemId(item.item_id);
       if (isCompleted) {
         setDismissedDetailsItemId(item.item_id);
-        focusItemRow(item.item_id);
       }
     },
-    [refreshAfterMutation, focusItemRow, itemsRef, screenIdentity]
+    [refreshAfterMutation, itemsRef, screenIdentity]
   );
 
   const refreshSessionLookup = useCallback(
@@ -257,21 +242,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     if (rankingCandidateIdRef.current)
       resolvedDraftIdsRef.current.add(rankingCandidateIdRef.current);
     rankingCandidateIdRef.current = null;
-    if (
-      selectedItemId &&
-      !skipWorkspaceCloseFocusRef.current &&
-      (isDesktop || dismissedDetailsItemId === selectedItemId)
-    )
-      focusItemRow(selectedItemId);
-    else if (!selectedItemId && !skipWorkspaceCloseFocusRef.current)
-      focusAddButton();
-  }, [
-    dismissedDetailsItemId,
-    focusAddButton,
-    focusItemRow,
-    isDesktop,
-    selectedItemId,
-  ]);
+  }, []);
 
   const workspace = useItemWorkspace({
     listTitle: detailsTitle,
@@ -570,8 +541,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     }
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
-    focusItemRow(selectedItemId);
-  }, [focusItemRow, selectedItemId, workspace.mode, workspace.requestClose]);
+  }, [workspace.mode, workspace.requestClose]);
   const handleOpenRange = () => {
     if (!selectedItem || !canMutateFor(screenIdentity)) return;
     rankingCandidateIdRef.current = selectedItem.item_id;
@@ -669,10 +639,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       rankedCount={rankedCount}
       disabled={isDeletingList}
       onPress={(selected) => void handleItemPress(selected)}
-      onFocusTarget={(itemId, element) => {
-        if (element) itemRowRefs.current.set(itemId, element);
-        else itemRowRefs.current.delete(itemId);
-      }}
     />
   );
   const renderListItems = () => {
@@ -715,10 +681,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView
-        className={`flex-1 min-h-0${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
-        edges={['top']}
-      >
+      <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
             <ListDetailHeader

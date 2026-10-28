@@ -4,7 +4,6 @@ import type React from 'react';
 import { useState } from 'react';
 import {
   Image,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -41,9 +40,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView
-        className={`flex-1${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
-      >
+      <SafeAreaView className="flex-1">
         <ScrollView
           contentContainerClassName="w-full grow"
           showsVerticalScrollIndicator={false}
@@ -134,8 +131,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       accessibilityRole="button"
                       accessibilityLabel={option.label}
                       accessibilityState={{ selected }}
-                      aria-pressed={selected}
-                      testID={`theme-${option.value}`}
                       onPress={() => setPreference(option.value)}
                       className={[
                         'flex-1 min-h-[44px] flex-row items-center justify-center gap-1 border rounded-[10px] px-3 py-2',

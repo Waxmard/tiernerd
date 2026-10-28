@@ -9,7 +9,6 @@ import {
   Image,
   type ListRenderItemInfo,
   Modal,
-  Platform,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -41,7 +40,6 @@ import {
   parseCachedLists,
 } from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
-import { useUpdateBlocker } from '../utils/useAppUpdate';
 
 type ModalStep = 'create' | 'addItem' | null;
 interface TierList {
@@ -97,7 +95,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
-  useUpdateBlocker(modalStep === 'create');
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
   const createListRef = useRef<CreateListContentHandle | null>(null);
@@ -520,7 +517,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                     accessible={false}
                   />
                 }
-                testID="fab-create"
                 accessibilityLabel="Create new list"
               />
             </View>
@@ -565,10 +561,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     );
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      <SafeAreaView
-        className={`min-h-0 flex-1${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
-        edges={['top', 'left', 'right']}
-      >
+      <SafeAreaView className="min-h-0 flex-1" edges={['top', 'left', 'right']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View
             className="flex-1 min-h-0"

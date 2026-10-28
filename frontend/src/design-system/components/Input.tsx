@@ -1,7 +1,6 @@
 import type React from 'react';
 import { forwardRef, useId } from 'react';
 import {
-  Platform,
   Text,
   TextInput,
   type TextInputProps,
@@ -11,8 +10,6 @@ import {
 import { useThemeColors } from '../../providers/ThemeProvider';
 
 interface InputProps extends TextInputProps {
-  'aria-invalid'?: boolean;
-  'aria-describedby'?: string;
   label?: string;
   error?: string;
   leftIcon?: React.ReactNode;
@@ -39,8 +36,6 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
 ) {
   const colors = useThemeColors();
   const labelId = useId();
-  const errorId = useId();
-  const containerId = `tiernerd-input-container-${useId()}`;
 
   return (
     <View className={['mb-4', containerClassName ?? ''].join(' ')}>
@@ -53,7 +48,6 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         </Text>
       )}
       <View
-        nativeID={containerId}
         className={[
           'flex-row items-center border rounded-[10px] px-3 min-h-[48px]',
           'bg-surface dark:bg-surface-dark',
@@ -81,28 +75,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           accessibilityLabelledBy={
             label ? labelId : textInputProps.accessibilityLabelledBy
           }
-          accessibilityHint={
-            Platform.OS === 'web'
-              ? textInputProps.accessibilityHint
-              : (error ?? textInputProps.accessibilityHint)
-          }
-          aria-invalid={
-            Platform.OS === 'web'
-              ? error
-                ? true
-                : textInputProps['aria-invalid']
-              : undefined
-          }
-          aria-describedby={
-            Platform.OS === 'web'
-              ? [
-                  textInputProps['aria-describedby'],
-                  error ? errorId : undefined,
-                ]
-                  .filter(Boolean)
-                  .join(' ') || undefined
-              : undefined
-          }
+          accessibilityHint={error ?? textInputProps.accessibilityHint}
         />
         {rightIcon && onRightIconPress ? (
           <TouchableOpacity
@@ -126,7 +99,6 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
       </View>
       {error && (
         <Text
-          nativeID={errorId}
           accessibilityLiveRegion="polite"
           className="text-body-small text-danger-text dark:text-danger-text-dark mt-1"
         >

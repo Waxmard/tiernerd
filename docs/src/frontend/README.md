@@ -10,21 +10,15 @@ Previously opened lists show saved items, order, scores, and available list meta
 
 Enter a name and choose **Good**, **Mid**, or **Bad** from the compact category controls. Compare items with the neutral choice rows; ranking saves automatically after the final comparison, or immediately when the destination range is empty. The refreshed list confirms the saved order without an extra success banner or sheet. **Undo last answer** is available before the final answer, not after saving. If saving fails, choose **Retry saving**; if the item refresh fails, choose **Retry refresh**. Category badges identify the starting category without replacing saved scores or ranks.
 
-On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. Desktop dialogs stay centered; item details open in a 400px side pane only when you select an item or start a workspace action. The web shell follows the dynamic viewport. Web screens and modal overlays apply `calc(env(safe-area-inset-top, 0px) + 16px)` through the scoped `web-safe-area-top` CSS class, overriding measured inline top padding without counting the safe inset twice. Browser tabs receive the same 16px gutter. Native safe-area handling and the other safe-area edges remain unchanged. After deploying a fresh build, check the installed iPhone web app: the header must clear system chrome without excessive blank space, and **New list** must remain usable. Desktop browser checks of CSS ownership do not verify the installed iPhone layout.
-
-The Home Screen icons and browser favicon use a mascot crop of the existing TierNerd artwork. If iOS retains the old icon after deployment, remove and re-add the Home Screen shortcut.
+On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. On larger screens, dialogs stay centered and item details open in a 400px side pane only when you select an item or start a workspace action.
 
 Edit optional descriptions and list colors in focused views. **Back** and **Done** return to the overview without saving or discarding the draft. Submit from the overview to save. Canceling list creation clears its draft immediately; canceling a changed item asks before discarding it.
 
-On the web, an available app update reloads the page only when it is visible and all create-list, add-item, edit-item, and ranking-range editors are closed.
-
 If ranking status fails to load, the item stays open with an error and **Retry**. An item without a draft is different from a missing API route; update the dev backend before publishing a frontend that uses the persistent-ranking API.
 
-Inputs keep a neutral border when you type with a pointer or touch. Tab navigation shows a keyboard-only focus outline on inputs and actions.
+The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on wide screens.
 
-The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on desktop.
-
-Sign-in is available on the web and iOS with Google. The Google OAuth web client ID in `EXPO_PUBLIC_GOOGLE_CLIENT_ID` must match the backend's `GOOGLE_CLIENT_ID`. iOS also requires an iOS OAuth client ID for `com.maxwellward.tiernerd`; `make ios` supplies development defaults for both client IDs. Android sign-in is not supported. For frontend-only work, `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a mock Google sign-in on the web.
+Sign-in is available on iOS with Google. The Google OAuth web client ID in `EXPO_PUBLIC_GOOGLE_CLIENT_ID` must match the backend's `GOOGLE_CLIENT_ID`. iOS also requires an iOS OAuth client ID for `com.maxwellward.tiernerd`; `make ios` and `scripts/build-ios-testflight.sh` supply development defaults for both client IDs. Android sign-in is not supported.
 
 ## Prerequisites
 
@@ -44,13 +38,11 @@ Note: `--legacy-peer-deps` is required due to React 19 peer dependency conflicts
 
 ## Running the App
 
-### Option 1: Expo Go (Physical Device)
+### Option 1: Standalone iOS Release (Physical iPhone)
 
 ```bash
-npx expo start
+make ios                          # Build, install, and launch on Gengar Phone
 ```
-
-Scan the QR code with Expo Go on your iPhone/Android.
 
 ### Option 2: iOS Simulator
 
@@ -64,10 +56,10 @@ npm run ios
 npm run android
 ```
 
-### Option 4: Web
+### Option 4: Expo Go (Physical Device)
 
 ```bash
-npm run web
+npx expo start
 ```
 
 {{ include:partials/frontend_commands.md }}

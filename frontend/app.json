@@ -27,10 +27,6 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.tiernerd"
-    },
-    "web": {
-      "bundler": "metro",
-      "favicon": "./assets/favicon.png"
     }
   }
 }

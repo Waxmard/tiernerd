@@ -16,7 +16,6 @@ interface ButtonProps {
   icon?: React.ReactNode;
   className?: string;
   textClassName?: string;
-  testID?: string;
   accessibilityLabel?: string;
 }
 
@@ -55,7 +54,6 @@ export const Button: React.FC<ButtonProps> = ({
   icon,
   className,
   textClassName,
-  testID,
   accessibilityLabel,
 }) => {
   const colors = useThemeColors();
@@ -89,8 +87,6 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
-      aria-busy={loading}
-      testID={testID}
       className={classes}
       onPress={onPress}
       disabled={isDisabled}

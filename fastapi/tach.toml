@@ -15,7 +15,7 @@ exact = true
 
 [[modules]]
 path = "app.main"
-depends_on = ["app.api", "app.db", "app.settings"]
+depends_on = ["app.api", "app.db"]
 
 [[modules]]
 path = "app.api"

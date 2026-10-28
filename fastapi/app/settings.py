@@ -1,6 +1,6 @@
 import functools
 
-from pydantic import PostgresDsn, computed_field
+from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,22 +19,6 @@ class Settings(BaseSettings):
 
     # Google sign-in: the public OAuth Web client ID the ID token must be minted for.
     GOOGLE_CLIENT_ID: str = ""
-
-    # CORS - stored as comma-separated string, parsed via computed_field
-    CORS_ORIGINS_STR: str = ""
-    # Optional regex for origins that can't be listed (e.g. LAN IPs in dev)
-    CORS_ORIGIN_REGEX: str = ""
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def CORS_ORIGINS(self) -> list[str]:
-        if not self.CORS_ORIGINS_STR:
-            return []
-        return [
-            origin.strip()
-            for origin in self.CORS_ORIGINS_STR.split(",")
-            if origin.strip()
-        ]
 
     # Logging
     LOG_LEVEL: str = "INFO"

@@ -1,7 +1,4 @@
-console.info('TierNerdBoot JS entry reached');
-const { registerRootComponent } = require('expo');
-console.info('TierNerdBoot Expo loaded');
-const App = require('./App').default;
-console.info('TierNerdBoot App loaded');
+import { registerRootComponent } from 'expo';
+import App from './App';
+
 registerRootComponent(App);
-console.info('TierNerdBoot main registered');

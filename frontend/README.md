@@ -12,21 +12,15 @@ Previously opened lists show saved items, order, scores, and available list meta
 
 Enter a name and choose **Good**, **Mid**, or **Bad** from the compact category controls. Compare items with the neutral choice rows; ranking saves automatically after the final comparison, or immediately when the destination range is empty. The refreshed list confirms the saved order without an extra success banner or sheet. **Undo last answer** is available before the final answer, not after saving. If saving fails, choose **Retry saving**; if the item refresh fails, choose **Retry refresh**. Category badges identify the starting category without replacing saved scores or ranks.
 
-On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. Desktop dialogs stay centered; item details open in a 400px side pane only when you select an item or start a workspace action. The web shell follows the dynamic viewport. Web screens and modal overlays apply `calc(env(safe-area-inset-top, 0px) + 16px)` through the scoped `web-safe-area-top` CSS class, overriding measured inline top padding without counting the safe inset twice. Browser tabs receive the same 16px gutter. Native safe-area handling and the other safe-area edges remain unchanged. After deploying a fresh build, check the installed iPhone web app: the header must clear system chrome without excessive blank space, and **New list** must remain usable. Desktop browser checks of CSS ownership do not verify the installed iPhone layout.
-
-The Home Screen icons and browser favicon use a mascot crop of the existing TierNerd artwork. If iOS retains the old icon after deployment, remove and re-add the Home Screen shortcut.
+On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. On larger screens, dialogs stay centered and item details open in a 400px side pane only when you select an item or start a workspace action.
 
 Edit optional descriptions and list colors in focused views. **Back** and **Done** return to the overview without saving or discarding the draft. Submit from the overview to save. Canceling list creation clears its draft immediately; canceling a changed item asks before discarding it.
 
-On the web, an available app update reloads the page only when it is visible and all create-list, add-item, edit-item, and ranking-range editors are closed.
-
 If ranking status fails to load, the item stays open with an error and **Retry**. An item without a draft is different from a missing API route; update the dev backend before publishing a frontend that uses the persistent-ranking API.
 
-Inputs keep a neutral border when you type with a pointer or touch. Tab navigation shows a keyboard-only focus outline on inputs and actions.
+The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on wide screens.
 
-The default appearance is **Dark**, with neutral navy surfaces and muted secondary text. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on desktop.
-
-Sign-in is available on the web and iOS with Google. The Google OAuth web client ID in `EXPO_PUBLIC_GOOGLE_CLIENT_ID` must match the backend's `GOOGLE_CLIENT_ID`. iOS also requires an iOS OAuth client ID for `com.maxwellward.tiernerd`; `make ios` supplies development defaults for both client IDs. Android sign-in is not supported. For frontend-only work, `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a mock Google sign-in on the web.
+Sign-in is available on iOS with Google. The Google OAuth web client ID in `EXPO_PUBLIC_GOOGLE_CLIENT_ID` must match the backend's `GOOGLE_CLIENT_ID`. iOS also requires an iOS OAuth client ID for `com.maxwellward.tiernerd`; `make ios` and `scripts/build-ios-testflight.sh` supply development defaults for both client IDs. Android sign-in is not supported.
 
 ## Prerequisites
 
@@ -46,13 +40,11 @@ Note: `--legacy-peer-deps` is required due to React 19 peer dependency conflicts
 
 ## Running the App
 
-### Option 1: Expo Go (Physical Device)
+### Option 1: Standalone iOS Release (Physical iPhone)
 
 ```bash
-npx expo start
+make ios                          # Build, install, and launch on Gengar Phone
 ```
-
-Scan the QR code with Expo Go on your iPhone/Android.
 
 ### Option 2: iOS Simulator
 
@@ -66,52 +58,13 @@ npm run ios
 npm run android
 ```
 
-### Option 4: Web
+### Option 4: Expo Go (Physical Device)
 
 ```bash
-npm run web
+npx expo start
 ```
 
 ### Frontend (frontend/)
-
-Day-to-day UI work happens in the browser — no Xcode or simulator needed.
-
-Terminal A (backend, once):
-
-```bash
-cd fastapi && make dev DETACHED=1
-```
-
-Terminal B (web bundle):
-
-```bash
-cd frontend
-npm run web                       # http://localhost:8081
-EXPO_PUBLIC_API_URL=https://<cloud-run-url> npm run web   # target the deployed dev API
-```
-
-Open `http://localhost:8081`. Chrome DevTools' device toolbar gives a phone-sized layout, and Fast Refresh applies edits without a rebuild.
-
-To check on your iPhone (no Xcode):
-
-```bash
-ipconfig getifaddr en0            # e.g. 192.168.1.50
-```
-
-Open `http://<ip>:8081` in Safari. The API base URL follows the host that served the app, so the phone reaches the backend on the same LAN IP.
-
-End-to-end smoke test — Playwright drives the **built** web bundle, so the API URL is baked in at export time:
-
-```bash
-make frontend-e2e                 # boots a throwaway backend, builds the bundle, runs the spec
-```
-
-`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. It creates a test-only app token for the disposable backend. To target an external API instead, supply a valid `E2E_AUTH_TOKEN` for that API securely in the environment and set `EXPO_PUBLIC_API_URL`; the shell value wins over `frontend/.env.local`:
-
-```bash
-EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-…run.app make frontend-e2e   # deployed dev API
-EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e               # a running container
-```
 
 To build and install a standalone iOS Release app, install Xcode and CocoaPods, pair and trust the iPhone, and configure Apple team `48TY2FP59S` for signing. Run from the repository root:
 
@@ -122,16 +75,17 @@ make ios IOS_DEVICE="Other Phone" # choose another paired device
 
 The command uses development Google OAuth web and iOS client IDs by default. To use another iOS client for bundle ID `com.maxwellward.tiernerd`, set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` in the environment. To use another web client, set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to the same client ID as the backend's `GOOGLE_CLIENT_ID`.
 
-The Release app uses the hosted development API by default and embeds its JavaScript, so it needs no Metro server after installation. Set `EXPO_PUBLIC_API_URL` to another public HTTPS API if needed. The command ignores Expo dotenv files and disables mock authentication. Re-running it replaces the app without deliberately removing its data. `npm run ios` remains the separate Expo development command.
+The Release app uses the hosted development API by default and embeds its JavaScript, so it needs no Metro server after installation. Set `EXPO_PUBLIC_API_URL` to another public HTTPS API if needed. The command ignores Expo dotenv files. Re-running it replaces the app without deliberately removing its data. `npm run ios` remains the separate Expo development command.
 
-Reserved for native-only changes and pre-release checks:
+Pushing to `main` (or dispatching `.github/workflows/deploy-testflight.yml`) runs `scripts/build-ios-testflight.sh` on `macos-26` in the `preview` environment to archive, export, and upload `TierNerd.ipa` to App Store Connect / TestFlight using `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `APPLE_CERTIFICATE_P12_BASE64`, and `APPLE_CERTIFICATE_PASSWORD`.
+
+Simulator and development commands:
 
 ```bash
 npm run ios                       # Run on iOS simulator
 npm run android                   # Run on Android emulator
 npx expo start --go               # Expo Go on a physical phone, no simulator
 ```
-
 Code quality (Biome — single tool for lint + format):
 
 ```bash
@@ -146,10 +100,6 @@ npm run typecheck                 # TypeScript check
 
 ## Troubleshooting
 
-### Web Page Is Blank
-
-React 19 requires `react` and `react-dom` at exactly the same version. A mismatch throws `Incompatible React versions` at runtime and the page renders nothing (the console shows the error, the page stays empty). `npx expo install --check` reports it; fix with `npx expo install --fix`, then re-run `npm run typecheck`, since aligning versions rewrites the dependency tree.
-
 ### `Cannot find module` After a Dependency Change
 
 A package that app code imports — or that `babel.config.js` names as a preset — but `package.json` never declares resolves only by hoisting, and breaks the moment `npx expo install --fix` (or any install) re-resolves the tree and nests it under `node_modules/expo/node_modules/`. Declare it explicitly:
@@ -159,28 +109,7 @@ npx expo install expo-constants          # imported by src/config/api.ts
 npx expo install --dev babel-preset-expo # named by babel.config.js
 ```
 
-Metro reports this as a bundling failure (`Web Bundling failed`, with the missing module named); `tsc` reports it for TypeScript imports.
-
-### Web: Delete / Error Dialogs Do Nothing
-
-`react-native-web` ships `Alert` as a no-op stub, so `Alert.alert` silently does nothing in the browser. Import from `frontend/src/utils/confirm.ts` (`confirmDestructive`, `notifyError`) instead of using `Alert` directly.
-
-### Phone Loads the App but API Calls Fail
-
-The app calls the API on the host that served it, so the LAN URL must be used — `localhost` on the phone is the phone itself. The backend container also needs `CORS_ORIGIN_REGEX` to match that origin; the dev default covers loopback and RFC1918 hosts on port 8081.
-
-### First Web Bundle Is Slow
-
-The initial web bundle takes ~30-60s. Fast Refresh afterward is sub-second, so only the first load feels slow.
-
-### LAN URL Unreachable From Another Device
-
-Restart the web server bound to the LAN interface:
-
-```bash
-npx expo start --web --host lan
-```
-
+Metro reports this as a bundling failure with the missing module named; `tsc` reports it for TypeScript imports.
 ### iOS Simulator Build Fails
 
 If you see "Unable to find destination" errors:

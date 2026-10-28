@@ -107,98 +107,7 @@ const launchEntry = `  public override func application(
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
     let delegate = ReactNativeDelegate()`;
-const previousInstrumentedLaunchEntry = replaceOnce(
-  launchEntry,
-  '    let delegate = ReactNativeDelegate()',
-  `    NSLog("TierNerdBoot app launch entered")
-    NSLog("TierNerdBoot scene manifest=%@", String(describing: Bundle.main.object(forInfoDictionaryKey: "UIApplicationSceneManifest")))
-    NSLog("TierNerdBoot scene delegate class resolved=%@", NSClassFromString("TierNerdSceneDelegate") == nil ? "false" : "true")
-    NSLog("TierNerdBoot main.jsbundle exists=%@", Bundle.main.url(forResource: "main", withExtension: "jsbundle") == nil ? "false" : "true")
-    let delegate = ReactNativeDelegate()`,
-);
-const instrumentedLaunchEntry = replaceOnce(
-  previousInstrumentedLaunchEntry,
-  '    let delegate = ReactNativeDelegate()',
-  `    RCTAddLogFunction { _, _, _, _, message in
-      if let message = message, message.contains("TierNerdBoot ") {
-        NSLog("%@", message)
-      }
-    }
-    let delegate = ReactNativeDelegate()`,
-);
 const launchSuper = '    return super.application(application, didFinishLaunchingWithOptions: launchOptions)';
-const instrumentedLaunchSuper = `    NSLog("TierNerdBoot before super.application")
-${launchSuper}`;
-const sceneEntry = `  ) {
-    guard let windowScene = scene as? UIWindowScene,`;
-const instrumentedSceneEntry = `  ) {
-    NSLog("TierNerdBoot scene willConnectTo entered")
-    guard let windowScene = scene as? UIWindowScene,`;
-const sceneFactoryStartup = '    factory.startReactNative(withModuleName: "main", in: window, launchOptions: launchOptions)';
-const instrumentedSceneFactoryStartup = `    NSLog("TierNerdBoot before factory.startReactNative")
-${sceneFactoryStartup}
-    NSLog("TierNerdBoot after factory.startReactNative")
-
-    func logWindow(_ window: UIWindow, phase: String) {
-      let rootViewController = window.rootViewController
-      let rootClass = rootViewController.map { NSStringFromClass(type(of: $0)) } ?? "nil"
-      let rootBounds = rootViewController?.viewIfLoaded.map { NSCoder.string(for: $0.bounds) } ?? "nil"
-      NSLog(
-        "TierNerdBoot %@ window frame=%@ bounds=%@ hidden=%@ key=%@ rootViewController=%@ rootViewBounds=%@",
-        phase,
-        NSCoder.string(for: window.frame),
-        NSCoder.string(for: window.bounds),
-        window.isHidden ? "true" : "false",
-        window.isKeyWindow ? "true" : "false",
-        rootClass,
-        rootBounds)
-    }
-    logWindow(window, phase: "immediate")
-    DispatchQueue.main.async { [weak window] in
-      guard let window = window else {
-        NSLog("TierNerdBoot window released")
-        return
-      }
-      logWindow(window, phase: "async")
-    }`;
-const previousInstrumentedSceneDelegate = replaceOnce(
-  replaceOnce(sceneDelegate, sceneEntry, instrumentedSceneEntry),
-  sceneFactoryStartup,
-  instrumentedSceneFactoryStartup,
-);
-const legacyInstrumentedSceneDelegate = previousInstrumentedSceneDelegate.replaceAll(
-  'NSCoder.string(for: ',
-  'NSStringFromCGRect(',
-);
-const instrumentedSceneDelegate = replaceOnce(
-  replaceOnce(
-    previousInstrumentedSceneDelegate,
-    sceneFactoryStartup,
-    `    NotificationCenter.default.removeObserver(self, name: Notification.Name("RCTContentDidAppearNotification"), object: nil)
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(reactContentDidAppear(_:)),
-      name: Notification.Name("RCTContentDidAppearNotification"),
-      object: nil)
-${sceneFactoryStartup}`,
-  ),
-  '  func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {',
-  `  deinit {
-    NotificationCenter.default.removeObserver(self)
-  }
-
-  @objc private func reactContentDidAppear(_ notification: Notification) {
-    NSLog("TierNerdBoot native React content appeared")
-    if let view = notification.object as? UIView {
-      NSLog(
-        "TierNerdBoot native React content view class=%@ bounds=%@",
-        NSStringFromClass(type(of: view)),
-        NSCoder.string(for: view.bounds))
-    }
-  }
-
-  func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {`,
-);
 
 module.exports = function withIosSceneLifecycle(config) {
   config = withInfoPlist(config, (mod) => {
@@ -226,7 +135,6 @@ module.exports = function withIosSceneLifecycle(config) {
       throw new Error('iOS scene lifecycle plugin requires the Swift Expo AppDelegate');
     }
     let source = mod.modResults.contents;
-    const hasBootProbes = source.includes('TierNerdBoot');
     if (source.includes('@objc(TierNerdSceneDelegate)')) {
       if (!source.includes(sceneProperties) || !source.includes(sceneStartup) || source.includes(originalStartup)) {
         throw new Error('iOS scene lifecycle plugin: existing scene implementation is unexpected');
@@ -234,50 +142,48 @@ module.exports = function withIosSceneLifecycle(config) {
       replaceOnce(source, '@objc(TierNerdSceneDelegate)', '@objc(TierNerdSceneDelegate)');
       replaceOnce(source, sceneProperties, sceneProperties);
       replaceOnce(source, sceneStartup, sceneStartup);
-      const existingScene = [
-        instrumentedSceneDelegate,
-        previousInstrumentedSceneDelegate,
-        legacyInstrumentedSceneDelegate,
-      ].find((candidate) => source.includes(candidate));
-      if (existingScene) {
-        if (existingScene === instrumentedSceneDelegate) {
-          replaceOnce(source, instrumentedSceneDelegate, instrumentedSceneDelegate);
-          replaceOnce(source, instrumentedLaunchEntry, instrumentedLaunchEntry);
-        } else {
-          source = replaceOnce(source, existingScene, instrumentedSceneDelegate);
-          source = replaceOnce(source, previousInstrumentedLaunchEntry, instrumentedLaunchEntry);
+      if (!source.includes(sceneDelegate)) {
+        const sceneStart = source.indexOf('\n@objc(TierNerdSceneDelegate)');
+        if (sceneStart < 0) {
+          throw new Error('iOS scene lifecycle plugin: existing scene implementation is unexpected');
         }
-        if (source.includes(launchEntry)) {
+        source = source.slice(0, sceneStart) + sceneDelegate;
+      }
+      if (!source.includes(launchEntry)) {
+        const launchStart = source.indexOf('  public override func application(\n    _ application: UIApplication,\n    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil\n  ) -> Bool {');
+        const delegateIdx = source.indexOf('    let delegate = ReactNativeDelegate()', launchStart);
+        if (launchStart < 0 || delegateIdx < 0) {
           throw new Error('iOS scene lifecycle plugin: existing launch implementation is unexpected');
         }
-        replaceOnce(source, launchSuper, launchSuper);
-        replaceOnce(source, instrumentedLaunchSuper, instrumentedLaunchSuper);
-        if (
-          source
-            .replace(instrumentedLaunchEntry, '')
-            .replace(instrumentedLaunchSuper, '')
-            .replace(instrumentedSceneDelegate, '')
-            .includes('TierNerdBoot')
-        ) {
-          throw new Error('iOS scene lifecycle plugin: existing boot instrumentation is unexpected');
-        }
-        mod.modResults.contents = source;
-        return mod;
+        source = source.slice(0, launchStart) + launchEntry + source.slice(delegateIdx + '    let delegate = ReactNativeDelegate()'.length);
       }
-      source = replaceOnce(source, sceneDelegate, instrumentedSceneDelegate);
+      const superIdx = source.indexOf(launchSuper);
+      if (superIdx < 0) {
+        throw new Error('iOS scene lifecycle plugin: existing launch implementation is unexpected');
+      }
+      const launchOptionsIdx = source.indexOf(`${sceneStartup}\n\n`);
+      if (launchOptionsIdx >= 0 && launchOptionsIdx < superIdx) {
+        const prefixStart = launchOptionsIdx + `${sceneStartup}\n\n`.length;
+        if (prefixStart < superIdx) {
+          source = source.slice(0, prefixStart) + source.slice(superIdx);
+        }
+      }
+      replaceOnce(source, sceneDelegate, sceneDelegate);
+      replaceOnce(source, launchEntry, launchEntry);
+      replaceOnce(source, launchSuper, launchSuper);
     } else {
       if (!source.includes('public class AppDelegate: ExpoAppDelegate {') || source.includes('UIWindowSceneDelegate')) {
         throw new Error('iOS scene lifecycle plugin: unexpected AppDelegate template; refusing to modify it');
       }
       source = replaceOnce(source, originalProperties, sceneProperties);
       source = replaceOnce(source, originalStartup, sceneStartup);
-      source += instrumentedSceneDelegate;
+      source += sceneDelegate;
+      replaceOnce(source, launchEntry, launchEntry);
+      replaceOnce(source, launchSuper, launchSuper);
     }
-    if (hasBootProbes) {
-      throw new Error('iOS scene lifecycle plugin: existing launch instrumentation is unexpected');
+    if (source.includes(`TierNerd${'Boot'}`)) {
+      throw new Error('iOS scene lifecycle plugin: existing boot instrumentation is unexpected');
     }
-    source = replaceOnce(source, launchEntry, instrumentedLaunchEntry);
-    source = replaceOnce(source, launchSuper, instrumentedLaunchSuper);
     mod.modResults.contents = source;
     return mod;
   });

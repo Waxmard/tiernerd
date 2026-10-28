@@ -14,15 +14,6 @@ public class AppDelegate: ExpoAppDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-    NSLog("TierNerdBoot app launch entered")
-    NSLog("TierNerdBoot scene manifest=%@", String(describing: Bundle.main.object(forInfoDictionaryKey: "UIApplicationSceneManifest")))
-    NSLog("TierNerdBoot scene delegate class resolved=%@", NSClassFromString("TierNerdSceneDelegate") == nil ? "false" : "true")
-    NSLog("TierNerdBoot main.jsbundle exists=%@", Bundle.main.url(forResource: "main", withExtension: "jsbundle") == nil ? "false" : "true")
-    RCTAddLogFunction { _, _, _, _, message in
-      if let message = message, message.contains("TierNerdBoot ") {
-        NSLog("%@", message)
-      }
-    }
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -33,7 +24,6 @@ public class AppDelegate: ExpoAppDelegate {
 
     self.launchOptions = launchOptions
 
-    NSLog("TierNerdBoot before super.application")
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -83,7 +73,6 @@ class TierNerdSceneDelegate: UIResponder, UIWindowSceneDelegate {
     willConnectTo session: UISceneSession,
     options connectionOptions: UIScene.ConnectionOptions
   ) {
-    NSLog("TierNerdBoot scene willConnectTo entered")
     guard let windowScene = scene as? UIWindowScene,
           let appDelegate = UIApplication.shared.delegate as? AppDelegate,
           let factory = appDelegate.reactNativeFactory else {
@@ -110,52 +99,7 @@ class TierNerdSceneDelegate: UIResponder, UIWindowSceneDelegate {
     let window = UIWindow(windowScene: windowScene)
     self.window = window
     appDelegate.window = window
-    NSLog("TierNerdBoot before factory.startReactNative")
-    NotificationCenter.default.removeObserver(self, name: Notification.Name("RCTContentDidAppearNotification"), object: nil)
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(reactContentDidAppear(_:)),
-      name: Notification.Name("RCTContentDidAppearNotification"),
-      object: nil)
     factory.startReactNative(withModuleName: "main", in: window, launchOptions: launchOptions)
-    NSLog("TierNerdBoot after factory.startReactNative")
-
-    func logWindow(_ window: UIWindow, phase: String) {
-      let rootViewController = window.rootViewController
-      let rootClass = rootViewController.map { NSStringFromClass(type(of: $0)) } ?? "nil"
-      let rootBounds = rootViewController?.viewIfLoaded.map { NSCoder.string(for: $0.bounds) } ?? "nil"
-      NSLog(
-        "TierNerdBoot %@ window frame=%@ bounds=%@ hidden=%@ key=%@ rootViewController=%@ rootViewBounds=%@",
-        phase,
-        NSCoder.string(for: window.frame),
-        NSCoder.string(for: window.bounds),
-        window.isHidden ? "true" : "false",
-        window.isKeyWindow ? "true" : "false",
-        rootClass,
-        rootBounds)
-    }
-    logWindow(window, phase: "immediate")
-    DispatchQueue.main.async { [weak window] in
-      guard let window = window else {
-        NSLog("TierNerdBoot window released")
-        return
-      }
-      logWindow(window, phase: "async")
-    }
-  }
-
-  deinit {
-    NotificationCenter.default.removeObserver(self)
-  }
-
-  @objc private func reactContentDidAppear(_ notification: Notification) {
-    NSLog("TierNerdBoot native React content appeared")
-    if let view = notification.object as? UIView {
-      NSLog(
-        "TierNerdBoot native React content view class=%@ bounds=%@",
-        NSStringFromClass(type(of: view)),
-        NSCoder.string(for: view.bounds))
-    }
   }
 
   func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {

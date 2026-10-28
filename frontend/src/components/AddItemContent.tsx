@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, Text, type TextInput, View } from 'react-native';
+import { Pressable, Text, type TextInput, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { ItemFormDraft } from './itemWorkspaceTypes';
@@ -30,7 +30,6 @@ const MAX_NAME_LENGTH = 100;
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
-type FocusTarget = { focus?: () => void };
 type AddItemView = 'overview' | 'description';
 
 export function AddItemContent({
@@ -48,8 +47,6 @@ export function AddItemContent({
 }: AddItemContentProps) {
   const nameRef = useRef<TextInput>(null);
   const [view, setView] = useState<AddItemView>('overview');
-  const descriptionRef = useRef<TextInput>(null);
-  const descriptionSummaryRef = useRef<FocusTarget | null>(null);
   const hasVisitedDescriptionRef = useRef(false);
   const previousModeRef = useRef(mode);
   const colors = useThemeColors();
@@ -65,17 +62,9 @@ export function AddItemContent({
       setView('overview');
     }
   }, [mode]);
-  useEffect(() => {
-    if (view === 'description' && Platform.OS === 'web') {
-      requestAnimationFrame(() => descriptionRef.current?.focus());
-    }
-  }, [view]);
 
   const returnToOverview = () => {
     setView('overview');
-    if (Platform.OS === 'web') {
-      requestAnimationFrame(() => descriptionSummaryRef.current?.focus?.());
-    }
   };
 
   return (
@@ -144,10 +133,6 @@ export function AddItemContent({
             />
           ) : null}
           <Pressable
-            ref={(element) => {
-              descriptionSummaryRef.current =
-                element as unknown as FocusTarget | null;
-            }}
             accessibilityRole="button"
             accessibilityLabel={`Description (optional): ${form.description.trim() || 'Not set'}`}
             accessibilityHint="Edit the item description"
@@ -185,7 +170,6 @@ export function AddItemContent({
         </>
       ) : (
         <Input
-          ref={descriptionRef}
           label="Description (optional)"
           placeholder="Add a description"
           value={form.description}

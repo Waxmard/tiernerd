@@ -1,5 +1,4 @@
 import type React from 'react';
-import { useId } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -28,7 +27,6 @@ interface BaseModalContentProps {
   submitText?: string;
   closeText?: string;
   presentation?: 'modal' | 'panel';
-  titleId?: string;
   onClose: () => void;
   onSubmit?: () => void;
   contentClassName?: string;
@@ -43,14 +41,11 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   submitText = 'Submit',
   closeText = 'Cancel',
   presentation = 'modal',
-  titleId,
   onClose,
   onSubmit,
   contentClassName,
   footer,
 }) => {
-  const generatedTitleId = useId();
-  const headingId = titleId ?? generatedTitleId;
   const isPanel = presentation === 'panel';
   const safeAreaInsets = useSafeAreaInsets();
   const content = (
@@ -65,12 +60,9 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
         .filter(Boolean)
         .join(' ')}
       style={isPanel ? undefined : CARD_SHADOW}
-      role={isPanel ? 'region' : undefined}
-      accessibilityLabel={isPanel && Platform.OS !== 'web' ? title : undefined}
-      aria-labelledby={isPanel ? headingId : undefined}
+      accessibilityLabel={isPanel ? title : undefined}
     >
       <Text
-        nativeID={headingId}
         accessibilityRole="header"
         className="text-title-large text-ink dark:text-ink-dark shrink-0 mb-4 text-left"
       >
@@ -126,7 +118,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View
-        className={`flex-1 bg-black/50 desktop:px-4${Platform.OS === 'web' ? ' web-safe-area-top' : ''}`}
+        className="flex-1 bg-black/50 desktop:px-4"
         style={{ paddingTop: safeAreaInsets.top }}
       >
         <KeyboardAvoidingView

@@ -62,7 +62,6 @@ export const RangeSelector: React.FC<RangeSelectorProps> = ({
               accessibilityRole="button"
               accessibilityLabel={option.label}
               accessibilityState={{ selected, disabled }}
-              aria-pressed={selected}
               disabled={disabled}
               onPress={() => {
                 if (!disabled) onChange(option.value);

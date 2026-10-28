@@ -6,7 +6,6 @@ device="${1:-Gengar Phone}"
 export EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://tiernerd-api-dev-1015723670625.us-east1.run.app}"
 export EXPO_PUBLIC_GOOGLE_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_CLIENT_ID:-1015723670625-c2nlt7fbkh28odv6557bvfhgrfjnd1k2.apps.googleusercontent.com}"
 export EXPO_NO_DOTENV=1
-export EXPO_PUBLIC_USE_MOCK_AUTH=false
 
 node "$root/scripts/ios-config.mjs"
 if ! command -v pod >/dev/null 2>&1; then
