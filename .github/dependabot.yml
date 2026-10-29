@@ -6,7 +6,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 3
     cooldown:
-      default-days: 3
+      default-days: 3 # nosemgrep: package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown
     groups:
       minor-and-patch:
         applies-to: version-updates
@@ -22,7 +22,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 3
     cooldown:
-      default-days: 3
+      default-days: 3 # nosemgrep: package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown
       semver-major-days: 14
       semver-minor-days: 7
       semver-patch-days: 3
@@ -60,7 +60,7 @@ updates:
     schedule:
       interval: "weekly"
     cooldown:
-      default-days: 3
+      default-days: 3 # nosemgrep: package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown
     groups:
       actions:
         patterns: ["*"]
@@ -73,7 +73,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 3
     cooldown:
-      default-days: 3
+      default-days: 3 # nosemgrep: package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown
     groups:
       minor-and-patch:
         applies-to: version-updates

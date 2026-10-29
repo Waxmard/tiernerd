@@ -18,7 +18,7 @@ jobs:
     name: Semgrep SAST
     runs-on: ubuntu-latest
     container:
-      image: semgrep/semgrep:1.163.0
+      image: semgrep/semgrep:1.182.0
     steps:
       - uses: actions/checkout@v7
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
