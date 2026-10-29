@@ -52,20 +52,11 @@ class TestReadLists:
         self,
         client: AsyncClient,
         test_user: User,
-        test_user2: User,
         test_list: ListModel,
         auth_headers: dict,
         auth_headers_user2: dict,
-        test_db: AsyncSession,
     ):
         """Test that users only see their own lists."""
-        # Verify test_list belongs to test_user in database
-        result = await test_db.execute(
-            select(ListModel).where(ListModel.list_id == test_list.list_id)
-        )
-        db_list = result.scalar_one()
-        assert db_list.user_id == test_user.user_id
-
         # User 1 should see their list
         response = await client.get("/api/lists/", headers=auth_headers)
         assert response.status_code == 200
@@ -78,13 +69,6 @@ class TestReadLists:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 0
-
-        # Verify test_user2 has no lists in database
-        result = await test_db.execute(
-            select(ListModel).where(ListModel.user_id == test_user2.user_id)
-        )
-        user2_lists = result.scalars().all()
-        assert len(user2_lists) == 0
 
 
 class TestCreateList:

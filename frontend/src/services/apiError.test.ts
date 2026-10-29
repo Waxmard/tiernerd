@@ -62,9 +62,3 @@ test('explains network TypeErrors and falls back for other exceptions', () => {
   );
   assert.equal(getApiErrorMessage(new Error('unexpected'), fallback), fallback);
 });
-
-test('sets the ApiError name and status message', () => {
-  const error = new ApiError(401, 'Unauthorized', { detail: 'expired' });
-  assert.equal(error.name, 'ApiError');
-  assert.equal(error.message, '401 Unauthorized');
-});

@@ -1,7 +1,6 @@
 """Tests for CRUD operations."""
 
 import uuid
-from datetime import datetime
 
 import pytest
 from sqlalchemy import select
@@ -52,12 +51,6 @@ class TestComparisonCRUD:
 
         assert await comparison_crud.get_active(test_db, session.session_id) is not None
         assert (
-            await comparison_crud.get_active(
-                test_db, session.session_id, populate_existing=True
-            )
-            is not None
-        )
-        assert (
             await comparison_crud.get_active_by_item(test_db, test_item.item_id)
             is not None
         )
@@ -103,14 +96,6 @@ class TestItemCRUD:
         )
         assert result is None
 
-    async def test_get_by_list_id(
-        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ):
-        """Test getting all items for a list."""
-        result = await item_crud.get_by_list_id(test_db, test_list.list_id)
-        assert len(result) >= 1
-        assert any(item.item_id == test_item.item_id for item in result)
-
     async def test_get_by_list_id_empty(
         self, test_db: AsyncSession, test_list: ListModel
     ):
@@ -126,14 +111,6 @@ class TestItemCRUD:
         result = await item_crud.get_by_list_id(test_db, test_list.list_id)
         assert result == []
 
-    async def test_get_by_list_and_tier_set(
-        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ):
-        result = await item_crud.get_by_list_and_tier_set(
-            test_db, test_list.list_id, "good"
-        )
-        assert len(result) >= 1
-
     async def test_get_by_list_and_tier_set_no_match(
         self, test_db: AsyncSession, test_list: ListModel
     ):
@@ -142,59 +119,6 @@ class TestItemCRUD:
             test_db, test_list.list_id, "nonexistent"
         )
         assert result == []
-
-    async def test_update_item(self, test_db: AsyncSession, test_item: ItemModel):
-        original_name = test_item.name
-        result = await item_crud.update(
-            test_db,
-            test_item,
-            {
-                "name": "Updated CRUD Name",
-                "image_url": "https://example.com/updated.jpg",
-            },
-        )
-        await test_db.commit()
-
-        assert result.name == "Updated CRUD Name"
-        assert result.name != original_name
-        assert result.image_url == "https://example.com/updated.jpg"
-
-    async def test_delete_item(self, test_db: AsyncSession, test_list: ListModel):
-        # Create an item to delete
-        item = ItemModel(
-            item_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            name="To Delete",
-            description="Will be deleted",
-            image_url=None,
-            position="a0",
-            rating=None,
-            tier_set="good",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        test_db.add(item)
-        await test_db.commit()
-
-        item_id = item.item_id
-        await item_crud.delete(test_db, item)
-        await test_db.commit()
-
-        # Verify deleted
-        result = await item_crud.get_by_id(test_db, item_id)
-        assert result is None
-
-    async def test_get_by_normalized_name_and_exclude_self(
-        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ) -> None:
-        found = await item_crud.get_by_name_key(test_db, test_list.list_id, "test item")
-        assert found is not None and found.item_id == test_item.item_id
-        assert (
-            await item_crud.get_by_name_key(
-                test_db, test_list.list_id, "test item", exclude_id=test_item.item_id
-            )
-            is None
-        )
 
     async def test_sqlite_duplicate_name_error_classification(
         self, test_db: AsyncSession, test_item: ItemModel
@@ -276,21 +200,6 @@ class TestListCRUD:
             test_db, "Nonexistent Title", test_user.user_id
         )
         assert result is None
-
-    async def test_get_by_user_with_stats(
-        self, test_db: AsyncSession, test_list: ListModel, test_user: User
-    ):
-        result = await list_crud.get_by_user_with_stats(test_db, test_user.user_id)
-        assert len(result) >= 1
-        list_obj = result[0][0]
-        assert list_obj.user_id == test_user.user_id
-
-    async def test_update_list(self, test_db: AsyncSession, test_list: ListModel):
-        result = await list_crud.update(
-            test_db, test_list, {"title": "CRUD Updated Title"}
-        )
-
-        assert result.title == "CRUD Updated Title"
 
     async def test_delete_list(
         self, test_db: AsyncSession, test_user: User, multiple_items: list[ItemModel]

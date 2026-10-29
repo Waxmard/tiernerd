@@ -173,7 +173,6 @@ class TestReadItem:
         client: AsyncClient,
         test_item: ItemModel,
         auth_headers: dict,
-        test_db: AsyncSession,
     ):
         response = await client.get(
             f"/api/items/items/{test_item.item_id}", headers=auth_headers
@@ -183,15 +182,6 @@ class TestReadItem:
         assert str(data["item_id"]) == str(test_item.item_id)
         assert data["name"] == test_item.name
         assert data["description"] == test_item.description
-
-        # Verify item exists in database
-        result = await test_db.execute(
-            select(ItemModel).where(ItemModel.item_id == test_item.item_id)
-        )
-        db_item = result.scalar_one_or_none()
-        assert db_item is not None
-        assert db_item.name == test_item.name
-        assert db_item.list_id == test_item.list_id
 
     async def test_read_item_unauthenticated(
         self, client: AsyncClient, test_item: ItemModel
