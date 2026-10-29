@@ -31,7 +31,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
-      - run: uv sync --extra dev --group dev
+      - run: uv sync --locked
       - name: Run tests with coverage
         run: uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=95
 
@@ -47,7 +47,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
-      - run: uv sync --extra dev
+      - run: uv sync --locked
       - run: uv run ruff check app/
       - run: uv run ruff format --check app/
 
@@ -63,7 +63,7 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
-      - run: uv sync --extra dev
+      - run: uv sync --locked
       - run: uv run mypy app/
 
   boundaries:
@@ -78,5 +78,5 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
-      - run: uv sync --extra dev --group dev
+      - run: uv sync --locked
       - run: uv run tach check

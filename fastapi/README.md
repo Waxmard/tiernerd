@@ -48,7 +48,7 @@ Setup, quality targets and the Cloud Run dev loop: see [AGENTS.md](../AGENTS.md#
   - `tests/app/utils/test_algorithm.py` — Algorithm tests
 
 ```bash
-uv sync --group dev                                 # Install dev deps
+uv sync --locked                                    # Install deps incl. dev group
 uv run pytest                                       # All tests
 uv run pytest tests/test_users.py -v                # Single file
 uv run pytest tests/test_users.py -k google           # Google sign-in tests

@@ -30,7 +30,7 @@ Or step-by-step:
 1. `mise install` (installs node, python, uv at pinned versions)
 2. `npm install` (root, installs lefthook + git hooks via `prepare` script)
 3. `cd frontend && npm install`
-4. `cd ../fastapi && uv sync --extra dev --group dev`
+4. `cd ../fastapi && uv sync --locked`
 
 ## Development Commands
 
