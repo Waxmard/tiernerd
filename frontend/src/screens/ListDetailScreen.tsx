@@ -29,6 +29,7 @@ import {
   useDraftLookup,
   useListDetailData,
 } from '../components/useListDetailData';
+import { useListViewRestore } from '../components/useListViewRestore';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useThemeColors } from '../providers/ThemeProvider';
@@ -165,6 +166,25 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     };
   }, [screenIdentity]);
 
+  const scrollToOffset = useCallback(
+    (offset: number) =>
+      listRef.current?.scrollToOffset({ offset, animated: false }),
+    []
+  );
+  const { clearRestoredOffset, onScroll, onContentSizeChange } =
+    useListViewRestore({
+      userId,
+      listId,
+      items,
+      itemsLoaded,
+      selectedItemId,
+      dismissedDetailsItemId,
+      isDesktop,
+      skipRestore: Boolean(promptAddItem || completedItemId),
+      setSelectedItemId,
+      scrollToOffset,
+    });
+
   const handleWorkspaceItemsChanged = useCallback(
     async (item?: Item) => {
       const identity = screenIdentity;
@@ -182,6 +202,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       )
         return;
       if (!item) return;
+      clearRestoredOffset();
       pendingScrollRef.current = {
         itemId: item.item_id,
         index: -1,
@@ -194,7 +215,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         setDismissedDetailsItemId(item.item_id);
       }
     },
-    [refreshAfterMutation, itemsRef, screenIdentity]
+    [clearRestoredOffset, refreshAfterMutation, itemsRef, screenIdentity]
   );
 
   const refreshSessionLookup = useCallback(
@@ -407,6 +428,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     );
     if (completedItem) {
       setSelectedItemId(completedItemId);
+      clearRestoredOffset();
       pendingScrollRef.current = {
         itemId: completedItemId,
         index: -1,
@@ -418,7 +440,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     }
     consumedCompletedItemIdRef.current = completedItemId;
     navigation.setParams({ completedItemId: undefined });
-  }, [completedItemId, items, itemsLoaded, navigation]);
+  }, [clearRestoredOffset, completedItemId, items, itemsLoaded, navigation]);
 
   useLayoutEffect(() => {
     const pending = pendingScrollRef.current;
@@ -675,6 +697,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         onScrollToIndexFailed={handleScrollToIndexFailed}
+        scrollEventThrottle={100}
+        onScroll={onScroll}
+        onContentSizeChange={onContentSizeChange}
       />
     );
   };

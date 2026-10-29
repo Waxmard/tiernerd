@@ -17,6 +17,7 @@ import {
   signInNativeGoogle,
   signOutNativeGoogle,
 } from '../services/googleSignIn';
+import { restoreNavKey, restoreViewKey } from '../services/sessionRestore';
 
 interface User {
   id: string;
@@ -178,6 +179,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOut = useCallback(async () => {
     try {
       setIsLoading(true);
+      if (user) {
+        await AsyncStorage.multiRemove([
+          restoreNavKey(user.id),
+          restoreViewKey(user.id),
+        ]);
+      }
       await clearAuthState();
       if (Platform.OS === 'ios') {
         await signOutNativeGoogle();
@@ -192,7 +199,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [clearAuthState]);
+  }, [clearAuthState, user]);
 
   const contextValue = useMemo(
     () => ({
