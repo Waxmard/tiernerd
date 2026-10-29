@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import type { Item } from '../services/itemsService';
 import {
@@ -13,7 +13,21 @@ interface RestoredView {
   offset: number;
 }
 
+interface ViewRestoreState {
+  identity: string;
+  view: RestoredView | null;
+  selectionCancelled: boolean;
+  offsetCancelled: boolean;
+  restoreOffset: number | null;
+  offset: number;
+  selectedId: string | null;
+  active: boolean;
+  loaded: boolean;
+  saveTimer: ReturnType<typeof setTimeout> | null;
+}
+
 interface UseListViewRestoreParams {
+  identity: string;
   userId: string | null;
   listId: string;
   items: Item[];
@@ -27,6 +41,7 @@ interface UseListViewRestoreParams {
 }
 
 export function useListViewRestore({
+  identity,
   userId,
   listId,
   items,
@@ -38,115 +53,207 @@ export function useListViewRestore({
   setSelectedItemId,
   scrollToOffset,
 }: UseListViewRestoreParams) {
-  const viewRestoreRef = useRef<RestoredView | null>(null);
-  const [viewLoaded, setViewLoaded] = useState(false);
-  const restoreOffsetRef = useRef<number | null>(null);
-  const offsetRef = useRef(0);
-  const viewSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stateRef = useRef<ViewRestoreState | null>(null);
   const persistedSelectedId =
     !isDesktop &&
     selectedItemId !== null &&
     dismissedDetailsItemId === selectedItemId
       ? null
       : selectedItemId;
-  const persistedSelectedIdRef = useRef(persistedSelectedId);
-  persistedSelectedIdRef.current = persistedSelectedId;
-  const skipRestoreRef = useRef(skipRestore);
-  skipRestoreRef.current = skipRestore;
+  if (!stateRef.current || stateRef.current.identity !== identity) {
+    stateRef.current = {
+      identity,
+      view: null,
+      selectionCancelled: false,
+      offsetCancelled: false,
+      restoreOffset: null,
+      offset: 0,
+      selectedId: null,
+      active: true,
+      loaded: false,
+      saveTimer: null,
+    };
+  } else {
+    stateRef.current.selectedId = persistedSelectedId;
+  }
+  const state = stateRef.current;
+  if (skipRestore) {
+    state.selectionCancelled = true;
+    state.offsetCancelled = true;
+    state.view = null;
+    state.restoreOffset = null;
+  }
+  const [loadedState, setLoadedState] = useState<ViewRestoreState | null>(null);
+  const viewLoaded = loadedState === state;
 
   useEffect(() => {
-    setViewLoaded(false);
-    viewRestoreRef.current = null;
-    restoreOffsetRef.current = null;
-    offsetRef.current = 0;
     if (!userId) return;
     let cancelled = false;
     AsyncStorage.getItem(restoreViewKey(userId))
       .catch(() => null)
       .then((raw) => {
-        if (cancelled) return;
+        if (cancelled || stateRef.current !== state) return;
         const result = parseListView(raw, listId, Date.now());
-        if (result && !skipRestoreRef.current) {
-          viewRestoreRef.current = result;
-          restoreOffsetRef.current = result.offset > 0 ? result.offset : null;
-          offsetRef.current = result.offset;
+        if (result) {
+          if (!state.selectionCancelled && result.selectedItemId !== null)
+            state.view = result;
+          if (!state.offsetCancelled) {
+            state.restoreOffset = result.offset > 0 ? result.offset : null;
+            state.offset = result.offset;
+          }
         }
-        setViewLoaded(true);
+        state.loaded = true;
+        setLoadedState(state);
       });
     return () => {
       cancelled = true;
     };
-  }, [userId, listId]);
+  }, [userId, listId, state]);
 
   useEffect(() => {
-    if (!viewLoaded || !itemsLoaded || !viewRestoreRef.current) return;
-    const id = viewRestoreRef.current.selectedItemId;
-    viewRestoreRef.current = null;
-    if (id !== null && items.some((item) => item.item_id === id))
+    if (
+      stateRef.current !== state ||
+      !viewLoaded ||
+      !itemsLoaded ||
+      !state.view
+    )
+      return;
+    const id = state.view.selectedItemId;
+    if (
+      id !== null &&
+      items.some((item) => item.item_id === id) &&
+      selectedItemId !== id
+    ) {
       setSelectedItemId(id);
-  }, [viewLoaded, itemsLoaded, items, setSelectedItemId]);
+      return;
+    }
+    state.view = null;
+  }, [
+    viewLoaded,
+    itemsLoaded,
+    items,
+    selectedItemId,
+    setSelectedItemId,
+    state,
+  ]);
 
   const saveView = useCallback(
     (selected: string | null) => {
-      if (!userId) return;
+      if (
+        !userId ||
+        !state.active ||
+        stateRef.current !== state ||
+        !state.loaded ||
+        state.view
+      )
+        return;
       AsyncStorage.setItem(
         restoreViewKey(userId),
         buildListView(
-          { listId, selectedItemId: selected, offset: offsetRef.current },
+          { listId, selectedItemId: selected, offset: state.offset },
           Date.now()
         )
       ).catch(() => {});
     },
-    [userId, listId]
+    [userId, listId, state]
   );
 
   useEffect(() => {
-    if (viewLoaded && !viewRestoreRef.current) saveView(persistedSelectedId);
-  }, [viewLoaded, persistedSelectedId, saveView]);
+    if (viewLoaded && (itemsLoaded || skipRestore || !state.view))
+      saveView(persistedSelectedId);
+  }, [
+    viewLoaded,
+    persistedSelectedId,
+    itemsLoaded,
+    skipRestore,
+    state,
+    saveView,
+  ]);
 
-  useEffect(
-    () => () => {
-      if (viewSaveTimerRef.current === null) return;
-      clearTimeout(viewSaveTimerRef.current);
-      saveView(persistedSelectedIdRef.current);
-    },
-    [saveView]
-  );
+  useEffect(() => {
+    state.active = true;
+    return () => {
+      if (state.saveTimer !== null) {
+        clearTimeout(state.saveTimer);
+        state.saveTimer = null;
+        saveView(state.selectedId);
+      }
+      state.active = false;
+    };
+  }, [saveView, state]);
+
+  const clearRestoredSelection = useCallback(() => {
+    if (!state.active || stateRef.current !== state) return false;
+    state.selectionCancelled = true;
+    state.view = null;
+    return true;
+  }, [state]);
 
   const clearRestoredOffset = useCallback(() => {
-    restoreOffsetRef.current = null;
-  }, []);
+    if (!state.active || stateRef.current !== state) return;
+    state.offsetCancelled = true;
+    state.restoreOffset = null;
+  }, [state]);
 
   const onScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (restoreOffsetRef.current !== null) return;
-      offsetRef.current = event.nativeEvent.contentOffset.y;
-      clearTimeout(viewSaveTimerRef.current ?? undefined);
-      viewSaveTimerRef.current = setTimeout(
-        () => saveView(persistedSelectedIdRef.current),
-        500
-      );
+      if (
+        !state.active ||
+        stateRef.current !== state ||
+        state.restoreOffset !== null
+      )
+        return;
+      state.offset = event.nativeEvent.contentOffset.y;
+      clearTimeout(state.saveTimer ?? undefined);
+      state.saveTimer = setTimeout(() => {
+        state.saveTimer = null;
+        saveView(state.selectedId);
+      }, 500);
     },
-    [saveView]
+    [saveView, state]
+  );
+
+  const onScrollBeginDrag = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      clearRestoredOffset();
+      onScroll(event);
+    },
+    [clearRestoredOffset, onScroll]
   );
 
   useEffect(() => {
-    if (!viewLoaded || !itemsLoaded) return;
-    const offset = restoreOffsetRef.current;
+    if (stateRef.current !== state || !viewLoaded || !itemsLoaded) return;
+    const offset = state.restoreOffset;
     if (offset === null) return;
-    restoreOffsetRef.current = null;
+    state.restoreOffset = null;
     scrollToOffset(offset);
-  }, [viewLoaded, itemsLoaded, scrollToOffset]);
+  }, [viewLoaded, itemsLoaded, scrollToOffset, state]);
 
   const onContentSizeChange = useCallback(
     (_width: number, height: number) => {
-      const offset = restoreOffsetRef.current;
+      if (!state.active || stateRef.current !== state) return;
+      const offset = state.restoreOffset;
       if (offset === null) return;
       scrollToOffset(offset);
-      if (height > offset) restoreOffsetRef.current = null;
+      if (height > offset) state.restoreOffset = null;
     },
-    [scrollToOffset]
+    [scrollToOffset, state]
   );
 
-  return { clearRestoredOffset, onScroll, onContentSizeChange };
+  return useMemo(
+    () => ({
+      clearRestoredSelection,
+      clearRestoredOffset,
+      onScrollBeginDrag,
+      onScroll,
+      onContentSizeChange,
+    }),
+    [
+      clearRestoredSelection,
+      clearRestoredOffset,
+      onScrollBeginDrag,
+      onScroll,
+      onContentSizeChange,
+    ]
+  );
 }

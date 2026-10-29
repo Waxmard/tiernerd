@@ -171,19 +171,19 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       listRef.current?.scrollToOffset({ offset, animated: false }),
     []
   );
-  const { clearRestoredOffset, onScroll, onContentSizeChange } =
-    useListViewRestore({
-      userId,
-      listId,
-      items,
-      itemsLoaded,
-      selectedItemId,
-      dismissedDetailsItemId,
-      isDesktop,
-      skipRestore: Boolean(promptAddItem || completedItemId),
-      setSelectedItemId,
-      scrollToOffset,
-    });
+  const view = useListViewRestore({
+    identity: screenIdentity,
+    userId,
+    listId,
+    items,
+    itemsLoaded,
+    selectedItemId,
+    dismissedDetailsItemId,
+    isDesktop,
+    skipRestore: Boolean(promptAddItem || completedItemId),
+    setSelectedItemId,
+    scrollToOffset,
+  });
 
   const handleWorkspaceItemsChanged = useCallback(
     async (item?: Item) => {
@@ -202,7 +202,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       )
         return;
       if (!item) return;
-      clearRestoredOffset();
+      view.clearRestoredSelection();
+      view.clearRestoredOffset();
       pendingScrollRef.current = {
         itemId: item.item_id,
         index: -1,
@@ -215,7 +216,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         setDismissedDetailsItemId(item.item_id);
       }
     },
-    [clearRestoredOffset, refreshAfterMutation, itemsRef, screenIdentity]
+    [view, refreshAfterMutation, itemsRef, screenIdentity]
   );
 
   const refreshSessionLookup = useCallback(
@@ -271,6 +272,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     onItemsChanged: handleWorkspaceItemsChanged,
     onClosed: handleWorkspaceClosed,
   });
+  const { openAdd } = workspace;
   const workspaceModeRef = useRef(workspace.mode);
   if (workspaceModeRef.current !== workspace.mode) {
     workspaceModeRef.current = workspace.mode;
@@ -327,6 +329,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         workspaceModeRef.current !== 'closed'
       )
         return;
+      view.clearRestoredSelection();
       resolvedDraftIdsRef.current.add(session.item_id);
       rankingCandidateIdRef.current = session.item_id;
       setSelectedItemId(session.item_id);
@@ -339,6 +342,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         workspaceModeRef.current !== 'closed'
       )
         return;
+      view.clearRestoredSelection();
       setSelectedItemId(item.item_id);
       setDismissedDetailsItemId(null);
     },
@@ -427,8 +431,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       (item) => item.item_id === completedItemId
     );
     if (completedItem) {
+      view.clearRestoredSelection();
       setSelectedItemId(completedItemId);
-      clearRestoredOffset();
+      view.clearRestoredOffset();
       pendingScrollRef.current = {
         itemId: completedItemId,
         index: -1,
@@ -440,7 +445,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     }
     consumedCompletedItemIdRef.current = completedItemId;
     navigation.setParams({ completedItemId: undefined });
-  }, [clearRestoredOffset, completedItemId, items, itemsLoaded, navigation]);
+  }, [view, completedItemId, items, itemsLoaded, navigation]);
 
   useLayoutEffect(() => {
     const pending = pendingScrollRef.current;
@@ -533,7 +538,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   ]);
   const handleItemPress = async (item: Item) => {
     const identity = screenIdentity;
-    if (deletingListInFlightRef.current) return;
+    if (deletingListInFlightRef.current || !view.clearRestoredSelection())
+      return;
     if (workspace.mode !== 'closed' && !(await requestCloseForSwitch())) return;
     if (identityRef.current !== identity || deletingListInFlightRef.current)
       return;
@@ -542,9 +548,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   };
   const handleAddPress = useCallback(async () => {
     const identity = screenIdentity;
+    if (deletingListInFlightRef.current || !canMutateFor(identity))
+      return false;
+    view.clearRestoredSelection();
     if (
-      deletingListInFlightRef.current ||
-      !canMutateFor(identity) ||
       !(await requestCloseForSwitch()) ||
       deletingListInFlightRef.current ||
       !canMutateFor(identity)
@@ -552,18 +559,19 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       return false;
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
-    workspace.openAdd();
+    openAdd();
     return true;
-  }, [canMutateFor, requestCloseForSwitch, screenIdentity, workspace.openAdd]);
+  }, [canMutateFor, view, requestCloseForSwitch, screenIdentity, openAdd]);
   const handleWorkspaceContentClose = useCallback(() => {
-    if (deletingListInFlightRef.current) return;
+    if (deletingListInFlightRef.current || !view.clearRestoredSelection())
+      return;
     if (workspace.mode !== 'closed') {
       void workspace.requestClose().catch(() => false);
       return;
     }
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
-  }, [workspace.mode, workspace.requestClose]);
+  }, [view, workspace.mode, workspace.requestClose]);
   const handleOpenRange = () => {
     if (!selectedItem || !canMutateFor(screenIdentity)) return;
     rankingCandidateIdRef.current = selectedItem.item_id;
@@ -581,13 +589,19 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     workspace.resume(selectedSession);
   };
   const handleMobileClose = useCallback(() => {
-    if (deletingListInFlightRef.current) return;
+    if (deletingListInFlightRef.current || !view.clearRestoredSelection())
+      return;
     if (workspace.mode !== 'closed') {
       void requestCloseForSwitch().catch(() => false);
       return;
     }
     handleWorkspaceContentClose();
-  }, [handleWorkspaceContentClose, requestCloseForSwitch, workspace.mode]);
+  }, [
+    view,
+    handleWorkspaceContentClose,
+    requestCloseForSwitch,
+    workspace.mode,
+  ]);
   useEffect(
     () =>
       navigation.addListener('beforeRemove', (event) => {
@@ -698,8 +712,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         showsVerticalScrollIndicator={false}
         onScrollToIndexFailed={handleScrollToIndexFailed}
         scrollEventThrottle={100}
-        onScroll={onScroll}
-        onContentSizeChange={onContentSizeChange}
+        onScrollBeginDrag={view.onScrollBeginDrag}
+        onScroll={view.onScroll}
+        onContentSizeChange={view.onContentSizeChange}
       />
     );
   };

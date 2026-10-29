@@ -14,6 +14,8 @@ On phones, forms and item details fill the usable screen height with fixed headi
 
 The default appearance is **System**, which follows the device's appearance. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads; existing explicit choices are preserved. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on wide screens.
 
+The native launch splash uses the device appearance, with its image and light and dark colors configured in `app.json`. Rebuild the app to apply splash changes; the saved in-app appearance preference applies after launch.
+
 Sign-in is available on iOS with Google. The Google OAuth web client ID in `EXPO_PUBLIC_GOOGLE_CLIENT_ID` must match the backend's `GOOGLE_CLIENT_ID`. iOS also requires an iOS OAuth client ID for `com.maxwellward.tiernerd`; `make ios` and `scripts/build-ios-testflight.sh` supply development defaults for both client IDs.
 
 ## Prerequisites
