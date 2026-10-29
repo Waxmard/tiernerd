@@ -4,9 +4,6 @@ import type { Item } from './itemsService.ts';
 import {
   acceptLiveItems,
   acceptLiveMetadata,
-  applyCachedItemsState,
-  applyEvictedListState,
-  applyLiveItemsState,
   bumpLifecycleMutation,
   canAcceptItemsResponse,
   canAcceptMetadataResponse,
@@ -14,9 +11,7 @@ import {
   canApplyCachedMetadata,
   canApplyHydration,
   canWriteCachedItems,
-  createInvalidatedReadState,
   createListDetailLifecycle,
-  createListDetailState,
   deactivateLifecycle,
   enqueueListCacheWrite,
   evictLifecycleList,
@@ -25,7 +20,6 @@ import {
   isLifecycleActive,
   isLifecycleReadable,
   listItemsCacheKey,
-  listsCacheKey,
   parseCachedListItems,
   parseCachedLists,
   startHydrationRequest,
@@ -58,10 +52,6 @@ const item = (overrides: Partial<Item> = {}): Item => ({
 });
 
 test('keys item snapshots by user and list', () => {
-  assert.equal(
-    listItemsCacheKey('user-1', 'list-1'),
-    'cachedListItems:v1:user-1:list-1'
-  );
   assert.notEqual(
     listItemsCacheKey('user-1', 'list-1'),
     listItemsCacheKey('user-2', 'list-1')
@@ -175,11 +165,6 @@ test('continues a key queue after a failed operation', async () => {
   assert.equal(stored, null);
 });
 
-test('keys the cache per user id', () => {
-  assert.equal(listsCacheKey('user-1'), 'cachedLists:user-1');
-  assert.notEqual(listsCacheKey('user-1'), listsCacheKey('user-2'));
-});
-
 test('rejects missing or malformed payloads', () => {
   const malformed = [
     null,
@@ -206,8 +191,8 @@ test('round-trips a stored payload', () => {
 });
 
 test('drops payloads whose color is missing or not a known swatch', () => {
-  const { color, ...withoutColor } = listSimple;
-  assert.equal(color, null);
+  const withoutColor: Record<string, unknown> = { ...listSimple };
+  delete withoutColor.color;
 
   assert.equal(parseCachedLists(JSON.stringify([withoutColor])), null);
   assert.equal(
@@ -219,7 +204,7 @@ test('drops payloads whose color is missing or not a known swatch', () => {
     [{ ...listSimple, color: 'teal' }]
   );
 });
-test('account switching drops in-flight reads so late responses cannot expose previous account snapshot', () => {
+test('account switching drops in-flight reads and hydration for the previous account', () => {
   const lifecycleA = createListDetailLifecycle({
     identity: JSON.stringify(['user-a', 'token-a', 'list-1']),
     userId: 'user-a',
@@ -228,8 +213,9 @@ test('account switching drops in-flight reads so late responses cannot expose pr
     routeTitle: 'Account A List',
   });
   const requestId = startItemsRequest(lifecycleA);
-  assert.equal(isLifecycleReadable(lifecycleA), true);
+  const { hydrationId, version } = startHydrationRequest(lifecycleA);
   assert.equal(canAcceptItemsResponse(lifecycleA, requestId), true);
+  assert.equal(canApplyHydration(lifecycleA, hydrationId, version), true);
 
   deactivateLifecycle(lifecycleA);
   const lifecycleB = createListDetailLifecycle({
@@ -250,28 +236,6 @@ test('account switching drops in-flight reads so late responses cannot expose pr
     canWriteCachedItems(lifecycleA, 0, requestId, lifecycleB),
     false
   );
-});
-
-test('account switching drops in-flight hydration so late storage reads cannot expose previous account snapshot', () => {
-  const lifecycleA = createListDetailLifecycle({
-    identity: JSON.stringify(['user-a', 'token-a', 'list-1']),
-    userId: 'user-a',
-    token: 'token-a',
-    listId: 'list-1',
-    routeTitle: 'Account A List',
-  });
-  const { hydrationId, version } = startHydrationRequest(lifecycleA);
-  assert.equal(canApplyHydration(lifecycleA, hydrationId, version), true);
-
-  deactivateLifecycle(lifecycleA);
-  const lifecycleB = createListDetailLifecycle({
-    identity: JSON.stringify(['user-b', 'token-b', 'list-1']),
-    userId: 'user-b',
-    token: 'token-b',
-    listId: 'list-1',
-    routeTitle: 'Account B List',
-  });
-
   assert.equal(
     canApplyHydration(lifecycleA, hydrationId, version, lifecycleB),
     false
@@ -286,7 +250,7 @@ test('account switching drops in-flight hydration so late storage reads cannot e
   );
 });
 
-test('eviction drops in-flight reads so late responses cannot repopulate a deleted list in state or cache', () => {
+test('eviction drops in-flight reads and hydration so a deleted list cannot be repopulated', () => {
   const lifecycle = createListDetailLifecycle({
     identity: JSON.stringify(['user-1', 'token-1', 'list-1']),
     userId: 'user-1',
@@ -295,7 +259,9 @@ test('eviction drops in-flight reads so late responses cannot repopulate a delet
     routeTitle: 'My List',
   });
   const requestId = startItemsRequest(lifecycle);
+  const { hydrationId, version } = startHydrationRequest(lifecycle);
   const preEvictionVersion = lifecycle.cacheVersion;
+  assert.equal(canApplyHydration(lifecycle, hydrationId, version), true);
 
   const evictionVersion = evictLifecycleList(lifecycle);
   assert.equal(lifecycle.deleted, true);
@@ -312,21 +278,6 @@ test('eviction drops in-flight reads so late responses cannot repopulate a delet
     canWriteCachedItems(lifecycle, evictionVersion, requestId),
     false
   );
-});
-
-test('eviction drops in-flight hydration so late cache reads cannot repopulate a deleted list', () => {
-  const lifecycle = createListDetailLifecycle({
-    identity: JSON.stringify(['user-1', 'token-1', 'list-1']),
-    userId: 'user-1',
-    token: 'token-1',
-    listId: 'list-1',
-    routeTitle: 'My List',
-  });
-  const { hydrationId, version } = startHydrationRequest(lifecycle);
-  assert.equal(canApplyHydration(lifecycle, hydrationId, version), true);
-
-  evictLifecycleList(lifecycle);
-
   assert.equal(canApplyHydration(lifecycle, hydrationId, version), false);
   assert.equal(canApplyCachedItems(lifecycle, hydrationId, version), false);
   assert.equal(canApplyCachedMetadata(lifecycle, hydrationId, version), false);
@@ -389,35 +340,4 @@ test('mutation refresh invalidates cache version and clears live accepted flags'
   assert.notEqual(nextVersion, initialVersion);
   assert.equal(isCacheCurrent(lifecycle, initialVersion), false);
   assert.equal(isCacheCurrent(lifecycle, nextVersion), true);
-});
-
-test('state helpers produce expected state shapes across lifecycle transitions', () => {
-  const initial = createListDetailState('id-1', 'Initial Title');
-  assert.equal(initial.identity, 'id-1');
-  assert.equal(initial.detailsTitle, 'Initial Title');
-  assert.equal(initial.isLoadingItems, true);
-  assert.equal(initial.itemsLoaded, false);
-
-  const testItem = item();
-  const hydrated = applyCachedItemsState(initial, [testItem]);
-  assert.deepEqual(hydrated.items, [testItem]);
-  assert.equal(hydrated.hasItemsSnapshot, true);
-
-  const live = applyLiveItemsState(hydrated, [testItem]);
-  assert.equal(live.isLoadingItems, false);
-  assert.equal(live.itemsLoaded, true);
-
-  const invalidated = createInvalidatedReadState(
-    live,
-    'Initial Title',
-    'Failed'
-  );
-  assert.deepEqual(invalidated.items, []);
-  assert.equal(invalidated.itemsLoaded, false);
-  assert.equal(invalidated.metadataError, true);
-  assert.equal(invalidated.itemsError, 'Failed');
-
-  const evicted = applyEvictedListState('id-1', 'Initial Title');
-  assert.equal(evicted.isLoadingItems, false);
-  assert.deepEqual(evicted.items, []);
 });

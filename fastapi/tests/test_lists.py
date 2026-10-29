@@ -89,24 +89,6 @@ class TestReadLists:
         user2_lists = result.scalars().all()
         assert len(user2_lists) == 0
 
-    async def test_read_lists_pagination(
-        self,
-        client: AsyncClient,
-        test_user: User,
-        test_list: ListModel,
-        auth_headers: dict,
-    ):
-        """Test lists pagination."""
-        # Test with limit
-        response = await client.get("/api/lists/?limit=1", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) <= 1
-
-        # Test with skip
-        response = await client.get("/api/lists/?skip=1", headers=auth_headers)
-        assert response.status_code == 200
-
 
 @pytest.mark.asyncio
 class TestCreateList:

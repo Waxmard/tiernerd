@@ -4,9 +4,7 @@ This file provides guidance to AI agents working in this repository.
 
 ## Project Overview
 
-TierNerd is a cross-platform mobile app for ranking items through 1v1 comparisons and displaying scores out of 10. Pick a starting range, then compare items to establish their order within that range. Ranked items receive a score based on their position and appear best first.
-
-Monorepo with React Native/Expo frontend and FastAPI backend.
+Monorepo: React Native/Expo frontend (`frontend/`), FastAPI backend (`fastapi/`). Product overview in [README.md](README.md).
 
 ## Repo Layout
 
@@ -107,7 +105,6 @@ Simulator and development commands:
 
 ```bash
 npm run ios                       # Run on iOS simulator
-npm run android                   # Run on Android emulator
 npx expo start --go               # Expo Go on a physical phone, no simulator
 ```
 Code quality (Biome — single tool for lint + format):
@@ -198,17 +195,13 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 ## Development Notes for AI Agents
 
-- Check for TypeScript errors after frontend changes.
-- Google is the only sign-in method on iOS: the client obtains a Google ID token and exchanges it at `POST /api/users/google`. Android sign-in is unsupported.
+- Google is the only sign-in method: the client obtains a Google ID token and exchanges it at `POST /api/users/google`.
 - Comparison sessions are persistent database drafts; answers do not change saved ranks until commit.
 - API endpoints are prefixed with `/api/`.
-- Do **not** run `npm run ios`, `npm run android`, or `npx expo start` — the user runs these in a separate terminal.
-- The deployed dev API is the default backend for frontend work (`make ios` and TestFlight builds target it by default).
+- Do **not** run `npm run ios` or `npx expo start` — the user runs these in a separate terminal.
 - Do **not** run `make cloud-deploy` unless asked — it mutates shared cloud state.
 - Run `make test` and `make typecheck` (or `make ci`) after changing frontend behavior.
 - Do **not** run `git commit`, `git add`, or `git push` — the user handles staging, committing, and pushing.
-- Do **not** run `make clean`, `make dev`, `make fresh`, `make restart`, or `make reset` — the user runs these themselves.
-- Backend package management: use `uv`, not `pip`.
 
 ## Documentation
 

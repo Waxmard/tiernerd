@@ -37,8 +37,8 @@ setup:
 lint:      backend-lint frontend-lint
 fix:       backend-fix frontend-fix
 typecheck: backend-typecheck frontend-typecheck
-test:      backend-test frontend-unit
-ci:        backend-ci frontend-lint frontend-typecheck frontend-unit line-limit
+test:      backend-test frontend-unit scripts-test
+ci:        backend-ci frontend-lint frontend-typecheck frontend-unit scripts-test line-limit
 
 # ----- Source hygiene -----
 
@@ -55,7 +55,7 @@ backend-%:
 ios:
 	EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="$${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID-1015723670625-v0h15l5cj1eotf9h4u539q878e2mclm6.apps.googleusercontent.com}" bash scripts/ios.sh "$(IOS_DEVICE)"
 
-.PHONY: frontend-lint frontend-fix frontend-typecheck frontend-unit
+.PHONY: frontend-lint frontend-fix frontend-typecheck frontend-unit scripts-test
 frontend-lint:
 	cd frontend && npm run lint && npm run format:check
 
@@ -67,4 +67,6 @@ frontend-typecheck:
 
 frontend-unit:
 	cd frontend && npm run test:unit
+
+scripts-test:
 	node --test scripts/ios-config.test.mjs

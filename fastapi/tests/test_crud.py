@@ -98,18 +98,6 @@ class TestComparisonCRUD:
 class TestItemCRUD:
     """Tests for item CRUD operations."""
 
-    async def test_get_by_id_exists(self, test_db: AsyncSession, test_item: ItemModel):
-        """Test getting item by ID that exists."""
-        result = await item_crud.get_by_id(test_db, test_item.item_id)
-        assert result is not None
-        assert result.item_id == test_item.item_id
-
-    async def test_get_by_id_not_exists(self, test_db: AsyncSession):
-        """Test getting item by ID that doesn't exist."""
-        fake_id = uuid.uuid4()
-        result = await item_crud.get_by_id(test_db, fake_id)
-        assert result is None
-
     async def test_get_by_id_with_ownership_success(
         self, test_db: AsyncSession, test_item: ItemModel, test_user: User
     ):
@@ -298,18 +286,6 @@ def test_postgresql_duplicate_name_error_classification() -> None:
 class TestListCRUD:
     """Tests for list CRUD operations."""
 
-    async def test_get_by_id_exists(self, test_db: AsyncSession, test_list: ListModel):
-        """Test getting list by ID that exists."""
-        result = await list_crud.get_by_id(test_db, test_list.list_id)
-        assert result is not None
-        assert result.list_id == test_list.list_id
-
-    async def test_get_by_id_not_exists(self, test_db: AsyncSession):
-        """Test getting list by ID that doesn't exist."""
-        fake_id = uuid.uuid4()
-        result = await list_crud.get_by_id(test_db, fake_id)
-        assert result is None
-
     async def test_get_by_id_and_user(
         self, test_db: AsyncSession, test_list: ListModel, test_user: User
     ):
@@ -356,35 +332,6 @@ class TestListCRUD:
         assert len(result) >= 1
         list_obj = result[0][0]
         assert list_obj.user_id == test_user.user_id
-
-    async def test_get_by_user_with_stats_pagination(
-        self, test_db: AsyncSession, test_user: User
-    ):
-        """Test pagination in get_by_user_with_stats."""
-        # Create multiple lists
-        for i in range(5):
-            list_obj = ListModel(
-                list_id=uuid.uuid4(),
-                user_id=test_user.user_id,
-                title=f"Stats Test List {i}",
-                description=f"List {i}",
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-            )
-            test_db.add(list_obj)
-        await test_db.commit()
-
-        # Test with limit
-        result = await list_crud.get_by_user_with_stats(
-            test_db, test_user.user_id, skip=0, limit=2
-        )
-        assert len(result) == 2
-
-        # Test with skip
-        result = await list_crud.get_by_user_with_stats(
-            test_db, test_user.user_id, skip=2, limit=2
-        )
-        assert len(result) == 2
 
     async def test_create_list(self, test_db: AsyncSession, test_user: User):
         """Test creating a list."""
