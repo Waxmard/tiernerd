@@ -32,7 +32,7 @@ fi
 (
   cd "$root/frontend"
   npx expo prebuild --platform ios --no-install
-  (cd ios && (pod install || pod install --repo-update))
+  (cd ios && (pod install || { echo 'pod install failed; rebuilding generated ios/Pods' >&2; rm -rf Pods && pod install; }))
 )
 
 if [[ "${SIMULATOR_SMOKE_ONLY:-0}" == "1" ]]; then

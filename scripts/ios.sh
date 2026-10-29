@@ -22,7 +22,7 @@ else
     exit 1
   fi
   npx expo prebuild --platform ios --no-install
-  (cd ios && pod install)
+  (cd ios && (pod install || { echo 'pod install failed; rebuilding generated ios/Pods' >&2; rm -rf Pods && pod install; }))
   xcrun xcodebuild -workspace ios/TierNerd.xcworkspace -scheme TierNerd -configuration Release \
     -destination 'generic/platform=iOS' -derivedDataPath ios/DerivedData -allowProvisioningUpdates IPHONEOS_DEPLOYMENT_TARGET=15.1 build
 fi

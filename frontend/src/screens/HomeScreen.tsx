@@ -38,6 +38,7 @@ import {
   listItemsCacheKey,
   listsCacheKey,
   parseCachedLists,
+  sortListsByRecency,
 } from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
 
@@ -131,7 +132,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         isIdentityCurrent(userId, token);
       if (showLoading) setIsLoading(true);
       try {
-        const result = await listsService.getLists(token);
+        const result = sortListsByRecency(await listsService.getLists(token));
         if (!isCurrent()) return;
         liveResponseRef.current += 1;
         setLists(result.map(toTierList));

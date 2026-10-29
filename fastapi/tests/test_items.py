@@ -1,7 +1,7 @@
 """Tests for item endpoints."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -16,6 +16,7 @@ from app.db.models import (
     ComparisonSession as ComparisonSessionModel,
     Item as ItemModel,
     List as ListModel,
+    User,
 )
 
 
@@ -306,6 +307,96 @@ class TestUpdateItem:
             headers=auth_headers_user2,
         )
         assert response.status_code == 404
+
+    async def test_item_update_changes_list_recency_only_on_success(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        test_item: ItemModel,
+        test_user2: User,
+        auth_headers: dict,
+        auth_headers_user2: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        test_list.updated_at = datetime(2020, 1, 1, tzinfo=UTC)
+        newer_list = ListModel(
+            list_id=uuid.uuid4(),
+            user_id=test_list.user_id,
+            title="Newer list",
+            created_at=datetime(2021, 1, 1, tzinfo=UTC),
+            updated_at=datetime(2021, 1, 1, tzinfo=UTC),
+        )
+        foreign_list = ListModel(
+            list_id=uuid.uuid4(),
+            user_id=test_user2.user_id,
+            title="Another owner's list",
+            created_at=datetime(2022, 1, 1, tzinfo=UTC),
+            updated_at=datetime(2022, 1, 1, tzinfo=UTC),
+        )
+        duplicate_item = ItemModel(
+            item_id=uuid.uuid4(),
+            list_id=test_list.list_id,
+            name="Other",
+            tier_set="mid",
+        )
+        test_db.add_all([newer_list, foreign_list, duplicate_item])
+        await test_db.commit()
+        await test_db.refresh(test_list)
+        await test_db.refresh(newer_list)
+        original_updated_at = test_list.updated_at
+        newer_updated_at = newer_list.updated_at
+        old_id = str(test_list.list_id)
+        new_id = str(newer_list.list_id)
+        item_url = f"/api/items/items/{test_item.item_id}"
+
+        initial = await client.get("/api/lists/", headers=auth_headers)
+        assert initial.status_code == 200
+        assert [row["list_id"] for row in initial.json()] == [new_id, old_id]
+
+        empty = await client.put(item_url, json={}, headers=auth_headers)
+        assert empty.status_code == 200
+        await test_db.refresh(test_list)
+        assert test_list.updated_at == original_updated_at
+
+        duplicate = await client.put(
+            item_url, json={"name": " other "}, headers=auth_headers
+        )
+        assert duplicate.status_code == 409
+        await test_db.refresh(test_list)
+        assert test_list.updated_at == original_updated_at
+
+        unauthorized = await client.put(
+            item_url, json={"name": "Forbidden"}, headers=auth_headers_user2
+        )
+        assert unauthorized.status_code == 404
+        await test_db.refresh(test_list)
+        assert test_list.updated_at == original_updated_at
+
+        async def no_match(db, list_id, name_key, exclude_id=None):
+            return None
+
+        with monkeypatch.context() as patch:
+            patch.setattr(item_crud, "get_by_name_key", no_match)
+            conflict = await client.put(
+                item_url, json={"name": "OTHER"}, headers=auth_headers
+            )
+        assert conflict.status_code == 409
+        await test_db.refresh(test_list)
+        assert test_list.updated_at == original_updated_at
+
+        updated = await client.put(
+            item_url, json={"name": "Edited"}, headers=auth_headers
+        )
+        assert updated.status_code == 200
+        assert updated.json()["name"] == "Edited"
+        await test_db.refresh(test_list)
+        assert test_list.updated_at > original_updated_at
+        assert test_list.updated_at > newer_updated_at
+
+        ordered = await client.get("/api/lists/", headers=auth_headers)
+        assert ordered.status_code == 200
+        assert [row["list_id"] for row in ordered.json()] == [old_id, new_id]
 
 
 class TestDeleteItem:

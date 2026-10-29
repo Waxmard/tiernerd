@@ -1,7 +1,7 @@
 """Tests for list endpoints."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -569,33 +569,28 @@ class TestReadListsWithStats:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        # Create additional lists
-        for i in range(5):
-            list_obj = ListModel(
-                list_id=uuid.uuid4(),
-                user_id=test_user.user_id,
-                title=f"Pagination Test List {i}",
-                description=f"List {i} for pagination testing",
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
+        for number, day in ((3, 2), (2, 1), (4, 3), (1, 2)):
+            test_db.add(
+                ListModel(
+                    list_id=uuid.UUID(int=number),
+                    user_id=test_user.user_id,
+                    title=f"Pagination Test List {number}",
+                    created_at=datetime(2023, 1, 1, tzinfo=UTC),
+                    updated_at=datetime(2024, 1, day, tzinfo=UTC),
+                )
             )
-            test_db.add(list_obj)
         await test_db.commit()
 
-        # Test getting first 2 lists
-        response = await client.get("/api/lists/?limit=2", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 2
+        first = await client.get("/api/lists/?limit=2", headers=auth_headers)
+        assert first.status_code == 200
+        assert [row["list_id"] for row in first.json()] == [
+            str(uuid.UUID(int=4)),
+            str(uuid.UUID(int=1)),
+        ]
 
-        # Test skipping first 2 lists
-        response = await client.get("/api/lists/?skip=2&limit=2", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 2
-
-        # Test getting all lists
-        response = await client.get("/api/lists/", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) >= 5  # At least the 5 we created
+        second = await client.get("/api/lists/?skip=2&limit=2", headers=auth_headers)
+        assert second.status_code == 200
+        assert [row["list_id"] for row in second.json()] == [
+            str(uuid.UUID(int=3)),
+            str(uuid.UUID(int=2)),
+        ]

@@ -65,6 +65,15 @@ export function parseCachedListItems(
   return parsed.every((item) => isItem(item, listId)) ? parsed : null;
 }
 
+export function sortListsByRecency(lists: ListSimple[]): ListSimple[] {
+  return [...lists].sort((a, b) => {
+    const difference = Date.parse(b.updated_at) - Date.parse(a.updated_at);
+    return (
+      difference || (a.list_id < b.list_id ? -1 : a.list_id > b.list_id ? 1 : 0)
+    );
+  });
+}
+
 const isListSimple = (value: unknown): value is ListSimple => {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as ListSimple;
@@ -73,6 +82,7 @@ const isListSimple = (value: unknown): value is ListSimple => {
     typeof candidate.title === 'string' &&
     typeof candidate.item_count === 'number' &&
     typeof candidate.updated_at === 'string' &&
+    !Number.isNaN(Date.parse(candidate.updated_at)) &&
     (candidate.color === null ||
       LIST_COLORS.includes(candidate.color as ListColor))
   );
@@ -87,7 +97,7 @@ export function parseCachedLists(raw: string | null): ListSimple[] | null {
     return null;
   }
   if (!Array.isArray(parsed)) return null;
-  return parsed.every(isListSimple) ? parsed : null;
+  return parsed.every(isListSimple) ? sortListsByRecency(parsed) : null;
 }
 export interface ListDetailDataState {
   identity: string;
