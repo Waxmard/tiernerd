@@ -25,8 +25,6 @@ Development startup seeds accounts for fixture data, not password sign-in. Sign 
 
 ## API Structure
 
-The API is structured around the following resources:
-
 - `/api/users` — User management and authentication
 - `/api/lists` — List creation and management
 - `/api/items` — Item management and ranking
@@ -40,16 +38,10 @@ Setup, quality targets and the Cloud Run dev loop: see [AGENTS.md](../AGENTS.md#
 - **Framework**: `pytest` with `pytest-asyncio` for async support
 - **Test Database**: SQLite in-memory for fast, isolated tests
 - **HTTP Client**: `httpx.AsyncClient` for endpoint testing
-- **Test Files**:
-  - `tests/conftest.py` — Test configuration and fixtures
-  - `tests/test_users.py` — User endpoint tests
-  - `tests/test_lists.py` — List endpoint tests
-  - `tests/test_items.py` — Item endpoint tests
-  - `tests/app/utils/test_algorithm.py` — Algorithm tests
+- **Tests**: Test modules and fixtures live in `tests/`, including ranking algorithm tests in `tests/app/utils/test_algorithm.py`.
 
 ```bash
 uv sync --locked                                    # Install deps incl. dev group
-uv run pytest                                       # All tests
 uv run pytest tests/test_users.py -v                # Single file
 uv run pytest tests/test_users.py -k google           # Google sign-in tests
 uv run pytest --cov=app --cov-report=html           # Coverage report

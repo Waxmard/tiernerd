@@ -54,7 +54,6 @@ interface AuthProviderProps {
 const AUTH_TOKEN_KEY = 'authToken';
 const USER_DATA_KEY = 'userData';
 
-// Convert API user to local user format
 const toLocalUser = (apiUser: ApiUser): User => ({
   id: apiUser.user_id,
   email: apiUser.email,
@@ -70,7 +69,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const signInPending = useRef(false);
 
-  // Helper to persist auth state to storage and update state
   const saveAuthState = useCallback(async (newToken: string, newUser: User) => {
     await AsyncStorage.setItem(AUTH_TOKEN_KEY, newToken);
     await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(newUser));

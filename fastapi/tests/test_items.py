@@ -56,7 +56,6 @@ class TestCreateItem:
         assert data["tier_set"] == tier_set
         assert data["rating"] == expected_rating
 
-        # Verify item was created in database
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == test_list.list_id)
         )
@@ -76,7 +75,6 @@ class TestCreateItem:
         test_db: AsyncSession,
     ):
         """Test creating second item starts a comparison session."""
-        # Verify we start with 1 item in database
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == test_list.list_id)
         )
@@ -96,7 +94,6 @@ class TestCreateItem:
         )
         assert response.status_code == 200
         data = response.json()
-        # Should return a ComparisonSession
         assert "session_id" in data
         assert data["status"] == "active"
         assert data["discard_on_cancel"] is True
@@ -236,7 +233,6 @@ class TestUpdateItem:
         assert data["description"] == "Updated description"
         assert data["image_url"] == "https://example.com/updated.jpg"
 
-        # Verify item was updated in database
         await test_db.refresh(test_item)
         assert test_item.name == "Updated Name"
         assert test_item.description == "Updated description"
@@ -402,13 +398,11 @@ class TestDeleteItem:
         item_id = test_item.item_id
         list_id = test_item.list_id
 
-        # Verify item exists in database before deletion
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.item_id == item_id)
         )
         assert result.scalar_one_or_none() is not None
 
-        # Count items in list before deletion
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == list_id)
         )
@@ -419,20 +413,17 @@ class TestDeleteItem:
         )
         assert response.status_code == 204
 
-        # Verify item is deleted from database
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.item_id == item_id)
         )
         assert result.scalar_one_or_none() is None
 
-        # Verify item count decreased
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == list_id)
         )
         items_after = len(result.scalars().all())
         assert items_after == items_before - 1
 
-        # Verify item is deleted via API
         response = await client.get(f"/api/items/items/{item_id}", headers=auth_headers)
         assert response.status_code == 404
 
@@ -521,7 +512,6 @@ class TestCreateItemTierSets:
         test_db: AsyncSession,
     ):
         """Test that items in different tier_sets don't trigger comparison."""
-        # Create first item in "good" tier_set
         response1 = await client.post(
             "/api/items/",
             params={"list_title": test_list.title},
@@ -569,11 +559,9 @@ class TestItemOwnership:
         """Test reading item after its list is deleted."""
         item_id = test_item.item_id
 
-        # Delete the list
         await test_db.delete(test_list)
         await test_db.commit()
 
-        # Try to read the item
         response = await client.get(f"/api/items/items/{item_id}", headers=auth_headers)
         # Item should be gone (cascade delete) or ownership check fails
         assert response.status_code == 404
@@ -586,7 +574,6 @@ class TestItemOwnership:
         test_db: AsyncSession,
     ):
         """Test that user can't update item in list they don't own."""
-        # Create a list for user2
         user2_list = ListModel(
             list_id=uuid.uuid4(),
             user_id=test_user2.user_id,
@@ -597,7 +584,6 @@ class TestItemOwnership:
         )
         test_db.add(user2_list)
 
-        # Create an item in user2's list
         user2_item = ItemModel(
             item_id=uuid.uuid4(),
             list_id=user2_list.list_id,

@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.db.models import Base
 from app.settings import get_settings
 
-# Create async engine with connection pool settings for production
 connect_args: dict[str, Any] = {}
 pool_kwargs: dict[str, Any] = {}
 if get_settings().APP_ENV == "production":

@@ -20,11 +20,10 @@ Sign-in is available on iOS with Google. The Google OAuth web client ID in `EXPO
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 24 ([`mise.toml`](../mise.toml); run `mise install`)
 - npm
 - Xcode and CocoaPods for native iOS builds
-- A paired iPhone, Apple team access and provisioning for standalone installation
-- Expo Go app (for development on a physical device)
+- A paired and trusted iPhone, Apple team access and provisioning for standalone installation
 
 ## Setup
 
@@ -51,15 +50,17 @@ Reuse does not include source or configuration changes. Run `make ios` to build 
 npm run ios
 ```
 
-### Option 3: Expo Go (Physical Device)
+### Option 3: iOS development build (physical device)
+
+Expo Go cannot run Google Sign-In because the library requires native code. Install a development build on a paired device:
 
 ```bash
-npx expo start
+npx expo run:ios --device
 ```
 
 ### Frontend commands
 
-iOS, TestFlight and code-quality commands: see [AGENTS.md](../AGENTS.md#frontend-frontend).
+iOS Release configuration: see [AGENTS.md](../AGENTS.md#ios-release). TestFlight release details: see [CONTRIBUTING.md](../CONTRIBUTING.md#deploys--releases). Code-quality commands: see [AGENTS.md](../AGENTS.md#frontend-code-quality).
 
 ## Troubleshooting
 
@@ -84,10 +85,6 @@ If you see "Unable to find destination" errors:
    rm -rf ios && npx expo prebuild --platform ios
    ```
 
-### Expo Go Version Mismatch
-
-If Expo Go shows "Project incompatible with this version" — the app requires SDK 54. Update Expo Go from the App Store.
-
 ### CocoaPods / Reanimated Errors
 
 If `pod install` fails with reanimated worklets errors:
@@ -99,10 +96,4 @@ rm -rf ios && npx expo prebuild --platform ios
 
 ## Project Structure
 
-```
-src/
-├── screens/          # Screen components
-├── navigation/       # React Navigation setup
-├── providers/        # Context providers (Auth)
-└── design-system/    # Reusable components and tokens
-```
+Frontend source directories: see [Frontend Structure](../AGENTS.md#frontend-structure-frontendsrc).

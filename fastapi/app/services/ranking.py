@@ -12,12 +12,9 @@ SCORE_BANDS: dict[str, tuple[float, float]] = {
 
 
 def assign_scores_for_set(sorted_items: list[ItemModel], tier_set: str) -> None:
-    """
-    Assign each ranked item a score within its tier_set's band, by rank.
+    """Assign ranked items scores within their tier set's band.
 
-    Args:
-        sorted_items: Ranked items sorted from lowest to highest position
-        tier_set: The tier set (good, mid, bad)
+    Items must be sorted from lowest to highest position.
     """
     band = SCORE_BANDS.get(tier_set)
     if not sorted_items or band is None:
@@ -31,16 +28,7 @@ def assign_scores_for_set(sorted_items: list[ItemModel], tier_set: str) -> None:
 def filter_ranked_items(
     items: list[ItemModel], exclude_id: uuid.UUID | None = None
 ) -> list[ItemModel]:
-    """
-    Filter items to only those that have been ranked (have a position assigned).
-
-    Args:
-        items: List of items to filter
-        exclude_id: Optional item ID to exclude from the result
-
-    Returns:
-        List of ranked items, optionally excluding the specified item
-    """
+    """Return items with a position, excluding the item with exclude_id if provided."""
     if exclude_id is None:
         return [item for item in items if item.position is not None]
     return [

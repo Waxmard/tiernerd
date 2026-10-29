@@ -100,7 +100,6 @@ class TestItemCRUD:
         self, test_db: AsyncSession, test_list: ListModel
     ):
         """Test getting items from list with no items."""
-        # Delete any existing items
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == test_list.list_id)
         )

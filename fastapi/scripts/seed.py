@@ -49,7 +49,6 @@ async def clear_database(session: AsyncSession) -> None:
 async def seed_users(session: AsyncSession) -> None:
     """Create dev users if they don't exist."""
     for user_data in DEV_USERS:
-        # Check if user already exists
         result = await session.execute(
             select(User).where(User.email == user_data["email"])
         )

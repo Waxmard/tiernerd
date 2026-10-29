@@ -4,7 +4,6 @@ Keys consist of digits and letters: 0-9, A-Z, a-z (62 characters total).
 This provides lexicographic ordering where "a0" < "a1" < "b0" etc.
 """
 
-# Base-62 alphabet: 0-9, A-Z, a-z
 ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 BASE = len(ALPHABET)  # 62
 

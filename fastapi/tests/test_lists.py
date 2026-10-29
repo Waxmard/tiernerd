@@ -27,7 +27,6 @@ class TestReadLists:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-        # Verify list data structure
         list_data = data[0]
         assert "list_id" in list_data
         assert "title" in list_data
@@ -96,7 +95,6 @@ class TestCreateList:
         assert "list_id" in data
         assert str(data["user_id"]) == str(test_user.user_id)
 
-        # Verify list was created in database
         result = await test_db.execute(
             select(ListModel).where(ListModel.title == "My New List")
         )
@@ -260,7 +258,6 @@ class TestUpdateList:
         assert data["description"] == "Updated description"
         assert str(data["list_id"]) == str(test_list.list_id)
 
-        # Verify list was updated in database
         await test_db.refresh(test_list)
         assert test_list.title == "Updated Title"
         assert test_list.description == "Updated description"
@@ -339,7 +336,6 @@ class TestDeleteList:
     ):
         list_id = test_list.list_id
 
-        # Verify list exists in database before deletion
         result = await test_db.execute(
             select(ListModel).where(ListModel.list_id == list_id)
         )
@@ -348,13 +344,11 @@ class TestDeleteList:
         response = await client.delete(f"/api/lists/{list_id}", headers=auth_headers)
         assert response.status_code == 204
 
-        # Verify list is deleted from database
         result = await test_db.execute(
             select(ListModel).where(ListModel.list_id == list_id)
         )
         assert result.scalar_one_or_none() is None
 
-        # Verify list is deleted via API
         response = await client.get(f"/api/lists/{list_id}", headers=auth_headers)
         assert response.status_code == 404
 
@@ -395,7 +389,6 @@ class TestDeleteList:
         """Test that deleting a list also deletes its items."""
         list_id = test_list.list_id
 
-        # Create some items in the list
         items = []
         for i in range(3):
             item = ItemModel(
@@ -414,17 +407,14 @@ class TestDeleteList:
             items.append(item)
         await test_db.commit()
 
-        # Verify items exist
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == list_id)
         )
         assert len(result.scalars().all()) == 3
 
-        # Delete the list
         response = await client.delete(f"/api/lists/{list_id}", headers=auth_headers)
         assert response.status_code == 204
 
-        # Verify items are also deleted
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == list_id)
         )
@@ -470,7 +460,6 @@ class TestReadListItems:
         test_db: AsyncSession,
     ):
         """Test reading items with multiple tier_sets."""
-        # Create items in different tier_sets
         good_item = ItemModel(
             item_id=uuid.uuid4(),
             list_id=test_list.list_id,
@@ -506,7 +495,6 @@ class TestReadListItems:
         data = response.json()
         assert len(data) == 2
 
-        # Verify both tier_sets are present
         tier_sets = {item["tier_set"] for item in data}
         assert "good" in tier_sets
         assert "mid" in tier_sets

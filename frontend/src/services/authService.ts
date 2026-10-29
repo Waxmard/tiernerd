@@ -25,10 +25,6 @@ export interface AuthResult {
 }
 
 export const authService = {
-  /**
-   * Login with a Google ID token
-   * POST /api/users/google
-   */
   async loginWithGoogle(idToken: string): Promise<AuthResult> {
     try {
       const tokenResponse = await api.post<TokenResponse>('/api/users/google', {
@@ -53,10 +49,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Get current user info
-   * GET /api/users/me
-   */
   async getCurrentUser(token: string): Promise<User | null> {
     try {
       return await api.get<User>('/api/users/me', token);

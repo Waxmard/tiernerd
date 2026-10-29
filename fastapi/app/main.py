@@ -27,9 +27,8 @@ async def root() -> dict[str, str]:
 
 @app.get("/health")
 async def health_check() -> dict[str, str]:
-    """Health check endpoint for container monitoring."""
+    """Check database connectivity for container monitoring."""
     try:
-        # Check database connectivity
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
 
