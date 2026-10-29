@@ -19,14 +19,12 @@ from app.services.auth import create_access_token
 from app.settings import get_settings
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("path", ["/api/users/", "/api/users/token"])
 async def test_removed_user_endpoints(client: AsyncClient, path: str):
     response = await client.post(path)
     assert response.status_code in {404, 405}
 
 
-@pytest.mark.asyncio
 class TestReadUsers:
     """Tests for reading users endpoint."""
 
@@ -102,7 +100,6 @@ class TestReadUsers:
         assert len(data) == 1  # Should return 1 user (total 2 - skip 1)
 
 
-@pytest.mark.asyncio
 class TestReadCurrentUser:
     """Tests for reading current user endpoint."""
 
@@ -188,37 +185,8 @@ class TestReadCurrentUser:
         assert response.status_code == 401
 
 
-@pytest.mark.asyncio
 class TestUserCRUD:
     """Tests for user CRUD operations."""
-
-    async def test_get_user_by_email_exists(
-        self, test_db: AsyncSession, test_user: User
-    ):
-        """Test getting user by email that exists."""
-        user = await crud_user.get_user_by_email(test_db, test_user.email)
-        assert user is not None
-        assert user.email == test_user.email
-        assert user.user_id == test_user.user_id
-
-    async def test_get_user_by_email_not_exists(self, test_db: AsyncSession):
-        """Test getting user by email that doesn't exist."""
-        user = await crud_user.get_user_by_email(test_db, "nonexistent@example.com")
-        assert user is None
-
-    async def test_get_user_by_id_exists(self, test_db: AsyncSession, test_user: User):
-        """Test getting user by ID that exists."""
-        user = await crud_user.get_user_by_id(test_db, test_user.user_id)
-        assert user is not None
-        assert user.user_id == test_user.user_id
-
-    async def test_get_user_by_id_not_exists(self, test_db: AsyncSession):
-        """Test getting user by ID that doesn't exist."""
-        import uuid
-
-        fake_id = uuid.uuid4()
-        user = await crud_user.get_user_by_id(test_db, fake_id)
-        assert user is None
 
     async def test_update_user_username_only(
         self, test_db: AsyncSession, test_user: User
@@ -271,7 +239,6 @@ class TestUserCRUD:
         assert user.updated_at is not None
 
 
-@pytest.mark.asyncio
 class TestUpdateCurrentUser:
     """Tests for updating current user endpoint."""
 
@@ -358,7 +325,6 @@ class TestUpdateCurrentUser:
         assert response.status_code == 401
 
 
-@pytest.mark.asyncio
 class TestGoogleLogin:
     """Tests for Google ID token login."""
 

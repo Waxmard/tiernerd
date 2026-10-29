@@ -3,7 +3,6 @@
 import uuid
 from datetime import datetime
 
-import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Item as ItemModel, List as ListModel, User
 
 
-@pytest.mark.asyncio
 class TestReadLists:
     """Tests for reading lists endpoint."""
 
@@ -90,7 +88,6 @@ class TestReadLists:
         assert len(user2_lists) == 0
 
 
-@pytest.mark.asyncio
 class TestCreateList:
     """Tests for creating lists endpoint."""
 
@@ -211,7 +208,6 @@ class TestCreateList:
         assert uncolored.json()["color"] is None
 
 
-@pytest.mark.asyncio
 class TestReadList:
     """Tests for reading a specific list endpoint."""
 
@@ -256,7 +252,6 @@ class TestReadList:
         assert response.status_code == 404
 
 
-@pytest.mark.asyncio
 class TestUpdateList:
     """Tests for updating lists endpoint."""
 
@@ -296,7 +291,7 @@ class TestUpdateList:
         self, client: AsyncClient, test_list: ListModel, auth_headers: dict
     ):
         """Test partial list update (only title)."""
-        _original_description = test_list.description
+        original_description = test_list.description
         response = await client.put(
             f"/api/lists/{test_list.list_id}",
             json={
@@ -307,6 +302,7 @@ class TestUpdateList:
         assert response.status_code == 200
         data = response.json()
         assert data["title"] == "New Title Only"
+        assert data["description"] == original_description
 
     async def test_update_list_unauthenticated(
         self, client: AsyncClient, test_list: ListModel
@@ -351,7 +347,6 @@ class TestUpdateList:
         assert response.status_code == 404
 
 
-@pytest.mark.asyncio
 class TestDeleteList:
     """Tests for deleting lists endpoint."""
 
@@ -457,7 +452,6 @@ class TestDeleteList:
         assert len(result.scalars().all()) == 0
 
 
-@pytest.mark.asyncio
 class TestReadListItems:
     """Tests for reading list items endpoint."""
 
@@ -571,7 +565,6 @@ class TestReadListItems:
         assert response.status_code == 401
 
 
-@pytest.mark.asyncio
 class TestReadListsWithStats:
     """Tests for reading lists with stats."""
 

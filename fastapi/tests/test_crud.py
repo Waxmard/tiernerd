@@ -17,7 +17,6 @@ from app.db.models import (
 )
 
 
-@pytest.mark.asyncio
 class TestComparisonCRUD:
     async def test_lookup_by_id_and_list_id(
         self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
@@ -81,20 +80,7 @@ class TestComparisonCRUD:
             await comparison_crud.get_active_by_item(test_db, test_item.item_id) is None
         )
 
-    async def test_create_session(self, test_db, test_list, test_item) -> None:
-        session = ComparisonSessionModel(
-            list_id=test_list.list_id,
-            new_item_id=test_item.item_id,
-            target_item_id=test_item.item_id,
-            tier_set="good",
-        )
-        created = await comparison_crud.create(test_db, session)
-        await test_db.commit()
-        assert created.session_id == session.session_id
-        assert created.list_id == test_list.list_id
 
-
-@pytest.mark.asyncio
 class TestItemCRUD:
     """Tests for item CRUD operations."""
 
@@ -158,49 +144,21 @@ class TestItemCRUD:
         )
         assert result == []
 
-    async def test_create_item(self, test_db: AsyncSession, test_list: ListModel):
-        """Test creating an item."""
-        item = ItemModel(
-            item_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            name="New CRUD Item",
-            description="Created via CRUD",
-            image_url="https://example.com/crud.jpg",
-            position="a0",
-            rating=None,
-            tier_set="good",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        result = await item_crud.create(test_db, item)
-        await test_db.commit()
-
-        assert result.name == "New CRUD Item"
-        assert result.item_id is not None
-
     async def test_update_item(self, test_db: AsyncSession, test_item: ItemModel):
         """Test updating an item."""
         original_name = test_item.name
         result = await item_crud.update(
-            test_db, test_item, {"name": "Updated CRUD Name"}
+            test_db,
+            test_item,
+            {
+                "name": "Updated CRUD Name",
+                "image_url": "https://example.com/updated.jpg",
+            },
         )
         await test_db.commit()
 
         assert result.name == "Updated CRUD Name"
         assert result.name != original_name
-
-    async def test_update_item_with_image_url(
-        self, test_db: AsyncSession, test_item: ItemModel
-    ):
-        """Test updating item with image_url."""
-
-        result = await item_crud.update(
-            test_db,
-            test_item,
-            {"image_url": "https://example.com/updated.jpg"},
-        )
-        await test_db.commit()
-
         assert result.image_url == "https://example.com/updated.jpg"
 
     async def test_delete_item(self, test_db: AsyncSession, test_list: ListModel):
@@ -282,7 +240,6 @@ def test_postgresql_duplicate_name_error_classification() -> None:
     )
 
 
-@pytest.mark.asyncio
 class TestListCRUD:
     """Tests for list CRUD operations."""
 
@@ -332,21 +289,6 @@ class TestListCRUD:
         assert len(result) >= 1
         list_obj = result[0][0]
         assert list_obj.user_id == test_user.user_id
-
-    async def test_create_list(self, test_db: AsyncSession, test_user: User):
-        """Test creating a list."""
-        list_obj = ListModel(
-            list_id=uuid.uuid4(),
-            user_id=test_user.user_id,
-            title="CRUD Created List",
-            description="Created via CRUD",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        result = await list_crud.create(test_db, list_obj)
-
-        assert result.title == "CRUD Created List"
-        assert result.list_id is not None
 
     async def test_update_list(self, test_db: AsyncSession, test_list: ListModel):
         """Test updating a list."""

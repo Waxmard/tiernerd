@@ -40,7 +40,6 @@ def create_item(
     )
 
 
-@pytest.mark.asyncio
 async def test_empty_range_starts_ready_with_valid_preview(
     test_db: AsyncSession, item_factory
 ) -> None:
@@ -60,7 +59,6 @@ async def test_empty_range_starts_ready_with_valid_preview(
     assert response.discard_on_cancel is True
 
 
-@pytest.mark.asyncio
 async def test_answer_undo_and_commit_preserve_draft_until_commit(
     test_db: AsyncSession, test_item: ItemModel, item_factory
 ) -> None:
@@ -100,7 +98,6 @@ async def test_answer_undo_and_commit_preserve_draft_until_commit(
     assert session.revision == 4
 
 
-@pytest.mark.asyncio
 async def test_changed_peer_makes_draft_stale_without_mutation(
     test_db: AsyncSession, test_item: ItemModel, item_factory
 ) -> None:

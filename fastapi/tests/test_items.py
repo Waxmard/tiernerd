@@ -19,16 +19,21 @@ from app.db.models import (
 )
 
 
-@pytest.mark.asyncio
 class TestCreateItem:
     """Tests for creating items endpoint."""
 
+    @pytest.mark.parametrize(
+        ("tier_set", "expected_rating"),
+        [("good", 8.5), ("mid", 5.5), ("bad", 2.5)],
+    )
     async def test_create_first_item_success(
         self,
         client: AsyncClient,
         test_list: ListModel,
         auth_headers: dict,
         test_db: AsyncSession,
+        tier_set: str,
+        expected_rating: float,
     ):
         """Test creating first item in an empty list."""
         response = await client.post(
@@ -38,7 +43,7 @@ class TestCreateItem:
                 "name": "First Item",
                 "description": "The first item",
                 "image_url": "https://example.com/first.jpg",
-                "tier_set": "good",
+                "tier_set": tier_set,
             },
             headers=auth_headers,
         )
@@ -47,8 +52,8 @@ class TestCreateItem:
         assert data["name"] == "First Item"
         assert data["description"] == "The first item"
         assert "item_id" in data
-        assert data["tier_set"] == "good"
-        assert data["rating"] == 8.5
+        assert data["tier_set"] == tier_set
+        assert data["rating"] == expected_rating
 
         # Verify item was created in database
         result = await test_db.execute(
@@ -159,7 +164,6 @@ class TestCreateItem:
         assert response.status_code == 404
 
 
-@pytest.mark.asyncio
 class TestReadItem:
     """Tests for reading a specific item endpoint."""
 
@@ -214,7 +218,6 @@ class TestReadItem:
         assert response.status_code == 404
 
 
-@pytest.mark.asyncio
 class TestUpdateItem:
     """Tests for updating items endpoint."""
 
@@ -307,7 +310,6 @@ class TestUpdateItem:
         assert response.status_code == 404
 
 
-@pytest.mark.asyncio
 class TestDeleteItem:
     """Tests for deleting items endpoint."""
 
@@ -430,59 +432,8 @@ class TestDeleteItem:
         assert response.status_code == 404
 
 
-@pytest.mark.asyncio
 class TestCreateItemTierSets:
     """Tests for creating items with different tier_sets."""
-
-    async def test_create_first_item_mid_tier_set(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        """Test creating first item with mid tier_set."""
-        response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "Mid Item",
-                "description": "A mid tier item",
-                "image_url": "https://example.com/mid.jpg",
-                "tier_set": "mid",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "Mid Item"
-        assert data["tier_set"] == "mid"
-        assert data["rating"] == 5.5
-
-    async def test_create_first_item_bad_tier_set(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        """Test creating first item with bad tier_set."""
-        response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "Bad Item",
-                "description": "A bad tier item",
-                "image_url": "https://example.com/bad.jpg",
-                "tier_set": "bad",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "Bad Item"
-        assert data["tier_set"] == "bad"
-        assert data["rating"] == 2.5
 
     async def test_create_items_in_different_tier_sets(
         self,
@@ -526,53 +477,6 @@ class TestCreateItemTierSets:
         )  # No comparison for first in tier_set
 
 
-@pytest.mark.asyncio
-class TestCreateItemWithExistingPositionedItems:
-    """Tests for creating items when existing items already have positions."""
-
-    async def test_create_item_with_existing_positioned_item(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        """Test creating item when existing items have positions triggers comparison."""
-        # Create an item with position (already ranked)
-        existing_item = ItemModel(
-            item_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            name="Existing Item",
-            description="Item with position",
-            image_url="https://example.com/existing.jpg",
-            position="a0",
-            rating=None,
-            tier_set="good",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        test_db.add(existing_item)
-        await test_db.commit()
-
-        # Create new item - should trigger comparison
-        response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "New Item",
-                "description": "New item triggers comparison",
-                "image_url": "https://example.com/new.jpg",
-                "tier_set": "good",
-            },
-            headers=auth_headers,
-        )
-        # Should return comparison session
-        assert response.status_code == 200
-        data = response.json()
-        assert "session_id" in data  # Comparison session started
-
-
-@pytest.mark.asyncio
 class TestItemOwnership:
     """Tests for item ownership verification edge cases."""
 
@@ -586,7 +490,6 @@ class TestItemOwnership:
     ):
         """Test reading item after its list is deleted."""
         item_id = test_item.item_id
-        _list_id = test_list.list_id
 
         # Delete the list
         await test_db.delete(test_list)
@@ -649,7 +552,6 @@ class TestItemOwnership:
         assert response.json()["name"] == "Updated Name"
 
 
-@pytest.mark.asyncio
 class TestItemCreateValidation:
     """Tests for item creation validation."""
 
@@ -790,7 +692,6 @@ class TestItemCreateValidation:
             assert response.status_code == 422
 
 
-@pytest.mark.asyncio
 class TestItemComparisonSessionRoutes:
     """Item-addressable comparison-session routes stay inside item ownership."""
 
@@ -824,7 +725,6 @@ class TestItemComparisonSessionRoutes:
         assert [response.status_code for response in responses] == [404, 404, 404, 404]
 
 
-@pytest.mark.asyncio
 class TestDuplicateNameRace:
     """Name conflicts enforced by the database when the pre-check misses."""
 

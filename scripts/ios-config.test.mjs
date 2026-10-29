@@ -10,6 +10,7 @@ test('iOS Release requires a public HTTPS API and an iOS client ID', () => {
   }
   for (const url of [
     '', 'http://example.com', 'https://localhost', 'https://api.localhost', 'https://device.local',
+    'https://user@example.com', 'https://:pass@example.com',
     'https://127.1', 'https://10.0.0.1', 'https://172.16.0.1', 'https://192.168.1.1',
     'https://169.254.1.1', 'https://100.64.0.1', 'https://[::1]', 'https://[fc00::1]',
     'https://[fe80::1]', 'https://[::ffff:127.0.0.1]',
