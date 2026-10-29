@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/Waxmard/tiernerd/compare/v0.7.0...v0.7.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* align iOS pod lock with React Native ([6a31b32](https://github.com/Waxmard/tiernerd/commit/6a31b3215b219a5d52f31031a4d041531cc937af))
+
 ## [0.7.0](https://github.com/Waxmard/tiernerd/compare/v0.6.0...v0.7.0) (2026-10-29)
 
 
