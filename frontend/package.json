@@ -3,6 +3,7 @@
   "version": "0.6.0",
   "main": "index.ts",
   "scripts": {
+    "postinstall": "patch-package --error-on-fail",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -43,6 +44,7 @@
     "@biomejs/biome": "2.5.15",
     "@types/react": "~19.1.10",
     "babel-preset-expo": "~54.0.10",
+    "patch-package": "^8.0.1",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.2"
   },
