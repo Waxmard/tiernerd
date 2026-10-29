@@ -27,7 +27,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -43,7 +43,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -59,7 +59,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -74,7 +74,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
