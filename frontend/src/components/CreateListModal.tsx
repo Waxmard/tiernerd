@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Modal, Pressable, Text, type TextInput, View } from 'react-native';
+import { Pressable, Text, type TextInput, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import {
   LIST_COLORS,
@@ -31,10 +31,6 @@ export interface CreateListContentHandle {
 interface CreateListContentProps {
   onClose: () => void;
   onSuccess: (list: CreatedList) => void;
-}
-
-interface CreateListModalProps extends CreateListContentProps {
-  visible: boolean;
 }
 
 const MAX_TITLE_LENGTH = 100;
@@ -294,29 +290,3 @@ export const CreateListContent = forwardRef<
     </BaseModalContent>
   );
 });
-
-export const CreateListModal = ({
-  visible,
-  onClose,
-  onSuccess,
-}: CreateListModalProps) => {
-  const contentRef = useRef<CreateListContentHandle>(null);
-  const requestClose = () => {
-    void contentRef.current?.requestClose();
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={requestClose}
-    >
-      <CreateListContent
-        ref={contentRef}
-        onClose={onClose}
-        onSuccess={onSuccess}
-      />
-    </Modal>
-  );
-};
