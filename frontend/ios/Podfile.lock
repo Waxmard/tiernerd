@@ -273,9 +273,9 @@ PODS:
     - AppAuth/Core (~> 2.0)
     - GTMSessionFetcher/Core (< 4.0, >= 3.3)
   - GTMSessionFetcher/Core (3.5.0)
-  - hermes-engine (0.81.5):
-    - hermes-engine/Pre-built (= 0.81.5)
-  - hermes-engine/Pre-built (0.81.5)
+  - hermes-engine (0.81.6):
+    - hermes-engine/Pre-built (= 0.81.6)
+  - hermes-engine/Pre-built (0.81.6)
   - PromisesObjC (2.4.1)
   - PromisesSwift (2.4.1):
     - PromisesObjC (= 2.4.1)
@@ -318,7 +318,7 @@ PODS:
     - React-utils
     - ReactNativeDependencies
     - Yoga
-  - React-Core-prebuilt (0.81.5):
+  - React-Core-prebuilt (0.81.6):
     - ReactNativeDependencies
   - React-Core/CoreModulesHeaders (0.81.6):
     - hermes-engine
@@ -2551,7 +2551,7 @@ SPEC CHECKSUMS:
   GoogleUtilities: 7dc09b3fa9ecb5c2298b952313d14628b61b9da3
   GTMAppAuth: 217a876b249c3c585a54fd6f73e6b58c4f5c4238
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
-  hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
+  hermes-engine: 7219f6e751ad6ec7f3d7ec121830ee34dae40749
   PromisesObjC: 752c3227f599e3467650e47ea36f433eeb10c273
   PromisesSwift: 217dea0fd5d2ad65222a109c48698add13cc1c5b
   RCTDeprecation: ff38238d8b6ddfe1fcfeb2718d1c14da9564c1c3
@@ -2560,7 +2560,7 @@ SPEC CHECKSUMS:
   React: 348d1689d8686d034c5b7667dc45de86c6319dd1
   React-callinvoker: 2c3b664f3482f5bc5560ea1edcbbe69748752f08
   React-Core: 346787852200a732b187805344b8a350d464e004
-  React-Core-prebuilt: 02f0ad625ddd47463c009c2d0c5dd35c0d982599
+  React-Core-prebuilt: 721ab014acfaff1e4b8fc0d2f7d6f41ea9a706ed
   React-CoreModules: 7e07391a1082d02c37f846a362f7574ab035933c
   React-cxxreact: c50d278c785792a077a6b357aaabd9e5d09e9c6f
   React-debug: 1b91785fec02ea76c793ead23bed1528d96b4262
