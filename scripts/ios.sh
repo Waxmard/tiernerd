@@ -21,8 +21,14 @@ else
     echo 'CocoaPods is required. Install it with Homebrew (brew install cocoapods) and ensure pod is on PATH.' >&2
     exit 1
   fi
-  npx expo prebuild --platform ios --no-install
-  (cd ios && (pod install || { echo 'pod install failed; rebuilding generated ios/Pods' >&2; rm -rf Pods && pod install; }))
+  fp=$( { cat app.config.ts app.json package.json package-lock.json withIosSceneLifecycle.js withQuietPods.js "$root/scripts/ios-config.mjs"; find patches assets -type f | sort | xargs cat; echo "${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID:-}|$EXPO_PUBLIC_GOOGLE_CLIENT_ID|$EXPO_PUBLIC_API_URL"; } | shasum -a 256 | cut -d' ' -f1)
+  if [[ "${FORCE_PREBUILD:-0}" != 1 && -d ios/Pods && -d ios/TierNerd.xcworkspace && "$(cat ios/.native-fingerprint 2>/dev/null)" == "$fp" ]]; then
+    echo 'Native inputs unchanged; skipping prebuild and pod install.'
+  else
+    npx expo prebuild --platform ios --no-install
+    (cd ios && (pod install || { echo 'pod install failed; rebuilding generated ios/Pods' >&2; rm -rf Pods && pod install; }))
+    echo "$fp" > ios/.native-fingerprint
+  fi
   xcrun xcodebuild -workspace ios/TierNerd.xcworkspace -scheme TierNerd -configuration Release \
     -destination 'generic/platform=iOS' -derivedDataPath ios/DerivedData -allowProvisioningUpdates IPHONEOS_DEPLOYMENT_TARGET=15.1 build
 fi
