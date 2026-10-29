@@ -106,9 +106,11 @@ export function useListViewRestore({
 
   useEffect(
     () => () => {
-      clearTimeout(viewSaveTimerRef.current ?? undefined);
+      if (viewSaveTimerRef.current === null) return;
+      clearTimeout(viewSaveTimerRef.current);
+      saveView(persistedSelectedIdRef.current);
     },
-    []
+    [saveView]
   );
 
   const clearRestoredOffset = useCallback(() => {
@@ -128,14 +130,22 @@ export function useListViewRestore({
     [saveView]
   );
 
+  useEffect(() => {
+    if (!viewLoaded || !itemsLoaded) return;
+    const offset = restoreOffsetRef.current;
+    if (offset === null) return;
+    restoreOffsetRef.current = null;
+    scrollToOffset(offset);
+  }, [viewLoaded, itemsLoaded, scrollToOffset]);
+
   const onContentSizeChange = useCallback(
     (_width: number, height: number) => {
       const offset = restoreOffsetRef.current;
       if (offset === null) return;
       scrollToOffset(offset);
-      if (height > offset || itemsLoaded) restoreOffsetRef.current = null;
+      if (height > offset) restoreOffsetRef.current = null;
     },
-    [itemsLoaded, scrollToOffset]
+    [scrollToOffset]
   );
 
   return { clearRestoredOffset, onScroll, onContentSizeChange };
