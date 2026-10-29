@@ -18,12 +18,12 @@ Monorepo: React Native/Expo frontend (`frontend/`), FastAPI backend (`fastapi/`)
 
 Tool versions (node, python, uv) are pinned via [mise](https://mise.jdx.dev/) in `mise.toml`. Install mise (`brew install mise`), then:
 
-The backend's interpreter is pinned twice and both must move together: `mise.toml` for local dev, `fastapi/.python-version` for uv (CI and anyone not running mise). CI has no mise, so without that file `uv sync` resolves the newest CPython satisfying `requires-python` and can pick a version the locked dependencies have no wheels for.
-
 ```bash
 mise install     # install pinned node/python/uv versions
 make setup       # installs root deps (incl. lefthook git hooks), frontend deps, backend deps
 ```
+
+The backend's interpreter is pinned twice and both must move together: `mise.toml` for local dev, `fastapi/.python-version` for uv (CI and anyone not running mise). CI has no mise, so without that file `uv sync` resolves the newest CPython satisfying `requires-python` and can pick a version the locked dependencies have no wheels for.
 
 Or step-by-step:
 

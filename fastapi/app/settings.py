@@ -7,7 +7,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings."""
 
-    # App configuration
     APP_ENV: str = "development"
     DEBUG: bool = True
     SECRET_KEY: str
@@ -20,7 +19,6 @@ class Settings(BaseSettings):
     # Google sign-in: the public OAuth Web client ID the ID token must be minted for.
     GOOGLE_CLIENT_ID: str = ""
 
-    # Logging
     LOG_LEVEL: str = "INFO"
 
     model_config = SettingsConfigDict(

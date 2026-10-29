@@ -23,15 +23,11 @@ help:
 	@echo "  frontend-lint frontend-fix frontend-typecheck"
 	@echo "  ios             - Build, install and launch a standalone iOS Release app"
 
-# ----- Setup -----
-
 .PHONY: setup
 setup:
 	npm install
 	cd frontend && npm install
 	cd fastapi && uv sync --extra dev --group dev
-
-# ----- Aggregate -----
 
 .PHONY: lint fix typecheck test ci line-limit
 lint:      backend-lint frontend-lint
@@ -39,8 +35,6 @@ fix:       backend-fix frontend-fix
 typecheck: backend-typecheck frontend-typecheck
 test:      backend-test frontend-unit scripts-test
 ci:        backend-ci frontend-lint frontend-typecheck frontend-unit scripts-test line-limit
-
-# ----- Source hygiene -----
 
 line-limit:
 	@bash scripts/check-line-limit.sh
@@ -50,7 +44,6 @@ line-limit:
 backend-%:
 	$(MAKE) -C fastapi $*
 
-# ----- Frontend -----
 .PHONY: ios
 ios:
 	EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="$${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID-1015723670625-v0h15l5cj1eotf9h4u539q878e2mclm6.apps.googleusercontent.com}" bash scripts/ios.sh "$(IOS_DEVICE)"

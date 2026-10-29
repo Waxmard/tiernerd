@@ -129,7 +129,6 @@ class TestItemCRUD:
     async def test_get_by_list_and_tier_set(
         self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
     ):
-        """Test getting items by list and tier_set."""
         result = await item_crud.get_by_list_and_tier_set(
             test_db, test_list.list_id, "good"
         )
@@ -145,7 +144,6 @@ class TestItemCRUD:
         assert result == []
 
     async def test_update_item(self, test_db: AsyncSession, test_item: ItemModel):
-        """Test updating an item."""
         original_name = test_item.name
         result = await item_crud.update(
             test_db,
@@ -162,7 +160,6 @@ class TestItemCRUD:
         assert result.image_url == "https://example.com/updated.jpg"
 
     async def test_delete_item(self, test_db: AsyncSession, test_list: ListModel):
-        """Test deleting an item."""
         # Create an item to delete
         item = ItemModel(
             item_id=uuid.uuid4(),
@@ -265,7 +262,6 @@ class TestListCRUD:
     async def test_get_by_title_and_user(
         self, test_db: AsyncSession, test_list: ListModel, test_user: User
     ):
-        """Test getting list by title and user."""
         result = await list_crud.get_by_title_and_user(
             test_db, test_list.title, test_user.user_id
         )
@@ -284,14 +280,12 @@ class TestListCRUD:
     async def test_get_by_user_with_stats(
         self, test_db: AsyncSession, test_list: ListModel, test_user: User
     ):
-        """Test getting lists with stats for a user."""
         result = await list_crud.get_by_user_with_stats(test_db, test_user.user_id)
         assert len(result) >= 1
         list_obj = result[0][0]
         assert list_obj.user_id == test_user.user_id
 
     async def test_update_list(self, test_db: AsyncSession, test_list: ListModel):
-        """Test updating a list."""
         result = await list_crud.update(
             test_db, test_list, {"title": "CRUD Updated Title"}
         )

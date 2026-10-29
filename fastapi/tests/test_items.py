@@ -174,7 +174,6 @@ class TestReadItem:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test reading a specific item."""
         response = await client.get(
             f"/api/items/items/{test_item.item_id}", headers=auth_headers
         )
@@ -228,7 +227,6 @@ class TestUpdateItem:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test successful item update."""
         original_name = test_item.name
         original_description = test_item.description
 
@@ -320,7 +318,6 @@ class TestDeleteItem:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test successful item deletion."""
         item_id = test_item.item_id
         list_id = test_item.list_id
 

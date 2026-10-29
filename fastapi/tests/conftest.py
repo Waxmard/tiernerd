@@ -75,7 +75,6 @@ async def client(test_db: AsyncSession) -> AsyncGenerator[AsyncClient]:
 
 @pytest_asyncio.fixture
 async def test_user(test_db: AsyncSession) -> User:
-    """Create a test user."""
     import uuid
     from datetime import datetime
 
@@ -94,7 +93,6 @@ async def test_user(test_db: AsyncSession) -> User:
 
 @pytest_asyncio.fixture
 async def test_user2(test_db: AsyncSession) -> User:
-    """Create a second test user."""
     import uuid
     from datetime import datetime
 
@@ -154,7 +152,6 @@ def admin_auth_headers(admin_user: User) -> dict:
 
 @pytest_asyncio.fixture
 async def test_list(test_db: AsyncSession, test_user: User) -> ListModel:
-    """Create a test list."""
     import uuid
     from datetime import datetime
 

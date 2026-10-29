@@ -22,7 +22,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import SessionLocal, engine
 from app.db.models import Base, User
 
-# Dev users to seed
 DEV_USERS = [
     {
         "email": "dev@tiernerd.com",

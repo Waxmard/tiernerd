@@ -1,7 +1,5 @@
 # Contributing to TierNerd
 
-Thanks for contributing. This guide covers how a change flows from a branch to a release.
-
 Local setup, development commands, and the repo layout live in [AGENTS.md](AGENTS.md) — this file doesn't repeat them.
 
 ## Branching

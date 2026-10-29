@@ -40,7 +40,6 @@ async def get_by_id_and_user(
 async def get_by_title_and_user(
     db: AsyncSession, title: str, user_id: uuid.UUID
 ) -> ListModel | None:
-    """Get a list by title for a specific user."""
     result = await db.execute(
         select(ListModel).where(
             ListModel.title == title,
@@ -70,7 +69,6 @@ async def get_by_user_with_stats(
 
 
 async def create(db: AsyncSession, list_obj: ListModel) -> ListModel:
-    """Create a new list."""
     db.add(list_obj)
     await db.commit()
     await db.refresh(list_obj)
@@ -80,7 +78,6 @@ async def create(db: AsyncSession, list_obj: ListModel) -> ListModel:
 async def update(
     db: AsyncSession, list_obj: ListModel, update_data: dict[str, Any]
 ) -> ListModel:
-    """Update a list with the given data."""
     for field, value in update_data.items():
         setattr(list_obj, field, value)
     db.add(list_obj)

@@ -21,7 +21,6 @@ class TestReadLists:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test reading lists when authenticated."""
         response = await client.get("/api/lists/", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
@@ -98,7 +97,6 @@ class TestCreateList:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test successful list creation."""
         response = await client.post(
             "/api/lists/",
             params={
@@ -214,7 +212,6 @@ class TestReadList:
     async def test_read_list_success(
         self, client: AsyncClient, test_list: ListModel, auth_headers: dict
     ):
-        """Test reading a specific list."""
         response = await client.get(
             f"/api/lists/{test_list.list_id}", headers=auth_headers
         )
@@ -262,7 +259,6 @@ class TestUpdateList:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test successful list update."""
         original_title = test_list.title
         original_description = test_list.description
 
@@ -357,7 +353,6 @@ class TestDeleteList:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test successful list deletion."""
         list_id = test_list.list_id
 
         # Verify list exists in database before deletion
@@ -475,7 +470,6 @@ class TestReadListItems:
         test_item: ItemModel,
         auth_headers: dict,
     ):
-        """Test reading items from list with items."""
         response = await client.get(
             f"/api/lists/{test_list.list_id}/items", headers=auth_headers
         )
@@ -575,7 +569,6 @@ class TestReadListsWithStats:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test pagination with multiple lists."""
         # Create additional lists
         for i in range(5):
             list_obj = ListModel(

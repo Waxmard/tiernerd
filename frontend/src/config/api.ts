@@ -1,4 +1,3 @@
-// API Configuration
 import Constants from 'expo-constants';
 
 // Get the API base URL dynamically for iOS compatibility

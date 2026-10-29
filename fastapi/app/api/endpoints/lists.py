@@ -131,10 +131,8 @@ async def update_list(
     update_data = list_in.model_dump(exclude_unset=True)
     list_obj = await list_crud.update(db, list_obj, update_data)
 
-    # Get items to include in response
     items = await item_crud.get_by_list_id(db, list_id)
 
-    # Format items
     items_data = [
         {
             "item_id": item.item_id,
