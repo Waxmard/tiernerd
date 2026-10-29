@@ -22,6 +22,7 @@ help:
 	@echo "Frontend (delegates to frontend/package.json scripts):"
 	@echo "  frontend-lint frontend-fix frontend-typecheck"
 	@echo "  ios             - Build, install and launch a standalone iOS Release app"
+	@echo "  ios IOS_REUSE=1 - Install and launch the existing iOS build"
 
 .PHONY: setup
 setup:
@@ -46,7 +47,7 @@ backend-%:
 
 .PHONY: ios
 ios:
-	EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="$${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID-1015723670625-v0h15l5cj1eotf9h4u539q878e2mclm6.apps.googleusercontent.com}" bash scripts/ios.sh "$(IOS_DEVICE)"
+	IOS_REUSE="$(IOS_REUSE)" EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="$${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID-1015723670625-v0h15l5cj1eotf9h4u539q878e2mclm6.apps.googleusercontent.com}" bash scripts/ios.sh "$(IOS_DEVICE)"
 
 .PHONY: frontend-lint frontend-fix frontend-typecheck frontend-unit scripts-test
 frontend-lint:

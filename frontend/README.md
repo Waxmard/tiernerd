@@ -36,7 +36,10 @@ Note: `--legacy-peer-deps` is required due to React 19 peer dependency conflicts
 
 ```bash
 make ios                          # Build, install, and launch on Gengar Phone
+make ios IOS_REUSE=1              # Install and launch the existing build without rebuilding
 ```
+
+Reuse does not include source or configuration changes. Run `make ios` to build them.
 
 ### Option 2: iOS Simulator
 
