@@ -92,8 +92,6 @@ class TestBuildListResponse:
         assert "items" not in result
 
     def test_build_response_with_items(self):
-        """Test building response with items."""
-
         class MockList:
             list_id = uuid.uuid4()
             user_id = uuid.uuid4()

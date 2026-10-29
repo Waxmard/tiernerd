@@ -277,8 +277,21 @@ async def test_wrong_owner_cannot_read_or_answer_session(
             json={"result": "better", "revision": 0},
             headers=auth_headers_user2,
         ),
+        await client.post(
+            f"/api/items/comparison/{session_id}/undo",
+            json={"revision": 0},
+            headers=auth_headers_user2,
+        ),
+        await client.post(
+            f"/api/items/comparison/{session_id}/commit",
+            json={"revision": 0},
+            headers=auth_headers_user2,
+        ),
+        await client.delete(
+            f"/api/items/comparison/{session_id}", headers=auth_headers_user2
+        ),
     )
-    assert [response.status_code for response in responses] == [404, 404]
+    assert [response.status_code for response in responses] == [404, 404, 404, 404, 404]
 
 
 @pytest.mark.asyncio

@@ -4,16 +4,13 @@ This file provides guidance to AI agents working in this repository.
 
 ## Project Overview
 
-TierNerd is a cross-platform mobile app for ranking items through 1v1 comparisons and displaying scores out of 10. Pick a starting range, then compare items to establish their order within that range. Ranked items receive a score based on their position and appear best first.
-
-Monorepo with React Native/Expo frontend and FastAPI backend.
+Monorepo: React Native/Expo frontend (`frontend/`), FastAPI backend (`fastapi/`). Product overview in [README.md](README.md).
 
 ## Repo Layout
 
 - `fastapi/` — Python backend (uv, pyproject.toml, Dockerfile, Makefile)
 - `frontend/` — React Native/Expo app (package.json, biome)
-- `docs/src/` — documentation templates and partials (rendered by `scripts/build_docs.py`)
-- `scripts/` — repo-wide tooling (e.g. `build_docs.py`)
+- `scripts/` — repo-wide tooling (line-limit check, iOS and TestFlight builds)
 - `/package.json` — root dev-tooling only (lefthook). Not a JS project.
 - `lefthook.yml` — git hooks (biome for frontend, ruff for backend)
 
@@ -21,12 +18,12 @@ Monorepo with React Native/Expo frontend and FastAPI backend.
 
 Tool versions (node, python, uv) are pinned via [mise](https://mise.jdx.dev/) in `mise.toml`. Install mise (`brew install mise`), then:
 
-The backend's interpreter is pinned twice and both must move together: `mise.toml` for local dev, `fastapi/.python-version` for uv (CI and anyone not running mise). CI has no mise, so without that file `uv sync` resolves the newest CPython satisfying `requires-python` and can pick a version the locked dependencies have no wheels for.
-
 ```bash
 mise install     # install pinned node/python/uv versions
 make setup       # installs root deps (incl. lefthook git hooks), frontend deps, backend deps
 ```
+
+The backend's interpreter is pinned twice and both must move together: `mise.toml` for local dev, `fastapi/.python-version` for uv (CI and anyone not running mise). CI has no mise, so without that file `uv sync` resolves the newest CPython satisfying `requires-python` and can pick a version the locked dependencies have no wheels for.
 
 Or step-by-step:
 
@@ -45,9 +42,7 @@ make lint          # backend + frontend lint
 make fix           # autofix both
 make typecheck     # mypy + tsc
 make test          # backend pytest w/ coverage
-make ci            # lint + typecheck + boundaries + test + docs-check
-make docs-build    # render docs/src → README.md, sub-READMEs
-make docs-check    # fail if generated docs are stale
+make ci            # lint + typecheck + boundaries + test + line-limit
 make backend-<X>   # delegates to fastapi/Makefile target X (e.g. backend-logs, backend-health, backend-lint)
 ```
 
@@ -93,53 +88,25 @@ uv run pytest --cov=app --cov-report=term-missing   # Run with coverage
 
 ### Frontend (frontend/)
 
-Day-to-day UI work happens in the browser — no Xcode or simulator needed.
-
-Terminal A (backend, once):
+To build and install a standalone iOS Release app, install Xcode and CocoaPods, pair and trust the iPhone, and configure Apple team `48TY2FP59S` for signing. Run from the repository root:
 
 ```bash
-cd fastapi && make dev DETACHED=1
+make ios                          # build, install and launch on Gengar Phone
+make ios IOS_DEVICE="Other Phone" # choose another paired device
 ```
 
-Terminal B (web bundle):
+The command uses development Google OAuth web and iOS client IDs by default. To use another iOS client for bundle ID `com.maxwellward.tiernerd`, set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` in the environment. To use another web client, set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to the same client ID as the backend's `GOOGLE_CLIENT_ID`.
 
-```bash
-cd frontend
-npm run web                       # http://localhost:8081
-EXPO_PUBLIC_API_URL=https://<cloud-run-url> npm run web   # target the deployed dev API
-```
+The Release app uses the hosted development API by default and embeds its JavaScript, so it needs no Metro server after installation. Set `EXPO_PUBLIC_API_URL` to another public HTTPS API if needed. The command ignores Expo dotenv files. Re-running it replaces the app without deliberately removing its data. `npm run ios` remains the separate Expo development command.
 
-Open `http://localhost:8081`. Chrome DevTools' device toolbar gives a phone-sized layout, and Fast Refresh applies edits without a rebuild.
+Pushing to `main` (or dispatching `.github/workflows/deploy-testflight.yml`) runs `scripts/build-ios-testflight.sh` on `macos-26` in the `preview` environment to archive, export, and upload `TierNerd.ipa` to App Store Connect / TestFlight using `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `APPLE_CERTIFICATE_P12_BASE64`, and `APPLE_CERTIFICATE_PASSWORD`.
 
-To check on your iPhone (no Xcode):
-
-```bash
-ipconfig getifaddr en0            # e.g. 192.168.1.50
-```
-
-Open `http://<ip>:8081` in Safari. The API base URL follows the host that served the app, so the phone reaches the backend on the same LAN IP.
-
-End-to-end smoke test — Playwright drives the **built** web bundle, so the API URL is baked in at export time:
-
-```bash
-make frontend-e2e                 # boots a throwaway backend, builds the bundle, runs the spec
-```
-
-`make frontend-e2e` starts its own SQLite + uvicorn backend (seeded dev users — the same setup CI uses in `.github/workflows/e2e.yml`), points the bundle at it, and tears it down afterwards, so it needs neither a local container nor a deployed API. It creates a test-only app token for the disposable backend. To target an external API instead, supply a valid `E2E_AUTH_TOKEN` for that API securely in the environment and set `EXPO_PUBLIC_API_URL`; the shell value wins over `frontend/.env.local`:
-
-```bash
-EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-…run.app make frontend-e2e   # deployed dev API
-EXPO_PUBLIC_API_URL=http://localhost:8000 make frontend-e2e               # a running container
-```
-
-Reserved for native-only changes and pre-release checks:
+Simulator and development commands:
 
 ```bash
 npm run ios                       # Run on iOS simulator
-npm run android                   # Run on Android emulator
 npx expo start --go               # Expo Go on a physical phone, no simulator
 ```
-
 Code quality (Biome — single tool for lint + format):
 
 ```bash
@@ -154,14 +121,7 @@ npm run typecheck                 # TypeScript check
 
 ### Cloud Dev Loop (Cloud Run + Neon)
 
-The default backend for frontend work is a deployed dev API — no local containers.
-
-```bash
-cd frontend
-EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run web
-```
-
-Open `http://localhost:8081` and sign in with Google. `EXPO_PUBLIC_API_URL` also goes in `frontend/.env.local` to make it the default for every `npm run web`. Unset it to fall back to a backend on `localhost:8000`.
+The default backend for frontend work is the deployed dev API — no local containers. `make ios` and TestFlight builds target `https://tiernerd-api-dev-1015723670625.us-east1.run.app` by default; override `EXPO_PUBLIC_API_URL` to point at another public HTTPS API.
 
 Deploy (from `fastapi/`):
 
@@ -181,14 +141,6 @@ make cloud-deploy CLOUD_ENV=prod GCP_PROJECT=<prod-project>
 Config lives in `fastapi/cloud/env.dev.yaml` (non-secret) and Secret Manager (`SECRET_KEY`, `DATABASE_URL`). `APP_ENV=development` is what makes the container create its tables and seed the dev users on startup; setting it to `production` disables that seeding and switches the SQLAlchemy pool settings in `app/db/database.py`.
 
 `DATABASE_URL` must be `postgresql+asyncpg://…?ssl=require`. A Neon string's `?sslmode=require&channel_binding=require` crashes asyncpg (`unexpected keyword argument`), because SQLAlchemy forwards DSN query parameters to the driver as keyword arguments.
-
-Testing against the deployed API requires a valid `E2E_AUTH_TOKEN` for that API. Supply the token securely in the environment, then run:
-
-```bash
-cd frontend && EXPO_PUBLIC_API_URL=https://tiernerd-api-dev-xxxx.run.app npm run e2e
-```
-
-The URL is baked into the bundle at export time, so run `npm run build:web` first if the code changed. Playwright starts its own preview server on 8081 and never reuses an existing one, so stop any Metro dev server on that port — otherwise the spec fails on a port conflict instead of silently testing the dev-server bundle.
 
 Local containers are now optional. The fallback loop is unchanged — `cd fastapi && make dev DETACHED=1` — except its Postgres publishes on host port 55432, not 5432:
 
@@ -243,28 +195,14 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 ## Development Notes for AI Agents
 
-- Check for TypeScript errors after frontend changes.
-- Google is the only sign-in method: the web client obtains a Google ID token and exchanges it at `POST /api/users/google`. Native sign-in is unsupported. Setting `EXPO_PUBLIC_USE_MOCK_AUTH=true` enables a frontend-only web mock.
+- Google is the only sign-in method: the client obtains a Google ID token and exchanges it at `POST /api/users/google`.
 - Comparison sessions are persistent database drafts; answers do not change saved ranks until commit.
 - API endpoints are prefixed with `/api/`.
-- Do **not** run `npm run ios`, `npm run android`, or `npx expo start` — the user runs these in a separate terminal.
-- The browser target (`npm run web`, served at `http://localhost:8081`) is the primary frontend loop. If it is already serving, use it to verify UI changes instead of asking for a simulator run.
-- The deployed dev API is the default backend for frontend work; point `npm run web` at it with `EXPO_PUBLIC_API_URL` instead of starting containers locally.
+- Do **not** run `npm run ios` or `npx expo start` — the user runs these in a separate terminal.
 - Do **not** run `make cloud-deploy` unless asked — it mutates shared cloud state.
-- Run `make frontend-e2e` after changing frontend behavior — it boots a throwaway SQLite backend, builds the web bundle, then drives it with Playwright. To target an external API, pass `EXPO_PUBLIC_API_URL` and a valid `E2E_AUTH_TOKEN` for that API.
+- Run `make test` and `make typecheck` (or `make ci`) after changing frontend behavior.
 - Do **not** run `git commit`, `git add`, or `git push` — the user handles staging, committing, and pushing.
-- Do **not** run `make clean`, `make dev`, `make fresh`, `make restart`, or `make reset` — the user runs these themselves.
-- Backend package management: use `uv`, not `pip`.
 
-## Documentation Automation
+## Documentation
 
-`README.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
-
-```bash
-make docs-build    # render templates → generated files
-make docs-check    # fail if generated docs are stale
-```
-
-Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives.
-
-`AGENTS.md` is **not** generated — it is the hand-maintained source for agent guidance. The partials it inlines are shared with the generated READMEs, so a partial edit can leave this file stale; when you change a shared partial, update `AGENTS.md` by hand to match.
+`README.md`, `fastapi/README.md`, `frontend/README.md`, and `AGENTS.md` are all hand-maintained. Edit them directly; there is no template, partial, or render step.

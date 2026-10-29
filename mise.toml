@@ -1,4 +1,4 @@
 [tools]
 node = "24"
 python = "3.14"
-uv = "0.6"
+uv = "0.13"

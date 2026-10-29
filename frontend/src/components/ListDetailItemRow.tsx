@@ -9,10 +9,6 @@ import {
 } from '../services/themePreference';
 import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
-export interface FocusTarget {
-  focus?: () => void;
-}
-
 const RAIL_CLASS: Record<PreferenceBand, string> = {
   1: 'bg-preference-1 dark:bg-preference-1-dark',
   2: 'bg-preference-2 dark:bg-preference-2-dark',
@@ -27,7 +23,6 @@ interface ListDetailItemRowProps {
   selected: boolean;
   disabled: boolean;
   onPress: (item: Item) => void;
-  onFocusTarget: (itemId: string, element: FocusTarget | null) => void;
 }
 
 const ROW_CLASS =
@@ -40,7 +35,6 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   selected,
   disabled,
   onPress,
-  onFocusTarget,
 }) => {
   const isRanked = item.rating !== null;
   const band = preferenceBand(rank, rankedCount);
@@ -64,14 +58,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       accessibilityHint="Open item details"
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
-      testID={isRanked ? 'ranked-item' : 'unranked-item'}
       onPress={() => onPress(item)}
-      ref={(element) =>
-        onFocusTarget(
-          item.item_id,
-          element ? (element as unknown as FocusTarget) : null
-        )
-      }
       activeOpacity={0.7}
     >
       <View
@@ -84,7 +71,6 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       >
         {band !== null ? (
           <View
-            nativeID={`tiernerd-preference-rail-${item.item_id}`}
             accessible={false}
             importantForAccessibility="no"
             pointerEvents="none"

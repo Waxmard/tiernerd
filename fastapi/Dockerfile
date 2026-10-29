@@ -1,5 +1,7 @@
+# syntax=docker/dockerfile:1
+
 # Multi-stage build for optimized image size
-FROM python:3.14-slim AS builder
+FROM python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8 AS builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -9,10 +11,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
-RUN pip install uv==0.6.17
+COPY --from=ghcr.io/astral-sh/uv:0.13.6 /uv /uvx /bin/
 
 # Set UV to use container Python
 ENV UV_PYTHON=/usr/local/bin/python3
+ENV UV_COMPILE_BYTECODE=1 UV_PYTHON_DOWNLOADS=never
 
 # Set working directory
 WORKDIR /app
@@ -21,10 +24,11 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 
 # Install locked dependencies only; the project itself is copied below
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 # Production stage
-FROM python:3.14-slim
+FROM python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8
 
 # Install runtime dependencies and create non-root user
 RUN apt-get update && apt-get install -y \
@@ -49,6 +53,9 @@ USER appuser
 
 # Add venv to PATH
 ENV PATH="/app/.venv/bin:$PATH"
+
+# Fail the build here, not at container start, if a runtime dep is missing
+RUN python -c "import app, fastapi, uvicorn, sqlalchemy, asyncpg, pydantic_settings"
 
 # Expose port
 EXPOSE 8000

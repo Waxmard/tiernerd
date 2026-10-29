@@ -19,7 +19,6 @@ async function request<T>(
     (headers as Record<string, string>).Authorization = `Bearer ${token}`;
   }
 
-  // Set Content-Type if not already set and body exists
   if (
     fetchOptions.body &&
     !(headers as Record<string, string>)['Content-Type']

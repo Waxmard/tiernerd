@@ -27,8 +27,6 @@ class Base(DeclarativeBase):
 
 
 class User(Base):
-    """User model."""
-
     __tablename__ = "users"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -54,8 +52,6 @@ class User(Base):
 
 
 class List(Base):
-    """List model."""
-
     __tablename__ = "lists"
 
     list_id: Mapped[uuid.UUID] = mapped_column(
@@ -80,8 +76,6 @@ class List(Base):
 
 
 class Item(Base):
-    """Item model."""
-
     __tablename__ = "items"
 
     item_id: Mapped[uuid.UUID] = mapped_column(

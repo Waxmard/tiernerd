@@ -120,7 +120,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           accessibilityState={{ disabled: deleteDisabled }}
           className="w-11 h-11 items-center justify-center shrink-0"
           activeOpacity={0.7}
-          testID="delete-list"
         >
           <Ionicons
             name="trash-outline"
@@ -170,7 +169,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
               accessible={false}
             />
           }
-          testID="fab-add-item"
         />
       </View>
       {showingSavedItems ? (

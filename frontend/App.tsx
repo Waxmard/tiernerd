@@ -1,12 +1,11 @@
 import './global.css';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/providers/AuthContext';
 import { ThemeProvider, useTheme } from './src/providers/ThemeProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { useAppUpdate } from './src/utils/useAppUpdate';
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -30,27 +29,6 @@ if (__DEV__) {
 
 const AppShell = () => {
   const { scheme } = useTheme();
-  useAppUpdate();
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-
-    const root = document.documentElement;
-    root.dataset.inputModality = 'pointer';
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Tab') root.dataset.inputModality = 'keyboard';
-    };
-    const onPointerDown = () => {
-      root.dataset.inputModality = 'pointer';
-    };
-    window.addEventListener('keydown', onKeyDown, true);
-    window.addEventListener('pointerdown', onPointerDown, true);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown, true);
-      window.removeEventListener('pointerdown', onPointerDown, true);
-      delete root.dataset.inputModality;
-    };
-  }, []);
 
   return (
     <>

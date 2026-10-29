@@ -1,8 +1,7 @@
 """Test configuration and fixtures."""
 
-import asyncio
 import os
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator
 
 # Set test environment variables before importing app
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
@@ -25,14 +24,6 @@ from app.services.auth import create_access_token
 
 # Test database URL - using SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-
-@pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    """Create an event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -84,7 +75,6 @@ async def client(test_db: AsyncSession) -> AsyncGenerator[AsyncClient]:
 
 @pytest_asyncio.fixture
 async def test_user(test_db: AsyncSession) -> User:
-    """Create a test user."""
     import uuid
     from datetime import datetime
 
@@ -103,7 +93,6 @@ async def test_user(test_db: AsyncSession) -> User:
 
 @pytest_asyncio.fixture
 async def test_user2(test_db: AsyncSession) -> User:
-    """Create a second test user."""
     import uuid
     from datetime import datetime
 
@@ -163,7 +152,6 @@ def admin_auth_headers(admin_user: User) -> dict:
 
 @pytest_asyncio.fixture
 async def test_list(test_db: AsyncSession, test_user: User) -> ListModel:
-    """Create a test list."""
     import uuid
     from datetime import datetime
 

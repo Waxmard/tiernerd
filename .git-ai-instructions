@@ -4,6 +4,6 @@ User POV: two audiences — API consumers of the FastAPI backend, and end users 
 # Only deltas from git-ai's default type heuristics:
 - Behavior change under fastapi/ (endpoints, schemas, auth, validation, ranking) → feat when it adds capability, fix when it corrects existing behavior
 - frontend/ screen, navigation, or visible UX change → feat (fix when correcting broken behavior)
-- Root dev tooling only (lefthook.yml, mise.toml, Makefile, scripts/, docs/src, .github/workflows) with no runtime behavior change → chore, or ci/build for pipeline and build-system edits — never feat
+- Root dev tooling only (lefthook.yml, mise.toml, Makefile, scripts/, .github/workflows) with no runtime behavior change → chore, or ci/build for pipeline and build-system edits — never feat
 - Restructuring with no observable behavior change in either package → refactor
 - Release plumbing only (version.txt, CHANGELOG.md, .release-please-manifest.json) → chore

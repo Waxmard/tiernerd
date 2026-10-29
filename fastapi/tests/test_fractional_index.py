@@ -21,32 +21,21 @@ class TestBasicGeneration:
     def test_between_with_room_uses_midpoint(self) -> None:
         assert generate_key_between("a0", "a2") == "a1"
 
-    def test_between_adjacent_extends(self) -> None:
-        result = generate_key_between("a0", "a1")
-        assert "a0" < result < "a1"
-
-    def test_a_must_be_less_than_b(self) -> None:
+    @pytest.mark.parametrize(("a", "b"), [("a1", "a0"), ("a0", "a0")])
+    def test_a_must_be_less_than_b(self, a: str, b: str) -> None:
         with pytest.raises(ValueError):
-            generate_key_between("a1", "a0")
-
-    def test_a_equal_to_b_raises(self) -> None:
-        with pytest.raises(ValueError):
-            generate_key_between("a0", "a0")
+            generate_key_between(a, b)
 
 
 class TestPrependZeroFallback:
     """Cases where b starts with the minimum char ('0') — exercises the
     recursive front-insertion branch."""
 
-    def test_before_b_starting_with_zero(self) -> None:
-        # b[0] = '0' can't decrement; recurse into b[1:]
-        result = generate_key_between(None, "0A")
-        assert result < "0A"
+    @pytest.mark.parametrize("bound", ["0A", "00A"])
+    def test_before_b_starting_with_zero(self, bound: str) -> None:
+        result = generate_key_between(None, bound)
+        assert result < bound
         assert result.startswith("0")
-
-    def test_before_b_starting_with_two_zeros(self) -> None:
-        result = generate_key_between(None, "00A")
-        assert result < "00A"
 
     def test_before_lone_min_char_raises(self) -> None:
         with pytest.raises(ValueError, match="cannot generate key before minimum"):

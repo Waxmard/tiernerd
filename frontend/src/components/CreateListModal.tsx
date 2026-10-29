@@ -7,14 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import {
-  Modal,
-  Platform,
-  Pressable,
-  Text,
-  type TextInput,
-  View,
-} from 'react-native';
+import { Modal, Pressable, Text, type TextInput, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import {
   LIST_COLORS,
@@ -55,7 +48,6 @@ const SWATCH_CLASS: Record<ListColor, string> = {
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
-type FocusTarget = { focus?: () => void };
 type CreateListView = 'overview' | 'description' | 'color';
 
 export const CreateListContent = forwardRef<
@@ -72,25 +64,12 @@ export const CreateListContent = forwardRef<
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<TextInput>(null);
-  const descriptionRef = useRef<TextInput>(null);
-  const descriptionSummaryRef = useRef<FocusTarget | null>(null);
-  const colorSummaryRef = useRef<FocusTarget | null>(null);
-  const colorRef = useRef<FocusTarget | null>(null);
-  const returnFocusRef = useRef<'description' | 'color'>('description');
   const hasVisitedOptionalFieldRef = useRef(false);
   const loadingRef = useRef(false);
 
   useEffect(() => {
     if (fieldError) titleRef.current?.focus();
   }, [fieldError]);
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    if (view === 'description') {
-      requestAnimationFrame(() => descriptionRef.current?.focus());
-    } else if (view === 'color') {
-      requestAnimationFrame(() => colorRef.current?.focus?.());
-    }
-  }, [view]);
 
   const clearForm = useCallback(() => {
     setTitle('');
@@ -112,27 +91,16 @@ export const CreateListContent = forwardRef<
 
   const openDescription = () => {
     hasVisitedOptionalFieldRef.current = true;
-    returnFocusRef.current = 'description';
     setView('description');
   };
 
   const openColor = () => {
     hasVisitedOptionalFieldRef.current = true;
-    returnFocusRef.current = 'color';
     setView('color');
   };
 
   const returnToOverview = () => {
     setView('overview');
-    if (Platform.OS === 'web') {
-      requestAnimationFrame(() => {
-        const target =
-          returnFocusRef.current === 'description'
-            ? descriptionSummaryRef.current
-            : colorSummaryRef.current;
-        target?.focus?.();
-      });
-    }
   };
 
   const handleCreate = async () => {
@@ -221,10 +189,6 @@ export const CreateListContent = forwardRef<
             autoFocus={!hasVisitedOptionalFieldRef.current}
           />
           <Pressable
-            ref={(element) => {
-              descriptionSummaryRef.current =
-                element as unknown as FocusTarget | null;
-            }}
             accessibilityRole="button"
             accessibilityLabel={`Description (optional): ${description.trim() || 'Not set'}`}
             accessibilityHint="Edit the list description"
@@ -252,10 +216,6 @@ export const CreateListContent = forwardRef<
             />
           </Pressable>
           <Pressable
-            ref={(element) => {
-              colorSummaryRef.current =
-                element as unknown as FocusTarget | null;
-            }}
             accessibilityRole="button"
             accessibilityLabel={`Color (optional): ${color ?? 'None'}`}
             accessibilityHint="Choose a list color"
@@ -290,7 +250,6 @@ export const CreateListContent = forwardRef<
         </>
       ) : view === 'description' ? (
         <Input
-          ref={descriptionRef}
           label="Description (optional)"
           placeholder="Add a description"
           value={description}
@@ -309,19 +268,9 @@ export const CreateListContent = forwardRef<
             return (
               <Pressable
                 key={hue}
-                ref={
-                  hue === (color ?? LIST_COLORS[0])
-                    ? (element) => {
-                        colorRef.current =
-                          element as unknown as FocusTarget | null;
-                      }
-                    : undefined
-                }
                 accessibilityRole="button"
                 accessibilityLabel={`Color ${hue}`}
                 accessibilityState={{ selected }}
-                aria-pressed={selected}
-                testID={`color-${hue}`}
                 disabled={isLoading}
                 onPress={() => setColor(selected ? null : hue)}
                 className={[

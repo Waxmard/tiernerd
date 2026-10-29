@@ -1,5 +1,3 @@
-<!-- Generated from docs/src. Run `make docs-build` to update. Do not edit directly. -->
-
 # TierNerd
 
 TierNerd is a cross-platform mobile app for ranking items through 1v1 comparisons and displaying scores out of 10. Pick a starting range, then compare items to establish their order within it; each item's score follows from its position, and the highest scores come first.
@@ -37,14 +35,10 @@ See the [screenshots/](screenshots/) directory for all available screenshots.
 ### Frontend
 
 ```bash
-cd frontend
-npm install --legacy-peer-deps
-npx expo start                    # Scan QR with Expo Go app
+make ios                          # Build, install, and launch on a paired iPhone
 # or
-npm run ios                       # iOS Simulator
+cd frontend && npm run ios        # iOS Simulator
 ```
-
-Sign-in is available on the web with Google; native sign-in is not supported.
 
 ### Backend
 
@@ -60,9 +54,8 @@ See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/REA
 |Path|What|
 |---|---|
 |`fastapi/`|FastAPI backend — async SQLAlchemy on PostgreSQL, with the comparison and ranking services|
-|`frontend/`|Expo / React Native app (iOS, Android, web)|
-|`docs/src/`|Templates and partials that generate this README and the sub-READMEs|
-|`scripts/`|Repo-wide tooling — docs build, line-limit check, e2e backend|
+|`frontend/`|Expo / React Native app (iOS)|
+|`scripts/`|Repo-wide tooling — line-limit check, iOS and TestFlight builds|
 |`screenshots/`|Screenshots referenced above|
 
 ## Scores out of 10
@@ -83,21 +76,9 @@ Each category uses a score band: Good (`good`) spans 7.0–10.0, Mid (`mid`) spa
 
 The API stores scores in `rating`. An item without a position has a null score and is shown as **Not ranked yet**. Adding, removing or re-ranking items can change scores. Lists display ranked items best first by range and position, with unranked items last. Ranked rows show a green rail instead of a printed rank or score: stronger green means more preferred; paler green means less preferred. Four greens form relative bands across all ranked items, independent of scores and categories. A single ranked item uses the strongest green. Item details retain the exact score and overall rank. Rounded scores can overlap at range boundaries.
 
-Persistent PostgreSQL databases require the explicit UI-ranking schema migration before you run the updated application. See the backend migration instructions. Fresh test SQLite databases use current model metadata.
+Persistent PostgreSQL databases require the explicit UI-ranking schema migration before you run the updated application. See [Upgrade the UI-ranking schema](fastapi/README.md#upgrade-the-ui-ranking-schema). Fresh test SQLite databases use current model metadata.
 
-## Project Status
 
-Currently in initial development phase.
+## Contributing
 
-## Documentation Automation
-
-`README.md`, `fastapi/README.md`, and `frontend/README.md` are **generated** from templates in `docs/src/` by `scripts/build_docs.py`. Do not edit the generated files directly — edit the template or partial and re-render.
-
-```bash
-make docs-build    # render templates → generated files
-make docs-check    # fail if generated docs are stale
-```
-
-Partials live in `docs/src/partials/` and are included with double-brace `include:partials/<name>.md` directives.
-
-`AGENTS.md` is hand-maintained, not generated — it is the source of truth for agent-facing guidance.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, commit, and PR conventions.

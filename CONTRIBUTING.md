@@ -1,7 +1,5 @@
 # Contributing to TierNerd
 
-Thanks for contributing. This guide covers how a change flows from a branch to a release.
-
 Local setup, development commands, and the repo layout live in [AGENTS.md](AGENTS.md) — this file doesn't repeat them.
 
 ## Branching
@@ -44,11 +42,10 @@ This is currently a solo-maintained repo, so there is no `.github/CODEOWNERS` an
 
 ## Deploys & Releases
 
-[release-please](https://github.com/googleapis/release-please) runs on every push to `main`. It reads the conventional commits since the last release and opens a release PR that bumps `version.txt` and `CHANGELOG.md`; the PR auto-merges, and the resulting tag publishes a GitHub Release. Publishing that release triggers `deploy-prod`, which builds the web bundle and deploys it to Cloudflare Pages.
+[release-please](https://github.com/googleapis/release-please) runs on every push to `main`. It reads the conventional commits since the last release and opens a release PR that bumps `version.txt`, `frontend/package.json`, `frontend/app.json`, and `CHANGELOG.md`; the PR auto-merges, and the resulting tag publishes a GitHub Release.
 
-Two things ship outside that flow:
+Two things ship on or alongside `main`:
 
-- **PR previews** — apply the `deploy-preview` label to a PR to deploy a web-bundle preview.
+- **TestFlight (`deploy-testflight.yml`)** — every push to `main` (and manual `workflow_dispatch`) builds a signed iOS Release archive on `macos-26` against the development Cloud Run API and uploads `TierNerd.ipa` to App Store Connect / TestFlight using the `preview` environment secrets (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `APPLE_CERTIFICATE_P12_BASE64`, `APPLE_CERTIFICATE_PASSWORD`).
 - **Backend** — deploy Cloud Run from `fastapi/` with `make cloud-deploy` (not triggered by a release).
-
 This is why commit hygiene matters: every commit on `main` is read by the release tooling.

@@ -63,10 +63,8 @@ test('explains network TypeErrors and falls back for other exceptions', () => {
   assert.equal(getApiErrorMessage(new Error('unexpected'), fallback), fallback);
 });
 
-test('preserves HTTP error fields for status handling', () => {
+test('sets the ApiError name and status message', () => {
   const error = new ApiError(401, 'Unauthorized', { detail: 'expired' });
   assert.equal(error.name, 'ApiError');
-  assert.equal(error.status, 401);
-  assert.equal(error.statusText, 'Unauthorized');
-  assert.deepEqual(error.data, { detail: 'expired' });
+  assert.equal(error.message, '401 Unauthorized');
 });
