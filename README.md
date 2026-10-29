@@ -62,7 +62,7 @@ See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/REA
 
 Choose a starting category: **Good**, **Mid**, or **Bad**. Colored icons and badges identify categories; saved scores and ranks remain separate.
 
-When adding another item in the same range, choose the better item in each comparison. Choices use neutral surfaces without scores or preference colors. **Undo last answer** reverses the latest choice and is available only before the final answer. Ranking saves automatically after the final comparison; the first item in an empty range saves immediately. The refreshed list confirms the saved order, with no extra success banner or sheet. If saving fails, choose **Retry saving**. If the item refresh fails after saving, choose **Retry refresh**.
+When adding another item in the same range, choose the better item in each comparison. Choices use neutral surfaces without scores or preference colors. **Undo last answer** reverses the latest choice and is available only before the final answer. Ranking saves automatically after the final comparison; the first item in an empty range saves immediately. The refreshed list confirms the saved order. If saving fails, choose **Retry saving**. If the item refresh fails after saving, choose **Retry refresh**.
 
 Select a row to view its description, image, score and overall rank. **Edit** changes its metadata; **Re-rank** lets you choose a destination range without changing the saved rank until comparisons complete and save automatically. An empty destination range saves immediately. **Delete Item** is separate from editing and requires confirmation.
 

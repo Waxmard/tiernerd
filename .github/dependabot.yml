@@ -34,6 +34,8 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     ignore:
+      - dependency-name: "@babel/core"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "expo"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
       - dependency-name: "expo-*"

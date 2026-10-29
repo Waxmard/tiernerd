@@ -1,7 +1,7 @@
 """Tests for item endpoints."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -16,6 +16,7 @@ from app.db.models import (
     ComparisonSession as ComparisonSessionModel,
     Item as ItemModel,
     List as ListModel,
+    User,
 )
 
 
@@ -55,7 +56,6 @@ class TestCreateItem:
         assert data["tier_set"] == tier_set
         assert data["rating"] == expected_rating
 
-        # Verify item was created in database
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == test_list.list_id)
         )
@@ -75,7 +75,6 @@ class TestCreateItem:
         test_db: AsyncSession,
     ):
         """Test creating second item starts a comparison session."""
-        # Verify we start with 1 item in database
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == test_list.list_id)
         )
@@ -95,7 +94,6 @@ class TestCreateItem:
         )
         assert response.status_code == 200
         data = response.json()
-        # Should return a ComparisonSession
         assert "session_id" in data
         assert data["status"] == "active"
         assert data["discard_on_cancel"] is True
@@ -172,7 +170,6 @@ class TestReadItem:
         client: AsyncClient,
         test_item: ItemModel,
         auth_headers: dict,
-        test_db: AsyncSession,
     ):
         response = await client.get(
             f"/api/items/items/{test_item.item_id}", headers=auth_headers
@@ -182,15 +179,6 @@ class TestReadItem:
         assert str(data["item_id"]) == str(test_item.item_id)
         assert data["name"] == test_item.name
         assert data["description"] == test_item.description
-
-        # Verify item exists in database
-        result = await test_db.execute(
-            select(ItemModel).where(ItemModel.item_id == test_item.item_id)
-        )
-        db_item = result.scalar_one_or_none()
-        assert db_item is not None
-        assert db_item.name == test_item.name
-        assert db_item.list_id == test_item.list_id
 
     async def test_read_item_unauthenticated(
         self, client: AsyncClient, test_item: ItemModel
@@ -245,7 +233,6 @@ class TestUpdateItem:
         assert data["description"] == "Updated description"
         assert data["image_url"] == "https://example.com/updated.jpg"
 
-        # Verify item was updated in database
         await test_db.refresh(test_item)
         assert test_item.name == "Updated Name"
         assert test_item.description == "Updated description"
@@ -307,6 +294,96 @@ class TestUpdateItem:
         )
         assert response.status_code == 404
 
+    async def test_item_update_changes_list_recency_only_on_success(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        test_item: ItemModel,
+        test_user2: User,
+        auth_headers: dict,
+        auth_headers_user2: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        test_list.updated_at = datetime(2020, 1, 1, tzinfo=UTC)
+        newer_list = ListModel(
+            list_id=uuid.uuid4(),
+            user_id=test_list.user_id,
+            title="Newer list",
+            created_at=datetime(2021, 1, 1, tzinfo=UTC),
+            updated_at=datetime(2021, 1, 1, tzinfo=UTC),
+        )
+        foreign_list = ListModel(
+            list_id=uuid.uuid4(),
+            user_id=test_user2.user_id,
+            title="Another owner's list",
+            created_at=datetime(2022, 1, 1, tzinfo=UTC),
+            updated_at=datetime(2022, 1, 1, tzinfo=UTC),
+        )
+        duplicate_item = ItemModel(
+            item_id=uuid.uuid4(),
+            list_id=test_list.list_id,
+            name="Other",
+            tier_set="mid",
+        )
+        test_db.add_all([newer_list, foreign_list, duplicate_item])
+        await test_db.commit()
+        await test_db.refresh(test_list)
+        await test_db.refresh(newer_list)
+        original_updated_at = test_list.updated_at
+        newer_updated_at = newer_list.updated_at
+        old_id = str(test_list.list_id)
+        new_id = str(newer_list.list_id)
+        item_url = f"/api/items/items/{test_item.item_id}"
+
+        initial = await client.get("/api/lists/", headers=auth_headers)
+        assert initial.status_code == 200
+        assert [row["list_id"] for row in initial.json()] == [new_id, old_id]
+
+        empty = await client.put(item_url, json={}, headers=auth_headers)
+        assert empty.status_code == 200
+        await test_db.refresh(test_list)
+        assert test_list.updated_at == original_updated_at
+
+        duplicate = await client.put(
+            item_url, json={"name": " other "}, headers=auth_headers
+        )
+        assert duplicate.status_code == 409
+        await test_db.refresh(test_list)
+        assert test_list.updated_at == original_updated_at
+
+        unauthorized = await client.put(
+            item_url, json={"name": "Forbidden"}, headers=auth_headers_user2
+        )
+        assert unauthorized.status_code == 404
+        await test_db.refresh(test_list)
+        assert test_list.updated_at == original_updated_at
+
+        async def no_match(db, list_id, name_key, exclude_id=None):
+            return None
+
+        with monkeypatch.context() as patch:
+            patch.setattr(item_crud, "get_by_name_key", no_match)
+            conflict = await client.put(
+                item_url, json={"name": "OTHER"}, headers=auth_headers
+            )
+        assert conflict.status_code == 409
+        await test_db.refresh(test_list)
+        assert test_list.updated_at == original_updated_at
+
+        updated = await client.put(
+            item_url, json={"name": "Edited"}, headers=auth_headers
+        )
+        assert updated.status_code == 200
+        assert updated.json()["name"] == "Edited"
+        await test_db.refresh(test_list)
+        assert test_list.updated_at > original_updated_at
+        assert test_list.updated_at > newer_updated_at
+
+        ordered = await client.get("/api/lists/", headers=auth_headers)
+        assert ordered.status_code == 200
+        assert [row["list_id"] for row in ordered.json()] == [old_id, new_id]
+
 
 class TestDeleteItem:
     """Tests for deleting items endpoint."""
@@ -321,13 +398,11 @@ class TestDeleteItem:
         item_id = test_item.item_id
         list_id = test_item.list_id
 
-        # Verify item exists in database before deletion
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.item_id == item_id)
         )
         assert result.scalar_one_or_none() is not None
 
-        # Count items in list before deletion
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == list_id)
         )
@@ -338,20 +413,17 @@ class TestDeleteItem:
         )
         assert response.status_code == 204
 
-        # Verify item is deleted from database
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.item_id == item_id)
         )
         assert result.scalar_one_or_none() is None
 
-        # Verify item count decreased
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == list_id)
         )
         items_after = len(result.scalars().all())
         assert items_after == items_before - 1
 
-        # Verify item is deleted via API
         response = await client.get(f"/api/items/items/{item_id}", headers=auth_headers)
         assert response.status_code == 404
 
@@ -440,7 +512,6 @@ class TestCreateItemTierSets:
         test_db: AsyncSession,
     ):
         """Test that items in different tier_sets don't trigger comparison."""
-        # Create first item in "good" tier_set
         response1 = await client.post(
             "/api/items/",
             params={"list_title": test_list.title},
@@ -488,11 +559,9 @@ class TestItemOwnership:
         """Test reading item after its list is deleted."""
         item_id = test_item.item_id
 
-        # Delete the list
         await test_db.delete(test_list)
         await test_db.commit()
 
-        # Try to read the item
         response = await client.get(f"/api/items/items/{item_id}", headers=auth_headers)
         # Item should be gone (cascade delete) or ownership check fails
         assert response.status_code == 404
@@ -505,7 +574,6 @@ class TestItemOwnership:
         test_db: AsyncSession,
     ):
         """Test that user can't update item in list they don't own."""
-        # Create a list for user2
         user2_list = ListModel(
             list_id=uuid.uuid4(),
             user_id=test_user2.user_id,
@@ -516,7 +584,6 @@ class TestItemOwnership:
         )
         test_db.add(user2_list)
 
-        # Create an item in user2's list
         user2_item = ItemModel(
             item_id=uuid.uuid4(),
             list_id=user2_list.list_id,

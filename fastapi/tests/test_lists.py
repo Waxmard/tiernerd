@@ -1,7 +1,7 @@
 """Tests for list endpoints."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -27,7 +27,6 @@ class TestReadLists:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-        # Verify list data structure
         list_data = data[0]
         assert "list_id" in list_data
         assert "title" in list_data
@@ -52,20 +51,11 @@ class TestReadLists:
         self,
         client: AsyncClient,
         test_user: User,
-        test_user2: User,
         test_list: ListModel,
         auth_headers: dict,
         auth_headers_user2: dict,
-        test_db: AsyncSession,
     ):
         """Test that users only see their own lists."""
-        # Verify test_list belongs to test_user in database
-        result = await test_db.execute(
-            select(ListModel).where(ListModel.list_id == test_list.list_id)
-        )
-        db_list = result.scalar_one()
-        assert db_list.user_id == test_user.user_id
-
         # User 1 should see their list
         response = await client.get("/api/lists/", headers=auth_headers)
         assert response.status_code == 200
@@ -78,13 +68,6 @@ class TestReadLists:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 0
-
-        # Verify test_user2 has no lists in database
-        result = await test_db.execute(
-            select(ListModel).where(ListModel.user_id == test_user2.user_id)
-        )
-        user2_lists = result.scalars().all()
-        assert len(user2_lists) == 0
 
 
 class TestCreateList:
@@ -112,7 +95,6 @@ class TestCreateList:
         assert "list_id" in data
         assert str(data["user_id"]) == str(test_user.user_id)
 
-        # Verify list was created in database
         result = await test_db.execute(
             select(ListModel).where(ListModel.title == "My New List")
         )
@@ -276,7 +258,6 @@ class TestUpdateList:
         assert data["description"] == "Updated description"
         assert str(data["list_id"]) == str(test_list.list_id)
 
-        # Verify list was updated in database
         await test_db.refresh(test_list)
         assert test_list.title == "Updated Title"
         assert test_list.description == "Updated description"
@@ -355,7 +336,6 @@ class TestDeleteList:
     ):
         list_id = test_list.list_id
 
-        # Verify list exists in database before deletion
         result = await test_db.execute(
             select(ListModel).where(ListModel.list_id == list_id)
         )
@@ -364,13 +344,11 @@ class TestDeleteList:
         response = await client.delete(f"/api/lists/{list_id}", headers=auth_headers)
         assert response.status_code == 204
 
-        # Verify list is deleted from database
         result = await test_db.execute(
             select(ListModel).where(ListModel.list_id == list_id)
         )
         assert result.scalar_one_or_none() is None
 
-        # Verify list is deleted via API
         response = await client.get(f"/api/lists/{list_id}", headers=auth_headers)
         assert response.status_code == 404
 
@@ -411,7 +389,6 @@ class TestDeleteList:
         """Test that deleting a list also deletes its items."""
         list_id = test_list.list_id
 
-        # Create some items in the list
         items = []
         for i in range(3):
             item = ItemModel(
@@ -430,17 +407,14 @@ class TestDeleteList:
             items.append(item)
         await test_db.commit()
 
-        # Verify items exist
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == list_id)
         )
         assert len(result.scalars().all()) == 3
 
-        # Delete the list
         response = await client.delete(f"/api/lists/{list_id}", headers=auth_headers)
         assert response.status_code == 204
 
-        # Verify items are also deleted
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == list_id)
         )
@@ -486,7 +460,6 @@ class TestReadListItems:
         test_db: AsyncSession,
     ):
         """Test reading items with multiple tier_sets."""
-        # Create items in different tier_sets
         good_item = ItemModel(
             item_id=uuid.uuid4(),
             list_id=test_list.list_id,
@@ -522,7 +495,6 @@ class TestReadListItems:
         data = response.json()
         assert len(data) == 2
 
-        # Verify both tier_sets are present
         tier_sets = {item["tier_set"] for item in data}
         assert "good" in tier_sets
         assert "mid" in tier_sets
@@ -569,33 +541,28 @@ class TestReadListsWithStats:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        # Create additional lists
-        for i in range(5):
-            list_obj = ListModel(
-                list_id=uuid.uuid4(),
-                user_id=test_user.user_id,
-                title=f"Pagination Test List {i}",
-                description=f"List {i} for pagination testing",
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
+        for number, day in ((3, 2), (2, 1), (4, 3), (1, 2)):
+            test_db.add(
+                ListModel(
+                    list_id=uuid.UUID(int=number),
+                    user_id=test_user.user_id,
+                    title=f"Pagination Test List {number}",
+                    created_at=datetime(2023, 1, 1, tzinfo=UTC),
+                    updated_at=datetime(2024, 1, day, tzinfo=UTC),
+                )
             )
-            test_db.add(list_obj)
         await test_db.commit()
 
-        # Test getting first 2 lists
-        response = await client.get("/api/lists/?limit=2", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 2
+        first = await client.get("/api/lists/?limit=2", headers=auth_headers)
+        assert first.status_code == 200
+        assert [row["list_id"] for row in first.json()] == [
+            str(uuid.UUID(int=4)),
+            str(uuid.UUID(int=1)),
+        ]
 
-        # Test skipping first 2 lists
-        response = await client.get("/api/lists/?skip=2&limit=2", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 2
-
-        # Test getting all lists
-        response = await client.get("/api/lists/", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) >= 5  # At least the 5 we created
+        second = await client.get("/api/lists/?skip=2&limit=2", headers=auth_headers)
+        assert second.status_code == 200
+        assert [row["list_id"] for row in second.json()] == [
+            str(uuid.UUID(int=3)),
+            str(uuid.UUID(int=2)),
+        ]

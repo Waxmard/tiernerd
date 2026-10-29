@@ -30,7 +30,7 @@ Or step-by-step:
 1. `mise install` (installs node, python, uv at pinned versions)
 2. `npm install` (root, installs lefthook + git hooks via `prepare` script)
 3. `cd frontend && npm install`
-4. `cd ../fastapi && uv sync --extra dev --group dev`
+4. `cd ../fastapi && uv sync --locked`
 
 ## Development Commands
 
@@ -88,7 +88,9 @@ uv run pytest --cov=app --cov-report=term-missing   # Run with coverage
 
 ### Frontend (frontend/)
 
-To build and install a standalone iOS Release app, install Xcode and CocoaPods, pair and trust the iPhone, and configure Apple team `48TY2FP59S` for signing. Run from the repository root:
+#### iOS Release
+
+To build and install a standalone iOS Release app, meet the [frontend prerequisites](frontend/README.md#prerequisites) and configure Apple team `48TY2FP59S` for signing. Run from the repository root:
 
 ```bash
 make ios                          # build, install and launch on Gengar Phone
@@ -99,15 +101,15 @@ The command uses development Google OAuth web and iOS client IDs by default. To 
 
 The Release app uses the hosted development API by default and embeds its JavaScript, so it needs no Metro server after installation. Set `EXPO_PUBLIC_API_URL` to another public HTTPS API if needed. The command ignores Expo dotenv files. Re-running it replaces the app without deliberately removing its data. `npm run ios` remains the separate Expo development command.
 
-Pushing to `main` (or dispatching `.github/workflows/deploy-testflight.yml`) runs `scripts/build-ios-testflight.sh` on `macos-26` in the `preview` environment to archive, export, and upload `TierNerd.ipa` to App Store Connect / TestFlight using `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `APPLE_CERTIFICATE_P12_BASE64`, and `APPLE_CERTIFICATE_PASSWORD`.
+TestFlight builds run `scripts/build-ios-testflight.sh`; see [Deploys & Releases](CONTRIBUTING.md#deploys--releases) for the trigger, environment and signing secrets.
 
-Simulator and development commands:
+#### Simulator and development builds
 
-```bash
-npm run ios                       # Run on iOS simulator
-npx expo start --go               # Expo Go on a physical phone, no simulator
-```
-Code quality (Biome — single tool for lint + format):
+See [frontend/README.md](frontend/README.md#option-2-ios-simulator) for simulator and physical-device development commands. Expo Go cannot run Google Sign-In because it requires native code.
+
+#### Frontend code quality
+
+Biome handles lint and formatting:
 
 ```bash
 npm run lint                      # Lint with Biome
@@ -175,10 +177,14 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 ### Frontend Structure (`frontend/src/`)
 
+- `components/` — Screen-level components and workspace hooks
+- `config/` — API endpoint configuration
 - `screens/` — Screen components (Login, Home, ListDetail, Profile)
 - `navigation/` — React Navigation stack setup
 - `providers/` — Context providers (AuthContext)
 - `design-system/` — Reusable components and design tokens
+- `services/` — API, sign-in and cache services
+- `utils/` — Shared utilities
 
 ### Key Patterns
 

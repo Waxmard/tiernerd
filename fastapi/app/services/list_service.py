@@ -10,12 +10,6 @@ def get_items_best_first(items: list[ItemModel]) -> list[ItemModel]:
     """
     Order items best first: bands good, mid, bad, best position first within a
     band, then unranked items.
-
-    Args:
-        items: List of items to order
-
-    Returns:
-        List of items, best first, unranked last
     """
     ranked = [i for i in items if i.position is not None]
     unranked = [i for i in items if i.position is None]
@@ -32,16 +26,7 @@ def get_items_best_first(items: list[ItemModel]) -> list[ItemModel]:
 def build_list_response(
     list_obj: Any, items: list[Any] | None = None
 ) -> dict[str, Any]:
-    """
-    Build a standard list response dictionary.
-
-    Args:
-        list_obj: The list model object
-        items: Optional list of items to include
-
-    Returns:
-        Dictionary with list data
-    """
+    """Build a list model response, optionally including items."""
     response: dict[str, Any] = {
         "list_id": list_obj.list_id,
         "user_id": list_obj.user_id,
@@ -57,15 +42,7 @@ def build_list_response(
 
 
 def build_list_simple_response(row: tuple[Any, ...]) -> dict[str, Any]:
-    """
-    Build a ListSimple response from a database row with stats.
-
-    Args:
-        row: Tuple of (ListModel, item_count)
-
-    Returns:
-        Dictionary with list data and statistics
-    """
+    """Build a ListSimple response from a (ListModel, item_count) row."""
     list_obj = row[0]
     item_count = row[1] or 0
     return {

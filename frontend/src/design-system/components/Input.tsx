@@ -1,44 +1,24 @@
 import type React from 'react';
 import { forwardRef, useId } from 'react';
-import {
-  Text,
-  TextInput,
-  type TextInputProps,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Text, TextInput, type TextInputProps, View } from 'react-native';
 import { useThemeColors } from '../../providers/ThemeProvider';
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  rightIconAccessibilityLabel?: string;
-  containerClassName?: string;
   inputClassName?: string;
-  onRightIconPress?: () => void;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  {
-    label,
-    error,
-    leftIcon,
-    rightIcon,
-    rightIconAccessibilityLabel,
-    containerClassName,
-    inputClassName,
-    onRightIconPress,
-    ...textInputProps
-  },
+  { label, error, leftIcon, inputClassName, ...textInputProps },
   ref
 ) {
   const colors = useThemeColors();
   const labelId = useId();
 
   return (
-    <View className={['mb-4', containerClassName ?? ''].join(' ')}>
+    <View className="mb-4">
       {label && (
         <Text
           nativeID={labelId}
@@ -77,25 +57,6 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           }
           accessibilityHint={error ?? textInputProps.accessibilityHint}
         />
-        {rightIcon && onRightIconPress ? (
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel={rightIconAccessibilityLabel}
-            className="w-11 h-11 items-center justify-center -mr-2"
-            onPress={onRightIconPress}
-          >
-            <View accessible={false}>{rightIcon}</View>
-          </TouchableOpacity>
-        ) : (
-          rightIcon && (
-            <View
-              accessible={false}
-              className="w-11 h-11 items-center justify-center -mr-2"
-            >
-              {rightIcon}
-            </View>
-          )
-        )}
       </View>
       {error && (
         <Text

@@ -29,18 +29,15 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 @pytest_asyncio.fixture(scope="function")
 async def test_db() -> AsyncGenerator[AsyncSession]:
     """Create a test database session."""
-    # Create async engine for testing
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         connect_args={"check_same_thread": False},
     )
 
-    # Create tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Create session
     async_session = async_sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
     )
@@ -49,7 +46,6 @@ async def test_db() -> AsyncGenerator[AsyncSession]:
         yield session
         await session.rollback()
 
-    # Drop tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 

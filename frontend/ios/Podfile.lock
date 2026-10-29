@@ -250,6 +250,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - ExpoSplashScreen (31.0.13):
+    - ExpoModulesCore
   - ExpoSystemUI (6.0.9):
     - ExpoModulesCore
   - EXUpdatesInterface (2.0.0):
@@ -2254,6 +2256,7 @@ DEPENDENCIES:
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoKeepAwake (from `../node_modules/expo/node_modules/expo-keep-awake/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
+  - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
   - ExpoSystemUI (from `../node_modules/expo-system-ui/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
@@ -2373,6 +2376,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo/node_modules/expo-keep-awake/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
+  ExpoSplashScreen:
+    :path: "../node_modules/expo-splash-screen/ios"
   ExpoSystemUI:
     :path: "../node_modules/expo-system-ui/ios"
   EXUpdatesInterface:
@@ -2544,6 +2549,7 @@ SPEC CHECKSUMS:
   ExpoFont: dfb7c572372b610da45b41e3b436321fd6a97215
   ExpoKeepAwake: 55f75eca6499bb9e4231ebad6f3e9cb8f99c0296
   ExpoModulesCore: 9e6a5514828e7dd5ded9e99d33557be2d284e660
+  ExpoSplashScreen: bc3cffefca2716e5f22350ca109badd7e50ec14d
   ExpoSystemUI: 2ad325f361a2fcd96a464e8574e19935c461c9cc
   EXUpdatesInterface: 5adf50cb41e079c861da6d9b4b954c3db9a50734
   FBLazyVector: 14ce6e3675cacb2683ad30272f04274a4ee5b67d
@@ -2628,6 +2634,6 @@ SPEC CHECKSUMS:
   RNWorklets: 43cd6af94c18f89cbca10ea83fee281b69d75da5
   Yoga: 786fa7d9d2ff6060b4e688062243fa69c323d140
 
-PODFILE CHECKSUM: 1a8990fd7e01fde6eb668e4b59ee6d2fe8d0220d
+PODFILE CHECKSUM: ecd2c53367dc6437586a3a0657bfa0d9729ade94
 
 COCOAPODS: 1.17.0
