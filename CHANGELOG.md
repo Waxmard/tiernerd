@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.0](https://github.com/Waxmard/tiernerd/compare/v0.6.0...v0.7.0) (2026-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* sign in with Google on iOS ([#105](https://github.com/Waxmard/tiernerd/issues/105))
+
+### Features
+
+* sign in with Google on iOS ([#105](https://github.com/Waxmard/tiernerd/issues/105)) ([edd4360](https://github.com/Waxmard/tiernerd/commit/edd436065b1ee70e49f62be7960189e4c09dba20))
+
 ## [0.6.0](https://github.com/Waxmard/tiernerd/compare/v0.5.0...v0.6.0) (2026-10-27)
 
 
