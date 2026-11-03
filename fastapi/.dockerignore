@@ -70,7 +70,6 @@ Dockerfile
 .gcloudignore
 .python-version
 Makefile
-pytest.ini
 tach.toml
 tach_module_graph.dot
 

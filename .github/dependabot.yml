@@ -28,6 +28,7 @@ updates:
       semver-patch-days: 3
     groups:
       frontend-minor-and-patch:
+        applies-to: version-updates
         update-types:
           - "minor"
           - "patch"
