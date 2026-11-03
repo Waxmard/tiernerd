@@ -11,6 +11,7 @@ interface ListDetailHeaderProps {
   itemCount: number;
   rankedCount: number;
   addDisabled: boolean;
+  addLoading: boolean;
   onAdd: () => void;
   description: string | null;
   metadataError: boolean;
@@ -42,6 +43,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   itemCount,
   rankedCount,
   addDisabled,
+  addLoading,
   onAdd,
   description,
   metadataError,
@@ -160,23 +162,28 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           title="Add item"
           onPress={onAdd}
           disabled={addDisabled}
+          loading={addLoading}
           size="small"
           icon={
-            <Ionicons
-              name="add-circle-outline"
-              size={20}
-              color={colors['on-accent']}
-              accessible={false}
-            />
+            addLoading ? undefined : (
+              <Ionicons
+                name="add-circle-outline"
+                size={20}
+                color={colors[addDisabled ? 'ink-disabled' : 'on-accent']}
+                accessible={false}
+              />
+            )
           }
         />
       </View>
-      {showingSavedItems ? (
+      {showingSavedItems || addLoading ? (
         <Text
           accessibilityLiveRegion="polite"
           className="text-body-small text-ink-muted dark:text-ink-muted-dark"
         >
-          Showing saved items. Refreshing…
+          {showingSavedItems
+            ? 'Showing saved items. Refreshing…'
+            : 'Loading list…'}
         </Text>
       ) : null}
       {itemsError ? (

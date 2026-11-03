@@ -95,6 +95,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   } = useListDetailData({ userId, token, listId, routeTitle });
   const canMutate =
     itemsLoaded && metadataLoaded && !itemsError && !metadataError;
+  const isLoadingList = isLoadingItems || (!metadataLoaded && !metadataError);
   const sessionLookupRequestRef = useRef(0);
   const identityRef = useRef(screenIdentity);
   if (identityRef.current !== screenIdentity) {
@@ -678,7 +679,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     />
   );
   const renderListItems = () => {
-    if (isLoadingItems && !hasItemsSnapshot) {
+    if (isLoadingList && (!hasItemsSnapshot || items.length === 0)) {
       return (
         <View className="flex-1 items-center justify-center px-6">
           <ActivityIndicator size="large" color={colors.accent} />
@@ -736,6 +737,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               onRetryItems={() => void fetchItems().catch(() => {})}
               itemCount={items.length}
               rankedCount={rankedCount}
+              addLoading={isLoadingList}
               addDisabled={
                 !canMutate ||
                 isDeletingList ||
