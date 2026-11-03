@@ -3,8 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getApiErrorMessage } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import {
-  acceptLiveItems,
-  acceptLiveMetadata,
   applyCachedItemsState,
   applyCachedMetadataState,
   applyEvictedListState,
@@ -36,9 +34,6 @@ import {
   parseCachedListItems,
   parseCachedLists,
   sortListsByRecency,
-  startHydrationRequest,
-  startItemsRequest,
-  startMetadataRequest,
 } from '../services/listsCache';
 import {
   INVALID_RANKING_MODE,
@@ -240,7 +235,7 @@ export function useListDetailData({
         );
         throw new Error(ITEMS_ERROR);
       }
-      const requestId = startItemsRequest(lifecycle);
+      const requestId = ++lifecycle.itemsRequest;
       updateState(
         lifecycle,
         () => lifecycle.itemsRequest === requestId,
@@ -253,7 +248,7 @@ export function useListDetailData({
         );
         if (!canAcceptItemsResponse(lifecycle, requestId, lifecycleRef.current))
           throw new Error(ITEMS_ERROR);
-        acceptLiveItems(lifecycle);
+        lifecycle.itemsAcceptedLive = true;
         itemsRef.current = nextItems;
         updateState(
           lifecycle,
@@ -339,7 +334,7 @@ export function useListDetailData({
         );
         return null;
       }
-      const requestId = startMetadataRequest(lifecycle);
+      const requestId = ++lifecycle.metadataRequest;
       updateState(
         lifecycle,
         () => lifecycle.metadataRequest === requestId,
@@ -355,7 +350,7 @@ export function useListDetailData({
         )
           return null;
         metadataRef.current = { lifecycle, requestId, metadata: list };
-        acceptLiveMetadata(lifecycle);
+        lifecycle.metadataAcceptedLive = true;
         updateState(
           lifecycle,
           () =>
@@ -406,7 +401,10 @@ export function useListDetailData({
         !lifecycle.userId
       )
         return;
-      const { hydrationId, version } = startHydrationRequest(lifecycle);
+      const { hydrationId, version } = {
+        hydrationId: ++lifecycle.hydrationRequest,
+        version: lifecycle.cacheVersion,
+      };
       const itemKey = listItemsCacheKey(lifecycle.userId, lifecycle.listId);
       const overviewKey = listsCacheKey(lifecycle.userId);
       const entries = await AsyncStorage.multiGet([itemKey, overviewKey]).catch(
@@ -599,7 +597,7 @@ export function useListDetailData({
       )
         throw new Error(ITEMS_ERROR);
       modeSaveRef.current = lifecycle;
-      const requestId = startMetadataRequest(lifecycle);
+      const requestId = ++lifecycle.metadataRequest;
       const version = ++lifecycle.cacheVersion;
       lifecycle.hydrationRequest++;
       try {
@@ -618,7 +616,7 @@ export function useListDetailData({
         )
           throw new Error(ITEMS_ERROR);
         metadataRef.current = { lifecycle, requestId, metadata };
-        acceptLiveMetadata(lifecycle);
+        lifecycle.metadataAcceptedLive = true;
         updateState(
           lifecycle,
           () =>

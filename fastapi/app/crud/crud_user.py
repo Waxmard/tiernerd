@@ -49,10 +49,3 @@ async def update_user(db: AsyncSession, db_obj: User, obj_in: UserUpdate) -> Use
     await db.commit()
     await db.refresh(db_obj)
     return db_obj
-
-
-async def delete_user(db: AsyncSession, user_id: uuid.UUID) -> None:
-    user = await get_user_by_id(db, user_id)
-    if user:
-        await db.delete(user)
-        await db.commit()

@@ -47,7 +47,6 @@ class TestComparisonCRUD:
         test_db.add(session)
         await test_db.commit()
 
-        assert await comparison_crud.get_active(test_db, session.session_id) is not None
         assert (
             await comparison_crud.get_active_by_item(test_db, test_item.item_id)
             is not None
@@ -65,7 +64,6 @@ class TestComparisonCRUD:
         test_db.add(session)
         await test_db.commit()
 
-        assert await comparison_crud.get_active(test_db, session.session_id) is None
         assert (
             await comparison_crud.get_active_by_item(test_db, test_item.item_id) is None
         )

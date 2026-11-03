@@ -119,33 +119,6 @@ def auth_headers_user2(test_user2: User) -> dict:
 
 
 @pytest_asyncio.fixture
-async def admin_user(test_db: AsyncSession) -> User:
-    """Create an admin test user."""
-    import uuid
-    from datetime import datetime
-
-    user = User(
-        user_id=uuid.uuid4(),
-        email="admin@example.com",
-        username="adminuser",
-        is_admin=True,
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-    )
-    test_db.add(user)
-    await test_db.commit()
-    await test_db.refresh(user)
-    return user
-
-
-@pytest.fixture
-def admin_auth_headers(admin_user: User) -> dict:
-    """Generate authentication headers for admin user."""
-    access_token = create_access_token(subject=admin_user.user_id)
-    return {"Authorization": f"Bearer {access_token}"}
-
-
-@pytest_asyncio.fixture
 async def test_list(test_db: AsyncSession, test_user: User) -> ListModel:
     import uuid
     from datetime import datetime

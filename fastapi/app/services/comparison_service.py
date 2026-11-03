@@ -4,7 +4,6 @@ from typing import cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.algorithm import find_next_comparison
 from app.core.fractional_index import generate_key_between
 from app.crud import comparison as comparison_crud, item as item_crud, list as list_crud
 from app.db.models import ComparisonSession as ComparisonSessionModel, Item as ItemModel
@@ -17,8 +16,12 @@ from app.schemas.item import (
     Item as ItemSchema,
 )
 from app.services.list_service import get_items_best_first
-from app.services.ranking import assign_scores, filter_ranked_items, score_for_rank
-from app.utils.helper import sort_items_by_position
+from app.services.ranking import (
+    assign_scores,
+    filter_ranked_items,
+    score_for_rank,
+    sort_items_by_position,
+)
 
 RANKING_CHANGED = "Ranking changed. Reload the current question."
 LIST_CHANGED = "The list changed. Restart ranking to continue."
@@ -247,11 +250,10 @@ async def process_comparison_result(
         "status": session.status,
         "comparisons_answered": session.comparisons_answered,
     }
-    low, high = find_next_comparison(
-        session.min_index,
-        session.max_index,
-        index,
-        result == "better",
+    low, high = (
+        (index + 1, session.max_index)
+        if result == "better"
+        else (session.min_index, index)
     )
     session.min_index = low
     session.max_index = high

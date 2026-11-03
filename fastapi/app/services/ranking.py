@@ -30,3 +30,13 @@ def filter_ranked_items(
         for item in items
         if item.position is not None and item.item_id != exclude_id
     ]
+
+
+def sort_items_by_position(items: list[ItemModel]) -> list[ItemModel]:
+    """Sort ranked items lexicographically by position; put unranked items last."""
+    if not items:
+        return []
+    ranked = [item for item in items if item.position is not None]
+    unranked = [item for item in items if item.position is None]
+    ranked.sort(key=lambda x: x.position or "")
+    return ranked + unranked

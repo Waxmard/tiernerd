@@ -15,8 +15,12 @@ from app.services.comparison_service import (
     undo_comparison,
 )
 from app.services.list_service import get_items_best_first
-from app.services.ranking import assign_scores, filter_ranked_items, score_for_rank
-from app.utils.helper import sort_items_by_position
+from app.services.ranking import (
+    assign_scores,
+    filter_ranked_items,
+    score_for_rank,
+    sort_items_by_position,
+)
 
 
 def create_item(

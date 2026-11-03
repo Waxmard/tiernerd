@@ -37,17 +37,6 @@ class User(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserPublic(BaseModel):
-    """Schema for public user info."""
-
-    user_id: UUID
-    email: EmailStr
-    username: str | None = None
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class Token(BaseModel):
     """Schema for authentication token."""
 

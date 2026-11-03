@@ -5,7 +5,6 @@ import {
   findNextDraftSession,
   shouldAutoCommitRanking,
 } from './itemWorkspaceActions.ts';
-import { hasSavedRankChanged } from './rankSnapshot.ts';
 
 const candidate: Item = {
   item_id: 'item-1',
@@ -66,25 +65,6 @@ test('auto-commits each fresh ready revision only once', () => {
       sessionId: readySession.session_id,
       revision: readySession.revision - 1,
     }),
-    true
-  );
-});
-
-test('detects saved-rank changes but ignores metadata edits', () => {
-  assert.equal(
-    hasSavedRankChanged(session, {
-      ...candidate,
-      name: 'Renamed',
-      description: 'Updated',
-    }),
-    false
-  );
-  assert.equal(
-    hasSavedRankChanged(session, { ...candidate, rating: 8.5 }),
-    true
-  );
-  assert.equal(
-    hasSavedRankChanged(session, { ...candidate, position: 'a0' }),
     true
   );
 });

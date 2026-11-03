@@ -6,7 +6,6 @@ import type {
   itemsService,
   UpdateItemRequest,
 } from './itemsService.ts';
-import { hasSavedRankChanged } from './rankSnapshot.ts';
 
 export type ReconciledSession =
   | { kind: 'found'; session: ComparisonSession }
@@ -107,7 +106,8 @@ async function findSessionAfterMissing(
     const items = await listsService.getListItems(session.list_id, token);
     const candidate = items.find((item) => item.item_id === session.item_id);
     if (!candidate) return { kind: 'missing' };
-    return hasSavedRankChanged(session, candidate)
+    return candidate.rating !== session.item.rating ||
+      candidate.position !== session.item.position
       ? { kind: 'completed', item: candidate }
       : { kind: 'session-missing', item: candidate };
   } catch (error) {

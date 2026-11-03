@@ -41,17 +41,6 @@ async def get_by_id_with_ownership(
     return result.scalar_one_or_none()
 
 
-async def get_list_id_by_id_with_ownership(
-    db: AsyncSession, item_id: uuid.UUID, user_id: uuid.UUID
-) -> uuid.UUID | None:
-    result = await db.execute(
-        select(ItemModel.list_id)
-        .join(ListModel, ItemModel.list_id == ListModel.list_id)
-        .where(ItemModel.item_id == item_id, ListModel.user_id == user_id)
-    )
-    return result.scalar_one_or_none()
-
-
 async def get_by_name_key(
     db: AsyncSession,
     list_id: uuid.UUID,

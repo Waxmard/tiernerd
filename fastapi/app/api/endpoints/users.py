@@ -3,7 +3,6 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import (
@@ -21,12 +20,10 @@ from app.schemas.user import (
     GoogleLogin,
     Token,
     User,
-    UserPublic,
     UserUpdate,
 )
 from app.services.auth import (
     create_access_token,
-    get_current_admin_user,
     get_current_user,
 )
 from app.services.google_auth import verify_google_id_token
@@ -96,31 +93,6 @@ async def login_with_google(
         "access_token": create_access_token(user.user_id),
         "token_type": "bearer",
     }
-
-
-@router.get("/", response_model=list[UserPublic])
-async def read_users(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_db),
-    current_user: UserModel = Depends(get_current_admin_user),
-) -> Any:
-    """
-    Retrieve users. Requires authentication.
-    """
-    query = select(UserModel).offset(skip).limit(limit)
-    result = await db.execute(query)
-    users = result.scalars().all()
-
-    return [
-        {
-            "user_id": user.user_id,
-            "email": user.email,
-            "username": user.username,
-            "created_at": user.created_at,
-        }
-        for user in users
-    ]
 
 
 @router.get("/me", response_model=User)

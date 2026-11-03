@@ -314,27 +314,6 @@ export const bumpLifecycleMutation = (
   return lifecycle.cacheVersion;
 };
 
-export const startItemsRequest = (lifecycle: ListDetailLifecycle): number =>
-  ++lifecycle.itemsRequest;
-
-export const startMetadataRequest = (lifecycle: ListDetailLifecycle): number =>
-  ++lifecycle.metadataRequest;
-
-export const startHydrationRequest = (
-  lifecycle: ListDetailLifecycle
-): { hydrationId: number; version: number } => ({
-  hydrationId: ++lifecycle.hydrationRequest,
-  version: lifecycle.cacheVersion,
-});
-
-export const acceptLiveItems = (lifecycle: ListDetailLifecycle): void => {
-  lifecycle.itemsAcceptedLive = true;
-};
-
-export const acceptLiveMetadata = (lifecycle: ListDetailLifecycle): void => {
-  lifecycle.metadataAcceptedLive = true;
-};
-
 export const createInvalidatedReadState = (
   previous: ListDetailDataState,
   routeTitle: string,

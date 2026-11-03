@@ -5,7 +5,6 @@ from datetime import datetime
 
 from app.db.models import Item as ItemModel
 from app.services.list_service import (
-    build_list_response,
     build_list_simple_response,
     get_items_best_first,
 )
@@ -67,63 +66,6 @@ class TestGetItemsBestFirst:
         low, high = items[50:52]
         assert low.rating == high.rating == 5.0
         assert get_items_best_first([low, high]) == [high, low]
-
-
-class TestBuildListResponse:
-    """Tests for build_list_response function."""
-
-    def test_build_response_without_items(self):
-        """Test building response without items."""
-
-        class MockList:
-            list_id = uuid.uuid4()
-            user_id = uuid.uuid4()
-            title = "Test List"
-            description = "Test description"
-            color = None
-            ranking_mode = "rank"
-            created_at = datetime.now()
-            updated_at = datetime.now()
-
-        result = build_list_response(MockList())
-        assert result["title"] == "Test List"
-        assert result["description"] == "Test description"
-        assert result["ranking_mode"] == "rank"
-        assert "items" not in result
-
-    def test_build_response_with_items(self):
-        class MockList:
-            list_id = uuid.uuid4()
-            user_id = uuid.uuid4()
-            title = "Test List"
-            description = "Test description"
-            color = None
-            ranking_mode = "score"
-            created_at = datetime.now()
-            updated_at = datetime.now()
-
-        items = [{"name": "Item 1"}, {"name": "Item 2"}]
-        result = build_list_response(MockList(), items=items)
-        assert result["title"] == "Test List"
-        assert "items" in result
-        assert len(result["items"]) == 2
-
-    def test_build_response_with_empty_items(self):
-        """Test building response with empty items list."""
-
-        class MockList:
-            list_id = uuid.uuid4()
-            user_id = uuid.uuid4()
-            title = "Test List"
-            description = "Test description"
-            color = None
-            ranking_mode = "score"
-            created_at = datetime.now()
-            updated_at = datetime.now()
-
-        result = build_list_response(MockList(), items=[])
-        assert "items" in result
-        assert result["items"] == []
 
 
 class TestBuildListSimpleResponse:

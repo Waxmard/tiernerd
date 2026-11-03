@@ -13,25 +13,6 @@ def get_items_best_first(items: list[ItemModel]) -> list[ItemModel]:
     return ranked + unranked
 
 
-def build_list_response(
-    list_obj: Any, items: list[Any] | None = None
-) -> dict[str, Any]:
-    """Build a list model response, optionally including items."""
-    response: dict[str, Any] = {
-        "list_id": list_obj.list_id,
-        "user_id": list_obj.user_id,
-        "title": list_obj.title,
-        "description": list_obj.description,
-        "color": list_obj.color,
-        "ranking_mode": list_obj.ranking_mode,
-        "created_at": list_obj.created_at,
-        "updated_at": list_obj.updated_at,
-    }
-    if items is not None:
-        response["items"] = items
-    return response
-
-
 def build_list_simple_response(row: tuple[Any, ...]) -> dict[str, Any]:
     """Build a ListSimple response from a (ListModel, item_count) row."""
     list_obj = row[0]

@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Item } from './itemsService.ts';
 import {
-  acceptLiveItems,
-  acceptLiveMetadata,
   applyCachedMetadataState,
   bumpLifecycleMutation,
   canAcceptItemsResponse,
@@ -28,9 +26,6 @@ import {
   parseCachedListItems,
   parseCachedLists,
   sortListsByRecency,
-  startHydrationRequest,
-  startItemsRequest,
-  startMetadataRequest,
 } from './listsCache.ts';
 import type { ListSimple } from './listsService.ts';
 
@@ -314,8 +309,9 @@ test('account switching drops in-flight reads and hydration for the previous acc
     listId: 'list-1',
     routeTitle: 'Account A List',
   });
-  const requestId = startItemsRequest(lifecycleA);
-  const { hydrationId, version } = startHydrationRequest(lifecycleA);
+  const requestId = ++lifecycleA.itemsRequest;
+  const hydrationId = ++lifecycleA.hydrationRequest;
+  const version = lifecycleA.cacheVersion;
   assert.equal(canAcceptItemsResponse(lifecycleA, requestId), true);
   assert.equal(canApplyHydration(lifecycleA, hydrationId, version), true);
 
@@ -360,8 +356,9 @@ test('eviction drops in-flight reads and hydration so a deleted list cannot be r
     listId: 'list-1',
     routeTitle: 'My List',
   });
-  const requestId = startItemsRequest(lifecycle);
-  const { hydrationId, version } = startHydrationRequest(lifecycle);
+  const requestId = ++lifecycle.itemsRequest;
+  const hydrationId = ++lifecycle.hydrationRequest;
+  const version = lifecycle.cacheVersion;
   const preEvictionVersion = lifecycle.cacheVersion;
   assert.equal(canApplyHydration(lifecycle, hydrationId, version), true);
 
@@ -393,8 +390,9 @@ test('definitive read error invalidation drops in-flight responses and hydration
     listId: 'list-1',
     routeTitle: 'My List',
   });
-  const requestId = startItemsRequest(lifecycle);
-  const { hydrationId, version } = startHydrationRequest(lifecycle);
+  const requestId = ++lifecycle.itemsRequest;
+  const hydrationId = ++lifecycle.hydrationRequest;
+  const version = lifecycle.cacheVersion;
 
   const invalidatedVersion = invalidateLifecycleReads(lifecycle);
 
@@ -413,15 +411,16 @@ test('cached items cannot overwrite live data once live response is accepted', (
     listId: 'list-1',
     routeTitle: 'My List',
   });
-  const { hydrationId, version } = startHydrationRequest(lifecycle);
+  const hydrationId = ++lifecycle.hydrationRequest;
+  const version = lifecycle.cacheVersion;
   assert.equal(canApplyCachedItems(lifecycle, hydrationId, version), true);
   assert.equal(canApplyCachedMetadata(lifecycle, hydrationId, version), true);
 
-  acceptLiveItems(lifecycle);
+  lifecycle.itemsAcceptedLive = true;
   assert.equal(canApplyCachedItems(lifecycle, hydrationId, version), false);
   assert.equal(canApplyCachedMetadata(lifecycle, hydrationId, version), true);
 
-  acceptLiveMetadata(lifecycle);
+  lifecycle.metadataAcceptedLive = true;
   assert.equal(canApplyCachedMetadata(lifecycle, hydrationId, version), false);
 });
 
@@ -434,26 +433,26 @@ test('metadata accepted before an item retry can produce a guarded summary', () 
     routeTitle: 'My List',
   });
   const version = lifecycle.cacheVersion;
-  const metadataRequest = startMetadataRequest(lifecycle);
-  acceptLiveMetadata(lifecycle);
-  startItemsRequest(lifecycle);
+  const metadataRequest = ++lifecycle.metadataRequest;
+  lifecycle.metadataAcceptedLive = true;
+  lifecycle.itemsRequest += 1;
   assert.equal(
     canWriteCachedSummary(lifecycle, version, metadataRequest),
     false
   );
 
-  const retry = startItemsRequest(lifecycle);
-  acceptLiveItems(lifecycle);
+  const retry = ++lifecycle.itemsRequest;
+  lifecycle.itemsAcceptedLive = true;
   assert.equal(
     canWriteCachedSummary(lifecycle, version, metadataRequest, retry),
     true
   );
-  startItemsRequest(lifecycle);
+  lifecycle.itemsRequest += 1;
   assert.equal(
     canWriteCachedSummary(lifecycle, version, metadataRequest, retry),
     false
   );
-  startMetadataRequest(lifecycle);
+  lifecycle.metadataRequest += 1;
   assert.equal(
     canWriteCachedSummary(lifecycle, version, metadataRequest),
     false
@@ -484,8 +483,8 @@ test('mode save rejects an older in-flight metadata response', () => {
     listId: 'list-1',
     routeTitle: 'My List',
   });
-  const oldRequest = startMetadataRequest(lifecycle);
-  const saveRequest = startMetadataRequest(lifecycle);
+  const oldRequest = ++lifecycle.metadataRequest;
+  const saveRequest = ++lifecycle.metadataRequest;
 
   assert.equal(canAcceptMetadataResponse(lifecycle, oldRequest), false);
   assert.equal(canAcceptMetadataResponse(lifecycle, saveRequest), true);
@@ -499,7 +498,7 @@ test('mutation refresh invalidates cache version and clears live accepted flags'
     listId: 'list-1',
     routeTitle: 'My List',
   });
-  acceptLiveItems(lifecycle);
+  lifecycle.itemsAcceptedLive = true;
   assert.equal(lifecycle.itemsAcceptedLive, true);
   const initialVersion = lifecycle.cacheVersion;
 

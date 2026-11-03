@@ -27,19 +27,6 @@ async def get_by_id(
     return result.scalar_one_or_none()
 
 
-async def get_active(
-    db: AsyncSession, session_id: uuid.UUID, *, populate_existing: bool = False
-) -> ComparisonSessionModel | None:
-    query = select(ComparisonSessionModel).where(
-        ComparisonSessionModel.session_id == session_id,
-        ComparisonSessionModel.status.in_(("active", "ready_to_commit")),
-    )
-    if populate_existing:
-        query = query.execution_options(populate_existing=True)
-    result = await db.execute(query)
-    return result.scalar_one_or_none()
-
-
 async def get_active_by_item(
     db: AsyncSession, item_id: uuid.UUID, *, populate_existing: bool = False
 ) -> ComparisonSessionModel | None:

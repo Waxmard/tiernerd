@@ -48,16 +48,8 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Item | ComparisonSession:
-    list_hint = await list_crud.get_by_title_and_user(
-        db, list_title, current_user.user_id
-    )
-    if list_hint is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="List not found or does not belong to current user",
-        )
-    list_obj = await list_crud.get_by_id_and_user(
-        db, list_hint.list_id, current_user.user_id, for_update=True
+    list_obj = await list_crud.get_by_title_and_user(
+        db, list_title, current_user.user_id, for_update=True
     )
     if list_obj is None:
         raise HTTPException(
@@ -153,24 +145,17 @@ async def start_item_comparison_session(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ComparisonSession:
-    list_id = await item_crud.get_list_id_by_id_with_ownership(
-        db, item_id, current_user.user_id
-    )
-    if list_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    list_obj = await list_crud.get_by_id_and_user(
-        db, list_id, current_user.user_id, for_update=True
-    )
-    if list_obj is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
     item_obj = await item_crud.get_by_id_with_ownership(
         db, item_id, current_user.user_id, populate_existing=True
     )
     if item_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
+        )
+    list_obj = await list_crud.get_by_id_and_user(
+        db, item_obj.list_id, current_user.user_id, for_update=True
+    )
+    if list_obj is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
         )
@@ -225,24 +210,17 @@ async def update_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Item:
-    list_id = await item_crud.get_list_id_by_id_with_ownership(
-        db, item_id, current_user.user_id
-    )
-    if list_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    list_obj = await list_crud.get_by_id_and_user(
-        db, list_id, current_user.user_id, for_update=True
-    )
-    if list_obj is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
     item_obj = await item_crud.get_by_id_with_ownership(
         db, item_id, current_user.user_id, populate_existing=True
     )
     if item_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
+        )
+    list_obj = await list_crud.get_by_id_and_user(
+        db, item_obj.list_id, current_user.user_id, for_update=True
+    )
+    if list_obj is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
         )
@@ -276,24 +254,17 @@ async def delete_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    list_id = await item_crud.get_list_id_by_id_with_ownership(
-        db, item_id, current_user.user_id
-    )
-    if list_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    list_obj = await list_crud.get_by_id_and_user(
-        db, list_id, current_user.user_id, for_update=True
-    )
-    if list_obj is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
     item_obj = await item_crud.get_by_id_with_ownership(
         db, item_id, current_user.user_id, populate_existing=True
     )
     if item_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
+        )
+    list_obj = await list_crud.get_by_id_and_user(
+        db, item_obj.list_id, current_user.user_id, for_update=True
+    )
+    if list_obj is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
         )
@@ -302,7 +273,7 @@ async def delete_item(
     await item_crud.delete(db, item_obj)
     if was_ranked:
         await db.flush()
-        items = await item_crud.get_by_list_id(db, list_id)
+        items = await item_crud.get_by_list_id(db, list_obj.list_id)
         assign_scores(
             sorted(filter_ranked_items(items), key=lambda item: item.position or "")
         )

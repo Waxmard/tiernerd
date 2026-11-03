@@ -25,75 +25,6 @@ async def test_removed_user_endpoints(client: AsyncClient, path: str):
     assert response.status_code in {404, 405}
 
 
-class TestReadUsers:
-    """Tests for reading users endpoint."""
-
-    async def test_read_users_authenticated(
-        self,
-        client: AsyncClient,
-        admin_user: User,
-        admin_auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        """Test reading users list when authenticated as admin."""
-        response = await client.get("/api/users/", headers=admin_auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-        assert len(data) >= 1
-
-        user_data = data[0]
-        assert "user_id" in user_data
-        assert "email" in user_data
-
-        result = await test_db.execute(select(User))
-        db_users = result.scalars().all()
-        assert len(data) == len(db_users)
-
-        user_ids_in_response = [u["user_id"] for u in data]
-        assert str(admin_user.user_id) in user_ids_in_response
-
-    async def test_read_users_non_admin_forbidden(
-        self,
-        client: AsyncClient,
-        test_user: User,
-        auth_headers: dict,
-    ):
-        """Test reading users list as non-admin returns 403."""
-        response = await client.get("/api/users/", headers=auth_headers)
-        assert response.status_code == 403
-        assert response.json()["detail"] == "Admin access required"
-
-    async def test_read_users_unauthenticated(self, client: AsyncClient):
-        """Test reading users list without authentication fails."""
-        response = await client.get("/api/users/")
-        assert response.status_code == 401
-
-    async def test_read_users_pagination(
-        self,
-        client: AsyncClient,
-        admin_user: User,
-        test_user: User,
-        admin_auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        # Verify we have 2 users in database (admin_user and test_user)
-        result = await test_db.execute(select(User))
-        db_users = result.scalars().all()
-        assert len(db_users) == 2
-
-        response = await client.get("/api/users/?limit=1", headers=admin_auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 1
-
-        response = await client.get("/api/users/?skip=1", headers=admin_auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-        assert len(data) == 1  # Should return 1 user (total 2 - skip 1)
-
-
 class TestReadCurrentUser:
     """Tests for reading current user endpoint."""
 
@@ -191,24 +122,6 @@ class TestUserCRUD:
 
         assert updated_user.username == "newusername"
         assert updated_user.email == original_email
-
-    async def test_delete_user_success(self, test_db: AsyncSession, test_user: User):
-        user_id = test_user.user_id
-
-        user = await crud_user.get_user_by_id(test_db, user_id)
-        assert user is not None
-
-        await crud_user.delete_user(test_db, user_id)
-
-        user = await crud_user.get_user_by_id(test_db, user_id)
-        assert user is None
-
-    async def test_delete_user_nonexistent(self, test_db: AsyncSession):
-        """Test deleting a user that doesn't exist (should not raise)."""
-        import uuid
-
-        fake_id = uuid.uuid4()
-        await crud_user.delete_user(test_db, fake_id)
 
     async def test_create_user_crud(self, test_db: AsyncSession):
         user = await crud_user.create_user(
