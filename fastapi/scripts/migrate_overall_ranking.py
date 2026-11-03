@@ -7,8 +7,20 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import DDL, Float, Integer, String, Uuid, text
+from sqlalchemy import (
+    DDL,
+    Column,
+    Float,
+    Index,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Uuid,
+    text,
+)
 from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
+from sqlalchemy.schema import DropIndex
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -291,9 +303,9 @@ async def _apply_migration(
     )
     if not isinstance(schema, str):
         raise MigrationError("Cannot determine the items table schema.")
-    quoted_schema = connection.dialect.identifier_preparer.quote_schema(schema)
+    table = Table("items", MetaData(), Column("position"), schema=schema)
     await connection.execute(
-        text(f"DROP INDEX {quoted_schema}.ix_items_list_tier_position")
+        DropIndex(Index("ix_items_list_tier_position", table.c.position))
     )
     updates = [
         {"item_id": item_id, "position": row["position"], "rating": row["rating"]}
