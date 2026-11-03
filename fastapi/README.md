@@ -64,6 +64,33 @@ The ranking algorithm is implemented in `app/core/algorithm.py` and uses binary 
 
 Draft sessions persist in the database. Answers and one-step undo update the draft, not the saved item. Comparisons use all other ranked items in the list. Commit applies the new position and recalculates scores across the list. For best-first rank `r` among `n` ranked items, the score is `round(10 * (n - r) / (n - 1), 1)` when `n > 1`; a single ranked item scores 10.0. Unranked items have null positions and ratings. Mutation requests carry the current session revision; stale revisions or changed ranking snapshots return 409. Status reads expose stale drafts so the client can restart them.
 
+Each list has a `ranking_mode` of `score` (the default) or `rank`. Set it when creating a list or updating its metadata. Both modes retain the same positions, ratings, and comparison workflow; switching modes changes presentation only.
+
+## Upgrade the list-ranking mode schema
+
+This PostgreSQL-only migration adds list display modes and repairs inconsistent stored scores without changing item positions. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from your environment's secret store; never put credentials in commands or tracked files. Confirm the API URL embedded in the iOS build before choosing a database. Fresh databases use the current model schema; `create_all` does not upgrade existing tables.
+
+For an older database, first run the [UI-ranking migration](#upgrade-the-ui-ranking-schema) if needed, then the [overall-ranking migration](#upgrade-the-overall-ranking-schema) if category columns remain. Do not treat overlapping category positions as one list order. If the unified schema already has incorrect scores, use the migration below to repair them instead of the overall migration's no-op check.
+
+From `fastapi/`, inspect the schema and count incorrect ratings without changing data:
+
+```bash
+uv run python scripts/migrate_list_ranking_mode.py --check
+```
+
+The preflight rejects partial or incompatible schemas and ambiguous item order. Resolve any reported problem before continuing. The default mode is also read-only.
+
+After preflight succeeds, the backup exists, and the old backend is stopped, apply the migration and repeat it to verify a no-op:
+
+```bash
+uv run python scripts/migrate_list_ranking_mode.py --apply
+uv run python scripts/migrate_list_ranking_mode.py --apply
+```
+
+The migration preserves existing valid mode choices, item order, metadata and sessions. It recalculates incorrect ratings in a locked transaction and rolls back if verification fails.
+
+Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its top saved score is 10.0. Then run a fresh `make ios` from the repository root and confirm the device displays 10.0 without a suffix. A client build alone does not migrate or deploy the backend.
+
 ## Upgrade the overall-ranking schema
 
 This PostgreSQL-only migration changes stored positions and scores and cancels active ranking drafts. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from your platform secret store; never put credentials in commands or tracked files. The [UI-ranking migration](#upgrade-the-ui-ranking-schema) is a prerequisite for databases that have not already applied it. Fresh databases use the current model schema; `create_all` does not upgrade existing tables.

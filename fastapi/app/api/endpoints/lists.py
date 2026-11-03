@@ -10,7 +10,7 @@ from app.crud import item as item_crud, list as list_crud
 from app.db.database import get_db
 from app.db.models import List as ListModel
 from app.schemas.item import Item
-from app.schemas.list import List, ListSimple, ListUpdate
+from app.schemas.list import List, ListSimple, ListUpdate, RankingMode
 from app.schemas.user import User
 from app.services.auth import get_current_user
 from app.services.list_service import (
@@ -43,6 +43,7 @@ async def create_list(
     name: str,
     description: str,
     color: Literal["blue", "teal", "amber", "pink"] | None = None,
+    ranking_mode: RankingMode = "score",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -63,6 +64,7 @@ async def create_list(
         user_id=current_user.user_id,
         description=description,
         color=color,
+        ranking_mode=ranking_mode,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )

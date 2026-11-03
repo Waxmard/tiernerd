@@ -3,10 +3,12 @@ import type React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
+import type { ListRankingMode } from '../services/listsService';
 
 interface ListDetailItemRowProps {
   item: Item;
   rank: number | null;
+  rankingMode: ListRankingMode;
   selected: boolean;
   disabled: boolean;
   onPress: (item: Item) => void;
@@ -18,15 +20,21 @@ const ROW_CLASS =
 export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
   rank,
+  rankingMode,
   selected,
   disabled,
   onPress,
 }) => {
-  const score = item.rating === null ? null : item.rating.toFixed(1);
+  const ranked = item.position !== null;
+  const score = ranked && item.rating !== null ? item.rating.toFixed(1) : null;
   const accessibleDescription = [
     item.name,
     rank !== null ? `rank ${rank}` : null,
-    score === null ? 'Not ranked yet' : `${score} out of 10`,
+    !ranked
+      ? 'Not ranked yet'
+      : rankingMode === 'score' && score !== null
+        ? `${score} out of 10`
+        : null,
     item.description?.trim() || null,
   ]
     .filter(Boolean)
@@ -62,15 +70,15 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
               {item.description}
             </Text>
           ) : null}
-          {score === null ? (
+          {!ranked ? (
             <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
               Not ranked yet
             </Text>
           ) : null}
         </View>
-        {score !== null ? (
+        {ranked && (rankingMode === 'rank' ? rank !== null : score !== null) ? (
           <Text className="ml-3 shrink-0 text-body-medium font-semibold text-ink dark:text-ink-dark">
-            {score}/10
+            {rankingMode === 'rank' ? rank : score}
           </Text>
         ) : null}
       </View>

@@ -3,11 +3,13 @@ import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { ComparisonSession, Item } from '../services/itemsService';
+import type { ListRankingMode } from '../services/listsService';
 
 export interface ItemDetailContentProps {
   item: Item;
   rank: number | null;
   rankedCount: number;
+  rankingMode: ListRankingMode;
   canMutate: boolean;
   session: ComparisonSession | null;
   isLoadingSession: boolean;
@@ -35,6 +37,7 @@ export function ItemDetailContent({
   item,
   rank,
   rankedCount,
+  rankingMode,
   canMutate,
   session,
   isLoadingSession,
@@ -70,7 +73,7 @@ export function ItemDetailContent({
     ? liveSession.is_stale
       ? 'Restart ranking'
       : 'Resume ranking'
-    : item.rating === null
+    : item.position === null
       ? 'Rank now'
       : 'Re-rank';
   const canRetryRefresh = refreshPending && onRetryRefresh !== undefined;
@@ -129,15 +132,17 @@ export function ItemDetailContent({
       }
     >
       <View className="gap-3 pb-4">
-        {item.rating === null ? (
+        {item.position === null ? (
           <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
             Not ranked yet
           </Text>
         ) : (
           <View className="flex-row items-baseline flex-wrap gap-3">
-            <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
-              {item.rating.toFixed(1)}/10
-            </Text>
+            {rankingMode === 'score' && item.rating !== null ? (
+              <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
+                {item.rating.toFixed(1)}
+              </Text>
+            ) : null}
             {rank !== null ? (
               <Text className="text-body-medium text-ink dark:text-ink-dark">
                 Rank #{rank} of {rankedCount}
@@ -145,9 +150,11 @@ export function ItemDetailContent({
             ) : null}
           </View>
         )}
-        <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-          Scores are based on the order of items in this list.
-        </Text>
+        {rankingMode === 'score' ? (
+          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            Scores are based on the order of items in this list.
+          </Text>
+        ) : null}
         {item.description ? (
           <Text className="text-body-large text-ink dark:text-ink-dark">
             {item.description}

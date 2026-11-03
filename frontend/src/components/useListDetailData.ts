@@ -1,12 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { RefObject } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  type ComparisonSession,
-  type Item,
-  itemsService,
-} from '../services/itemsService';
-import { findNextDraftSession } from '../services/itemWorkspaceActions';
+import { getApiErrorMessage } from '../services/apiError';
+import type { Item } from '../services/itemsService';
 import {
   acceptLiveItems,
   acceptLiveMetadata,
@@ -22,6 +17,7 @@ import {
   canApplyCachedMetadata,
   canApplyHydration,
   canWriteCachedItems,
+  canWriteCachedSummary,
   createInvalidatedReadState,
   createListDetailLifecycle,
   createListDetailState,
@@ -39,11 +35,17 @@ import {
   listsCacheKey,
   parseCachedListItems,
   parseCachedLists,
+  sortListsByRecency,
   startHydrationRequest,
   startItemsRequest,
   startMetadataRequest,
 } from '../services/listsCache';
-import { listsService } from '../services/listsService';
+import {
+  INVALID_RANKING_MODE,
+  type ListMetadata,
+  type ListRankingMode,
+  listsService,
+} from '../services/listsService';
 
 const ITEMS_ERROR = 'Unable to refresh items. Try again.';
 
@@ -65,6 +67,12 @@ export function useListDetailData({
   );
   const lifecycleRef = useRef<ListDetailLifecycle | null>(null);
   const itemsRef = useRef<Item[]>([]);
+  const metadataRef = useRef<{
+    lifecycle: ListDetailLifecycle;
+    requestId: number;
+    metadata: ListMetadata;
+  } | null>(null);
+  const modeSaveRef = useRef<ListDetailLifecycle | null>(null);
   if (!lifecycleRef.current || lifecycleRef.current.identity !== identity) {
     if (lifecycleRef.current) deactivateLifecycle(lifecycleRef.current);
     lifecycleRef.current = createListDetailLifecycle({
@@ -75,6 +83,7 @@ export function useListDetailData({
       routeTitle,
     });
     itemsRef.current = [];
+    metadataRef.current = null;
   } else {
     lifecycleRef.current.routeTitle = routeTitle;
   }
@@ -126,13 +135,41 @@ export function useListDetailData({
     },
     [queueCacheWork]
   );
-  const removeCachedOverview = useCallback(
-    (lifecycle: ListDetailLifecycle, version: number) => {
+  const writeCachedSummary = useCallback(
+    (
+      lifecycle: ListDetailLifecycle,
+      version: number,
+      metadata: ListMetadata,
+      count: number,
+      requestId?: number,
+      itemsRequestId?: number
+    ) => {
       if (!lifecycle.userId) return Promise.resolve();
       const key = listsCacheKey(lifecycle.userId);
-      return queueCacheWork(lifecycle, key, version, () =>
-        AsyncStorage.removeItem(key)
-      );
+      return queueCacheWork(lifecycle, key, version, async () => {
+        const raw = await AsyncStorage.getItem(key);
+        if (
+          !canWriteCachedSummary(
+            lifecycle,
+            version,
+            requestId,
+            itemsRequestId,
+            lifecycleRef.current
+          )
+        )
+          return;
+        const lists = parseCachedLists(raw) ?? [];
+        const summary = { ...metadata, item_count: count };
+        await AsyncStorage.setItem(
+          key,
+          JSON.stringify(
+            sortListsByRecency([
+              ...lists.filter((list) => list.list_id !== lifecycle.listId),
+              summary,
+            ])
+          )
+        );
+      });
     },
     [queueCacheWork]
   );
@@ -141,7 +178,7 @@ export function useListDetailData({
       if (!lifecycle.userId) return Promise.resolve();
       const key = listsCacheKey(lifecycle.userId);
       return queueCacheWork(lifecycle, key, version, async () => {
-        const raw = await AsyncStorage.getItem(key).catch(() => null);
+        const raw = await AsyncStorage.getItem(key);
         if (!isCacheCurrent(lifecycle, version, lifecycleRef.current)) return;
         const cachedLists = parseCachedLists(raw);
         if (cachedLists) {
@@ -253,6 +290,7 @@ export function useListDetailData({
         if (
           canAcceptItemsResponse(lifecycle, requestId, lifecycleRef.current)
         ) {
+          lifecycle.itemsAcceptedLive = false;
           if (isDefinitiveReadError(error)) {
             invalidateDefinitiveRead(lifecycle);
           } else {
@@ -283,8 +321,12 @@ export function useListDetailData({
     [invalidateDefinitiveRead, queueCacheWork, updateState]
   );
   const refreshMetadataFor = useCallback(
-    async (lifecycle: ListDetailLifecycle): Promise<void> => {
-      if (!isLifecycleReadable(lifecycle, lifecycleRef.current)) return;
+    async (lifecycle: ListDetailLifecycle): Promise<ListMetadata | null> => {
+      if (
+        !isLifecycleReadable(lifecycle, lifecycleRef.current) ||
+        modeSaveRef.current === lifecycle
+      )
+        return null;
       if (!lifecycle.token) {
         updateState(
           lifecycle,
@@ -295,7 +337,7 @@ export function useListDetailData({
             metadataLoaded: false,
           })
         );
-        return;
+        return null;
       }
       const requestId = startMetadataRequest(lifecycle);
       updateState(
@@ -311,7 +353,8 @@ export function useListDetailData({
         if (
           !canAcceptMetadataResponse(lifecycle, requestId, lifecycleRef.current)
         )
-          return;
+          return null;
+        metadataRef.current = { lifecycle, requestId, metadata: list };
         acceptLiveMetadata(lifecycle);
         updateState(
           lifecycle,
@@ -326,14 +369,17 @@ export function useListDetailData({
             detailsTitle: list.title,
             listDescription: list.description,
             listColor: list.color,
+            rankingMode: list.ranking_mode,
             metadataError: false,
             metadataLoaded: true,
           })
         );
+        return list;
       } catch (error: unknown) {
         if (
           canAcceptMetadataResponse(lifecycle, requestId, lifecycleRef.current)
         ) {
+          lifecycle.metadataAcceptedLive = false;
           if (isDefinitiveReadError(error)) {
             invalidateDefinitiveRead(lifecycle);
           } else {
@@ -348,6 +394,7 @@ export function useListDetailData({
             );
           }
         }
+        return null;
       }
     },
     [invalidateDefinitiveRead, updateState]
@@ -430,6 +477,7 @@ export function useListDetailData({
               title: cachedList.title,
               description: cachedList.description,
               color: cachedList.color,
+              rankingMode: cachedList.ranking_mode,
             })
         );
       }
@@ -437,35 +485,179 @@ export function useListDetailData({
     [updateState]
   );
 
-  const fetchItems = useCallback(
-    () => fetchItemsFor(lifecycleRef.current as ListDetailLifecycle),
-    [fetchItemsFor]
-  );
-  const refreshMetadata = useCallback(
-    () => refreshMetadataFor(lifecycleRef.current as ListDetailLifecycle),
-    [refreshMetadataFor]
-  );
+  const fetchItems = useCallback(async () => {
+    const lifecycle = lifecycleRef.current as ListDetailLifecycle;
+    const version = lifecycle.cacheVersion;
+    const promise = fetchItemsFor(lifecycle);
+    const itemsRequestId = lifecycle.itemsRequest;
+    const items = await promise;
+    const accepted = metadataRef.current;
+    if (
+      accepted?.lifecycle === lifecycle &&
+      canWriteCachedSummary(
+        lifecycle,
+        version,
+        accepted.requestId,
+        itemsRequestId,
+        lifecycleRef.current
+      )
+    )
+      void writeCachedSummary(
+        lifecycle,
+        version,
+        accepted.metadata,
+        items.length,
+        accepted.requestId,
+        itemsRequestId
+      ).catch(() => {});
+    return items;
+  }, [fetchItemsFor, writeCachedSummary]);
+  const refreshMetadata = useCallback(async () => {
+    const lifecycle = lifecycleRef.current as ListDetailLifecycle;
+    const version = lifecycle.cacheVersion;
+    const promise = refreshMetadataFor(lifecycle);
+    const requestId = lifecycle.metadataRequest;
+    const metadata = await promise;
+    if (metadata && lifecycle.itemsAcceptedLive)
+      void writeCachedSummary(
+        lifecycle,
+        version,
+        metadata,
+        itemsRef.current.length,
+        requestId
+      ).catch(() => {});
+    return metadata;
+  }, [refreshMetadataFor, writeCachedSummary]);
   const refreshAfterMutation = useCallback(async (): Promise<Item[]> => {
     const lifecycle = lifecycleRef.current;
     if (!lifecycle || !isLifecycleReadable(lifecycle, lifecycleRef.current))
       throw new Error(ITEMS_ERROR);
     const version = bumpLifecycleMutation(lifecycle);
+    lifecycle.metadataAcceptedLive = false;
     updateState(
       lifecycle,
       () => lifecycle.cacheVersion === version,
-      applyMutationRefreshState
+      (previous) => ({
+        ...applyMutationRefreshState(previous),
+        metadataLoaded: false,
+      })
     );
-    await Promise.all([
-      removeCachedItems(lifecycle, version).catch(() => undefined),
-      removeCachedOverview(lifecycle, version).catch(() => undefined),
-    ]);
+    await removeCachedItems(lifecycle, version).catch(() => undefined);
     if (
       !isLifecycleReadable(lifecycle, lifecycleRef.current) ||
       lifecycle.cacheVersion !== version
     )
       throw new Error(ITEMS_ERROR);
-    return fetchItemsFor(lifecycle);
-  }, [fetchItemsFor, removeCachedItems, removeCachedOverview, updateState]);
+    const itemsPromise = fetchItemsFor(lifecycle);
+    const metadataPromise = refreshMetadataFor(lifecycle);
+    const requestId = lifecycle.metadataRequest;
+    const [items, metadata] = await Promise.all([
+      itemsPromise,
+      metadataPromise,
+    ]);
+    if (
+      !metadata ||
+      !isCacheCurrent(lifecycle, version, lifecycleRef.current) ||
+      !canAcceptMetadataResponse(lifecycle, requestId, lifecycleRef.current)
+    ) {
+      lifecycle.itemsAcceptedLive = false;
+      updateState(
+        lifecycle,
+        () => lifecycle.cacheVersion === version,
+        (previous) => ({
+          ...previous,
+          itemsLoaded: false,
+          itemsError: ITEMS_ERROR,
+        })
+      );
+      throw new Error(ITEMS_ERROR);
+    }
+    void writeCachedSummary(
+      lifecycle,
+      version,
+      metadata,
+      items.length,
+      requestId
+    ).catch(() => {});
+    return items;
+  }, [
+    fetchItemsFor,
+    refreshMetadataFor,
+    removeCachedItems,
+    updateState,
+    writeCachedSummary,
+  ]);
+  const updateRankingMode = useCallback(
+    async (mode: ListRankingMode): Promise<void> => {
+      const lifecycle = lifecycleRef.current;
+      if (
+        !lifecycle?.token ||
+        !isLifecycleReadable(lifecycle, lifecycleRef.current) ||
+        !lifecycle.itemsAcceptedLive ||
+        !lifecycle.metadataAcceptedLive ||
+        modeSaveRef.current === lifecycle
+      )
+        throw new Error(ITEMS_ERROR);
+      modeSaveRef.current = lifecycle;
+      const requestId = startMetadataRequest(lifecycle);
+      const version = ++lifecycle.cacheVersion;
+      lifecycle.hydrationRequest++;
+      try {
+        const metadata = await listsService.setRankingMode(
+          lifecycle.listId,
+          mode,
+          lifecycle.token
+        );
+        if (
+          !canAcceptMetadataResponse(
+            lifecycle,
+            requestId,
+            lifecycleRef.current
+          ) ||
+          !isCacheCurrent(lifecycle, version, lifecycleRef.current)
+        )
+          throw new Error(ITEMS_ERROR);
+        metadataRef.current = { lifecycle, requestId, metadata };
+        acceptLiveMetadata(lifecycle);
+        updateState(
+          lifecycle,
+          () =>
+            canAcceptMetadataResponse(
+              lifecycle,
+              requestId,
+              lifecycleRef.current
+            ),
+          (previous) => ({
+            ...previous,
+            detailsTitle: metadata.title,
+            listDescription: metadata.description,
+            listColor: metadata.color,
+            rankingMode: metadata.ranking_mode,
+            metadataError: false,
+            metadataLoaded: true,
+          })
+        );
+        await writeCachedSummary(
+          lifecycle,
+          version,
+          metadata,
+          itemsRef.current.length
+        ).catch(() => {});
+      } catch (error: unknown) {
+        throw new Error(
+          error instanceof Error && error.message === INVALID_RANKING_MODE
+            ? error.message
+            : getApiErrorMessage(
+                error,
+                'Unable to save ranking mode. Try again.'
+              )
+        );
+      } finally {
+        if (modeSaveRef.current === lifecycle) modeSaveRef.current = null;
+      }
+    },
+    [updateState, writeCachedSummary]
+  );
   const evictDeletedList = useCallback(async (): Promise<void> => {
     const lifecycle = lifecycleRef.current;
     if (
@@ -490,13 +682,47 @@ export function useListDetailData({
     lifecycle.active = true;
     setState(createListDetailState(lifecycle.identity, lifecycle.routeTitle));
     itemsRef.current = [];
-    void fetchItemsFor(lifecycle).catch(() => {});
-    void refreshMetadataFor(lifecycle);
+    const version = lifecycle.cacheVersion;
+    const itemsPromise = fetchItemsFor(lifecycle);
+    const metadataPromise = refreshMetadataFor(lifecycle);
+    const itemsRequest = lifecycle.itemsRequest;
+    const metadataRequest = lifecycle.metadataRequest;
+    void Promise.all([itemsPromise, metadataPromise])
+      .then(([items, metadata]) => {
+        if (
+          metadata &&
+          isCacheCurrent(lifecycle, version, lifecycleRef.current) &&
+          canAcceptItemsResponse(
+            lifecycle,
+            itemsRequest,
+            lifecycleRef.current
+          ) &&
+          canAcceptMetadataResponse(
+            lifecycle,
+            metadataRequest,
+            lifecycleRef.current
+          )
+        )
+          void writeCachedSummary(
+            lifecycle,
+            version,
+            metadata,
+            items.length,
+            metadataRequest
+          ).catch(() => {});
+      })
+      .catch(() => {});
     void hydrateCache(lifecycle);
     return () => {
       deactivateLifecycle(lifecycle);
     };
-  }, [fetchItemsFor, hydrateCache, identity, refreshMetadataFor]);
+  }, [
+    fetchItemsFor,
+    hydrateCache,
+    identity,
+    refreshMetadataFor,
+    writeCachedSummary,
+  ]);
 
   const visibleState =
     state.identity === identity
@@ -512,192 +738,13 @@ export function useListDetailData({
     detailsTitle: visibleState.detailsTitle,
     listDescription: visibleState.listDescription,
     listColor: visibleState.listColor,
+    rankingMode: visibleState.rankingMode,
     metadataError: visibleState.metadataError,
     metadataLoaded: visibleState.metadataLoaded,
     fetchItems,
     refreshMetadata,
     refreshAfterMutation,
+    updateRankingMode,
     evictDeletedList,
-  };
-}
-
-interface DraftLookupOptions {
-  identity: string;
-  items: Item[];
-  itemsLoaded: boolean;
-  token: string | null;
-  enabled: boolean;
-  selectedItemId: string | null;
-  resolvedIds: RefObject<Set<string>>;
-  onFound: (session: ComparisonSession) => void;
-  onFailure: (item: Item) => void;
-}
-
-export function useDraftLookup(options: DraftLookupOptions) {
-  const { identity, items, itemsLoaded, token, enabled, selectedItemId } =
-    options;
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
-  const versionRef = useRef(0);
-  const guardRef = useRef({ identity, items, enabled, selectedItemId });
-  const guard = guardRef.current;
-  if (
-    guard.identity !== identity ||
-    guard.items !== items ||
-    guard.enabled !== enabled ||
-    guard.selectedItemId !== selectedItemId
-  ) {
-    versionRef.current++;
-    guardRef.current = { identity, items, enabled, selectedItemId };
-  }
-  const activeRef = useRef(false);
-  const retryRef = useRef<{ identity: string } | null>(null);
-  const [failure, setFailure] = useState<{
-    identity: string;
-    itemId: string;
-  } | null>(null);
-  const [retryingIdentity, setRetryingIdentity] = useState<string | null>(null);
-  if (retryRef.current && retryRef.current.identity !== identity) {
-    retryRef.current = null;
-  }
-  const retrying = retryingIdentity === identity;
-
-  useEffect(() => {
-    activeRef.current = true;
-    return () => {
-      activeRef.current = false;
-      versionRef.current++;
-      retryRef.current = null;
-    };
-  }, []);
-  const currentFailure =
-    failure?.identity === identity &&
-    items.some(
-      (item) => item.item_id === failure.itemId && item.rating === null
-    )
-      ? failure
-      : null;
-  useEffect(() => {
-    if (
-      failure &&
-      (failure.identity !== identity || (itemsLoaded && !currentFailure))
-    )
-      setFailure(null);
-  }, [currentFailure, failure, identity, itemsLoaded]);
-
-  const runLookup = useCallback(
-    async (
-      candidates: Item[],
-      lookupToken: string,
-      lookupIdentity: string,
-      version: number,
-      cancelled: () => boolean,
-      retryItemId?: string
-    ) => {
-      const resolved = new Set(optionsRef.current.resolvedIds.current);
-      const isCurrent = () =>
-        activeRef.current &&
-        !cancelled() &&
-        versionRef.current === version &&
-        optionsRef.current.identity === lookupIdentity &&
-        optionsRef.current.enabled;
-      if (!isCurrent()) return;
-      let result: ComparisonSession | { failedItem: Item } | null;
-      try {
-        result = await findNextDraftSession(
-          candidates,
-          resolved,
-          lookupToken,
-          itemsService,
-          isCurrent
-        );
-      } catch {
-        const item = candidates.find(
-          (candidate) =>
-            candidate.rating === null && !resolved.has(candidate.item_id)
-        );
-        result = item ? { failedItem: item } : null;
-      }
-      if (!isCurrent()) return;
-      for (const id of resolved) optionsRef.current.resolvedIds.current.add(id);
-      if (result && 'failedItem' in result) {
-        setFailure({
-          identity: lookupIdentity,
-          itemId: result.failedItem.item_id,
-        });
-        optionsRef.current.onFailure(result.failedItem);
-      } else {
-        if (retryItemId && (result || resolved.has(retryItemId)))
-          setFailure(null);
-        if (result) optionsRef.current.onFound(result);
-      }
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (
-      !enabled ||
-      !token ||
-      currentFailure ||
-      !items.some(
-        (item) =>
-          item.rating === null && !options.resolvedIds.current.has(item.item_id)
-      )
-    )
-      return;
-    let cancelled = false;
-    void runLookup(items, token, identity, versionRef.current, () => cancelled);
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    currentFailure,
-    enabled,
-    identity,
-    items,
-    options.resolvedIds,
-    runLookup,
-    token,
-  ]);
-
-  const retry = useCallback(() => {
-    const current = optionsRef.current;
-    if (
-      !currentFailure ||
-      !current.enabled ||
-      !current.token ||
-      current.selectedItemId !== currentFailure.itemId ||
-      retryRef.current?.identity === current.identity
-    )
-      return;
-    const item = current.items.find(
-      (candidate) => candidate.item_id === currentFailure.itemId
-    );
-    if (!item) return;
-    const attempt = { identity: current.identity };
-    retryRef.current = attempt;
-    setRetryingIdentity(current.identity);
-    void runLookup(
-      [item],
-      current.token,
-      current.identity,
-      versionRef.current,
-      () => false,
-      item.item_id
-    ).finally(() => {
-      if (retryRef.current !== attempt) return;
-      retryRef.current = null;
-      if (activeRef.current)
-        setRetryingIdentity((value) =>
-          value === current.identity ? null : value
-        );
-    });
-  }, [currentFailure, runLookup]);
-
-  return {
-    failedItemId: currentFailure?.itemId ?? null,
-    isRetryingDraft: retrying,
-    retryDraft: retry,
   };
 }

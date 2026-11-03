@@ -81,12 +81,14 @@ class TestBuildListResponse:
             title = "Test List"
             description = "Test description"
             color = None
+            ranking_mode = "rank"
             created_at = datetime.now()
             updated_at = datetime.now()
 
         result = build_list_response(MockList())
         assert result["title"] == "Test List"
         assert result["description"] == "Test description"
+        assert result["ranking_mode"] == "rank"
         assert "items" not in result
 
     def test_build_response_with_items(self):
@@ -96,6 +98,7 @@ class TestBuildListResponse:
             title = "Test List"
             description = "Test description"
             color = None
+            ranking_mode = "score"
             created_at = datetime.now()
             updated_at = datetime.now()
 
@@ -114,6 +117,7 @@ class TestBuildListResponse:
             title = "Test List"
             description = "Test description"
             color = None
+            ranking_mode = "score"
             created_at = datetime.now()
             updated_at = datetime.now()
 
@@ -134,6 +138,7 @@ class TestBuildListSimpleResponse:
             title = "Test List"
             description = "Test description"
             color = None
+            ranking_mode = "rank"
             created_at = datetime.now()
             updated_at = datetime.now()
 
@@ -142,6 +147,7 @@ class TestBuildListSimpleResponse:
 
         assert result["title"] == "Test List"
         assert result["item_count"] == 10
+        assert result["ranking_mode"] == "rank"
         assert "tier_distribution" not in result
 
     def test_build_simple_response_with_none_values(self):
@@ -153,6 +159,7 @@ class TestBuildListSimpleResponse:
             title = "Test List"
             description = "Test description"
             color = None
+            ranking_mode = "score"
             created_at = datetime.now()
             updated_at = datetime.now()
 

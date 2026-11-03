@@ -186,8 +186,11 @@ CLOUD_SECRET_PREFIX ?= tiernerd-$(CLOUD_ENV)
 
 .PHONY: cloud-deploy cloud-url cloud-health cloud-logs
 cloud-deploy:
+	@image="$(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/cloud-run-source-deploy/$(CLOUD_SERVICE):$$(date +%Y%m%d%H%M%S)-$$$$"; \
+	$(GCLOUD) builds submit --project $(GCP_PROJECT) --config cloudbuild.yaml \
+		--substitutions "_IMAGE=$$image" . && \
 	$(GCLOUD) run deploy $(CLOUD_SERVICE) \
-		--source . \
+		--image "$$image" \
 		--project $(GCP_PROJECT) \
 		--region $(GCP_REGION) \
 		--allow-unauthenticated \

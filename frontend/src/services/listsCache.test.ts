@@ -4,6 +4,7 @@ import type { Item } from './itemsService.ts';
 import {
   acceptLiveItems,
   acceptLiveMetadata,
+  applyCachedMetadataState,
   bumpLifecycleMutation,
   canAcceptItemsResponse,
   canAcceptMetadataResponse,
@@ -11,7 +12,10 @@ import {
   canApplyCachedMetadata,
   canApplyHydration,
   canWriteCachedItems,
+  canWriteCachedSummary,
+  createInvalidatedReadState,
   createListDetailLifecycle,
+  createListDetailState,
   deactivateLifecycle,
   enqueueListCacheWrite,
   evictLifecycleList,
@@ -20,11 +24,13 @@ import {
   isLifecycleActive,
   isLifecycleReadable,
   listItemsCacheKey,
+  listsCacheKey,
   parseCachedListItems,
   parseCachedLists,
   sortListsByRecency,
   startHydrationRequest,
   startItemsRequest,
+  startMetadataRequest,
 } from './listsCache.ts';
 import type { ListSimple } from './listsService.ts';
 
@@ -33,6 +39,7 @@ const listSimple: ListSimple = {
   title: 'Cache proof',
   description: null,
   color: null,
+  ranking_mode: 'score',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
   item_count: 2,
@@ -51,7 +58,7 @@ const item = (overrides: Partial<Item> = {}): Item => ({
   ...overrides,
 });
 
-test('keys item snapshots by user and list', () => {
+test('keys list snapshots by user and list', () => {
   assert.equal(
     listItemsCacheKey('user-1', 'list-1'),
     'cachedListItems:v2:user-1:list-1'
@@ -64,6 +71,7 @@ test('keys item snapshots by user and list', () => {
     listItemsCacheKey('user-1', 'list-1'),
     listItemsCacheKey('user-1', 'list-2')
   );
+  assert.equal(listsCacheKey('user-1'), 'cachedLists:user-1');
 });
 
 test('round-trips ordered ranked and unranked items unchanged', () => {
@@ -189,6 +197,62 @@ test('round-trips a stored payload', () => {
   assert.deepEqual(parseCachedLists(JSON.stringify([listSimple])), [
     listSimple,
   ]);
+});
+
+test('defaults only missing legacy ranking modes to score', () => {
+  const legacy: Record<string, unknown> = { ...listSimple };
+  delete legacy.ranking_mode;
+
+  const ranked: ListSimple = {
+    ...listSimple,
+    list_id: 'list-2',
+    ranking_mode: 'rank',
+  };
+  assert.deepEqual(parseCachedLists(JSON.stringify([legacy, ranked])), [
+    listSimple,
+    ranked,
+  ]);
+});
+
+test('preserves both cached ranking modes', () => {
+  const lists: ListSimple[] = [
+    listSimple,
+    { ...listSimple, list_id: 'list-2', ranking_mode: 'rank' },
+  ];
+
+  assert.deepEqual(parseCachedLists(JSON.stringify(lists)), lists);
+});
+
+test('rejects cached summaries with invalid or null ranking modes', () => {
+  for (const rankingMode of [null, '', 'other', 'Rank', false, 0, {}]) {
+    assert.equal(
+      parseCachedLists(
+        JSON.stringify([
+          listSimple,
+          { ...listSimple, ranking_mode: rankingMode },
+        ])
+      ),
+      null
+    );
+  }
+});
+
+test('applies cached ranking mode and resets it when metadata is invalidated', () => {
+  const initial = createListDetailState('identity', 'List');
+  assert.equal(initial.rankingMode, 'score');
+
+  const restored = applyCachedMetadataState(initial, {
+    title: 'Cached list',
+    description: null,
+    color: null,
+    rankingMode: 'rank',
+  });
+  assert.equal(restored.rankingMode, 'rank');
+  assert.equal(restored.metadataLoaded, false);
+  assert.equal(
+    createInvalidatedReadState(restored, 'List', 'Read failed').rankingMode,
+    'score'
+  );
 });
 
 test('sorts cached and live lists by instant and then ID without mutating input', () => {
@@ -359,6 +423,72 @@ test('cached items cannot overwrite live data once live response is accepted', (
 
   acceptLiveMetadata(lifecycle);
   assert.equal(canApplyCachedMetadata(lifecycle, hydrationId, version), false);
+});
+
+test('metadata accepted before an item retry can produce a guarded summary', () => {
+  const lifecycle = createListDetailLifecycle({
+    identity: 'user-1:list-1',
+    userId: 'user-1',
+    token: 'token-1',
+    listId: 'list-1',
+    routeTitle: 'My List',
+  });
+  const version = lifecycle.cacheVersion;
+  const metadataRequest = startMetadataRequest(lifecycle);
+  acceptLiveMetadata(lifecycle);
+  startItemsRequest(lifecycle);
+  assert.equal(
+    canWriteCachedSummary(lifecycle, version, metadataRequest),
+    false
+  );
+
+  const retry = startItemsRequest(lifecycle);
+  acceptLiveItems(lifecycle);
+  assert.equal(
+    canWriteCachedSummary(lifecycle, version, metadataRequest, retry),
+    true
+  );
+  startItemsRequest(lifecycle);
+  assert.equal(
+    canWriteCachedSummary(lifecycle, version, metadataRequest, retry),
+    false
+  );
+  startMetadataRequest(lifecycle);
+  assert.equal(
+    canWriteCachedSummary(lifecycle, version, metadataRequest),
+    false
+  );
+  assert.equal(
+    canWriteCachedSummary(
+      lifecycle,
+      version,
+      undefined,
+      undefined,
+      createListDetailLifecycle({
+        identity: 'other',
+        userId: 'user-2',
+        token: 'token-2',
+        listId: 'list-1',
+        routeTitle: 'Other',
+      })
+    ),
+    false
+  );
+});
+
+test('mode save rejects an older in-flight metadata response', () => {
+  const lifecycle = createListDetailLifecycle({
+    identity: JSON.stringify(['user-1', 'token-1', 'list-1']),
+    userId: 'user-1',
+    token: 'token-1',
+    listId: 'list-1',
+    routeTitle: 'My List',
+  });
+  const oldRequest = startMetadataRequest(lifecycle);
+  const saveRequest = startMetadataRequest(lifecycle);
+
+  assert.equal(canAcceptMetadataResponse(lifecycle, oldRequest), false);
+  assert.equal(canAcceptMetadataResponse(lifecycle, saveRequest), true);
 });
 
 test('mutation refresh invalidates cache version and clears live accepted flags', () => {

@@ -1,3 +1,4 @@
+import asyncio
 import os
 import shutil
 import subprocess
@@ -5,6 +6,7 @@ import tempfile
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy import MetaData, create_engine, inspect, text
@@ -12,7 +14,10 @@ from sqlalchemy.engine import URL
 
 from app.db.models import Base
 from app.settings import get_settings
-from scripts import migrate_overall_ranking as migration
+from scripts import (
+    migrate_list_ranking_mode as mode_migration,
+    migrate_overall_ranking as migration,
+)
 from scripts.migrate_overall_ranking import (
     MigrationError,
     _arguments,
@@ -133,6 +138,41 @@ def _expected_session(row):
             revision=row["revision"] + 1,
         )
     return expected
+
+
+@pytest.mark.parametrize(
+    ("predicate", "overrides", "valid"),
+    [
+        ("(position IS NOT NULL)", {}, True),
+        ('("position" IS NOT NULL)', {}, True),
+        ('("Position" IS NOT NULL)', {}, False),
+        ('("POSITION" IS NOT NULL)', {}, False),
+        ('("position" IS NULL)', {}, False),
+        ('("position" IS NOT NULL)', {"indisunique": False}, False),
+        ('("position" IS NOT NULL)', {"columns": ["position"]}, False),
+    ],
+)
+def test_position_index_predicate_validation(predicate, overrides, valid):
+    index = {
+        "indisunique": True,
+        "indisvalid": True,
+        "indisready": True,
+        "no_includes": True,
+        "columns": ["list_id", "position"],
+        "predicate": predicate,
+    } | overrides
+    result = MagicMock()
+    result.mappings.return_value.all.return_value = [index]
+    connection = MagicMock()
+    connection.execute = AsyncMock(return_value=result)
+    check = migration._verify_position_index(
+        connection, "position_index", ("list_id", "position")
+    )
+    if valid:
+        asyncio.run(check)
+    else:
+        with pytest.raises(MigrationError, match="unexpected definition"):
+            asyncio.run(check)
 
 
 def test_items_preserve_metadata_and_rank_across_overlapping_bands():
@@ -593,3 +633,167 @@ def test_postgresql_alter_failure_rolls_back_all_rows_and_schema(legacy_database
     with engine.begin() as connection:
         connection.execute(text("DROP VIEW migration_test_blocker"))
     assert main(["--apply"]) == 0
+
+
+def _unified_database(legacy_database, *, missing_mode):
+    engine, data = legacy_database
+    assert main(["--apply"]) == 0
+    if missing_mode:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE lists DROP COLUMN ranking_mode"))
+    return engine, data
+
+
+def test_mode_migration_check_apply_repairs_scores_and_preserves_rows(
+    legacy_database, capsys
+):
+    engine, data = _unified_database(legacy_database, missing_mode=True)
+    singleton_list_id, singleton_item_id = uuid.uuid4(), uuid.uuid4()
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(
+            metadata.tables["lists"].insert(),
+            data["lists"][0] | {"list_id": singleton_list_id},
+        )
+        singleton = {
+            key: value for key, value in data["items"][0].items() if key != "tier_set"
+        }
+        connection.execute(
+            metadata.tables["items"].insert(),
+            singleton
+            | {
+                "item_id": singleton_item_id,
+                "list_id": singleton_list_id,
+                "position": "a0",
+                "rating": 3.0,
+            },
+        )
+        connection.execute(
+            text("UPDATE items SET rating = 9.9 WHERE item_id = :item_id"),
+            {"item_id": data["items"][0]["item_id"]},
+        )
+        connection.execute(
+            text("UPDATE items SET rating = 7.0 WHERE item_id = :item_id"),
+            {"item_id": data["items"][4]["item_id"]},
+        )
+    before = _database_state(engine)
+    assert mode_migration.main([]) == 0
+    assert "incorrect ratings: 3" in capsys.readouterr().out
+    assert _database_state(engine) == before
+    assert mode_migration.main(["--check"]) == 0
+    assert "incorrect ratings: 3" in capsys.readouterr().out
+    assert _database_state(engine) == before
+
+    assert mode_migration.main(["--apply"]) == 0
+    after = _database_state(engine)
+    assert after["rows"]["users"] == before["rows"]["users"]
+    assert after["rows"]["sessions"] == before["rows"]["sessions"]
+    assert after["rows"]["lists"] == [
+        row | {"ranking_mode": "score"} for row in before["rows"]["lists"]
+    ]
+    expected_ratings = {
+        data["items"][0]["item_id"]: 10.0,
+        data["items"][1]["item_id"]: 6.7,
+        data["items"][2]["item_id"]: 3.3,
+        data["items"][3]["item_id"]: 0.0,
+        data["items"][4]["item_id"]: None,
+        singleton_item_id: 10.0,
+    }
+    assert after["rows"]["items"] == [
+        row | {"rating": expected_ratings[row["item_id"]]}
+        for row in before["rows"]["items"]
+    ]
+    assert after["indexes"] == before["indexes"]
+    columns = {
+        column["name"]: column for column in inspect(engine).get_columns("lists")
+    }
+    assert columns["ranking_mode"]["nullable"] is False
+    assert "score" in columns["ranking_mode"]["default"]
+    constraints = inspect(engine).get_check_constraints("lists")
+    assert any(c["name"] == "ck_lists_ranking_mode" for c in constraints)
+
+    assert mode_migration.main(["--check"]) == 0
+    assert _database_state(engine) == after
+    assert mode_migration.main(["--apply"]) == 0
+    assert "no changes needed" in capsys.readouterr().out
+    assert _database_state(engine) == after
+
+
+def test_mode_migration_repairs_rank_list_scores_preserving_mode(legacy_database):
+    engine, data = _unified_database(legacy_database, missing_mode=False)
+    with engine.begin() as connection:
+        connection.execute(text("UPDATE lists SET ranking_mode = 'rank'"))
+        connection.execute(
+            text("UPDATE items SET rating = 2.0 WHERE item_id = :item_id"),
+            {"item_id": data["items"][0]["item_id"]},
+        )
+    before = _database_state(engine)
+    assert mode_migration.main(["--check"]) == 0
+    assert mode_migration.main(["--apply"]) == 0
+    after = _database_state(engine)
+    assert after["rows"]["lists"] == before["rows"]["lists"]
+    assert after["rows"]["items"] == [
+        row | {"rating": 10.0} if row["item_id"] == data["items"][0]["item_id"] else row
+        for row in before["rows"]["items"]
+    ]
+    assert after["rows"]["users"] == before["rows"]["users"]
+    assert after["rows"]["sessions"] == before["rows"]["sessions"]
+    assert after["columns"] == before["columns"]
+    assert after["indexes"] == before["indexes"]
+    assert after["constraints"] == before["constraints"]
+    assert mode_migration.main(["--apply"]) == 0
+    assert _database_state(engine) == after
+
+
+def test_mode_migration_verification_failure_rolls_back(legacy_database, monkeypatch):
+    engine, data = _unified_database(legacy_database, missing_mode=True)
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE items SET rating = 2.0 WHERE item_id = :item_id"),
+            {"item_id": data["items"][0]["item_id"]},
+        )
+    before = _database_state(engine)
+
+    async def fail_verification(*_args, **_kwargs):
+        raise mode_migration.MigrationError("forced verification failure")
+
+    monkeypatch.setattr(mode_migration, "_verify_migration", fail_verification)
+    assert mode_migration.main(["--apply"]) == 1
+    assert _database_state(engine) == before
+
+
+@pytest.mark.parametrize(
+    "alter",
+    [
+        "ALTER TABLE lists ALTER COLUMN ranking_mode DROP NOT NULL",
+        "ALTER TABLE lists DROP CONSTRAINT ck_lists_ranking_mode",
+        "ALTER TABLE lists ALTER COLUMN ranking_mode SET DEFAULT 'rank'",
+        "ALTER TABLE lists DROP CONSTRAINT ck_lists_ranking_mode, "
+        "ADD CONSTRAINT ck_lists_ranking_mode CHECK (ranking_mode = 'score')",
+        "ALTER TABLE lists ALTER COLUMN ranking_mode SET DEFAULT 'SCORE'",
+        "ALTER TABLE lists DROP CONSTRAINT ck_lists_ranking_mode, "
+        "ADD CONSTRAINT ck_lists_ranking_mode "
+        "CHECK (ranking_mode IN ('RANK', 'score'))",
+        "ALTER TABLE lists DROP CONSTRAINT ck_lists_ranking_mode, "
+        "ADD CONSTRAINT ck_lists_ranking_mode UNIQUE (list_id, ranking_mode)",
+    ],
+)
+def test_mode_migration_rejects_partial_schema_without_changes(legacy_database, alter):
+    engine, _ = _unified_database(legacy_database, missing_mode=False)
+    with engine.begin() as connection:
+        connection.execute(text(alter))
+    before = _database_state(engine)
+    assert mode_migration.main(["--check"]) == 1
+    assert _database_state(engine) == before
+    assert mode_migration.main(["--apply"]) == 1
+    assert _database_state(engine) == before
+
+
+def test_mode_migration_rejects_legacy_ranking_schema(legacy_database):
+    engine, _ = legacy_database
+    before = _database_state(engine)
+    assert mode_migration.main(["--check"]) == 1
+    assert _database_state(engine) == before
+    assert mode_migration.main(["--apply"]) == 1
+    assert _database_state(engine) == before

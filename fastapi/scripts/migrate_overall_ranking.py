@@ -174,7 +174,10 @@ async def _verify_position_index(
         and index["no_includes"]
         and tuple(index["columns"]) == columns
         and predicate is not None
-        and _legacy._normalize_pg_expression(predicate) == "positionisnotnull"
+        and _legacy._normalize_pg_expression(
+            predicate.replace('"position"', "position")
+        )
+        == "positionisnotnull"
     ):
         raise MigrationError(
             f"Unrecognized schema: index {name} has unexpected definition."
@@ -339,9 +342,10 @@ async def _verify_migration(
     _verify_current_items(items)
     if {row["item_id"]: dict(row) for row in items} != expected_items:
         raise MigrationError("Post-migration item preservation verification failed.")
-    if len(sessions) != len(expected_sessions) or {
-        row["session_id"]: dict(row) for row in sessions
-    } != expected_sessions:
+    if (
+        len(sessions) != len(expected_sessions)
+        or {row["session_id"]: dict(row) for row in sessions} != expected_sessions
+    ):
         raise MigrationError("Post-migration session preservation verification failed.")
 
 

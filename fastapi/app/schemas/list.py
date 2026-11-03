@@ -1,7 +1,10 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+RankingMode = Literal["rank", "score"]
 
 
 class ListBase(BaseModel):
@@ -10,6 +13,7 @@ class ListBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     color: str | None = None
+    ranking_mode: RankingMode = "score"
 
 
 class ListUpdate(BaseModel):
@@ -17,6 +21,7 @@ class ListUpdate(BaseModel):
 
     title: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = None
+    ranking_mode: RankingMode = "score"
 
 
 class List(ListBase):

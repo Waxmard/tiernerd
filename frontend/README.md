@@ -4,11 +4,11 @@ React Native mobile app built with Expo SDK 54.
 
 ## Browsing and ranking
 
-User-facing flows are documented in [README.md](../README.md#scores-out-of-10); this section covers layout, appearance and caching.
+User-facing flows are documented in [README.md](../README.md#ranking-lists); this section covers layout, appearance and caching.
 
 Home shows the most recently modified lists first, including when displaying cached lists. Editing an item updates its list's modification time; opening a list does not.
 
-Previously opened lists show saved items, order, scores, and available list metadata while refreshing from the API. Cached empty lists also appear without waiting for the refresh. You can read cached items, but adding, editing, deleting, or starting a ranking requires successful live validation of the list and its items. Active ranking drafts stay online-only. If a refresh fails, saved content stays visible with a retry action; deleted or inaccessible lists clear when the API confirms they are unavailable. Cache storage is best effort and never confirms a write.
+Previously opened lists show saved items, order, ranking mode, scores, and available list metadata while refreshing from the API. Cached empty lists also appear without waiting for the refresh. You can read cached items, but changing the ranking mode, adding, editing, deleting, or starting a ranking requires successful live validation of the list and its items. Active ranking drafts stay online-only. If a refresh fails, saved content stays visible with a retry action; deleted or inaccessible lists clear when the API confirms they are unavailable. Cache storage is best effort and never confirms a write.
 
 A saved list position is restored for up to 24 hours as items load. Dragging takes priority over the saved position.
 
@@ -45,6 +45,8 @@ make ios IOS_REUSE=1              # Install and launch the existing build withou
 ```
 
 Reuse does not include source or configuration changes. Run `make ios` to build them.
+
+The build uses the hosted development API by default, or the API selected by `EXPO_PUBLIC_API_URL`. It does not migrate or deploy the backend. Upgrade the matching database and deploy the matching backend before building the updated app; see [the backend migration instructions](../fastapi/README.md#upgrade-the-list-ranking-mode-schema).
 
 ### Option 2: iOS Simulator
 

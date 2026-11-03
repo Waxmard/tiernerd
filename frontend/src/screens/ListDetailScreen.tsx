@@ -17,11 +17,9 @@ import {
   ListItemEmptyState,
 } from '../components/ListDetailItemRow';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
+import { useDraftLookup } from '../components/useDraftLookup';
 import { useItemWorkspace } from '../components/useItemWorkspace';
-import {
-  useDraftLookup,
-  useListDetailData,
-} from '../components/useListDetailData';
+import { useListDetailData } from '../components/useListDetailData';
 import { useListViewRestore } from '../components/useListViewRestore';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
@@ -72,21 +70,26 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     detailsTitle,
     listDescription,
     listColor,
+    rankingMode,
     metadataError,
     metadataLoaded,
     fetchItems,
     refreshMetadata,
     refreshAfterMutation,
+    updateRankingMode,
     evictDeletedList,
   } = useListDetailData({ userId, token, listId, routeTitle });
   const canMutate =
     itemsLoaded && metadataLoaded && !itemsError && !metadataError;
   const isLoadingList = isLoadingItems || (!metadataLoaded && !metadataError);
   const sessionLookupRequestRef = useRef(0);
+  const isListOptionsOpenRef = useRef(false);
+  const [isListOptionsOpen, setIsListOptionsOpen] = useState(false);
   const identityRef = useRef(screenIdentity);
   if (identityRef.current !== screenIdentity) {
     identityRef.current = screenIdentity;
     sessionLookupRequestRef.current++;
+    isListOptionsOpenRef.current = false;
   }
   const canMutateRef = useRef(canMutate);
   canMutateRef.current = canMutate;
@@ -143,6 +146,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     identityRef.current = screenIdentity;
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
+    setIsListOptionsOpen(false);
     resolvedDraftIdsRef.current.clear();
     return () => {
       sessionLookupRequestRef.current++;
@@ -292,6 +296,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     !completedItemId &&
     workspace.mode === 'closed' &&
     !workspace.isBusy &&
+    !isListOptionsOpen &&
     !isDeletingList;
   const draftLookup = useDraftLookup({
     identity: screenIdentity,
@@ -304,7 +309,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     onFound: (session) => {
       if (
         !canMutateFor(screenIdentity) ||
-        workspaceModeRef.current !== 'closed'
+        workspaceModeRef.current !== 'closed' ||
+        isListOptionsOpenRef.current
       )
         return;
       view.clearRestoredSelection();
@@ -317,7 +323,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     onFailure: (item) => {
       if (
         !canMutateFor(screenIdentity) ||
-        workspaceModeRef.current !== 'closed'
+        workspaceModeRef.current !== 'closed' ||
+        isListOptionsOpenRef.current
       )
         return;
       view.clearRestoredSelection();
@@ -334,7 +341,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const rankByItemId = useMemo(() => {
     const ranks = new Map<string, number>();
     for (const item of items) {
-      if (item.rating !== null) ranks.set(item.item_id, ranks.size + 1);
+      if (item.position !== null) ranks.set(item.item_id, ranks.size + 1);
     }
     return ranks;
   }, [items]);
@@ -637,6 +644,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       item={item}
       selected={selectedItemId === item.item_id}
       rank={rankByItemId.get(item.item_id) ?? null}
+      rankingMode={rankingMode}
       disabled={isDeletingList || workspace.isBusy}
       onPress={(selected) => void handleItemPress(selected)}
     />
@@ -701,6 +709,23 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               itemCount={items.length}
               rankedCount={rankedCount}
               addLoading={isLoadingList}
+              optionsKey={screenIdentity}
+              rankingMode={rankingMode}
+              optionsDisabled={
+                !canMutate ||
+                isDeletingList ||
+                workspace.isBusy ||
+                workspace.mode !== 'closed' ||
+                (!isDesktop &&
+                  selectedItemId !== null &&
+                  dismissedDetailsItemId !== selectedItemId)
+              }
+              onSaveRankingMode={updateRankingMode}
+              onOptionsVisibilityChange={(open) => {
+                if (identityRef.current !== screenIdentity) return;
+                isListOptionsOpenRef.current = open;
+                setIsListOptionsOpen(open);
+              }}
               addDisabled={
                 !canMutate ||
                 isDeletingList ||
@@ -723,6 +748,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               selectedItem={selectedItem}
               selectedRank={selectedRank}
               rankedCount={rankedCount}
+              rankingMode={rankingMode}
               selectedSession={selectedSession}
               isLoadingSession={isLoadingSession}
               sessionError={sessionError}

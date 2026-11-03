@@ -2,6 +2,7 @@ import type React from 'react';
 import { ActivityIndicator, Modal, View } from 'react-native';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { ComparisonSession, Item } from '../services/itemsService';
+import type { ListRankingMode } from '../services/listsService';
 import { AddItemContent } from './AddItemContent';
 import { ItemDetailContent } from './ItemDetailContent';
 import type { ItemWorkspace } from './itemWorkspaceTypes';
@@ -16,6 +17,7 @@ interface ListDetailWorkspaceHostProps {
   selectedItem: Item | null;
   selectedRank: number | null;
   rankedCount: number;
+  rankingMode: ListRankingMode;
   selectedSession: ComparisonSession | null;
   isLoadingSession: boolean;
   sessionError: string | null;
@@ -44,6 +46,7 @@ export const ListDetailWorkspaceHost: React.FC<
   selectedItem,
   selectedRank,
   rankedCount,
+  rankingMode,
   selectedSession,
   isLoadingSession,
   sessionError,
@@ -119,6 +122,7 @@ export const ListDetailWorkspaceHost: React.FC<
         canMutate={canMutate}
         rank={selectedRank}
         rankedCount={rankedCount}
+        rankingMode={rankingMode}
         presentation={presentation}
         session={selectedSession}
         isLoadingSession={isLoadingSession}

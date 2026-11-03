@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Item as ItemModel, List as ListModel, User
+from app.db.models import ComparisonSession, Item as ItemModel, List as ListModel, User
 
 
 class TestReadLists:
@@ -89,6 +89,7 @@ class TestCreateList:
         data = response.json()
         assert data["title"] == "My New List"
         assert data["description"] == "A brand new list"
+        assert data["ranking_mode"] == "score"
         assert "list_id" in data
         assert str(data["user_id"]) == str(test_user.user_id)
 
@@ -184,6 +185,41 @@ class TestCreateList:
         assert uncolored.status_code == 200
         assert uncolored.json()["color"] is None
 
+    async def test_ranking_modes_round_trip_and_validate(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        for mode in ("rank", "score"):
+            created = await client.post(
+                "/api/lists/",
+                params={
+                    "name": f"List {mode}",
+                    "description": "",
+                    "ranking_mode": mode,
+                },
+                headers=auth_headers,
+            )
+            assert created.status_code == 200
+            assert created.json()["ranking_mode"] == mode
+            list_id = created.json()["list_id"]
+            detail = await client.get(f"/api/lists/{list_id}", headers=auth_headers)
+            assert detail.status_code == 200
+            assert detail.json()["ranking_mode"] == mode
+            summaries = await client.get("/api/lists/", headers=auth_headers)
+            assert summaries.status_code == 200
+            assert (
+                next(row for row in summaries.json() if row["list_id"] == list_id)[
+                    "ranking_mode"
+                ]
+                == mode
+            )
+
+        invalid = await client.post(
+            "/api/lists/",
+            params={"name": "Invalid", "description": "", "ranking_mode": "other"},
+            headers=auth_headers,
+        )
+        assert invalid.status_code == 422
+
 
 class TestReadList:
     """Tests for reading a specific list endpoint."""
@@ -230,6 +266,75 @@ class TestReadList:
 
 class TestUpdateList:
     """Tests for updating lists endpoint."""
+
+    async def test_mode_switch_preserves_items_and_sessions(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+        auth_headers_user2: dict,
+        test_db: AsyncSession,
+    ):
+        first = ItemModel(
+            list_id=test_list.list_id, name="First", position="a1", rating=10.0
+        )
+        second = ItemModel(
+            list_id=test_list.list_id, name="Second", position="a0", rating=0.0
+        )
+        test_db.add_all([first, second])
+        await test_db.flush()
+        session = ComparisonSession(
+            list_id=test_list.list_id,
+            new_item_id=first.item_id,
+            target_item_id=second.item_id,
+            status="active",
+            revision=3,
+        )
+        test_db.add(session)
+        await test_db.commit()
+        await test_db.refresh(session)
+        original_session = {
+            column.name: getattr(session, column.name)
+            for column in ComparisonSession.__table__.columns
+        }
+        url = f"/api/lists/{test_list.list_id}"
+        initial = await client.get(f"{url}/items", headers=auth_headers)
+        assert initial.status_code == 200
+        before = initial.json()
+        assert [(item["position"], item["rating"]) for item in before] == [
+            ("a1", 10.0),
+            ("a0", 0.0),
+        ]
+
+        for mode in ("rank", "score", "rank"):
+            response = await client.put(
+                url, json={"ranking_mode": mode}, headers=auth_headers
+            )
+            assert response.status_code == 200
+            assert response.json()["ranking_mode"] == mode
+            after = await client.get(f"{url}/items", headers=auth_headers)
+            assert after.status_code == 200
+            assert after.json() == before
+            await test_db.refresh(session)
+            assert {
+                column.name: getattr(session, column.name)
+                for column in ComparisonSession.__table__.columns
+            } == original_session
+
+        renamed = await client.put(url, json={"title": "Renamed"}, headers=auth_headers)
+        assert renamed.status_code == 200
+        assert renamed.json()["ranking_mode"] == "rank"
+        for invalid in (None, "other"):
+            response = await client.put(
+                url, json={"ranking_mode": invalid}, headers=auth_headers
+            )
+            assert response.status_code == 422
+        denied = await client.put(
+            url, json={"ranking_mode": "score"}, headers=auth_headers_user2
+        )
+        assert denied.status_code == 404
+        detail = await client.get(url, headers=auth_headers)
+        assert detail.json()["ranking_mode"] == "rank"
 
     async def test_update_list_success(
         self,

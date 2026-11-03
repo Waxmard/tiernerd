@@ -4,6 +4,8 @@ import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../design-system/components';
 import { type ListColor, palette } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
+import type { ListRankingMode } from '../services/listsService';
+import { ListRankingOptions } from './ListRankingOptions';
 
 interface ListDetailHeaderProps {
   title: string;
@@ -19,6 +21,11 @@ interface ListDetailHeaderProps {
   showingSavedItems: boolean;
   onRetryItems: () => void;
   deleteDisabled: boolean;
+  optionsKey: string;
+  rankingMode: ListRankingMode;
+  optionsDisabled: boolean;
+  onSaveRankingMode: (mode: ListRankingMode) => Promise<void>;
+  onOptionsVisibilityChange: (open: boolean) => void;
   onBack: () => void;
   onDelete: () => void;
   onRetryMetadata: () => void;
@@ -51,6 +58,11 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   showingSavedItems,
   onRetryItems,
   deleteDisabled,
+  optionsKey,
+  rankingMode,
+  optionsDisabled,
+  onSaveRankingMode,
+  onOptionsVisibilityChange,
   onBack,
   onDelete,
   onRetryMetadata,
@@ -114,6 +126,13 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
             </ScrollView>
           ) : null}
         </View>
+        <ListRankingOptions
+          key={optionsKey}
+          rankingMode={rankingMode}
+          disabled={optionsDisabled}
+          onSave={onSaveRankingMode}
+          onVisibilityChange={onOptionsVisibilityChange}
+        />
         <TouchableOpacity
           onPress={onDelete}
           disabled={deleteDisabled}

@@ -17,7 +17,8 @@ import {
 import { useAuth } from '../providers/AuthContext';
 import { useTheme } from '../providers/ThemeProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
-import { listsService } from '../services/listsService';
+import { type ListRankingMode, listsService } from '../services/listsService';
+import { RankingModeSelector } from './ListRankingOptions';
 
 export interface CreatedList {
   listId: string;
@@ -44,7 +45,7 @@ const SWATCH_CLASS: Record<ListColor, string> = {
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
-type CreateListView = 'overview' | 'description' | 'color';
+type CreateListView = 'overview' | 'description' | 'color' | 'ranking-mode';
 
 export const CreateListContent = forwardRef<
   CreateListContentHandle,
@@ -55,6 +56,7 @@ export const CreateListContent = forwardRef<
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState<ListColor | null>(null);
+  const [rankingMode, setRankingMode] = useState<ListRankingMode>('score');
   const [view, setView] = useState<CreateListView>('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
@@ -71,6 +73,7 @@ export const CreateListContent = forwardRef<
     setTitle('');
     setDescription('');
     setColor(null);
+    setRankingMode('score');
     setView('overview');
     setFieldError(null);
     setError(null);
@@ -125,6 +128,7 @@ export const CreateListContent = forwardRef<
         trimmedTitle,
         description.trim(),
         color,
+        rankingMode,
         token
       );
       clearForm();
@@ -152,7 +156,9 @@ export const CreateListContent = forwardRef<
           ? 'Create New List'
           : view === 'description'
             ? 'Description'
-            : 'List color'
+            : view === 'color'
+              ? 'List color'
+              : 'Ranking mode'
       }
       error={error}
       isLoading={isLoading}
@@ -243,6 +249,34 @@ export const CreateListContent = forwardRef<
               accessible={false}
             />
           </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Ranking mode: ${rankingMode === 'rank' ? 'Ranked positions' : 'Scores out of 10'}`}
+            accessibilityState={{ disabled: isLoading }}
+            disabled={isLoading}
+            onPress={() => {
+              hasVisitedOptionalFieldRef.current = true;
+              setView('ranking-mode');
+            }}
+            className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4"
+          >
+            <View className="flex-1 min-w-0">
+              <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+                Ranking mode
+              </Text>
+              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+                {rankingMode === 'rank'
+                  ? 'Ranked positions'
+                  : 'Scores out of 10'}
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={palette[scheme]['ink-muted']}
+              accessible={false}
+            />
+          </Pressable>
         </>
       ) : view === 'description' ? (
         <Input
@@ -256,6 +290,12 @@ export const CreateListContent = forwardRef<
           autoFocus
           inputClassName="!min-h-[120px] text-[16px]"
           style={MULTILINE_INPUT_STYLE}
+        />
+      ) : view === 'ranking-mode' ? (
+        <RankingModeSelector
+          value={rankingMode}
+          onChange={setRankingMode}
+          disabled={isLoading}
         />
       ) : (
         <View className="flex-row flex-wrap gap-3">
