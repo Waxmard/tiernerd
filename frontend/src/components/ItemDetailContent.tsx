@@ -3,7 +3,6 @@ import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { ComparisonSession, Item } from '../services/itemsService';
-import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface ItemDetailContentProps {
   item: Item;
@@ -56,10 +55,6 @@ export function ItemDetailContent({
   const imageFailed =
     item.image_url !== null && failedImageUrl === item.image_url;
 
-  const rangeOption = RANGE_OPTIONS.find(
-    (option) => option.value === item.tier_set
-  );
-  const rangeLabel = rangeOption?.label ?? 'Range not selected';
   const liveSession =
     session && ['active', 'ready_to_commit'].includes(session.status)
       ? session
@@ -92,6 +87,7 @@ export function ItemDetailContent({
             title={rankTitle}
             onPress={liveSession ? onResume : onRank}
             disabled={actionsBlocked}
+            loading={isBusy}
             fullWidth
           />
           <View className="flex-row flex-wrap gap-2">
@@ -140,7 +136,7 @@ export function ItemDetailContent({
         ) : (
           <View className="flex-row items-baseline flex-wrap gap-3">
             <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
-              {item.rating.toFixed(1)}
+              {item.rating.toFixed(1)}/10
             </Text>
             {rank !== null ? (
               <Text className="text-body-medium text-ink dark:text-ink-dark">
@@ -149,16 +145,8 @@ export function ItemDetailContent({
             ) : null}
           </View>
         )}
-        {rangeOption ? (
-          <RangeBadge tierSet={item.tier_set} />
-        ) : (
-          <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark">
-            {rangeLabel}
-          </Text>
-        )}
         <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-          Scores reflect position within each range. Adding, removing or
-          re-ranking items can change scores.
+          Scores are based on the order of items in this list.
         </Text>
         {item.description ? (
           <Text className="text-body-large text-ink dark:text-ink-dark">

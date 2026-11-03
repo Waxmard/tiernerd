@@ -21,7 +21,7 @@ async def create_draft(
     response = await client.post(
         "/api/items/",
         params={"list_title": test_list.title},
-        json={"name": name, "tier_set": "good"},
+        json={"name": name},
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -41,6 +41,12 @@ async def test_answer_preview_commit_and_idempotent_commit(
     item_id = draft["item_id"]
     assert draft["status"] == "active"
     assert draft["revision"] == 0
+    assert "tier_set" not in draft
+    assert "tier_set" not in draft["item"]
+    assert "tier_set" not in draft["current_comparison"]["reference_item"]
+    assert "tier_set" not in draft["current_comparison"]["target_item"]
+    assert draft["item"]["position"] is None
+    assert draft["item"]["rating"] is None
 
     status_response = await client.get(
         f"/api/items/comparison/{session_id}/status", headers=auth_headers
@@ -61,12 +67,7 @@ async def test_answer_preview_commit_and_idempotent_commit(
     ready = answer.json()
     assert ready["status"] == "ready_to_commit"
     assert ready["comparisons_answered"] == 1
-    assert ready["preview"] == {
-        "score": 9.2,
-        "rank": 1,
-        "ranked_count": 2,
-        "tier_set": "good",
-    }
+    assert ready["preview"] == {"score": 10.0, "rank": 1, "ranked_count": 2}
     saved = await test_db.get(ItemModel, uuid.UUID(item_id))
     assert saved is not None and saved.position is None and saved.rating is None
     assert test_item.position == "a0"
@@ -86,10 +87,12 @@ async def test_answer_preview_commit_and_idempotent_commit(
     )
     assert committed.status_code == 200
     assert committed.json()["status"] == "completed"
+    assert committed.json()["preview"] == ready["preview"]
     await test_db.refresh(saved)
     await test_db.refresh(test_item)
-    assert saved.rating == 9.2
-    assert test_item.rating == 7.8
+    assert saved.rating == ready["preview"]["score"] == 10.0
+    assert test_item.rating == 0.0
+    assert saved.position > test_item.position
 
     repeated = await client.post(
         f"/api/items/comparison/{session_id}/commit",
@@ -98,6 +101,7 @@ async def test_answer_preview_commit_and_idempotent_commit(
     )
     assert repeated.status_code == 200
     assert repeated.json()["status"] == "completed"
+    assert repeated.json()["preview"] == ready["preview"]
 
 
 @pytest.mark.asyncio
@@ -139,7 +143,11 @@ async def test_undo_restores_question_before_opposite_answer(
         headers=auth_headers,
     )
     assert answer_again.status_code == 200
-    assert answer_again.json()["preview"]["rank"] == 2
+    assert answer_again.json()["preview"] == {
+        "score": 0.0,
+        "rank": 2,
+        "ranked_count": 2,
+    }
 
 
 @pytest.mark.asyncio
@@ -161,7 +169,7 @@ async def test_restart_requires_current_revision_and_resets_history(
     assert answered.json()["status"] == "ready_to_commit"
     restarted = await client.post(
         f"/api/items/items/{item_id}/comparison-session",
-        json={"tier_set": "good", "restart": True, "revision": 1},
+        json={"restart": True, "revision": 1},
         headers=auth_headers,
     )
     assert restarted.status_code == 200
@@ -171,7 +179,7 @@ async def test_restart_requires_current_revision_and_resets_history(
 
     mismatch = await client.post(
         f"/api/items/items/{item_id}/comparison-session",
-        json={"tier_set": "good", "restart": True, "revision": 1},
+        json={"restart": True, "revision": 1},
         headers=auth_headers,
     )
     assert mismatch.status_code == 409
@@ -221,36 +229,51 @@ async def test_cancel_new_draft_discards_candidate(
 
 
 @pytest.mark.asyncio
-async def test_cancel_existing_draft_preserves_saved_rank(
+async def test_cancel_existing_draft_preserves_saved_scores_and_order(
     client: AsyncClient,
-    test_item: ItemModel,
+    test_list: ListModel,
+    multiple_items: list[ItemModel],
     auth_headers: dict[str, str],
 ) -> None:
-    original_position = test_item.position
-    original_rating = test_item.rating
+    list_url = f"/api/lists/{test_list.list_id}/items"
+    before_response = await client.get(list_url, headers=auth_headers)
+    assert before_response.status_code == 200
+    before = before_response.json()
+    assert [item["item_id"] for item in before] == [
+        str(item.item_id) for item in reversed(multiple_items)
+    ]
+    assert [item["rating"] for item in before] == [10.0, 7.5, 5.0, 2.5, 0.0]
+
+    mover = multiple_items[0]
     started = await client.post(
-        f"/api/items/items/{test_item.item_id}/comparison-session",
-        json={"tier_set": "good"},
+        f"/api/items/items/{mover.item_id}/comparison-session",
+        json={},
         headers=auth_headers,
     )
     assert started.status_code == 200
-    session_id = started.json()["session_id"]
+    draft = started.json()
+    assert draft["discard_on_cancel"] is False
+    still_asking = await answer(client, draft, auth_headers)
+    assert still_asking["status"] == "active"
+    ready = await answer(client, still_asking, auth_headers)
+    assert ready["status"] == "ready_to_commit"
+    assert ready["preview"] == {"score": 10.0, "rank": 1, "ranked_count": 5}
+    assert (await client.get(list_url, headers=auth_headers)).json() == before
+
     cancelled = await client.delete(
-        f"/api/items/comparison/{session_id}", headers=auth_headers
+        f"/api/items/comparison/{draft['session_id']}", headers=auth_headers
     )
     assert cancelled.status_code == 204
-    item = await client.get(
-        f"/api/items/items/{test_item.item_id}", headers=auth_headers
-    )
-    assert item.json()["position"] == original_position
-    assert item.json()["rating"] == original_rating
+    assert (await client.get(list_url, headers=auth_headers)).json() == before
+    item = await client.get(f"/api/items/items/{mover.item_id}", headers=auth_headers)
+    assert item.json() == before[-1]
     status_response = await client.get(
-        f"/api/items/comparison/{session_id}/status", headers=auth_headers
+        f"/api/items/comparison/{draft['session_id']}/status", headers=auth_headers
     )
     assert status_response.json()["status"] == "cancelled"
     assert (
         await client.get(
-            f"/api/items/items/{test_item.item_id}/comparison-session",
+            f"/api/items/items/{mover.item_id}/comparison-session",
             headers=auth_headers,
         )
     ).json() is None
@@ -326,19 +349,18 @@ async def seed_list(db: AsyncSession, user: User, title: str) -> ListModel:
 
 
 async def seed_ranked_items(
-    db: AsyncSession, list_obj: ListModel, tier_set: str, count: int
+    db: AsyncSession, list_obj: ListModel, count: int
 ) -> list[ItemModel]:
     now = datetime.now(UTC)
     items = [
         ItemModel(
             item_id=uuid.uuid4(),
             list_id=list_obj.list_id,
-            name=f"{tier_set}-{index}",
+            name=f"Peer-{index}",
             description="",
             image_url=None,
             position=f"a{index}",
-            rating=None,
-            tier_set=tier_set,
+            rating=round(10 * index / (count - 1), 1) if count > 1 else 10.0,
             created_at=now,
             updated_at=now,
         )
@@ -514,7 +536,7 @@ async def test_cancel_is_idempotent_for_retained_draft(
 ) -> None:
     started = await client.post(
         f"/api/items/items/{test_item.item_id}/comparison-session",
-        json={"tier_set": "good"},
+        json={},
         headers=auth_headers,
     )
     session_id = started.json()["session_id"]
@@ -528,7 +550,7 @@ async def test_cancel_is_idempotent_for_retained_draft(
 
 
 @pytest.mark.asyncio
-async def test_live_draft_is_reused_and_range_change_needs_finish_or_cancel(
+async def test_live_draft_is_reused_without_resetting_progress(
     client: AsyncClient,
     test_list: ListModel,
     test_item: ItemModel,
@@ -537,7 +559,7 @@ async def test_live_draft_is_reused_and_range_change_needs_finish_or_cancel(
     draft = await create_draft(client, test_list, auth_headers, test_item)
     resumed = await client.post(
         f"/api/items/items/{draft['item_id']}/comparison-session",
-        json={"tier_set": "good"},
+        json={},
         headers=auth_headers,
     )
     assert resumed.status_code == 200
@@ -545,13 +567,17 @@ async def test_live_draft_is_reused_and_range_change_needs_finish_or_cancel(
     assert resumed.json()["revision"] == draft["revision"]
     assert resumed.json()["comparisons_answered"] == 0
 
-    conflict = await client.post(
+    ready = await answer(client, resumed.json(), auth_headers)
+    resumed_ready = await client.post(
         f"/api/items/items/{draft['item_id']}/comparison-session",
-        json={"tier_set": "mid"},
+        json={},
         headers=auth_headers,
     )
-    assert conflict.status_code == 409
-    assert conflict.json()["detail"] == "Finish or cancel the current ranking first."
+    assert resumed_ready.status_code == 200
+    assert resumed_ready.json()["session_id"] == draft["session_id"]
+    assert resumed_ready.json()["status"] == "ready_to_commit"
+    assert resumed_ready.json()["revision"] == ready["revision"]
+    assert resumed_ready.json()["preview"] == ready["preview"]
 
 
 @pytest.mark.asyncio
@@ -563,7 +589,7 @@ async def test_restart_needs_a_live_draft_and_a_revision(
 ) -> None:
     without_draft = await client.post(
         f"/api/items/items/{test_item.item_id}/comparison-session",
-        json={"tier_set": "good", "restart": True, "revision": 0},
+        json={"restart": True, "revision": 0},
         headers=auth_headers,
     )
     assert without_draft.status_code == 409
@@ -574,7 +600,7 @@ async def test_restart_needs_a_live_draft_and_a_revision(
     draft = await create_draft(client, test_list, auth_headers, test_item)
     missing_revision = await client.post(
         f"/api/items/items/{draft['item_id']}/comparison-session",
-        json={"tier_set": "good", "restart": True},
+        json={"restart": True},
         headers=auth_headers,
     )
     assert missing_revision.status_code == 422
@@ -588,45 +614,43 @@ async def test_multi_peer_draft_keeps_asking_until_the_gap_is_unique(
     test_db: AsyncSession,
 ) -> None:
     target_list = await seed_list(test_db, test_user, "Multi Peer List")
-    peers = await seed_ranked_items(test_db, target_list, "good", 4)
+    peers = await seed_ranked_items(test_db, target_list, 3)
 
     created = await client.post(
         "/api/items/",
         params={"list_title": target_list.title},
-        json={"name": "Newcomer", "tier_set": "good"},
+        json={"name": "Newcomer"},
         headers=auth_headers,
     )
+    assert created.status_code == 200
     draft = created.json()
     assert draft["status"] == "active"
-    assert draft["comparison_limit"] == 3
-    assert draft["current_comparison"]["target_item"]["name"] == peers[2].name
+    assert draft["comparison_limit"] == 2
+    assert draft["current_comparison"]["target_item"]["name"] == peers[1].name
 
     still_asking = await answer(client, draft, auth_headers)
     assert still_asking["status"] == "active"
     assert still_asking["comparisons_answered"] == 1
-    assert still_asking["current_comparison"]["target_item"]["name"] == peers[3].name
+    assert still_asking["current_comparison"]["target_item"]["name"] == peers[2].name
 
-    ready = await answer(client, still_asking, auth_headers)
+    ready = await answer(client, still_asking, auth_headers, result="worse")
     assert ready["status"] == "ready_to_commit"
-    assert ready["preview"] == {
-        "score": 9.7,
-        "rank": 1,
-        "ranked_count": 5,
-        "tier_set": "good",
-    }
+    assert ready["preview"] == {"score": 6.7, "rank": 2, "ranked_count": 4}
 
     committed = await client.post(
         f"/api/items/comparison/{draft['session_id']}/commit",
         json={"revision": ready["revision"]},
         headers=auth_headers,
     )
+    assert committed.status_code == 200
     assert committed.json()["status"] == "completed"
+    assert committed.json()["preview"] == ready["preview"]
     candidate = await test_db.get(ItemModel, uuid.UUID(draft["item_id"]))
     assert candidate is not None
     await test_db.refresh(candidate)
-    assert candidate.rating == 9.7
-    assert candidate.position > peers[-1].position
-    for peer, expected in zip(peers, [7.3, 7.9, 8.5, 9.1], strict=True):
+    assert candidate.rating == ready["preview"]["score"] == 6.7
+    assert peers[1].position < candidate.position < peers[2].position
+    for peer, expected in zip(peers, [0.0, 3.3, 10.0], strict=True):
         await test_db.refresh(peer)
         assert peer.rating == expected
 
@@ -767,72 +791,66 @@ async def test_answer_on_ready_draft_is_conflict(
 
 
 @pytest.mark.asyncio
-async def test_reranking_into_another_range_rescores_both_ranges(
+async def test_reranking_bottom_to_top_rescores_entire_list(
     client: AsyncClient,
     test_user: User,
     auth_headers: dict[str, str],
     test_db: AsyncSession,
 ) -> None:
-    target_list = await seed_list(test_db, test_user, "Cross Range List")
-    good_peers = await seed_ranked_items(test_db, target_list, "good", 2)
-    bad_peers = await seed_ranked_items(test_db, target_list, "bad", 2)
-    mover = ItemModel(
-        item_id=uuid.uuid4(),
-        list_id=target_list.list_id,
-        name="Mover",
-        description="",
-        image_url=None,
-        position="a2",
-        rating=None,
-        tier_set="good",
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
-    )
-    test_db.add(mover)
-    await test_db.commit()
+    target_list = await seed_list(test_db, test_user, "Reranked List")
+    items = await seed_ranked_items(test_db, target_list, 5)
+    mover = items[0]
+    list_url = f"/api/lists/{target_list.list_id}/items"
+    before_response = await client.get(list_url, headers=auth_headers)
+    assert before_response.status_code == 200
+    before = before_response.json()
+    assert [item["item_id"] for item in before] == [
+        str(item.item_id) for item in reversed(items)
+    ]
+    assert [item["rating"] for item in before] == [10.0, 7.5, 5.0, 2.5, 0.0]
 
     started = await client.post(
         f"/api/items/items/{mover.item_id}/comparison-session",
-        json={"tier_set": "bad"},
+        json={},
         headers=auth_headers,
     )
     assert started.status_code == 200
     draft = started.json()
     assert draft["discard_on_cancel"] is False
-    assert draft["current_comparison"]["target_item"]["name"] == bad_peers[1].name
+    assert draft["current_comparison"]["target_item"]["item_id"] == str(
+        items[3].item_id
+    )
 
-    ready = await answer(client, draft, auth_headers)
+    still_asking = await answer(client, draft, auth_headers)
+    assert still_asking["status"] == "active"
+    assert still_asking["current_comparison"]["target_item"]["item_id"] == str(
+        items[4].item_id
+    )
+    ready = await answer(client, still_asking, auth_headers)
     assert ready["status"] == "ready_to_commit"
-    assert ready["preview"] == {
-        "score": 3.5,
-        "rank": 3,
-        "ranked_count": 5,
-        "tier_set": "bad",
-    }
-    await test_db.refresh(mover)
-    assert mover.tier_set == "good"
-    assert mover.rating is None
+    assert ready["preview"] == {"score": 10.0, "rank": 1, "ranked_count": 5}
+    assert (await client.get(list_url, headers=auth_headers)).json() == before
 
     committed = await client.post(
         f"/api/items/comparison/{draft['session_id']}/commit",
         json={"revision": ready["revision"]},
         headers=auth_headers,
     )
+    assert committed.status_code == 200
     assert committed.json()["status"] == "completed"
-    await test_db.refresh(mover)
-    assert mover.tier_set == "bad"
-    assert mover.rating == 3.5
-    assert mover.position > bad_peers[1].position
-    for peer, expected in zip(good_peers, [7.8, 9.2], strict=True):
-        await test_db.refresh(peer)
-        assert peer.rating == expected
-    for peer, expected in zip(bad_peers, [1.5, 2.5], strict=True):
-        await test_db.refresh(peer)
-        assert peer.rating == expected
+    assert committed.json()["preview"] == ready["preview"]
+    ranked_response = await client.get(list_url, headers=auth_headers)
+    assert ranked_response.status_code == 200
+    ranked = ranked_response.json()
+    assert [item["item_id"] for item in ranked] == [
+        str(item.item_id) for item in [mover, *reversed(items[1:])]
+    ]
+    assert [item["rating"] for item in ranked] == [10.0, 7.5, 5.0, 2.5, 0.0]
+    assert ranked[0]["rating"] == ready["preview"]["score"]
 
 
 @pytest.mark.asyncio
-async def test_unranked_item_immediately_readies_and_commits_in_empty_range(
+async def test_unranked_item_immediately_readies_and_commits_in_empty_list(
     client: AsyncClient,
     test_user: User,
     auth_headers: dict[str, str],
@@ -847,7 +865,6 @@ async def test_unranked_item_immediately_readies_and_commits_in_empty_range(
         image_url=None,
         position=None,
         rating=None,
-        tier_set=None,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
@@ -861,7 +878,7 @@ async def test_unranked_item_immediately_readies_and_commits_in_empty_range(
 
     started = await client.post(
         f"/api/items/items/{orphan.item_id}/comparison-session",
-        json={"tier_set": "mid"},
+        json={},
         headers=auth_headers,
     )
     assert started.status_code == 200
@@ -871,26 +888,18 @@ async def test_unranked_item_immediately_readies_and_commits_in_empty_range(
     assert draft["comparison_limit"] == 0
     assert draft["can_undo"] is False
     assert draft["current_comparison"] is None
-    assert draft["preview"] == {
-        "score": 5.5,
-        "rank": 1,
-        "ranked_count": 1,
-        "tier_set": "mid",
-    }
+    assert draft["preview"] == {"score": 10.0, "rank": 1, "ranked_count": 1}
+    assert draft["item"]["position"] is None
+    assert draft["item"]["rating"] is None
 
     committed = await client.post(
         f"/api/items/comparison/{draft['session_id']}/commit",
         json={"revision": draft["revision"]},
         headers=auth_headers,
     )
+    assert committed.status_code == 200
     assert committed.json()["status"] == "completed"
-    assert committed.json()["preview"] == {
-        "score": 5.5,
-        "rank": 1,
-        "ranked_count": 1,
-        "tier_set": "mid",
-    }
+    assert committed.json()["preview"] == draft["preview"]
     await test_db.refresh(orphan)
-    assert orphan.tier_set == "mid"
-    assert orphan.rating == 5.5
+    assert orphan.rating == draft["preview"]["score"] == 10.0
     assert orphan.position is not None

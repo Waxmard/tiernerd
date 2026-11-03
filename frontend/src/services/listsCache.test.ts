@@ -46,13 +46,16 @@ const item = (overrides: Partial<Item> = {}): Item => ({
   image_url: null,
   rating: 8.5,
   position: '1',
-  tier_set: 'good',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
   ...overrides,
 });
 
 test('keys item snapshots by user and list', () => {
+  assert.equal(
+    listItemsCacheKey('user-1', 'list-1'),
+    'cachedListItems:v2:user-1:list-1'
+  );
   assert.notEqual(
     listItemsCacheKey('user-1', 'list-1'),
     listItemsCacheKey('user-2', 'list-1')
@@ -71,7 +74,6 @@ test('round-trips ordered ranked and unranked items unchanged', () => {
       name: 'Second',
       rating: null,
       position: null,
-      tier_set: null,
     }),
   ];
   assert.deepEqual(
@@ -99,7 +101,6 @@ test('rejects malformed, foreign-list, missing, and invalid item fields', () => 
         'image_url',
         'rating',
         'position',
-        'tier_set',
         'created_at',
         'updated_at',
       ] as const
@@ -117,7 +118,6 @@ test('rejects malformed, foreign-list, missing, and invalid item fields', () => 
     { ...item(), position: 1 },
     { ...item(), rating: '8.5' },
     { ...item(), rating: false },
-    { ...item(), tier_set: 'excellent' },
   ];
   assert.equal(parseCachedListItems('{', 'list-1'), null);
   assert.equal(

@@ -3,23 +3,13 @@
 from typing import Any
 
 from app.db.models import Item as ItemModel
-from app.services.ranking import SCORE_BANDS
 
 
 def get_items_best_first(items: list[ItemModel]) -> list[ItemModel]:
-    """
-    Order items best first: bands good, mid, bad, best position first within a
-    band, then unranked items.
-    """
+    """Order ranked items by descending position, then append unranked items."""
     ranked = [i for i in items if i.position is not None]
     unranked = [i for i in items if i.position is None]
-    ranked.sort(
-        key=lambda i: (
-            SCORE_BANDS.get(i.tier_set or "", (0.0, 0.0))[0],
-            i.position or "",
-        ),
-        reverse=True,
-    )
+    ranked.sort(key=lambda i: i.position or "", reverse=True)
     return ranked + unranked
 
 

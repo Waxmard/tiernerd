@@ -9,11 +9,11 @@ from app.services.list_service import (
     build_list_simple_response,
     get_items_best_first,
 )
+from app.services.ranking import assign_scores
 
 
 def create_mock_item(
     name: str,
-    tier_set: str | None = "good",
     position: str | None = "a0",
 ) -> ItemModel:
     """Create a mock item for testing."""
@@ -25,7 +25,6 @@ def create_mock_item(
         image_url=f"https://example.com/{name}.jpg",
         position=position,
         rating=None,
-        tier_set=tier_set,
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
@@ -41,34 +40,33 @@ class TestGetItemsBestFirst:
         high = create_mock_item("High", position="a2")
         assert get_items_best_first([middle, low, high]) == [high, middle, low]
 
-    def test_band_order(self):
-        mid = create_mock_item("Mid", tier_set="mid", position="a1")
-        bad = create_mock_item("Bad", tier_set="bad", position="a0")
-        good_low = create_mock_item("Good low", position="a0")
-        good_high = create_mock_item("Good high", position="a1")
-        assert get_items_best_first([mid, bad, good_low, good_high]) == [
-            good_high,
-            good_low,
-            mid,
-            bad,
-        ]
+    def test_position_takes_priority_over_score(self):
+        low = create_mock_item("Low", position="a0")
+        high = create_mock_item("High", position="a1")
+        low.rating = 10.0
+        high.rating = 0.0
+        assert get_items_best_first([low, high]) == [high, low]
 
     def test_unranked_last(self):
         ranked = create_mock_item("Ranked")
-        unranked = create_mock_item("Unranked", position=None)
-        assert get_items_best_first([unranked, ranked]) == [ranked, unranked]
-
-    def test_unknown_band_after_bad(self):
-        bad = create_mock_item("Bad", tier_set="bad")
-        unknown = create_mock_item("Unknown", tier_set="unknown", position="a2")
-        missing = create_mock_item("Missing", tier_set=None, position="a1")
-        unranked = create_mock_item("Unranked", position=None)
-        assert get_items_best_first([unknown, unranked, bad, missing]) == [
-            bad,
-            unknown,
-            missing,
-            unranked,
+        first_unranked = create_mock_item("First unranked", position=None)
+        second_unranked = create_mock_item("Second unranked", position=None)
+        assert get_items_best_first([first_unranked, ranked, second_unranked]) == [
+            ranked,
+            first_unranked,
+            second_unranked,
         ]
+        assert first_unranked.rating is None
+        assert second_unranked.rating is None
+
+    def test_equal_rounded_scores_keep_position_order(self):
+        items = [
+            create_mock_item(f"Item {i}", position=f"a{i:03d}") for i in range(102)
+        ]
+        assign_scores(items)
+        low, high = items[50:52]
+        assert low.rating == high.rating == 5.0
+        assert get_items_best_first([low, high]) == [high, low]
 
 
 class TestBuildListResponse:

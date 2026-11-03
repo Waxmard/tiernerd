@@ -1,17 +1,8 @@
 import uuid
 from datetime import datetime
-from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
-
-
-class TierSet(StrEnum):
-    """Enum for tier sets. Each set maps to a score band."""
-
-    GOOD = "good"
-    MID = "mid"
-    BAD = "bad"
 
 
 class ItemBase(BaseModel):
@@ -29,8 +20,6 @@ class ItemBase(BaseModel):
 
 class ItemCreate(ItemBase):
     """Schema for item creation."""
-
-    tier_set: TierSet
 
 
 class ItemUpdate(BaseModel):
@@ -55,7 +44,6 @@ class Item(ItemBase):
     list_id: uuid.UUID
     position: str | None = None
     rating: float | None = None
-    tier_set: TierSet | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -75,7 +63,6 @@ class ComparisonPreview(BaseModel):
     score: float
     rank: int
     ranked_count: int
-    tier_set: TierSet
 
 
 class ComparisonSession(BaseModel):
@@ -83,7 +70,6 @@ class ComparisonSession(BaseModel):
     list_id: uuid.UUID
     item_id: uuid.UUID
     status: ComparisonStatus
-    tier_set: TierSet
     revision: int
     comparisons_answered: int
     comparison_limit: int
@@ -98,7 +84,6 @@ class ComparisonSession(BaseModel):
 
 
 class ComparisonSessionStartRequest(BaseModel):
-    tier_set: TierSet
     restart: bool = False
     revision: int | None = None
 

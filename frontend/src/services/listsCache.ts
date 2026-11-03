@@ -7,7 +7,7 @@ export const listsCacheKey = (userId: string): string =>
   `cachedLists:${userId}`;
 
 export const listItemsCacheKey = (userId: string, listId: string): string =>
-  `cachedListItems:v1:${userId}:${listId}`;
+  `cachedListItems:v2:${userId}:${listId}`;
 
 const cacheWrites = new Map<string, Promise<void>>();
 
@@ -41,10 +41,6 @@ const isItem = (value: unknown, listId: string): value is Item => {
       (typeof candidate.rating === 'number' &&
         Number.isFinite(candidate.rating))) &&
     isNullableString(candidate.position) &&
-    (candidate.tier_set === null ||
-      candidate.tier_set === 'good' ||
-      candidate.tier_set === 'mid' ||
-      candidate.tier_set === 'bad') &&
     typeof candidate.created_at === 'string' &&
     typeof candidate.updated_at === 'string'
   );

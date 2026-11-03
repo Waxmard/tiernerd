@@ -150,14 +150,9 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         </View>
       ) : null}
       <View className="flex-row items-center gap-2">
-        <View className="flex-1 min-w-0 gap-1">
-          <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-            {rankedCount} of {itemCount} ranked
-          </Text>
-          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-            Stronger green = more preferred. Paler green = less preferred.
-          </Text>
-        </View>
+        <Text className="flex-1 min-w-0 text-body-medium text-ink-muted dark:text-ink-muted-dark">
+          {rankedCount} of {itemCount} ranked
+        </Text>
         <Button
           title="Add item"
           onPress={onAdd}

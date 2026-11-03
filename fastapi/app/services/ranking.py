@@ -4,25 +4,19 @@ import uuid
 
 from app.db.models import Item as ItemModel
 
-SCORE_BANDS: dict[str, tuple[float, float]] = {
-    "good": (7.0, 10.0),
-    "mid": (4.0, 7.0),
-    "bad": (1.0, 4.0),
-}
+
+def score_for_rank(rank: int, ranked_count: int) -> float:
+    """Return the score for a valid best-first rank in a nonempty list."""
+    if ranked_count == 1:
+        return 10.0
+    return round(10 * (ranked_count - rank) / (ranked_count - 1), 1)
 
 
-def assign_scores_for_set(sorted_items: list[ItemModel], tier_set: str) -> None:
-    """Assign ranked items scores within their tier set's band.
-
-    Items must be sorted from lowest to highest position.
-    """
-    band = SCORE_BANDS.get(tier_set)
-    if not sorted_items or band is None:
-        return
-    low, high = band
-    total = len(sorted_items)
-    for i, item in enumerate(sorted_items):
-        item.rating = round(low + (high - low) * (i + 0.5) / total, 1)
+def assign_scores(sorted_items: list[ItemModel]) -> None:
+    """Assign scores to items ordered by ascending position."""
+    ranked_count = len(sorted_items)
+    for index, item in enumerate(sorted_items):
+        item.rating = score_for_rank(ranked_count - index, ranked_count)
 
 
 def filter_ranked_items(

@@ -395,8 +395,7 @@ class TestDeleteList:
                 description=f"Description {i}",
                 image_url=f"https://example.com/img{i}.jpg",
                 position=f"a{i}",
-                rating=None,
-                tier_set="good",
+                rating=i * 5.0,
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
             )
@@ -449,40 +448,21 @@ class TestReadListItems:
         assert len(data) >= 1
         assert data[0]["name"] == test_item.name
 
-    async def test_read_list_items_multiple_tier_sets(
+    async def test_read_list_items_best_first_with_unranked_last(
         self,
         client: AsyncClient,
         test_list: ListModel,
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test reading items with multiple tier_sets."""
-        good_item = ItemModel(
-            item_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            name="Good Item",
-            description="A good item",
-            image_url="https://example.com/good.jpg",
-            position="a0",
-            rating=None,
-            tier_set="good",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+        lower = ItemModel(
+            list_id=test_list.list_id, name="Lower", position="a0", rating=0.0
         )
-        mid_item = ItemModel(
-            item_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            name="Mid Item",
-            description="A mid item",
-            image_url="https://example.com/mid.jpg",
-            position="a0",
-            rating=None,
-            tier_set="mid",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+        unranked = ItemModel(list_id=test_list.list_id, name="Unranked")
+        higher = ItemModel(
+            list_id=test_list.list_id, name="Higher", position="a1", rating=10.0
         )
-        test_db.add(good_item)
-        test_db.add(mid_item)
+        test_db.add_all([lower, unranked, higher])
         await test_db.commit()
 
         response = await client.get(
@@ -490,11 +470,12 @@ class TestReadListItems:
         )
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 2
-
-        tier_sets = {item["tier_set"] for item in data}
-        assert "good" in tier_sets
-        assert "mid" in tier_sets
+        assert [item["name"] for item in data] == ["Higher", "Lower", "Unranked"]
+        assert [(item["position"], item["rating"]) for item in data] == [
+            ("a1", 10.0),
+            ("a0", 0.0),
+            (None, None),
+        ]
 
     async def test_read_list_items_not_found(
         self,

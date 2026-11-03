@@ -5,7 +5,6 @@ import {
   type CreateItemResponse,
   type Item,
   isComparisonSession,
-  type TierSet,
 } from '../services/itemsService';
 import {
   cancelComparisonSession,
@@ -33,8 +32,8 @@ const CANCEL_EXISTING_ERROR =
 const RECOVERY_ERROR =
   'Unable to confirm whether your choice was saved. Reload the current question before trying again.';
 const START_RECOVERY_ERROR =
-  'Unable to confirm whether ranking was started. Reload the item before trying again.';
-const EMPTY_FORM: ItemFormDraft = { name: '', description: '', tierSet: null };
+  'Unable to confirm whether ranking was started. Try again to check its status.';
+const EMPTY_FORM: ItemFormDraft = { name: '', description: '' };
 const EMPTY_WORKSPACE: ItemWorkspaceState = {
   mode: 'closed',
   item: null,
@@ -239,29 +238,12 @@ export function useItemWorkspace({
       const form = {
         name: item.name,
         description: item.description ?? '',
-        tierSet: item.tier_set,
       };
       initialFormRef.current = form;
       pendingRefreshRef.current = null;
       autoCommitAttemptRef.current = null;
       recoveryRequiredRef.current = false;
       replaceWorkspace({ ...EMPTY_WORKSPACE, mode: 'edit', item, form });
-    },
-    [replaceWorkspace]
-  );
-  const openRange = useCallback(
-    (item: Item) => {
-      if (busyRef.current) return;
-      const form = {
-        name: item.name,
-        description: item.description ?? '',
-        tierSet: item.tier_set,
-      };
-      initialFormRef.current = form;
-      pendingRefreshRef.current = null;
-      autoCommitAttemptRef.current = null;
-      recoveryRequiredRef.current = false;
-      replaceWorkspace({ ...EMPTY_WORKSPACE, mode: 'range', item, form });
     },
     [replaceWorkspace]
   );
@@ -279,7 +261,6 @@ export function useItemWorkspace({
         form: {
           name: session.item.name,
           description: session.item.description ?? '',
-          tierSet: session.tier_set,
         },
       });
     },
@@ -291,7 +272,6 @@ export function useItemWorkspace({
       const current = workspaceRef.current;
       const fieldErrors = { ...current.fieldErrors };
       if ('name' in patch) delete fieldErrors.name;
-      if ('tierSet' in patch) delete fieldErrors.range;
       updateWorkspace({
         form: { ...current.form, ...patch },
         fieldErrors,
@@ -318,8 +298,6 @@ export function useItemWorkspace({
     if (!name) fieldErrors.name = 'Name is required';
     else if (Array.from(name).length > 100)
       fieldErrors.name = 'Name must be 100 characters or less';
-    if (current.mode === 'add' && !current.form.tierSet)
-      fieldErrors.range = 'Please pick a range';
     if (Object.keys(fieldErrors).length) {
       updateWorkspace({ fieldErrors, error: null });
       return;
@@ -339,7 +317,6 @@ export function useItemWorkspace({
           optionsRef.current.listTitle,
           name,
           current.form.description,
-          current.form.tierSet as TierSet,
           currentToken
         );
       } catch (error) {
@@ -398,64 +375,66 @@ export function useItemWorkspace({
     }
   }, [beginBusy, performPendingRefresh, setBusy, updateWorkspace]);
 
-  const startRanking = useCallback(async () => {
-    const current = workspaceRef.current;
-    if (busyRef.current || current.mode !== 'range' || !current.item) return;
-    const tierSet = current.form.tierSet;
-    if (!tierSet) {
-      updateWorkspace({ fieldErrors: { range: 'Please pick a range' } });
-      return;
-    }
-    const currentToken = optionsRef.current.token;
-    if (!currentToken) {
-      updateWorkspace({ error: 'Authentication required' });
-      return;
-    }
-    if (!beginBusy()) return;
-    const recoveryRequired = recoveryRequiredRef.current;
-    try {
-      const result = await startItemRanking(
-        current.item.item_id,
-        tierSet,
-        currentToken,
-        recoveryRequired
-      );
-      if (result.kind === 'session') {
+  const startRanking = useCallback(
+    async (item: Item) => {
+      const current = workspaceRef.current;
+      if (busyRef.current || current.mode !== 'closed') return;
+      if (current.item?.item_id !== item.item_id) {
+        pendingRefreshRef.current = null;
+        autoCommitAttemptRef.current = null;
         recoveryRequiredRef.current = false;
-        updateWorkspace({
-          mode: 'ranking',
-          item: result.session.item,
-          session: result.session,
-          error: null,
-          ...(!recoveryRequired ? { fieldErrors: {} } : {}),
-        });
-      } else if (result.kind === 'not-started') {
-        recoveryRequiredRef.current = false;
-        updateWorkspace({ error: 'Ranking was not started. Try again.' });
-      } else if (result.kind === 'failed') {
-        recoveryRequiredRef.current = false;
-        updateWorkspace({
-          error: getApiErrorMessage(
-            result.error,
-            result.error instanceof ApiError && result.error.status === 409
-              ? 'Finish or cancel the current ranking first.'
-              : 'Unable to start ranking. Try again.'
-          ),
-        });
-      } else if (result.kind === 'missing') {
-        pendingRefreshRef.current = {
-          closeAfter: true,
-          closeOnRefreshFailure: true,
-        };
-        await performPendingRefresh();
-      } else {
-        recoveryRequiredRef.current = true;
-        updateWorkspace({ error: START_RECOVERY_ERROR });
       }
-    } finally {
-      setBusy(false);
-    }
-  }, [beginBusy, performPendingRefresh, setBusy, updateWorkspace]);
+      updateWorkspace({ item, error: null, fieldErrors: {} });
+      const currentToken = optionsRef.current.token;
+      if (!currentToken) {
+        updateWorkspace({ error: 'Authentication required' });
+        return;
+      }
+      if (!beginBusy()) return;
+      const recoveryRequired = recoveryRequiredRef.current;
+      try {
+        const result = await startItemRanking(
+          item.item_id,
+          currentToken,
+          recoveryRequired
+        );
+        if (result.kind === 'session') {
+          recoveryRequiredRef.current = false;
+          updateWorkspace({
+            mode: 'ranking',
+            item: result.session.item,
+            session: result.session,
+            error: null,
+          });
+        } else if (result.kind === 'not-started') {
+          recoveryRequiredRef.current = false;
+          updateWorkspace({ error: 'Ranking was not started. Try again.' });
+        } else if (result.kind === 'failed') {
+          recoveryRequiredRef.current = false;
+          updateWorkspace({
+            error: getApiErrorMessage(
+              result.error,
+              result.error instanceof ApiError && result.error.status === 409
+                ? 'Finish or cancel the current ranking first.'
+                : 'Unable to start ranking. Try again.'
+            ),
+          });
+        } else if (result.kind === 'missing') {
+          pendingRefreshRef.current = {
+            closeAfter: true,
+            closeOnRefreshFailure: true,
+          };
+          await performPendingRefresh();
+        } else {
+          recoveryRequiredRef.current = true;
+          updateWorkspace({ error: START_RECOVERY_ERROR });
+        }
+      } finally {
+        setBusy(false);
+      }
+    },
+    [beginBusy, performPendingRefresh, setBusy, updateWorkspace]
+  );
 
   const performAction = useCallback(
     async (
@@ -714,7 +693,11 @@ export function useItemWorkspace({
       }
     }
     current = workspaceRef.current;
-    if (current.mode === 'closed') return true;
+    if (current.mode === 'closed') {
+      if (current.item || current.error || recoveryRequiredRef.current)
+        closeWorkspace();
+      return true;
+    }
     const session = current.session;
     if (
       current.mode === 'ranking' &&
@@ -750,8 +733,7 @@ export function useItemWorkspace({
     if (current.mode === 'add' || current.mode === 'edit') {
       const dirty =
         current.form.name !== initialFormRef.current.name ||
-        current.form.description !== initialFormRef.current.description ||
-        current.form.tierSet !== initialFormRef.current.tierSet;
+        current.form.description !== initialFormRef.current.description;
       if (dirty) {
         if (!beginBusy()) return false;
         const confirmed = await confirmDestructive(
@@ -779,7 +761,6 @@ export function useItemWorkspace({
     recoveryRequired: recoveryRequiredRef.current,
     openAdd,
     openEdit,
-    openRange,
     resume,
     setForm,
     submitMetadata,

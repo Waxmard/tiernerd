@@ -1,6 +1,5 @@
 import { api } from './api';
 
-export type TierSet = 'good' | 'mid' | 'bad';
 export type ComparisonStatus =
   | 'active'
   | 'ready_to_commit'
@@ -15,7 +14,6 @@ export interface Item {
   image_url: string | null;
   rating: number | null;
   position: string | null;
-  tier_set: TierSet | null;
   created_at: string;
   updated_at: string;
 }
@@ -25,7 +23,6 @@ export interface ComparisonSession {
   list_id: string;
   item_id: string;
   status: ComparisonStatus;
-  tier_set: TierSet;
   revision: number;
   comparisons_answered: number;
   comparison_limit: number;
@@ -41,7 +38,6 @@ export interface ComparisonSession {
     score: number;
     rank: number;
     ranked_count: number;
-    tier_set: TierSet;
   } | null;
   created_at: string;
   updated_at: string;
@@ -49,7 +45,6 @@ export interface ComparisonSession {
 
 export interface CreateItemRequest {
   name: string;
-  tier_set: TierSet;
   description?: string;
   image_url?: string;
 }
@@ -95,14 +90,13 @@ export const itemsService = {
 
   startComparison: (
     itemId: string,
-    tierSet: TierSet,
     restart: boolean,
     revision: number | null,
     token: string
   ): Promise<ComparisonSession> =>
     api.post<ComparisonSession>(
       `/api/items/items/${itemId}/comparison-session`,
-      { tier_set: tierSet, restart, revision },
+      { restart, revision },
       token
     ),
 

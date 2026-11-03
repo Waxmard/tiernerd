@@ -91,45 +91,6 @@ async def get_by_list_id(
     return list(result.scalars().all())
 
 
-async def get_by_list_and_tier_set(
-    db: AsyncSession,
-    list_id: uuid.UUID,
-    tier_set: str,
-    *,
-    populate_existing: bool = True,
-) -> list[ItemModel]:
-    query = select(ItemModel).where(
-        ItemModel.list_id == list_id,
-        ItemModel.tier_set == tier_set,
-    )
-    if populate_existing:
-        query = query.execution_options(populate_existing=True)
-    result = await db.execute(query)
-    return list(result.scalars().all())
-
-
-async def get_ranked_by_list_and_tier_set(
-    db: AsyncSession,
-    list_id: uuid.UUID,
-    tier_set: str,
-    *,
-    populate_existing: bool = True,
-) -> list[ItemModel]:
-    query = (
-        select(ItemModel)
-        .where(
-            ItemModel.list_id == list_id,
-            ItemModel.tier_set == tier_set,
-            ItemModel.position.isnot(None),
-        )
-        .order_by(ItemModel.position)
-    )
-    if populate_existing:
-        query = query.execution_options(populate_existing=True)
-    result = await db.execute(query)
-    return list(result.scalars().all())
-
-
 async def create(db: AsyncSession, item: ItemModel) -> ItemModel:
     db.add(item)
     await db.flush()

@@ -86,7 +86,6 @@ class Item(Base):
     image_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     position: Mapped[str | None] = mapped_column(String(255), nullable=True)
     rating: Mapped[float | None] = mapped_column(nullable=True)
-    tier_set: Mapped[str | None] = mapped_column(String(10), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -104,9 +103,8 @@ class Item(Base):
 
 
 Index(
-    "ix_items_list_tier_position",
+    "ix_items_list_position",
     Item.list_id,
-    Item.tier_set,
     Item.position,
     postgresql_where=Item.position.isnot(None),
     sqlite_where=Item.position.isnot(None),
@@ -133,7 +131,6 @@ class ComparisonSession(Base):
     target_item_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("items.item_id"), nullable=True
     )
-    tier_set: Mapped[str] = mapped_column(String(10))
     min_index: Mapped[int] = mapped_column(default=0)
     max_index: Mapped[int] = mapped_column(default=0)
     comparison_index: Mapped[int] = mapped_column(default=0)
