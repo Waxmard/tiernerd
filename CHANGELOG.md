@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/Waxmard/tiernerd/compare/v0.7.1...v0.8.0) (2026-11-03)
+
+
+### Features
+
+* restore navigation state and list scroll position on reload ([#116](https://github.com/Waxmard/tiernerd/issues/116)) ([29d26a2](https://github.com/Waxmard/tiernerd/commit/29d26a296fc509c6ce21ef33bd74b05b47a8eb0b))
+
 ## [0.7.1](https://github.com/Waxmard/tiernerd/compare/v0.7.0...v0.7.1) (2026-10-29)
 
 
