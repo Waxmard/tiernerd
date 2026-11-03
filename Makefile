@@ -40,8 +40,6 @@ ci:        backend-ci frontend-lint frontend-typecheck frontend-unit scripts-tes
 line-limit:
 	@bash scripts/check-line-limit.sh
 
-# ----- Backend: delegate any backend-* to fastapi/Makefile -----
-
 backend-%:
 	$(MAKE) -C fastapi $*
 

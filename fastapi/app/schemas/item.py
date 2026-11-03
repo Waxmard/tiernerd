@@ -6,8 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 
 class ItemBase(BaseModel):
-    """Base item schema with shared properties."""
-
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     image_url: HttpUrl | None = None
@@ -19,12 +17,10 @@ class ItemBase(BaseModel):
 
 
 class ItemCreate(ItemBase):
-    """Schema for item creation."""
+    pass
 
 
 class ItemUpdate(BaseModel):
-    """Schema for item update."""
-
     name: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = None
     image_url: HttpUrl | None = None
@@ -38,8 +34,6 @@ class ItemUpdate(BaseModel):
 
 
 class Item(ItemBase):
-    """Schema for item response."""
-
     item_id: uuid.UUID
     list_id: uuid.UUID
     position: str | None = None

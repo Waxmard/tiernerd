@@ -1,7 +1,6 @@
 import { api } from './api';
 import { ApiError, getApiErrorMessage } from './apiError';
 
-// Types matching backend schemas
 export interface User {
   user_id: string;
   email: string;
@@ -58,9 +57,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Validate a stored token by fetching user info
-   */
   async validateToken(token: string): Promise<AuthResult> {
     try {
       const user = await api.get<User>('/api/users/me', token);

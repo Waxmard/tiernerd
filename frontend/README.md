@@ -4,7 +4,7 @@ React Native mobile app built with Expo SDK 54.
 
 ## Browsing and ranking
 
-User-facing flows are documented in [README.md](../README.md#ranking-lists); this section covers layout, appearance and caching.
+User-facing flows live in [README.md](../README.md#ranking-lists).
 
 Home shows the most recently modified lists first, including when displaying cached lists. Editing an item updates its list's modification time; opening a list does not.
 

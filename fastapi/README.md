@@ -38,7 +38,7 @@ Setup, quality targets and the Cloud Run dev loop: see [AGENTS.md](../AGENTS.md#
 - **Framework**: `pytest` with `pytest-asyncio` for async support
 - **Test Database**: SQLite in-memory for fast, isolated tests
 - **HTTP Client**: `httpx.AsyncClient` for endpoint testing
-- **Tests**: Test modules and fixtures live in `tests/`, including ranking algorithm tests in `tests/app/utils/test_algorithm.py`.
+- **Tests**: Test modules and fixtures live in `tests/`.
 
 ```bash
 uv sync --locked                                    # Install deps incl. dev group
@@ -47,22 +47,15 @@ uv run pytest tests/test_users.py -k google           # Google sign-in tests
 uv run pytest --cov=app --cov-report=html           # Coverage report
 ```
 
-### Coverage Areas
-
-- **Users**: Google sign-in, tokens, current user, invalid tokens, and authorization
-- **Lists**: CRUD, pagination, authorization (cross-user access denied)
-- **Items**: CRUD, comparison workflow (better/worse), session management, authorization
-- **Algorithm**: binary search ranking, winner/loser logic, range narrowing, edge cases
-
 ## Project Structure
 
 Module layout, layering and the tach boundary rule: see [AGENTS.md](../AGENTS.md#backend-structure-fastapiapp).
 
 ## Ranking Algorithm
 
-The ranking algorithm is implemented in `app/core/algorithm.py` and uses binary search to efficiently determine item positions through pairwise comparisons.
+The ranking service uses binary search in `app/services/comparison_service.py` to determine item positions through pairwise comparisons.
 
-Draft sessions persist in the database. Answers and one-step undo update the draft, not the saved item. Comparisons use all other ranked items in the list. Commit applies the new position and recalculates scores across the list. For best-first rank `r` among `n` ranked items, the score is `round(10 * (n - r) / (n - 1), 1)` when `n > 1`; a single ranked item scores 10.0. Unranked items have null positions and ratings. Mutation requests carry the current session revision; stale revisions or changed ranking snapshots return 409. Status reads expose stale drafts so the client can restart them.
+Draft sessions persist in the database. Answers and one-step undo update the draft, not the saved item. Comparisons use all other ranked items in the list. Commit applies the new position and recalculates scores across the list (see [Ranking lists](../README.md#ranking-lists) for the score formula). Unranked items have null positions and ratings. Mutation requests carry the current session revision; stale revisions or changed ranking snapshots return 409. Status reads expose stale drafts so the client can restart them.
 
 Each list has a `ranking_mode` of `score` (the default) or `rank`. Set it when creating a list or updating its metadata. Both modes retain the same positions, ratings, and comparison workflow; switching modes changes presentation only.
 

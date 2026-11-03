@@ -21,7 +21,6 @@ async def startup() -> None:
 
 @app.get("/")
 async def root() -> dict[str, str]:
-    """Root endpoint."""
     return {"message": "Welcome to the Ranking App API"}
 
 

@@ -41,7 +41,6 @@ async function request<T>(
     throw new ApiError(response.status, response.statusText, errorData);
   }
 
-  // Handle empty responses
   const text = await response.text();
   if (!text) {
     return {} as T;

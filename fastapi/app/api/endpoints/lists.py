@@ -49,7 +49,6 @@ async def create_list(
     """
     Create new list.
     """
-    # Check if list with same name already exists for this user
     existing = await list_crud.get_by_title_and_user(db, name, current_user.user_id)
     if existing:
         raise HTTPException(
@@ -99,7 +98,6 @@ async def read_list_items(
     """
     Get all items for a list, best first; unranked items last.
     """
-    # Verify list exists and belongs to current user
     list_obj = await list_crud.get_by_id_and_user(db, list_id, current_user.user_id)
     if not list_obj:
         raise HTTPException(

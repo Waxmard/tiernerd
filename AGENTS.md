@@ -1,7 +1,5 @@
 # Repository Guidelines
 
-This file provides guidance to AI agents working in this repository.
-
 ## Project Overview
 
 Monorepo: React Native/Expo frontend (`frontend/`), FastAPI backend (`fastapi/`). Product overview in [README.md](README.md).
@@ -25,13 +23,6 @@ make setup       # installs root deps (incl. lefthook git hooks), frontend deps,
 
 The backend's interpreter is pinned twice and both must move together: `mise.toml` for local dev, `fastapi/.python-version` for uv (CI and anyone not running mise). CI has no mise, so without that file `uv sync` resolves the newest CPython satisfying `requires-python` and can pick a version the locked dependencies have no wheels for.
 
-Or step-by-step:
-
-1. `mise install` (installs node, python, uv at pinned versions)
-2. `npm install` (root, installs lefthook + git hooks via `prepare` script)
-3. `cd frontend && npm install`
-4. `cd ../fastapi && uv sync --locked`
-
 ## Development Commands
 
 ### Root (cross-project)
@@ -45,8 +36,6 @@ make test          # backend pytest w/ coverage
 make ci            # lint + typecheck + boundaries + test + line-limit
 make backend-<X>   # delegates to fastapi/Makefile target X (e.g. backend-logs, backend-health, backend-lint)
 ```
-
-Backend quality targets (lint/fix/format/typecheck/test/ci) live in `fastapi/Makefile` and are reachable from root via the `backend-` prefix or directly when in `fastapi/`.
 
 ### Backend (fastapi/)
 
@@ -169,13 +158,13 @@ Autofixed files are re-staged automatically (`stage_fixed: true`). Hooks install
 
 - `api/endpoints/` — Route handlers (users, lists, items)
 - `services/` — Business logic (auth/JWT, comparison, list, ranking)
-- `core/` — Pure utilities (constants, ranking algorithm, fractional index)
+- `core/` — Pure utilities (constants, fractional index)
 - `crud/` — Database operations
 - `db/` — SQLAlchemy models and async database setup
 - `schemas/` — Pydantic request/response models
 - `settings.py` — Configuration via pydantic-settings
 
-Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml`). Layering: `main → api → services → crud → db`. `api` may also call `crud` directly (endpoint handlers use `crud_*` helpers); this is intentional, not a violation. `core` is a pure leaf (constants, algorithm, fractional_index) reachable from `api`/`services`/`crud`. `schemas`/`settings`/`utils` are cross-cutting. Run `make backend-boundaries` (or `uv run tach check` in `fastapi/`) to verify.
+Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml`). Layering: `main → api → services → crud → db`. `api` may also call `crud` directly (endpoint handlers use `crud_*` helpers); this is intentional, not a violation. `core` is a pure leaf (constants, fractional_index) reachable from `api`/`services`/`crud`. `schemas`/`settings` are cross-cutting. Run `make backend-boundaries` (or `uv run tach check` in `fastapi/`) to verify.
 
 ### Frontend Structure (`frontend/src/`)
 
@@ -193,7 +182,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 - **Backend**: Async SQLAlchemy 2.0+, FastAPI dependency injection, JWT auth
 - **Frontend**: Context API for state, token-based design system, TypeScript strict mode
 - **Items**: Ordered via Base-62 fractional index `position` column (`app/core/fractional_index.py`)
-- **Ranking**: Binary search algorithm in `app/core/algorithm.py`
+- **Ranking**: Binary search comparison workflow in `app/services/comparison_service.py`
 
 ### Database
 

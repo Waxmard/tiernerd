@@ -20,8 +20,6 @@ your items ──1v1 comparisons──▶ TierNerd ──▶ ranked list, with p
 |:---:|:---:|
 | ![Login](screenshots/login.png) | ![Home](screenshots/home-empty.png) |
 
-See the [screenshots/](screenshots/) directory for all available screenshots.
-
 ## Technology
 
 - **Frontend:** React Native with Expo (SDK 54)
@@ -47,15 +45,6 @@ make dev                          # Start with Docker (auto-seeds dev user)
 ```
 
 See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/README.md) for detailed setup instructions.
-
-## Layout
-
-|Path|What|
-|---|---|
-|`fastapi/`|FastAPI backend — async SQLAlchemy on PostgreSQL, with the comparison and ranking services|
-|`frontend/`|Expo / React Native app (iOS)|
-|`scripts/`|Repo-wide tooling — line-limit check, iOS and TestFlight builds|
-|`screenshots/`|Screenshots referenced above|
 
 ## Ranking lists
 

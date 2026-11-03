@@ -10,7 +10,6 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import uuid
@@ -71,10 +70,8 @@ async def seed_users(session: AsyncSession) -> None:
 
 
 async def main(clear: bool = False) -> None:
-    """Main seed function."""
     print("Starting database seed...")
 
-    # Create tables if they don't exist
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
