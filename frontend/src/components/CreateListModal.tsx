@@ -252,6 +252,7 @@ export const CreateListContent = forwardRef<
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Ranking mode: ${rankingMode === 'rank' ? 'Ranked positions' : 'Scores out of 10'}`}
+            accessibilityHint="Choose ranking mode"
             accessibilityState={{ disabled: isLoading }}
             disabled={isLoading}
             onPress={() => {

@@ -77,7 +77,10 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
           ) : null}
         </View>
         {ranked && (rankingMode === 'rank' ? rank !== null : score !== null) ? (
-          <Text className="ml-3 shrink-0 text-body-medium font-semibold text-ink dark:text-ink-dark">
+          <Text
+            style={{ fontVariant: ['tabular-nums'] }}
+            className="ml-3 shrink-0 text-body-medium font-semibold text-ink dark:text-ink-dark"
+          >
             {rankingMode === 'rank' ? rank : score}
           </Text>
         ) : null}

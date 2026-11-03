@@ -144,7 +144,14 @@ export function ItemDetailContent({
               </Text>
             ) : null}
             {rank !== null ? (
-              <Text className="text-body-medium text-ink dark:text-ink-dark">
+              <Text
+                style={TABULAR_NUMS}
+                className={
+                  rankingMode === 'rank'
+                    ? SCORE_CLASS
+                    : 'text-body-medium text-ink dark:text-ink-dark'
+                }
+              >
                 Rank #{rank} of {rankedCount}
               </Text>
             ) : null}

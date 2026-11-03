@@ -33,43 +33,60 @@ export function RankingModeSelector({
 }) {
   const colors = useThemeColors();
   return (
-    <View accessibilityRole="radiogroup" className="gap-3">
-      {choices.map((choice) => (
-        <Pressable
-          key={choice.value}
-          accessibilityRole="radio"
-          accessibilityLabel={`${choice.title}. ${choice.description}`}
-          accessibilityState={{ checked: value === choice.value, disabled }}
-          disabled={disabled}
-          onPress={() => onChange(choice.value)}
-          className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-3"
-        >
-          <Ionicons
-            name={
-              value === choice.value ? 'radio-button-on' : 'radio-button-off'
+    <View
+      accessibilityRole="radiogroup"
+      accessibilityLabel="Ranking mode"
+      className="gap-3"
+    >
+      {choices.map((choice) => {
+        const selected = value === choice.value;
+        return (
+          <Pressable
+            key={choice.value}
+            accessibilityRole="radio"
+            accessibilityLabel={`${choice.title}. ${choice.description}`}
+            accessibilityState={{ checked: selected, disabled }}
+            disabled={disabled}
+            onPress={() => onChange(choice.value)}
+            style={({ pressed }) =>
+              pressed && !disabled
+                ? { transform: [{ scale: 0.98 }] }
+                : undefined
             }
-            size={22}
-            color={
-              colors[
-                disabled
-                  ? 'ink-disabled'
-                  : value === choice.value
-                    ? 'accent-text'
-                    : 'ink-muted'
-              ]
-            }
-            accessible={false}
-          />
-          <View className="flex-1 min-w-0">
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              {choice.title}
-            </Text>
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-              {choice.description}
-            </Text>
-          </View>
-        </Pressable>
-      ))}
+            className={[
+              'flex-row min-h-11 items-center gap-3 border rounded-[10px] px-3 py-3',
+              selected
+                ? 'border-accent dark:border-accent-dark bg-accent-tint dark:bg-accent-tint-dark'
+                : 'border-control dark:border-control-dark',
+            ].join(' ')}
+          >
+            <Ionicons
+              name={
+                value === choice.value ? 'radio-button-on' : 'radio-button-off'
+              }
+              size={22}
+              color={
+                colors[
+                  disabled
+                    ? 'ink-disabled'
+                    : value === choice.value
+                      ? 'accent-text'
+                      : 'ink-muted'
+                ]
+              }
+              accessible={false}
+            />
+            <View className="flex-1 min-w-0">
+              <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+                {choice.title}
+              </Text>
+              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+                {choice.description}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -130,6 +147,9 @@ export function ListRankingOptions({
           onVisibilityChange(true);
           setOpen(true);
         }}
+        style={({ pressed }) =>
+          pressed && !disabled ? { opacity: 0.7 } : undefined
+        }
         className="w-11 h-11 items-center justify-center shrink-0"
       >
         <Ionicons
