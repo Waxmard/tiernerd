@@ -40,6 +40,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "PL", "S"]
 ignore = [
     "PLR0911",  # too-many-return-statements
     "PLR0913",  # too-many-arguments (noisy with FastAPI Depends + CRUD)
+    "PLR0917",
     "PLR2004",  # magic-value-comparison (too noisy in tests, HTTP codes)
 ]
 
