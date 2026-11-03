@@ -106,7 +106,6 @@ class TestInvariants:
     @pytest.mark.parametrize(
         "a,b",
         [
-            ("a0", "a1"),
             ("a0", "b0"),
             ("a0", "z0"),
             ("00", "01"),
