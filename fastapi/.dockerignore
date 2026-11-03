@@ -73,7 +73,6 @@ Makefile
 pytest.ini
 tach.toml
 tach_module_graph.dot
-UNKNOWN.egg-info/
 
 # Documentation
 README.md
