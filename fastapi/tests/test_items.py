@@ -599,14 +599,12 @@ class TestItemOwnership:
         test_db.add(user2_item)
         await test_db.commit()
 
-        # Verify user2 can read their own item
         response = await client.get(
             f"/api/items/items/{user2_item.item_id}",
             headers=auth_headers_user2,
         )
         assert response.status_code == 200
 
-        # Verify user2 can update their own item
         response = await client.put(
             f"/api/items/items/{user2_item.item_id}",
             json={"name": "Updated Name"},

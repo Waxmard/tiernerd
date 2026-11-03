@@ -33,7 +33,6 @@ class TestReadLists:
         assert "description" in list_data
         assert "item_count" in list_data
 
-        # Verify data matches database
         result = await test_db.execute(
             select(ListModel).where(ListModel.user_id == test_user.user_id)
         )
@@ -56,14 +55,12 @@ class TestReadLists:
         auth_headers_user2: dict,
     ):
         """Test that users only see their own lists."""
-        # User 1 should see their list
         response = await client.get("/api/lists/", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 1
         assert str(data[0]["user_id"]) == str(test_user.user_id)
 
-        # User 2 should not see user 1's lists
         response = await client.get("/api/lists/", headers=auth_headers_user2)
         assert response.status_code == 200
         data = response.json()

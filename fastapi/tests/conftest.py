@@ -22,7 +22,6 @@ from app.db.models import Base, Item as ItemModel, List as ListModel, User
 from app.main import app
 from app.services.auth import create_access_token
 
-# Test database URL - using SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 

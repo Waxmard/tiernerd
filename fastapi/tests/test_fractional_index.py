@@ -87,7 +87,6 @@ class TestCommonPrefix:
         assert result.startswith("a0")  # extends a, doesn't replace
 
     def test_suffix_with_max_char_falls_through(self) -> None:
-        # suffix ends in max char ('z') — line 125 condition fails
         result = generate_key_between("a0z", "a1")
         assert "a0z" < result < "a1"
 
