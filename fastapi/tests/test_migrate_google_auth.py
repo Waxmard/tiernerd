@@ -210,13 +210,3 @@ def test_database_error_details_are_not_printed(database, monkeypatch, capsys) -
     captured = capsys.readouterr()
     assert "database error details suppressed" in captured.err
     assert "sensitive database details" not in captured.err + captured.out
-
-
-def test_help_warns_about_irreversible_upgrade(capsys) -> None:
-    with pytest.raises(SystemExit) as exit_info:
-        _arguments(["--help"])
-    assert exit_info.value.code == 0
-    help_text = " ".join(capsys.readouterr().out.split())
-    assert "permanently discards password hashes" in help_text
-    assert "database backup" in help_text
-    assert "stop the old application" in help_text

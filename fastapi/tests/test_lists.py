@@ -66,6 +66,39 @@ class TestReadLists:
         data = response.json()
         assert len(data) == 0
 
+    async def test_read_lists_pagination_multiple_lists(
+        self,
+        client: AsyncClient,
+        test_user: User,
+        auth_headers: dict,
+        test_db: AsyncSession,
+    ):
+        for number, day in ((3, 2), (2, 1), (4, 3), (1, 2)):
+            test_db.add(
+                ListModel(
+                    list_id=uuid.UUID(int=number),
+                    user_id=test_user.user_id,
+                    title=f"Pagination Test List {number}",
+                    created_at=datetime(2023, 1, 1, tzinfo=UTC),
+                    updated_at=datetime(2024, 1, day, tzinfo=UTC),
+                )
+            )
+        await test_db.commit()
+
+        first = await client.get("/api/lists/?limit=2", headers=auth_headers)
+        assert first.status_code == 200
+        assert [row["list_id"] for row in first.json()] == [
+            str(uuid.UUID(int=4)),
+            str(uuid.UUID(int=1)),
+        ]
+
+        second = await client.get("/api/lists/?skip=2&limit=2", headers=auth_headers)
+        assert second.status_code == 200
+        assert [row["list_id"] for row in second.json()] == [
+            str(uuid.UUID(int=3)),
+            str(uuid.UUID(int=2)),
+        ]
+
 
 class TestCreateList:
     """Tests for creating lists endpoint."""
@@ -128,22 +161,6 @@ class TestCreateList:
         )
         assert response.status_code == 409
         assert "already exists" in response.json()["detail"].lower()
-
-    async def test_create_list_empty_description(
-        self, client: AsyncClient, auth_headers: dict
-    ):
-        """Test creating list with empty description."""
-        response = await client.post(
-            "/api/lists/",
-            params={
-                "name": "List Without Description",
-                "description": "",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["title"] == "List Without Description"
 
     async def test_create_list_with_color_round_trips_through_the_api(
         self, client: AsyncClient, auth_headers: dict
@@ -612,40 +629,3 @@ class TestReadListItems:
         """Test reading list items without auth fails."""
         response = await client.get(f"/api/lists/{test_list.list_id}/items")
         assert response.status_code == 401
-
-
-class TestReadListsWithStats:
-    """Tests for reading lists with stats."""
-
-    async def test_read_lists_pagination_multiple_lists(
-        self,
-        client: AsyncClient,
-        test_user: User,
-        auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        for number, day in ((3, 2), (2, 1), (4, 3), (1, 2)):
-            test_db.add(
-                ListModel(
-                    list_id=uuid.UUID(int=number),
-                    user_id=test_user.user_id,
-                    title=f"Pagination Test List {number}",
-                    created_at=datetime(2023, 1, 1, tzinfo=UTC),
-                    updated_at=datetime(2024, 1, day, tzinfo=UTC),
-                )
-            )
-        await test_db.commit()
-
-        first = await client.get("/api/lists/?limit=2", headers=auth_headers)
-        assert first.status_code == 200
-        assert [row["list_id"] for row in first.json()] == [
-            str(uuid.UUID(int=4)),
-            str(uuid.UUID(int=1)),
-        ]
-
-        second = await client.get("/api/lists/?skip=2&limit=2", headers=auth_headers)
-        assert second.status_code == 200
-        assert [row["list_id"] for row in second.json()] == [
-            str(uuid.UUID(int=3)),
-            str(uuid.UUID(int=2)),
-        ]

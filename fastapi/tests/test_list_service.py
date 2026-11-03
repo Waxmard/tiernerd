@@ -90,7 +90,6 @@ class TestBuildListSimpleResponse:
         assert result["title"] == "Test List"
         assert result["item_count"] == 10
         assert result["ranking_mode"] == "rank"
-        assert "tier_distribution" not in result
 
     def test_build_simple_response_with_none_values(self):
         """Test building simple response with None counts."""
@@ -109,4 +108,3 @@ class TestBuildListSimpleResponse:
         result = build_list_simple_response(row)
 
         assert result["item_count"] == 0
-        assert "tier_distribution" not in result

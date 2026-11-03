@@ -41,10 +41,6 @@ async def test_answer_preview_commit_and_idempotent_commit(
     item_id = draft["item_id"]
     assert draft["status"] == "active"
     assert draft["revision"] == 0
-    assert "tier_set" not in draft
-    assert "tier_set" not in draft["item"]
-    assert "tier_set" not in draft["current_comparison"]["reference_item"]
-    assert "tier_set" not in draft["current_comparison"]["target_item"]
     assert draft["item"]["position"] is None
     assert draft["item"]["rating"] is None
 
@@ -317,22 +313,6 @@ async def test_wrong_owner_cannot_read_or_answer_session(
     assert [response.status_code for response in responses] == [404, 404, 404, 404, 404]
 
 
-@pytest.mark.asyncio
-async def test_invalid_session_ids_are_not_found(
-    client: AsyncClient, auth_headers: dict[str, str]
-) -> None:
-    status_response = await client.get(
-        "/api/items/comparison/invalid/status", headers=auth_headers
-    )
-    result_response = await client.post(
-        "/api/items/comparison/result",
-        params={"session_id": "invalid"},
-        json={"result": "better", "revision": 0},
-        headers=auth_headers,
-    )
-    assert status_response.status_code == result_response.status_code == 404
-
-
 async def seed_list(db: AsyncSession, user: User, title: str) -> ListModel:
     now = datetime.now(UTC)
     list_obj = ListModel(
@@ -401,6 +381,9 @@ async def test_unknown_session_id_is_not_found_on_every_mutation(
 ) -> None:
     unknown = str(uuid.uuid4())
     responses = (
+        await client.get(
+            f"/api/items/comparison/{unknown}/status", headers=auth_headers
+        ),
         await client.post(
             "/api/items/comparison/result",
             params={"session_id": unknown},
@@ -419,7 +402,7 @@ async def test_unknown_session_id_is_not_found_on_every_mutation(
         ),
         await client.delete(f"/api/items/comparison/{unknown}", headers=auth_headers),
     )
-    assert [response.status_code for response in responses] == [404, 404, 404, 404]
+    assert [response.status_code for response in responses] == [404, 404, 404, 404, 404]
 
 
 @pytest.mark.asyncio

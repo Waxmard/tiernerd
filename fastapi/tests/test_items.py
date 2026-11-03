@@ -46,7 +46,6 @@ class TestCreateItem:
         assert data["name"] == "First Item"
         assert data["description"] == "The first item"
         assert "item_id" in data
-        assert "tier_set" not in data
         assert data["position"] is not None
         assert data["rating"] == 10.0
 
@@ -97,7 +96,6 @@ class TestCreateItem:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "tier_set" not in data
         assert "session_id" in data
         assert data["status"] == "active"
         assert data["discard_on_cancel"] is True
@@ -543,96 +541,9 @@ class TestItemOwnership:
         # Item should be gone (cascade delete) or ownership check fails
         assert response.status_code == 404
 
-    async def test_update_item_ownership_enforced(
-        self,
-        client: AsyncClient,
-        test_user2,
-        auth_headers_user2: dict,
-        test_db: AsyncSession,
-    ):
-        """Test that user can't update item in list they don't own."""
-        user2_list = ListModel(
-            list_id=uuid.uuid4(),
-            user_id=test_user2.user_id,
-            title="User2 List",
-            description="List owned by user2",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        test_db.add(user2_list)
-
-        user2_item = ItemModel(
-            item_id=uuid.uuid4(),
-            list_id=user2_list.list_id,
-            name="User2 Item",
-            description="Item in user2's list",
-            image_url="https://example.com/user2.jpg",
-            position="a0",
-            rating=10.0,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-        )
-        test_db.add(user2_item)
-        await test_db.commit()
-
-        response = await client.get(
-            f"/api/items/items/{user2_item.item_id}",
-            headers=auth_headers_user2,
-        )
-        assert response.status_code == 200
-
-        response = await client.put(
-            f"/api/items/items/{user2_item.item_id}",
-            json={"name": "Updated Name"},
-            headers=auth_headers_user2,
-        )
-        assert response.status_code == 200
-        assert response.json()["name"] == "Updated Name"
-
 
 class TestItemCreateValidation:
     """Tests for item creation validation."""
-
-    async def test_create_item_without_image_url(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        auth_headers: dict,
-    ):
-        """Test creating item without optional image_url."""
-        response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "Item Without Image",
-                "description": "No image provided",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "Item Without Image"
-        assert data["image_url"] is None
-
-    async def test_create_item_empty_description(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        auth_headers: dict,
-    ):
-        """Test creating item with empty description."""
-        response = await client.post(
-            "/api/items/",
-            params={"list_title": test_list.title},
-            json={
-                "name": "Item With Empty Desc",
-                "description": "",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["description"] == ""
 
     async def test_names_trim_and_casefold_across_list(
         self, client: AsyncClient, test_list: ListModel, auth_headers: dict

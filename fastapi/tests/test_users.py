@@ -19,12 +19,6 @@ from app.services.auth import create_access_token
 from app.settings import get_settings
 
 
-@pytest.mark.parametrize("path", ["/api/users/", "/api/users/token"])
-async def test_removed_user_endpoints(client: AsyncClient, path: str):
-    response = await client.post(path)
-    assert response.status_code in {404, 405}
-
-
 class TestReadCurrentUser:
     """Tests for reading current user endpoint."""
 

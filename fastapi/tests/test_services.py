@@ -132,28 +132,16 @@ async def test_changed_peer_makes_draft_stale_without_mutation(
 
 
 class TestRankingService:
-    def test_filter_ranked_items_empty(self) -> None:
-        assert filter_ranked_items([]) == []
-
-    def test_filter_ranked_items_all_ranked(self) -> None:
-        items = [create_item(name=f"Item {i}", position=f"a{i}") for i in range(3)]
-        assert len(filter_ranked_items(items)) == 3
-
-    def test_filter_ranked_items_excludes_unranked(self) -> None:
-        items = [
-            create_item(name="Ranked"),
-            create_item(name="Unranked", position=None),
-        ]
-        assert [item.name for item in filter_ranked_items(items)] == ["Ranked"]
-
-    def test_filter_ranked_items_excludes_specific_id(self) -> None:
+    def test_filter_ranked_items(self) -> None:
         excluded_id = uuid.uuid4()
-        items = [
-            create_item(name="Kept"),
-            create_item(name="Excluded", position="a1"),
-        ]
-        items[1].item_id = excluded_id
-        assert filter_ranked_items(items, excluded_id) == [items[0]]
+        ranked = create_item(name="Ranked")
+        excluded = create_item(name="Excluded", position="a1")
+        excluded.item_id = excluded_id
+        unranked = create_item(name="Unranked", position=None)
+        items = [ranked, excluded, unranked]
+        assert filter_ranked_items([]) == []
+        assert filter_ranked_items(items) == [ranked, excluded]
+        assert filter_ranked_items(items, excluded_id) == [ranked]
 
     @pytest.mark.parametrize(
         "best_first_scores",

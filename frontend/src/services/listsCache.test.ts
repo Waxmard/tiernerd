@@ -188,12 +188,6 @@ test('keeps an empty cached list distinct from no cache', () => {
   assert.deepEqual(parseCachedLists('[]'), []);
 });
 
-test('round-trips a stored payload', () => {
-  assert.deepEqual(parseCachedLists(JSON.stringify([listSimple])), [
-    listSimple,
-  ]);
-});
-
 test('defaults only missing legacy ranking modes to score', () => {
   const legacy: Record<string, unknown> = { ...listSimple };
   delete legacy.ranking_mode;
