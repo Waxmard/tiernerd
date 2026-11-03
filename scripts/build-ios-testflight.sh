@@ -88,12 +88,14 @@ security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
 security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
+security list-keychains -d user >"$WORK_DIR/existing-keychains"
+
 while IFS= read -r line; do
   trimmed="${line#"${line%%[![:space:]]*}"}"
   trimmed="${trimmed%\"}"
   trimmed="${trimmed#\"}"
   [[ -n "$trimmed" ]] && existing_keychains+=("$trimmed")
-done < <(security list-keychains -d user)
+done <"$WORK_DIR/existing-keychains"
 restore_keychains=1
 security list-keychains -d user -s "$KEYCHAIN_PATH" ${existing_keychains[@]+"${existing_keychains[@]}"}
 

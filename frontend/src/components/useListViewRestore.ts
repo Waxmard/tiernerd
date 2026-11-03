@@ -197,20 +197,20 @@ export function useListViewRestore({
 
   const onScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (
-        !state.active ||
-        stateRef.current !== state ||
-        state.restoreOffset !== null
-      )
-        return;
-      state.offset = event.nativeEvent.contentOffset.y;
+      if (!state.active || stateRef.current !== state) return;
+      const offset = event.nativeEvent.contentOffset.y;
+      if (state.restoreOffset !== null) {
+        if (!itemsLoaded || offset < state.restoreOffset - 1) return;
+        state.restoreOffset = null;
+      }
+      state.offset = offset;
       clearTimeout(state.saveTimer ?? undefined);
       state.saveTimer = setTimeout(() => {
         state.saveTimer = null;
         saveView(state.selectedId);
       }, 500);
     },
-    [saveView, state]
+    [itemsLoaded, saveView, state]
   );
 
   const onScrollBeginDrag = useCallback(
@@ -222,23 +222,22 @@ export function useListViewRestore({
   );
 
   useEffect(() => {
-    if (stateRef.current !== state || !viewLoaded || !itemsLoaded) return;
+    if (
+      stateRef.current !== state ||
+      !viewLoaded ||
+      (!itemsLoaded && items.length === 0)
+    )
+      return;
+    const offset = state.restoreOffset;
+    if (offset !== null) scrollToOffset(offset);
+  }, [viewLoaded, itemsLoaded, items.length, scrollToOffset, state]);
+
+  const onContentSizeChange = useCallback(() => {
+    if (!state.active || stateRef.current !== state) return;
     const offset = state.restoreOffset;
     if (offset === null) return;
-    state.restoreOffset = null;
     scrollToOffset(offset);
-  }, [viewLoaded, itemsLoaded, scrollToOffset, state]);
-
-  const onContentSizeChange = useCallback(
-    (_width: number, height: number) => {
-      if (!state.active || stateRef.current !== state) return;
-      const offset = state.restoreOffset;
-      if (offset === null) return;
-      scrollToOffset(offset);
-      if (height > offset) state.restoreOffset = null;
-    },
-    [scrollToOffset, state]
-  );
+  }, [scrollToOffset, state]);
 
   return useMemo(
     () => ({
