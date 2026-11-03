@@ -125,6 +125,8 @@ npm run typecheck                 # TypeScript check
 
 The default backend for frontend work is the deployed dev API — no local containers. `make ios` and TestFlight builds target `https://tiernerd-api-dev-1015723670625.us-east1.run.app` by default; override `EXPO_PUBLIC_API_URL` to point at another public HTTPS API.
 
+The dev Cloud Run service has a service-level minimum of one instance to reduce cold starts. This is separate from the deploy recipe's revision-level `--min-instances 0` and incurs ongoing idle costs (estimated at $9.72/month before free-tier credits and active traffic).
+
 Deploy (from `fastapi/`):
 
 ```bash
