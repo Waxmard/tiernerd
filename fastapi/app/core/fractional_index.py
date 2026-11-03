@@ -4,7 +4,6 @@ Keys consist of digits and letters: 0-9, A-Z, a-z (62 characters total).
 This provides lexicographic ordering where "a0" < "a1" < "b0" etc.
 """
 
-# Base-62 alphabet: 0-9, A-Z, a-z
 ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 BASE = len(ALPHABET)  # 62
 
@@ -56,11 +55,9 @@ def generate_key_between(a: str | None, b: str | None) -> str:
         generate_key_between("a0", "a2") -> "a1"
         generate_key_between("a0", "a1") -> "a0a0"
     """
-    # Case 1: No bounds - return initial key
     if a is None and b is None:
         return "a0"
 
-    # Case 2: No lower bound - generate key before b
     if a is None:
         assert b is not None  # noqa: S101  # type narrowing (a/b both None handled above)
         first_dec = _decrement_char(b[0])
@@ -71,7 +68,6 @@ def generate_key_between(a: str | None, b: str | None) -> str:
             raise ValueError(f"cannot generate key before minimum key {b!r}")
         return ALPHABET[0] + generate_key_between(None, b[1:])
 
-    # Case 3: No upper bound - generate key after a
     if b is None:
         assert a is not None  # noqa: S101  # type narrowing (a/b both None handled above)
         last_inc = _increment_char(a[-1])
@@ -80,11 +76,9 @@ def generate_key_between(a: str | None, b: str | None) -> str:
         # Can't increment last char, extend the key
         return a + ALPHABET[BASE // 2]
 
-    # Case 4: Both bounds provided
     if a >= b:
         raise ValueError(f"a must be less than b: {a!r} >= {b!r}")
 
-    # Find common prefix
     p = 0
     while p < min(len(a), len(b)) and a[p] == b[p]:
         p += 1
@@ -95,7 +89,6 @@ def generate_key_between(a: str | None, b: str | None) -> str:
 
     # If a is a prefix of b, recurse on b's remainder with no lower bound
     if not a_tail:
-        # b_tail is non-empty since a < b
         return prefix + generate_key_between(None, b_tail)
 
     # Both tails non-empty; first chars differ and a_char < b_char

@@ -31,8 +31,8 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const { colorScheme: resolvedScheme } = useColorScheme();
-  const [preference, setPreferenceState] = useState<ThemePreference>('dark');
-  const scheme: ColorSchemeName = resolvedScheme ?? 'dark';
+  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const scheme: ColorSchemeName = resolvedScheme ?? 'light';
 
   useEffect(() => {
     let cancelled = false;

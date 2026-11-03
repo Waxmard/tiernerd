@@ -34,7 +34,7 @@ Always open one — even for small changes.
 
 - **Squash on merge.** The branch's WIP commits collapse into a single commit on `main`, so the **squashed title and body must be the real, conventional message** — that line is what the release tooling reads.
 - **Keep it focused.** One logical change per PR keeps review and the changelog clean.
-- **CI must be green.** `backend` and `frontend` run lint, typecheck, tests, and module boundaries, path-filtered to `fastapi/**` and `frontend/**`; `security` runs semgrep + trivy on every PR.
+- **CI must be green.** `backend` runs lint, format checks, typecheck, tests, and module boundaries; `frontend` runs lint, format checks, typecheck, and unit tests. Each is path-filtered to its project directory and workflow file. `security` runs Semgrep and Trivy on pull requests targeting `main`.
 
 ## Review & Approval
 
@@ -48,4 +48,5 @@ Two things ship on or alongside `main`:
 
 - **TestFlight (`deploy-testflight.yml`)** — every push to `main` (and manual `workflow_dispatch`) builds a signed iOS Release archive on `macos-26` against the development Cloud Run API and uploads `TierNerd.ipa` to App Store Connect / TestFlight using the `preview` environment secrets (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `APPLE_CERTIFICATE_P12_BASE64`, `APPLE_CERTIFICATE_PASSWORD`).
 - **Backend** — deploy Cloud Run from `fastapi/` with `make cloud-deploy` (not triggered by a release).
+
 This is why commit hygiene matters: every commit on `main` is read by the release tooling.

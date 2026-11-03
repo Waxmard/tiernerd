@@ -231,8 +231,22 @@ async def update_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Item:
-    item_obj = await item_crud.get_by_id_with_ownership(
+    list_id = await item_crud.get_list_id_by_id_with_ownership(
         db, item_id, current_user.user_id
+    )
+    if list_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
+        )
+    list_obj = await list_crud.get_by_id_and_user(
+        db, list_id, current_user.user_id, for_update=True
+    )
+    if list_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
+        )
+    item_obj = await item_crud.get_by_id_with_ownership(
+        db, item_id, current_user.user_id, populate_existing=True
     )
     if item_obj is None:
         raise HTTPException(
@@ -251,6 +265,8 @@ async def update_item(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=ITEM_NAME_ALREADY_EXISTS_ERROR,
             )
+    if update_data:
+        list_obj.updated_at = datetime.now(UTC)
     try:
         await item_crud.update(db, item_obj, update_data)
     except IntegrityError as error:

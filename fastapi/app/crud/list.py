@@ -61,6 +61,7 @@ async def get_by_user_with_stats(
         .outerjoin(ItemModel)
         .where(ListModel.user_id == user_id)
         .group_by(ListModel.list_id)
+        .order_by(ListModel.updated_at.desc(), ListModel.list_id.asc())
         .offset(skip)
         .limit(limit)
     )

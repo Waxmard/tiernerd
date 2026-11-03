@@ -4,7 +4,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-# Shared properties
 class UserBase(BaseModel):
     """Base user schema with shared properties."""
 
@@ -18,7 +17,6 @@ class GoogleLogin(BaseModel):
     id_token: str
 
 
-# Properties to receive via API on update
 class UserUpdate(BaseModel):
     """Schema for user update."""
 
@@ -27,7 +25,6 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-# Properties to return to client
 class User(UserBase):
     """Schema for user response."""
 
@@ -40,7 +37,6 @@ class User(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Public user info (no sensitive data)
 class UserPublic(BaseModel):
     """Schema for public user info."""
 

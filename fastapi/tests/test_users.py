@@ -42,17 +42,14 @@ class TestReadUsers:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-        # Verify user data structure
         user_data = data[0]
         assert "user_id" in user_data
         assert "email" in user_data
 
-        # Verify data matches database
         result = await test_db.execute(select(User))
         db_users = result.scalars().all()
         assert len(data) == len(db_users)
 
-        # Verify the admin_user is in the response
         user_ids_in_response = [u["user_id"] for u in data]
         assert str(admin_user.user_id) in user_ids_in_response
 
@@ -85,13 +82,11 @@ class TestReadUsers:
         db_users = result.scalars().all()
         assert len(db_users) == 2
 
-        # Test with limit
         response = await client.get("/api/users/?limit=1", headers=admin_auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
 
-        # Test with skip
         response = await client.get("/api/users/?skip=1", headers=admin_auth_headers)
         assert response.status_code == 200
         data = response.json()
@@ -200,14 +195,11 @@ class TestUserCRUD:
     async def test_delete_user_success(self, test_db: AsyncSession, test_user: User):
         user_id = test_user.user_id
 
-        # Verify user exists before deletion
         user = await crud_user.get_user_by_id(test_db, user_id)
         assert user is not None
 
-        # Delete the user
         await crud_user.delete_user(test_db, user_id)
 
-        # Verify user is deleted
         user = await crud_user.get_user_by_id(test_db, user_id)
         assert user is None
 
@@ -216,7 +208,6 @@ class TestUserCRUD:
         import uuid
 
         fake_id = uuid.uuid4()
-        # Should not raise any exception
         await crud_user.delete_user(test_db, fake_id)
 
     async def test_create_user_crud(self, test_db: AsyncSession):

@@ -4,7 +4,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-# Shared properties
 class ListBase(BaseModel):
     """Base list schema with shared properties."""
 
@@ -13,7 +12,6 @@ class ListBase(BaseModel):
     color: str | None = None
 
 
-# Properties to receive via API on update
 class ListUpdate(BaseModel):
     """Schema for list update."""
 
@@ -21,7 +19,6 @@ class ListUpdate(BaseModel):
     description: str | None = None
 
 
-# Properties to return to client
 class List(ListBase):
     """Schema for list response."""
 
@@ -35,7 +32,6 @@ class List(ListBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Simple list (without items) for listing purposes
 class ListSimple(ListBase):
     """Schema for simple list response (without items)."""
 

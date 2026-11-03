@@ -9,6 +9,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       ...(config.plugins ?? []),
       './withIosSceneLifecycle',
       './withQuietPods',
+      './withIosDeploymentTarget',
       ...(clientId
         ? [
             [

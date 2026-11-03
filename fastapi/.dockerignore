@@ -67,6 +67,12 @@ cloud/
 docker-compose.yml
 Dockerfile
 .dockerignore
+.gcloudignore
+.python-version
+Makefile
+pytest.ini
+tach.toml
+tach_module_graph.dot
 
 # Documentation
 README.md

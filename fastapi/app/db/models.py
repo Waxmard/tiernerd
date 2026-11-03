@@ -45,7 +45,6 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # Relationships
     lists: Mapped[list[List]] = relationship(
         "List", back_populates="user", cascade="all, delete-orphan"
     )
@@ -68,7 +67,6 @@ class List(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # Relationships
     user: Mapped[User] = relationship("User", back_populates="lists")
     items: Mapped[list[Item]] = relationship(
         "Item", back_populates="list", cascade="all, delete-orphan"

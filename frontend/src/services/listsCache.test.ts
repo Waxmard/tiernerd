@@ -22,6 +22,7 @@ import {
   listItemsCacheKey,
   parseCachedListItems,
   parseCachedLists,
+  sortListsByRecency,
   startHydrationRequest,
   startItemsRequest,
 } from './listsCache.ts';
@@ -188,6 +189,43 @@ test('round-trips a stored payload', () => {
   assert.deepEqual(parseCachedLists(JSON.stringify([listSimple])), [
     listSimple,
   ]);
+});
+
+test('sorts cached and live lists by instant and then ID without mutating input', () => {
+  const lists: ListSimple[] = [
+    { ...listSimple, list_id: 'old', updated_at: '2026-01-01T00:00:00Z' },
+    { ...listSimple, list_id: 'b', updated_at: '2026-01-02T01:00:00+01:00' },
+    { ...listSimple, list_id: 'new', updated_at: '2026-01-03T00:00:00Z' },
+    { ...listSimple, list_id: 'a', updated_at: '2026-01-01T19:00:00-05:00' },
+  ];
+  const sorted = sortListsByRecency(lists);
+  assert.deepEqual(
+    sorted.map((list) => list.list_id),
+    ['new', 'a', 'b', 'old']
+  );
+  assert.deepEqual(
+    lists.map((list) => list.list_id),
+    ['old', 'b', 'new', 'a']
+  );
+  assert.notEqual(sorted, lists);
+  assert.deepEqual(
+    parseCachedLists(JSON.stringify(lists))?.map((list) => list.list_id),
+    ['new', 'a', 'b', 'old']
+  );
+  assert.deepEqual(sortListsByRecency([]), []);
+});
+
+test('rejects cached lists with unparseable modification dates', () => {
+  assert.equal(
+    parseCachedLists(
+      JSON.stringify([{ ...listSimple, updated_at: 'not a date' }])
+    ),
+    null
+  );
+  assert.equal(
+    parseCachedLists(JSON.stringify([{ ...listSimple, updated_at: '' }])),
+    null
+  );
 });
 
 test('drops payloads whose color is missing or not a known swatch', () => {

@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { parseThemePreference, preferenceBand } from './themePreference.ts';
 
-test('defaults to dark for missing or unknown values', () => {
-  assert.equal(parseThemePreference(null), 'dark');
-  assert.equal(parseThemePreference(''), 'dark');
-  assert.equal(parseThemePreference('DARK'), 'dark');
-  assert.equal(parseThemePreference('[1]'), 'dark');
+test('defaults to system for missing or unknown values', () => {
+  assert.equal(parseThemePreference(null), 'system');
+  assert.equal(parseThemePreference(''), 'system');
+  assert.equal(parseThemePreference('DARK'), 'system');
+  assert.equal(parseThemePreference('[1]'), 'system');
 });
 
 test('accepts the three stored preferences', () => {
