@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
-import { validateIosConfig } from './ios-config.mjs';
+import { fileURLToPath } from 'node:url';
+import { validateIosConfig, validateReactRendererVersion } from './ios-config.mjs';
 
 const clientId = '123456-abcdef.apps.googleusercontent.com';
 
@@ -20,4 +23,23 @@ test('iOS Release requires a public HTTPS API and an iOS client ID', () => {
   for (const id of ['', 'not-a-client-id', 'abc.apps.googleusercontent.com']) {
     assert.throws(() => validateIosConfig('https://example.com', id), /EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID/);
   }
+});
+
+test('React version matches React Native embedded renderer', () => {
+  assert.throws(
+    () => validateReactRendererVersion('19.1.10', 'reconcilerVersion: "19.1.4"'),
+    /Incompatible React versions: react is 19\.1\.10 but react-native renderer requires 19\.1\.4\./,
+  );
+  assert.throws(
+    () => validateReactRendererVersion('19.1.4', 'no reconciler version here'),
+    /Incompatible React versions/,
+  );
+
+  const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const reactPkg = JSON.parse(readFileSync(resolve(rootDir, 'frontend/node_modules/react/package.json'), 'utf8'));
+  const rendererSource = readFileSync(
+    resolve(rootDir, 'frontend/node_modules/react-native/Libraries/Renderer/implementations/ReactNativeRenderer-prod.js'),
+    'utf8',
+  );
+  assert.doesNotThrow(() => validateReactRendererVersion(reactPkg.version, rendererSource));
 });
