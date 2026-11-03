@@ -36,6 +36,8 @@ updates:
     ignore:
       - dependency-name: "@babel/core"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "expo"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
       - dependency-name: "expo-*"
