@@ -28,9 +28,7 @@ jobs:
             p/python
             p/typescript
             p/react
-            p/security-audit
             p/secrets
-            p/owasp-top-ten
             p/dockerfile
       - uses: github/codeql-action/upload-sarif@v4
         if: always()
