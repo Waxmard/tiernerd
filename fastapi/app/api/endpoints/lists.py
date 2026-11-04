@@ -10,11 +10,10 @@ from app.crud import item as item_crud, list as list_crud
 from app.db.database import get_db
 from app.db.models import List as ListModel
 from app.schemas.item import Item
-from app.schemas.list import List, ListSimple, ListUpdate
+from app.schemas.list import List, ListSimple, ListUpdate, RankingMode
 from app.schemas.user import User
 from app.services.auth import get_current_user
 from app.services.list_service import (
-    build_list_response,
     build_list_simple_response,
     get_items_best_first,
 )
@@ -43,13 +42,13 @@ async def create_list(
     name: str,
     description: str,
     color: Literal["blue", "teal", "amber", "pink"] | None = None,
+    ranking_mode: RankingMode = "score",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """
     Create new list.
     """
-    # Check if list with same name already exists for this user
     existing = await list_crud.get_by_title_and_user(db, name, current_user.user_id)
     if existing:
         raise HTTPException(
@@ -63,12 +62,13 @@ async def create_list(
         user_id=current_user.user_id,
         description=description,
         color=color,
+        ranking_mode=ranking_mode,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
     list_obj = await list_crud.create(db, list_obj)
 
-    return build_list_response(list_obj)
+    return list_obj
 
 
 @router.get("/{list_id}", response_model=List)
@@ -86,7 +86,7 @@ async def read_list(
             status_code=status.HTTP_404_NOT_FOUND, detail=LIST_NOT_FOUND_ERROR
         )
 
-    return build_list_response(list_obj)
+    return list_obj
 
 
 @router.get("/{list_id}/items", response_model=list[Item])
@@ -98,7 +98,6 @@ async def read_list_items(
     """
     Get all items for a list, best first; unranked items last.
     """
-    # Verify list exists and belongs to current user
     list_obj = await list_crud.get_by_id_and_user(db, list_id, current_user.user_id)
     if not list_obj:
         raise HTTPException(
@@ -131,24 +130,7 @@ async def update_list(
     update_data = list_in.model_dump(exclude_unset=True)
     list_obj = await list_crud.update(db, list_obj, update_data)
 
-    items = await item_crud.get_by_list_id(db, list_id)
-
-    items_data = [
-        {
-            "item_id": item.item_id,
-            "list_id": item.list_id,
-            "name": item.name,
-            "description": item.description,
-            "image_url": item.image_url,
-            "position": getattr(item, "position", None),
-            "rating": item.rating,
-            "created_at": item.created_at,
-            "updated_at": item.updated_at,
-        }
-        for item in items
-    ]
-
-    return build_list_response(list_obj, items_data)
+    return list_obj
 
 
 @router.delete("/{list_id}", status_code=status.HTTP_204_NO_CONTENT)

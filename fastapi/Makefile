@@ -1,10 +1,8 @@
 # Makefile for TierNerd FastAPI Backend
 
-# Variables
 IMAGE_NAME := tiernerd-backend
 TAG := latest
 
-# Help target
 .PHONY: help
 help:
 	@echo "Available targets:"
@@ -35,7 +33,6 @@ help:
 	@echo "  test           - pytest with coverage (fail under 95%)"
 	@echo "  ci             - lint + typecheck + boundaries + test"
 
-# Code Quality
 .PHONY: lint fix format typecheck boundaries test ci
 lint:
 	uv run ruff check app/ tests/
@@ -81,27 +78,22 @@ build-multi:
 		docker build -t $(IMAGE_NAME):latest .; \
 	fi
 
-# Build using docker-compose
 .PHONY: build-compose
 build-compose:
 	COMPOSE_BAKE=true docker-compose build
 
-# Run the application
 .PHONY: run
 run:
 	docker-compose up
 
-# Stop the application
 .PHONY: stop
 stop:
 	docker-compose down
 
-# View logs
 .PHONY: logs
 logs:
 	docker-compose logs -f backend
 
-# Clean up containers and images
 .PHONY: clean
 clean:
 	docker-compose down -v --remove-orphans
@@ -117,23 +109,19 @@ push:
 	fi
 	REGISTRY=$(REGISTRY) docker buildx bake multi --push
 
-# Test build without caching
 .PHONY: test-build
 test-build:
 	docker buildx bake backend --no-cache
 
-# Setup buildx builder (run once)
 .PHONY: setup-buildx
 setup-buildx:
 	docker buildx create --name multiplatform --driver docker-container --use
 	docker buildx inspect --bootstrap
 
-# Health check
 .PHONY: health
 health:
 	curl -f http://localhost:8000/health || echo "Service not healthy"
 
-# Dev commands
 .PHONY: dev dev-down dev-logs restart fresh quick-restart
 dev:
 	make build-local
@@ -149,7 +137,6 @@ dev-down:
 dev-logs:
 	make logs
 
-# Convenience commands
 restart: build-local stop run
 	@echo "Container rebuilt and restarted"
 
@@ -160,7 +147,6 @@ fresh: build-local stop run
 quick-restart: stop run
 	@echo "Container restarted (no rebuild)"
 
-# Database commands
 .PHONY: reset
 reset:
 	@echo "Clearing database and re-seeding..."
@@ -170,7 +156,6 @@ reset:
 		docker-compose run --rm backend python scripts/seed.py --clear; \
 	fi
 
-# --- Cloud Run ---------------------------------------------------------------
 # GCLOUD_CONFIG keeps every cloud command on the tiernerd gcloud configuration,
 # independent of which configuration is active in the caller's shell.
 GCLOUD_CONFIG ?= tiernerd
@@ -186,8 +171,11 @@ CLOUD_SECRET_PREFIX ?= tiernerd-$(CLOUD_ENV)
 
 .PHONY: cloud-deploy cloud-url cloud-health cloud-logs
 cloud-deploy:
+	@image="$(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/cloud-run-source-deploy/$(CLOUD_SERVICE):$$(date +%Y%m%d%H%M%S)-$$$$"; \
+	$(GCLOUD) builds submit --project $(GCP_PROJECT) --config cloudbuild.yaml \
+		--substitutions "_IMAGE=$$image" . && \
 	$(GCLOUD) run deploy $(CLOUD_SERVICE) \
-		--source . \
+		--image "$$image" \
 		--project $(GCP_PROJECT) \
 		--region $(GCP_REGION) \
 		--allow-unauthenticated \

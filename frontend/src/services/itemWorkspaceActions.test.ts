@@ -5,7 +5,6 @@ import {
   findNextDraftSession,
   shouldAutoCommitRanking,
 } from './itemWorkspaceActions.ts';
-import { hasSavedRankChanged } from './rankSnapshot.ts';
 
 const candidate: Item = {
   item_id: 'item-1',
@@ -15,7 +14,6 @@ const candidate: Item = {
   image_url: null,
   rating: null,
   position: null,
-  tier_set: null,
   created_at: '',
   updated_at: '',
 };
@@ -24,7 +22,6 @@ const session: ComparisonSession = {
   list_id: 'list-1',
   item_id: candidate.item_id,
   status: 'active',
-  tier_set: 'good',
   revision: 0,
   comparisons_answered: 0,
   comparison_limit: 0,
@@ -40,7 +37,7 @@ const session: ComparisonSession = {
 const readySession: ComparisonSession = {
   ...session,
   status: 'ready_to_commit',
-  preview: { score: 5, rank: 1, ranked_count: 1, tier_set: 'good' },
+  preview: { score: 10, rank: 1, ranked_count: 1 },
 };
 
 test('auto-commits each fresh ready revision only once', () => {
@@ -68,29 +65,6 @@ test('auto-commits each fresh ready revision only once', () => {
       sessionId: readySession.session_id,
       revision: readySession.revision - 1,
     }),
-    true
-  );
-});
-
-test('detects saved-rank changes but ignores metadata edits', () => {
-  assert.equal(
-    hasSavedRankChanged(session, {
-      ...candidate,
-      name: 'Renamed',
-      description: 'Updated',
-    }),
-    false
-  );
-  assert.equal(
-    hasSavedRankChanged(session, { ...candidate, rating: 8.5 }),
-    true
-  );
-  assert.equal(
-    hasSavedRankChanged(session, { ...candidate, position: 'a0' }),
-    true
-  );
-  assert.equal(
-    hasSavedRankChanged(session, { ...candidate, tier_set: 'bad' }),
     true
   );
 });

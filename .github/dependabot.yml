@@ -28,6 +28,7 @@ updates:
       semver-patch-days: 3
     groups:
       frontend-minor-and-patch:
+        applies-to: version-updates
         update-types:
           - "minor"
           - "patch"
@@ -45,9 +46,9 @@ updates:
       - dependency-name: "@expo/*"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
       - dependency-name: "react"
-        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+        update-types: ["version-update:semver-patch", "version-update:semver-minor", "version-update:semver-major"]
       - dependency-name: "react-dom"
-        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+        update-types: ["version-update:semver-patch", "version-update:semver-minor", "version-update:semver-major"]
       - dependency-name: "@types/react"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
       - dependency-name: "react-native"

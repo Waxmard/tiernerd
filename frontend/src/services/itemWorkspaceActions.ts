@@ -4,10 +4,8 @@ import type {
   CreateItemResponse,
   Item,
   itemsService,
-  TierSet,
   UpdateItemRequest,
 } from './itemsService.ts';
-import { hasSavedRankChanged } from './rankSnapshot.ts';
 
 export type ReconciledSession =
   | { kind: 'found'; session: ComparisonSession }
@@ -56,7 +54,6 @@ export async function findNextDraftSession(
       try {
         return await service.startComparison(
           item.item_id,
-          session.tier_set,
           true,
           session.revision,
           token
@@ -109,7 +106,8 @@ async function findSessionAfterMissing(
     const items = await listsService.getListItems(session.list_id, token);
     const candidate = items.find((item) => item.item_id === session.item_id);
     if (!candidate) return { kind: 'missing' };
-    return hasSavedRankChanged(session, candidate)
+    return candidate.rating !== session.item.rating ||
+      candidate.position !== session.item.position
       ? { kind: 'completed', item: candidate }
       : { kind: 'session-missing', item: candidate };
   } catch (error) {
@@ -225,7 +223,6 @@ export type RankingStartResult =
 
 export async function startItemRanking(
   itemId: string,
-  tierSet: TierSet,
   token: string,
   recoveryRequired: boolean
 ): Promise<RankingStartResult> {
@@ -235,13 +232,7 @@ export async function startItemRanking(
     try {
       return {
         kind: 'session',
-        session: await itemsService.startComparison(
-          itemId,
-          tierSet,
-          false,
-          null,
-          token
-        ),
+        session: await itemsService.startComparison(itemId, false, null, token),
       };
     } catch (error) {
       if (error instanceof ApiError && error.status === 409)
@@ -307,7 +298,6 @@ export async function performComparisonAction(
             )
           : await itemsService.startComparison(
               session.item_id,
-              session.tier_set,
               true,
               session.revision,
               token
@@ -339,7 +329,6 @@ export async function saveItemMetadata(
   listTitle: string,
   name: string,
   description: string,
-  tierSet: TierSet,
   token: string
 ): Promise<CreateItemResponse> {
   const { itemsService } = await import('./itemsService.ts');
@@ -355,7 +344,6 @@ export async function saveItemMetadata(
     listTitle,
     {
       name,
-      tier_set: tierSet,
       ...(description.trim() ? { description: description.trim() } : {}),
     },
     token

@@ -1,6 +1,5 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { GOOGLE_CLIENT_ID, GOOGLE_IOS_CLIENT_ID } from '../config/api';
-import { googleNativeIdToken } from './googleNativeResult';
 
 export const googleSignInAvailable =
   GOOGLE_CLIENT_ID.length > 0 && GOOGLE_IOS_CLIENT_ID.length > 0;
@@ -14,7 +13,16 @@ if (googleSignInAvailable) {
 
 export async function signInNativeGoogle(): Promise<string | null> {
   try {
-    return googleNativeIdToken(await GoogleSignin.signIn());
+    const result = await GoogleSignin.signIn();
+    if (result.type === 'cancelled') {
+      return null;
+    }
+    if (!result.data.idToken) {
+      throw new Error(
+        'Google sign-in did not return an ID token. Please try again.'
+      );
+    }
+    return result.data.idToken;
   } catch (error) {
     const detail = error instanceof Error ? ` ${error.message}` : '';
     throw new Error(`Google sign-in failed. Please try again.${detail}`);

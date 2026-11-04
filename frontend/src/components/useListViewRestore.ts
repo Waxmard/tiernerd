@@ -1,6 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type {
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+} from 'react-native';
 import type { Item } from '../services/itemsService';
 import {
   buildListView,
@@ -26,6 +38,13 @@ interface ViewRestoreState {
   saveTimer: ReturnType<typeof setTimeout> | null;
 }
 
+interface PendingScroll {
+  itemId: string;
+  index: number;
+  attempted: boolean;
+  retried: boolean;
+}
+
 interface UseListViewRestoreParams {
   identity: string;
   userId: string | null;
@@ -37,6 +56,7 @@ interface UseListViewRestoreParams {
   isDesktop: boolean;
   skipRestore: boolean;
   setSelectedItemId: (id: string | null) => void;
+  listRef: RefObject<FlatList<Item> | null>;
   scrollToOffset: (offset: number) => void;
 }
 
@@ -51,8 +71,11 @@ export function useListViewRestore({
   isDesktop,
   skipRestore,
   setSelectedItemId,
+  listRef,
   scrollToOffset,
 }: UseListViewRestoreParams) {
+  const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
+  const pendingScrollRef = useRef<PendingScroll | null>(null);
   const stateRef = useRef<ViewRestoreState | null>(null);
   const persistedSelectedId =
     !isDesktop &&
@@ -85,6 +108,68 @@ export function useListViewRestore({
   }
   const [loadedState, setLoadedState] = useState<ViewRestoreState | null>(null);
   const viewLoaded = loadedState === state;
+
+  useEffect(() => {
+    if (stateRef.current !== state) return;
+    setScrollTargetId(null);
+    pendingScrollRef.current = null;
+  }, [state]);
+
+  const scrollToItem = useCallback((itemId: string) => {
+    pendingScrollRef.current = {
+      itemId,
+      index: -1,
+      attempted: false,
+      retried: false,
+    };
+    setScrollTargetId(itemId);
+  }, []);
+
+  useLayoutEffect(() => {
+    const pending = pendingScrollRef.current;
+    if (!pending || pending.attempted || scrollTargetId !== pending.itemId)
+      return;
+    const index = items.findIndex((item) => item.item_id === pending.itemId);
+    if (index < 0) {
+      if (itemsLoaded) {
+        pendingScrollRef.current = null;
+        setScrollTargetId(null);
+      }
+      return;
+    }
+    if (!listRef.current) return;
+
+    pending.index = index;
+    pending.attempted = true;
+    listRef.current.scrollToIndex({
+      index,
+      animated: false,
+      viewPosition: 0,
+    });
+    setScrollTargetId(null);
+  }, [items, itemsLoaded, listRef, scrollTargetId]);
+
+  const onScrollToIndexFailed = useCallback(
+    ({ averageItemLength }: { index: number; averageItemLength: number }) => {
+      const pending = pendingScrollRef.current;
+      if (!pending || pending.retried) return;
+      pending.retried = true;
+      listRef.current?.scrollToOffset({
+        offset: averageItemLength * pending.index,
+        animated: false,
+      });
+      requestAnimationFrame(
+        () =>
+          pendingScrollRef.current === pending &&
+          listRef.current?.scrollToIndex({
+            index: pending.index,
+            animated: false,
+            viewPosition: 0,
+          })
+      );
+    },
+    [listRef]
+  );
 
   useEffect(() => {
     if (!userId) return;
@@ -246,6 +331,8 @@ export function useListViewRestore({
       onScrollBeginDrag,
       onScroll,
       onContentSizeChange,
+      scrollToItem,
+      onScrollToIndexFailed,
     }),
     [
       clearRestoredSelection,
@@ -253,6 +340,8 @@ export function useListViewRestore({
       onScrollBeginDrag,
       onScroll,
       onContentSizeChange,
+      scrollToItem,
+      onScrollToIndexFailed,
     ]
   );
 }

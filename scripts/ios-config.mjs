@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
-import { pathToFileURL } from 'node:url';
-
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 export function validateIosConfig(apiUrl, clientId) {
   if (!/^[0-9]+-[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/.test(clientId ?? '')) {
     throw new Error('Set EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID to a valid iOS Google OAuth client ID.');
@@ -33,8 +34,25 @@ export function validateIosConfig(apiUrl, clientId) {
   }
 }
 
+export function validateReactRendererVersion(reactVersion, rendererSource) {
+  const match = /reconcilerVersion:\s*"([^"]+)"/.exec(rendererSource ?? '');
+  const reconcilerVersion = match?.[1];
+  if (!reconcilerVersion || reconcilerVersion !== reactVersion) {
+    throw new Error(
+      `Incompatible React versions: react is ${reactVersion} but react-native renderer requires ${reconcilerVersion ?? 'unknown'}.`,
+    );
+  }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
+    const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+    const reactPkg = JSON.parse(readFileSync(resolve(rootDir, 'frontend/node_modules/react/package.json'), 'utf8'));
+    const rendererSource = readFileSync(
+      resolve(rootDir, 'frontend/node_modules/react-native/Libraries/Renderer/implementations/ReactNativeRenderer-prod.js'),
+      'utf8',
+    );
+    validateReactRendererVersion(reactPkg.version, rendererSource);
     validateIosConfig(process.env.EXPO_PUBLIC_API_URL, process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
   } catch (error) {
     console.error(error.message);

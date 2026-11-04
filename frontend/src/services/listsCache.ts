@@ -1,13 +1,13 @@
 import { LIST_COLORS, type ListColor } from '../design-system/tokens/colors.ts';
 import { ApiError } from './apiError.ts';
 import type { Item } from './itemsService.ts';
-import type { ListSimple } from './listsService.ts';
+import type { ListRankingMode, ListSimple } from './listsService.ts';
 
 export const listsCacheKey = (userId: string): string =>
   `cachedLists:${userId}`;
 
 export const listItemsCacheKey = (userId: string, listId: string): string =>
-  `cachedListItems:v1:${userId}:${listId}`;
+  `cachedListItems:v2:${userId}:${listId}`;
 
 const cacheWrites = new Map<string, Promise<void>>();
 
@@ -41,10 +41,6 @@ const isItem = (value: unknown, listId: string): value is Item => {
       (typeof candidate.rating === 'number' &&
         Number.isFinite(candidate.rating))) &&
     isNullableString(candidate.position) &&
-    (candidate.tier_set === null ||
-      candidate.tier_set === 'good' ||
-      candidate.tier_set === 'mid' ||
-      candidate.tier_set === 'bad') &&
     typeof candidate.created_at === 'string' &&
     typeof candidate.updated_at === 'string'
   );
@@ -74,9 +70,13 @@ export function sortListsByRecency(lists: ListSimple[]): ListSimple[] {
   });
 }
 
-const isListSimple = (value: unknown): value is ListSimple => {
+type CachedListSimple = Omit<ListSimple, 'ranking_mode'> & {
+  ranking_mode?: ListRankingMode;
+};
+
+const isListSimple = (value: unknown): value is CachedListSimple => {
   if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as ListSimple;
+  const candidate = value as CachedListSimple;
   return (
     typeof candidate.list_id === 'string' &&
     typeof candidate.title === 'string' &&
@@ -84,7 +84,10 @@ const isListSimple = (value: unknown): value is ListSimple => {
     typeof candidate.updated_at === 'string' &&
     !Number.isNaN(Date.parse(candidate.updated_at)) &&
     (candidate.color === null ||
-      LIST_COLORS.includes(candidate.color as ListColor))
+      LIST_COLORS.includes(candidate.color as ListColor)) &&
+    (!('ranking_mode' in candidate) ||
+      candidate.ranking_mode === 'rank' ||
+      candidate.ranking_mode === 'score')
   );
 };
 
@@ -97,7 +100,14 @@ export function parseCachedLists(raw: string | null): ListSimple[] | null {
     return null;
   }
   if (!Array.isArray(parsed)) return null;
-  return parsed.every(isListSimple) ? sortListsByRecency(parsed) : null;
+  return parsed.every(isListSimple)
+    ? sortListsByRecency(
+        parsed.map((list) => ({
+          ...list,
+          ranking_mode: list.ranking_mode ?? 'score',
+        }))
+      )
+    : null;
 }
 export interface ListDetailDataState {
   identity: string;
@@ -109,6 +119,7 @@ export interface ListDetailDataState {
   detailsTitle: string;
   listDescription: string | null;
   listColor: ListColor | null;
+  rankingMode: ListRankingMode;
   metadataError: boolean;
   metadataLoaded: boolean;
 }
@@ -146,6 +157,7 @@ export const createListDetailState = (
   detailsTitle: routeTitle,
   listDescription: null,
   listColor: null,
+  rankingMode: 'score',
   metadataError: false,
   metadataLoaded: false,
 });
@@ -243,6 +255,22 @@ export const canWriteCachedItems = (
   lifecycle.cacheVersion === version &&
   lifecycle.itemsRequest === requestId;
 
+export const canWriteCachedSummary = (
+  lifecycle: ListDetailLifecycle,
+  version: number,
+  metadataRequestId?: number,
+  itemsRequestId?: number,
+  current?: ListDetailLifecycle | null
+): boolean =>
+  isLifecycleReadable(lifecycle, current) &&
+  isCacheCurrent(lifecycle, version, current) &&
+  lifecycle.metadataAcceptedLive &&
+  lifecycle.itemsAcceptedLive &&
+  (metadataRequestId === undefined ||
+    canAcceptMetadataResponse(lifecycle, metadataRequestId, current)) &&
+  (itemsRequestId === undefined ||
+    canAcceptItemsResponse(lifecycle, itemsRequestId, current));
+
 export const deactivateLifecycle = (lifecycle: ListDetailLifecycle): void => {
   lifecycle.active = false;
   lifecycle.itemsRequest += 1;
@@ -286,27 +314,6 @@ export const bumpLifecycleMutation = (
   return lifecycle.cacheVersion;
 };
 
-export const startItemsRequest = (lifecycle: ListDetailLifecycle): number =>
-  ++lifecycle.itemsRequest;
-
-export const startMetadataRequest = (lifecycle: ListDetailLifecycle): number =>
-  ++lifecycle.metadataRequest;
-
-export const startHydrationRequest = (
-  lifecycle: ListDetailLifecycle
-): { hydrationId: number; version: number } => ({
-  hydrationId: ++lifecycle.hydrationRequest,
-  version: lifecycle.cacheVersion,
-});
-
-export const acceptLiveItems = (lifecycle: ListDetailLifecycle): void => {
-  lifecycle.itemsAcceptedLive = true;
-};
-
-export const acceptLiveMetadata = (lifecycle: ListDetailLifecycle): void => {
-  lifecycle.metadataAcceptedLive = true;
-};
-
 export const createInvalidatedReadState = (
   previous: ListDetailDataState,
   routeTitle: string,
@@ -321,6 +328,7 @@ export const createInvalidatedReadState = (
   detailsTitle: routeTitle,
   listDescription: null,
   listColor: null,
+  rankingMode: 'score',
   metadataError: true,
   metadataLoaded: false,
 });
@@ -352,12 +360,14 @@ export const applyCachedMetadataState = (
     title: string;
     description: string | null;
     color: ListColor | null;
+    rankingMode: ListRankingMode;
   }
 ): ListDetailDataState => ({
   ...previous,
   detailsTitle: metadata.title,
   listDescription: metadata.description,
   listColor: metadata.color,
+  rankingMode: metadata.rankingMode,
 });
 
 export const applyMutationRefreshState = (

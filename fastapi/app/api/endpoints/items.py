@@ -26,7 +26,7 @@ from app.services.comparison_service import (
     build_comparison_session_response,
     start_comparison,
 )
-from app.services.ranking import assign_scores_for_set, filter_ranked_items
+from app.services.ranking import assign_scores, filter_ranked_items
 
 router = APIRouter()
 
@@ -48,16 +48,8 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Item | ComparisonSession:
-    list_hint = await list_crud.get_by_title_and_user(
-        db, list_title, current_user.user_id
-    )
-    if list_hint is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="List not found or does not belong to current user",
-        )
-    list_obj = await list_crud.get_by_id_and_user(
-        db, list_hint.list_id, current_user.user_id, for_update=True
+    list_obj = await list_crud.get_by_title_and_user(
+        db, list_title, current_user.user_id, for_update=True
     )
     if list_obj is None:
         raise HTTPException(
@@ -81,19 +73,16 @@ async def create_item(
         image_url=str(item_in.image_url) if item_in.image_url else None,
         position=None,
         rating=None,
-        tier_set=item_in.tier_set.value,
         created_at=now,
         updated_at=now,
     )
-    set_items = await item_crud.get_by_list_and_tier_set(
-        db, list_obj.list_id, item_in.tier_set.value
-    )
-    ranked_items = filter_ranked_items(set_items)
+    items = await item_crud.get_by_list_id(db, list_obj.list_id)
+    ranked_items = filter_ranked_items(items)
     list_obj.updated_at = now
 
     if not ranked_items:
         item_obj.position = generate_key_between(None, None)
-        assign_scores_for_set([item_obj], item_in.tier_set.value)
+        assign_scores([item_obj])
         try:
             await item_crud.create(db, item_obj)
         except IntegrityError as error:
@@ -104,9 +93,7 @@ async def create_item(
 
     try:
         await item_crud.create(db, item_obj)
-        session = await start_comparison(
-            db, item_obj, item_in.tier_set.value, discard_on_cancel=True
-        )
+        session = await start_comparison(db, item_obj, discard_on_cancel=True)
     except IntegrityError as error:
         await _raise_item_name_error(db, error)
     await db.commit()
@@ -158,24 +145,17 @@ async def start_item_comparison_session(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ComparisonSession:
-    list_id = await item_crud.get_list_id_by_id_with_ownership(
-        db, item_id, current_user.user_id
-    )
-    if list_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    list_obj = await list_crud.get_by_id_and_user(
-        db, list_id, current_user.user_id, for_update=True
-    )
-    if list_obj is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
     item_obj = await item_crud.get_by_id_with_ownership(
         db, item_id, current_user.user_id, populate_existing=True
     )
     if item_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
+        )
+    list_obj = await list_crud.get_by_id_and_user(
+        db, item_obj.list_id, current_user.user_id, for_update=True
+    )
+    if list_obj is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
         )
@@ -191,7 +171,6 @@ async def start_item_comparison_session(
         session = await start_comparison(
             db,
             item_obj,
-            request.tier_set.value,
             restart=request.restart,
             revision=request.revision,
         )
@@ -231,24 +210,17 @@ async def update_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Item:
-    list_id = await item_crud.get_list_id_by_id_with_ownership(
-        db, item_id, current_user.user_id
-    )
-    if list_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    list_obj = await list_crud.get_by_id_and_user(
-        db, list_id, current_user.user_id, for_update=True
-    )
-    if list_obj is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
     item_obj = await item_crud.get_by_id_with_ownership(
         db, item_id, current_user.user_id, populate_existing=True
     )
     if item_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
+        )
+    list_obj = await list_crud.get_by_id_and_user(
+        db, item_obj.list_id, current_user.user_id, for_update=True
+    )
+    if list_obj is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
         )
@@ -282,20 +254,6 @@ async def delete_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    list_id = await item_crud.get_list_id_by_id_with_ownership(
-        db, item_id, current_user.user_id
-    )
-    if list_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    list_obj = await list_crud.get_by_id_and_user(
-        db, list_id, current_user.user_id, for_update=True
-    )
-    if list_obj is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
     item_obj = await item_crud.get_by_id_with_ownership(
         db, item_id, current_user.user_id, populate_existing=True
     )
@@ -303,13 +261,21 @@ async def delete_item(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
         )
+    list_obj = await list_crud.get_by_id_and_user(
+        db, item_obj.list_id, current_user.user_id, for_update=True
+    )
+    if list_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
+        )
 
-    tier_set = item_obj.tier_set
     was_ranked = item_obj.position is not None
     await item_crud.delete(db, item_obj)
-    if was_ranked and tier_set:
+    if was_ranked:
         await db.flush()
-        items = await item_crud.get_ranked_by_list_and_tier_set(db, list_id, tier_set)
-        assign_scores_for_set(items, tier_set)
+        items = await item_crud.get_by_list_id(db, list_obj.list_id)
+        assign_scores(
+            sorted(filter_ranked_items(items), key=lambda item: item.position or "")
+        )
     list_obj.updated_at = datetime.now(UTC)
     await db.commit()

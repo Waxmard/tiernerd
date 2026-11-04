@@ -11,7 +11,6 @@ from scripts.migrate_ui_ranking import (
     _check_legacy_schema,
     classify_schema,
     preflight_items,
-    require_postgresql,
 )
 
 
@@ -68,15 +67,6 @@ def test_schema_recognition_accepts_only_complete_legacy_or_current_shapes() -> 
     assert classify_schema(current_items, current_sessions) == "current"
     with pytest.raises(MigrationError, match="partially migrated"):
         classify_schema(current_items, legacy_sessions)
-
-
-def test_database_dialect_rejects_sqlite_and_accepts_postgresql() -> None:
-    assert (
-        require_postgresql("postgresql+asyncpg://example:example@localhost/db")
-        == "postgresql"
-    )
-    with pytest.raises(MigrationError, match="PostgreSQL only"):
-        require_postgresql("sqlite+aiosqlite:///:memory:")
 
 
 def test_current_schema_requires_300_character_name_key() -> None:

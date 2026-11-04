@@ -41,7 +41,6 @@ async function request<T>(
     throw new ApiError(response.status, response.statusText, errorData);
   }
 
-  // Handle empty responses
   const text = await response.text();
   if (!text) {
     return {} as T;
@@ -54,17 +53,12 @@ export const api = {
   get: <T>(endpoint: string, token?: string) =>
     request<T>(endpoint, { method: 'GET', token }),
 
-  post: <T>(endpoint: string, body?: unknown, token?: string) => {
-    const isFormData = body instanceof URLSearchParams;
-    return request<T>(endpoint, {
+  post: <T>(endpoint: string, body?: unknown, token?: string) =>
+    request<T>(endpoint, {
       method: 'POST',
-      body: isFormData ? body.toString() : JSON.stringify(body),
-      headers: isFormData
-        ? { 'Content-Type': 'application/x-www-form-urlencoded' }
-        : undefined,
+      body: JSON.stringify(body),
       token,
-    });
-  },
+    }),
 
   put: <T>(endpoint: string, body?: unknown, token?: string) =>
     request<T>(endpoint, {

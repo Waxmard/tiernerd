@@ -119,33 +119,6 @@ def auth_headers_user2(test_user2: User) -> dict:
 
 
 @pytest_asyncio.fixture
-async def admin_user(test_db: AsyncSession) -> User:
-    """Create an admin test user."""
-    import uuid
-    from datetime import datetime
-
-    user = User(
-        user_id=uuid.uuid4(),
-        email="admin@example.com",
-        username="adminuser",
-        is_admin=True,
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-    )
-    test_db.add(user)
-    await test_db.commit()
-    await test_db.refresh(user)
-    return user
-
-
-@pytest.fixture
-def admin_auth_headers(admin_user: User) -> dict:
-    """Generate authentication headers for admin user."""
-    access_token = create_access_token(subject=admin_user.user_id)
-    return {"Authorization": f"Bearer {access_token}"}
-
-
-@pytest_asyncio.fixture
 async def test_list(test_db: AsyncSession, test_user: User) -> ListModel:
     import uuid
     from datetime import datetime
@@ -166,7 +139,6 @@ async def test_list(test_db: AsyncSession, test_user: User) -> ListModel:
 
 @pytest_asyncio.fixture
 async def test_item(test_db: AsyncSession, test_list: ListModel) -> ItemModel:
-    """Create a test item with tier_set and valid position."""
     import uuid
     from datetime import datetime
 
@@ -177,8 +149,7 @@ async def test_item(test_db: AsyncSession, test_list: ListModel) -> ItemModel:
         description="A test item",
         image_url="https://example.com/image.jpg",
         position="a0",
-        rating=None,
-        tier_set="good",
+        rating=10.0,
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
@@ -192,7 +163,6 @@ async def test_item(test_db: AsyncSession, test_list: ListModel) -> ItemModel:
 async def multiple_items(
     test_db: AsyncSession, test_list: ListModel
 ) -> list[ItemModel]:
-    """Create multiple test items with tier_set and positions."""
     import uuid
     from datetime import datetime
 
@@ -206,8 +176,7 @@ async def multiple_items(
             description=f"Test item number {i + 1}",
             image_url=f"https://example.com/image{i + 1}.jpg",
             position=positions[i],
-            rating=None,
-            tier_set="good",
+            rating=i * 2.5,
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
@@ -228,10 +197,9 @@ def item_factory(test_list: ListModel):
 
     def _create_item(
         name: str = "Test Item",
-        tier_set: str = "good",
         description: str = "",
         image_url: str | None = None,
-        position: str | None = "a0",
+        position: str | None = None,
         rating: float | None = None,
         list_id=None,
     ) -> ItemModel:
@@ -243,7 +211,6 @@ def item_factory(test_list: ListModel):
             image_url=image_url,
             position=position,
             rating=rating,
-            tier_set=tier_set,
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )

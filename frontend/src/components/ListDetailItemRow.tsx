@@ -3,23 +3,12 @@ import type React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
-import {
-  type PreferenceBand,
-  preferenceBand,
-} from '../services/themePreference';
-import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
-
-const RAIL_CLASS: Record<PreferenceBand, string> = {
-  1: 'bg-preference-1 dark:bg-preference-1-dark',
-  2: 'bg-preference-2 dark:bg-preference-2-dark',
-  3: 'bg-preference-3 dark:bg-preference-3-dark',
-  4: 'bg-preference-4 dark:bg-preference-4-dark',
-};
+import type { ListRankingMode } from '../services/listsService';
 
 interface ListDetailItemRowProps {
   item: Item;
   rank: number | null;
-  rankedCount: number;
+  rankingMode: ListRankingMode;
   selected: boolean;
   disabled: boolean;
   onPress: (item: Item) => void;
@@ -31,21 +20,21 @@ const ROW_CLASS =
 export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
   rank,
-  rankedCount,
+  rankingMode,
   selected,
   disabled,
   onPress,
 }) => {
-  const isRanked = item.rating !== null;
-  const band = preferenceBand(rank, rankedCount);
-  const rangeLabel = RANGE_OPTIONS.find(
-    (option) => option.value === item.tier_set
-  )?.label;
+  const ranked = item.position !== null;
+  const score = ranked && item.rating !== null ? item.rating.toFixed(1) : null;
   const accessibleDescription = [
     item.name,
     rank !== null ? `rank ${rank}` : null,
-    !isRanked ? 'Not ranked yet' : null,
-    isRanked && rangeLabel ? `range ${rangeLabel}` : null,
+    !ranked
+      ? 'Not ranked yet'
+      : rankingMode === 'score' && score !== null
+        ? `${score} out of 10`
+        : null,
     item.description?.trim() || null,
   ]
     .filter(Boolean)
@@ -69,17 +58,6 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             : 'border-transparent',
         ].join(' ')}
       >
-        {band !== null ? (
-          <View
-            accessible={false}
-            importantForAccessibility="no"
-            pointerEvents="none"
-            className={[
-              'absolute left-0 top-0 bottom-0 w-[6px] rounded-l-md',
-              RAIL_CLASS[band],
-            ].join(' ')}
-          />
-        ) : null}
         <View className="flex-1 min-w-0">
           <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
             {item.name}
@@ -92,16 +70,20 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
               {item.description}
             </Text>
           ) : null}
-          {isRanked ? (
-            rangeLabel ? (
-              <RangeBadge tierSet={item.tier_set} />
-            ) : null
-          ) : (
+          {!ranked ? (
             <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
               Not ranked yet
             </Text>
-          )}
+          ) : null}
         </View>
+        {ranked && (rankingMode === 'rank' ? rank !== null : score !== null) ? (
+          <Text
+            style={{ fontVariant: ['tabular-nums'] }}
+            className="ml-3 shrink-0 text-body-medium font-semibold text-ink dark:text-ink-dark"
+          >
+            {rankingMode === 'rank' ? rank : score}
+          </Text>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -115,7 +97,7 @@ export const ListItemEmptyState: React.FC<{
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      accessibilityLabel="Add your first item. Choose a starting category, then compare."
+      accessibilityLabel="Add your first item. Add an item, then compare to rank it."
       disabled={disabled}
       onPress={onAdd}
       activeOpacity={0.7}
@@ -132,7 +114,7 @@ export const ListItemEmptyState: React.FC<{
           Add your first item
         </Text>
         <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-          Choose a starting category, then compare.
+          Add an item, then compare to rank it.
         </Text>
       </View>
     </TouchableOpacity>

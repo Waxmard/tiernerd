@@ -1,6 +1,5 @@
 import Constants from 'expo-constants';
 
-// Get the API base URL dynamically for iOS compatibility
 const getApiBaseUrl = () => {
   // Explicit override wins, so a local dev server can target a deployed API.
   const override = process.env.EXPO_PUBLIC_API_URL;
@@ -13,7 +12,6 @@ const getApiBaseUrl = () => {
     if (debuggerHost) {
       return `http://${debuggerHost}:8000`;
     }
-    // Fallback for cases where hostUri isn't available
     return 'http://localhost:8000';
   }
   return 'https://your-production-url.com';

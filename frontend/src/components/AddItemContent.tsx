@@ -4,11 +4,9 @@ import { Pressable, Text, type TextInput, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { ItemFormDraft } from './itemWorkspaceTypes';
-import { RangeSelector } from './RangeSelector';
 
 export interface AddItemFieldErrors {
   name?: string;
-  range?: string;
 }
 
 export interface AddItemContentProps {
@@ -124,14 +122,6 @@ export function AddItemContent({
               />
             }
           />
-          {!isEdit ? (
-            <RangeSelector
-              value={form.tierSet}
-              onChange={(tierSet) => onFormChange({ tierSet })}
-              error={fieldErrors.range}
-              disabled={isBusy}
-            />
-          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Description (optional): ${form.description.trim() || 'Not set'}`}
@@ -142,12 +132,7 @@ export function AddItemContent({
               hasVisitedDescriptionRef.current = true;
               setView('description');
             }}
-            className={[
-              'flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4',
-              !isEdit ? 'mt-4' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
+            className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4"
           >
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">

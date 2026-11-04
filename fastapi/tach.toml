@@ -11,7 +11,7 @@ exact = true
 # Layers: main → api → services → crud → db
 # api may also call crud directly (endpoint handlers use crud_* helpers).
 # core is a pure leaf reachable from api/services/crud.
-# schemas/settings/utils are cross-cutting.
+# schemas/settings are cross-cutting.
 
 [[modules]]
 path = "app.main"
@@ -36,7 +36,6 @@ depends_on = [
     "app.db",
     "app.schemas",
     "app.settings",
-    "app.utils",
 ]
 
 [[modules]]
@@ -46,10 +45,6 @@ depends_on = []
 [[modules]]
 path = "app.crud"
 depends_on = ["app.db", "app.schemas"]
-
-[[modules]]
-path = "app.utils"
-depends_on = ["app.db"]
 
 [[modules]]
 path = "app.db"

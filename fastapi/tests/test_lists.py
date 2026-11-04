@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Item as ItemModel, List as ListModel, User
+from app.db.models import ComparisonSession, Item as ItemModel, List as ListModel, User
 
 
 class TestReadLists:
@@ -66,6 +66,39 @@ class TestReadLists:
         data = response.json()
         assert len(data) == 0
 
+    async def test_read_lists_pagination_multiple_lists(
+        self,
+        client: AsyncClient,
+        test_user: User,
+        auth_headers: dict,
+        test_db: AsyncSession,
+    ):
+        for number, day in ((3, 2), (2, 1), (4, 3), (1, 2)):
+            test_db.add(
+                ListModel(
+                    list_id=uuid.UUID(int=number),
+                    user_id=test_user.user_id,
+                    title=f"Pagination Test List {number}",
+                    created_at=datetime(2023, 1, 1, tzinfo=UTC),
+                    updated_at=datetime(2024, 1, day, tzinfo=UTC),
+                )
+            )
+        await test_db.commit()
+
+        first = await client.get("/api/lists/?limit=2", headers=auth_headers)
+        assert first.status_code == 200
+        assert [row["list_id"] for row in first.json()] == [
+            str(uuid.UUID(int=4)),
+            str(uuid.UUID(int=1)),
+        ]
+
+        second = await client.get("/api/lists/?skip=2&limit=2", headers=auth_headers)
+        assert second.status_code == 200
+        assert [row["list_id"] for row in second.json()] == [
+            str(uuid.UUID(int=3)),
+            str(uuid.UUID(int=2)),
+        ]
+
 
 class TestCreateList:
     """Tests for creating lists endpoint."""
@@ -89,6 +122,7 @@ class TestCreateList:
         data = response.json()
         assert data["title"] == "My New List"
         assert data["description"] == "A brand new list"
+        assert data["ranking_mode"] == "score"
         assert "list_id" in data
         assert str(data["user_id"]) == str(test_user.user_id)
 
@@ -127,22 +161,6 @@ class TestCreateList:
         )
         assert response.status_code == 409
         assert "already exists" in response.json()["detail"].lower()
-
-    async def test_create_list_empty_description(
-        self, client: AsyncClient, auth_headers: dict
-    ):
-        """Test creating list with empty description."""
-        response = await client.post(
-            "/api/lists/",
-            params={
-                "name": "List Without Description",
-                "description": "",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["title"] == "List Without Description"
 
     async def test_create_list_with_color_round_trips_through_the_api(
         self, client: AsyncClient, auth_headers: dict
@@ -183,6 +201,41 @@ class TestCreateList:
         )
         assert uncolored.status_code == 200
         assert uncolored.json()["color"] is None
+
+    async def test_ranking_modes_round_trip_and_validate(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        for mode in ("rank", "score"):
+            created = await client.post(
+                "/api/lists/",
+                params={
+                    "name": f"List {mode}",
+                    "description": "",
+                    "ranking_mode": mode,
+                },
+                headers=auth_headers,
+            )
+            assert created.status_code == 200
+            assert created.json()["ranking_mode"] == mode
+            list_id = created.json()["list_id"]
+            detail = await client.get(f"/api/lists/{list_id}", headers=auth_headers)
+            assert detail.status_code == 200
+            assert detail.json()["ranking_mode"] == mode
+            summaries = await client.get("/api/lists/", headers=auth_headers)
+            assert summaries.status_code == 200
+            assert (
+                next(row for row in summaries.json() if row["list_id"] == list_id)[
+                    "ranking_mode"
+                ]
+                == mode
+            )
+
+        invalid = await client.post(
+            "/api/lists/",
+            params={"name": "Invalid", "description": "", "ranking_mode": "other"},
+            headers=auth_headers,
+        )
+        assert invalid.status_code == 422
 
 
 class TestReadList:
@@ -230,6 +283,75 @@ class TestReadList:
 
 class TestUpdateList:
     """Tests for updating lists endpoint."""
+
+    async def test_mode_switch_preserves_items_and_sessions(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+        auth_headers_user2: dict,
+        test_db: AsyncSession,
+    ):
+        first = ItemModel(
+            list_id=test_list.list_id, name="First", position="a1", rating=10.0
+        )
+        second = ItemModel(
+            list_id=test_list.list_id, name="Second", position="a0", rating=0.0
+        )
+        test_db.add_all([first, second])
+        await test_db.flush()
+        session = ComparisonSession(
+            list_id=test_list.list_id,
+            new_item_id=first.item_id,
+            target_item_id=second.item_id,
+            status="active",
+            revision=3,
+        )
+        test_db.add(session)
+        await test_db.commit()
+        await test_db.refresh(session)
+        original_session = {
+            column.name: getattr(session, column.name)
+            for column in ComparisonSession.__table__.columns
+        }
+        url = f"/api/lists/{test_list.list_id}"
+        initial = await client.get(f"{url}/items", headers=auth_headers)
+        assert initial.status_code == 200
+        before = initial.json()
+        assert [(item["position"], item["rating"]) for item in before] == [
+            ("a1", 10.0),
+            ("a0", 0.0),
+        ]
+
+        for mode in ("rank", "score", "rank"):
+            response = await client.put(
+                url, json={"ranking_mode": mode}, headers=auth_headers
+            )
+            assert response.status_code == 200
+            assert response.json()["ranking_mode"] == mode
+            after = await client.get(f"{url}/items", headers=auth_headers)
+            assert after.status_code == 200
+            assert after.json() == before
+            await test_db.refresh(session)
+            assert {
+                column.name: getattr(session, column.name)
+                for column in ComparisonSession.__table__.columns
+            } == original_session
+
+        renamed = await client.put(url, json={"title": "Renamed"}, headers=auth_headers)
+        assert renamed.status_code == 200
+        assert renamed.json()["ranking_mode"] == "rank"
+        for invalid in (None, "other"):
+            response = await client.put(
+                url, json={"ranking_mode": invalid}, headers=auth_headers
+            )
+            assert response.status_code == 422
+        denied = await client.put(
+            url, json={"ranking_mode": "score"}, headers=auth_headers_user2
+        )
+        assert denied.status_code == 404
+        detail = await client.get(url, headers=auth_headers)
+        assert detail.json()["ranking_mode"] == "rank"
 
     async def test_update_list_success(
         self,
@@ -395,8 +517,7 @@ class TestDeleteList:
                 description=f"Description {i}",
                 image_url=f"https://example.com/img{i}.jpg",
                 position=f"a{i}",
-                rating=None,
-                tier_set="good",
+                rating=i * 5.0,
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
             )
@@ -449,40 +570,21 @@ class TestReadListItems:
         assert len(data) >= 1
         assert data[0]["name"] == test_item.name
 
-    async def test_read_list_items_multiple_tier_sets(
+    async def test_read_list_items_best_first_with_unranked_last(
         self,
         client: AsyncClient,
         test_list: ListModel,
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test reading items with multiple tier_sets."""
-        good_item = ItemModel(
-            item_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            name="Good Item",
-            description="A good item",
-            image_url="https://example.com/good.jpg",
-            position="a0",
-            rating=None,
-            tier_set="good",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+        lower = ItemModel(
+            list_id=test_list.list_id, name="Lower", position="a0", rating=0.0
         )
-        mid_item = ItemModel(
-            item_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            name="Mid Item",
-            description="A mid item",
-            image_url="https://example.com/mid.jpg",
-            position="a0",
-            rating=None,
-            tier_set="mid",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+        unranked = ItemModel(list_id=test_list.list_id, name="Unranked")
+        higher = ItemModel(
+            list_id=test_list.list_id, name="Higher", position="a1", rating=10.0
         )
-        test_db.add(good_item)
-        test_db.add(mid_item)
+        test_db.add_all([lower, unranked, higher])
         await test_db.commit()
 
         response = await client.get(
@@ -490,11 +592,12 @@ class TestReadListItems:
         )
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 2
-
-        tier_sets = {item["tier_set"] for item in data}
-        assert "good" in tier_sets
-        assert "mid" in tier_sets
+        assert [item["name"] for item in data] == ["Higher", "Lower", "Unranked"]
+        assert [(item["position"], item["rating"]) for item in data] == [
+            ("a1", 10.0),
+            ("a0", 0.0),
+            (None, None),
+        ]
 
     async def test_read_list_items_not_found(
         self,
@@ -526,40 +629,3 @@ class TestReadListItems:
         """Test reading list items without auth fails."""
         response = await client.get(f"/api/lists/{test_list.list_id}/items")
         assert response.status_code == 401
-
-
-class TestReadListsWithStats:
-    """Tests for reading lists with stats."""
-
-    async def test_read_lists_pagination_multiple_lists(
-        self,
-        client: AsyncClient,
-        test_user: User,
-        auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        for number, day in ((3, 2), (2, 1), (4, 3), (1, 2)):
-            test_db.add(
-                ListModel(
-                    list_id=uuid.UUID(int=number),
-                    user_id=test_user.user_id,
-                    title=f"Pagination Test List {number}",
-                    created_at=datetime(2023, 1, 1, tzinfo=UTC),
-                    updated_at=datetime(2024, 1, day, tzinfo=UTC),
-                )
-            )
-        await test_db.commit()
-
-        first = await client.get("/api/lists/?limit=2", headers=auth_headers)
-        assert first.status_code == 200
-        assert [row["list_id"] for row in first.json()] == [
-            str(uuid.UUID(int=4)),
-            str(uuid.UUID(int=1)),
-        ]
-
-        second = await client.get("/api/lists/?skip=2&limit=2", headers=auth_headers)
-        assert second.status_code == 200
-        assert [row["list_id"] for row in second.json()] == [
-            str(uuid.UUID(int=3)),
-            str(uuid.UUID(int=2)),
-        ]

@@ -1,12 +1,11 @@
 import type React from 'react';
-import { ActivityIndicator, Modal, Text, View } from 'react-native';
-import { BaseModalContent } from '../design-system/components';
+import { ActivityIndicator, Modal, View } from 'react-native';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { ComparisonSession, Item } from '../services/itemsService';
+import type { ListRankingMode } from '../services/listsService';
 import { AddItemContent } from './AddItemContent';
 import { ItemDetailContent } from './ItemDetailContent';
 import type { ItemWorkspace } from './itemWorkspaceTypes';
-import { RangeSelector } from './RangeSelector';
 import { RankingContent } from './RankingContent';
 
 interface ListDetailWorkspaceHostProps {
@@ -18,6 +17,7 @@ interface ListDetailWorkspaceHostProps {
   selectedItem: Item | null;
   selectedRank: number | null;
   rankedCount: number;
+  rankingMode: ListRankingMode;
   selectedSession: ComparisonSession | null;
   isLoadingSession: boolean;
   sessionError: string | null;
@@ -26,7 +26,6 @@ interface ListDetailWorkspaceHostProps {
   canMutate: boolean;
   workspace: ItemWorkspace;
   onRetrySession: () => void;
-  onOpenRange: () => void;
   onResume: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -47,6 +46,7 @@ export const ListDetailWorkspaceHost: React.FC<
   selectedItem,
   selectedRank,
   rankedCount,
+  rankingMode,
   selectedSession,
   isLoadingSession,
   sessionError,
@@ -55,7 +55,6 @@ export const ListDetailWorkspaceHost: React.FC<
   canMutate,
   workspace,
   onRetrySession,
-  onOpenRange,
   onResume,
   onEdit,
   onDelete,
@@ -66,35 +65,6 @@ export const ListDetailWorkspaceHost: React.FC<
 }) => {
   const colors = useThemeColors();
   const isBusy = workspace.isBusy || isScreenBusy;
-
-  const renderRange = (presentation: 'modal' | 'panel') => {
-    const isReRanking =
-      workspace.item?.rating !== null && workspace.item?.rating !== undefined;
-    return (
-      <BaseModalContent
-        title={isReRanking ? 'Re-rank item' : 'Rank item'}
-        isLoading={isBusy}
-        error={workspace.error}
-        submitText="Start ranking"
-        closeText="Cancel"
-        presentation={presentation}
-        onClose={() => workspace.requestClose().catch(() => false)}
-        onSubmit={onStartRanking}
-      >
-        {isReRanking && workspace.item ? (
-          <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mb-4">
-            Saved score {workspace.item.rating?.toFixed(1)}
-          </Text>
-        ) : null}
-        <RangeSelector
-          value={workspace.form.tierSet}
-          onChange={(tierSet) => workspace.setForm({ tierSet })}
-          error={workspace.fieldErrors.range}
-          disabled={isBusy}
-        />
-      </BaseModalContent>
-    );
-  };
 
   const renderWorkspace = (presentation: 'modal' | 'panel') => {
     if (workspace.mode === 'ranking' && workspace.session) {
@@ -117,8 +87,6 @@ export const ListDetailWorkspaceHost: React.FC<
         />
       );
     }
-
-    if (workspace.mode === 'range') return renderRange(presentation);
 
     if (workspace.mode === 'add' || workspace.mode === 'edit') {
       return (
@@ -154,6 +122,7 @@ export const ListDetailWorkspaceHost: React.FC<
         canMutate={canMutate}
         rank={selectedRank}
         rankedCount={rankedCount}
+        rankingMode={rankingMode}
         presentation={presentation}
         session={selectedSession}
         isLoadingSession={isLoadingSession}
@@ -162,7 +131,7 @@ export const ListDetailWorkspaceHost: React.FC<
         sessionError={sessionError}
         onRetrySession={onRetrySession}
         onRetryRefresh={workspace.retryRefresh}
-        onRank={onOpenRange}
+        onRank={onStartRanking}
         onResume={onResume}
         onEdit={onEdit}
         onDelete={onDelete}
@@ -202,16 +171,11 @@ export const ListDetailWorkspaceHost: React.FC<
               ? workspace.session?.status === 'ready_to_commit'
                 ? 'Saving ranking…'
                 : 'Which is better?'
-              : workspace.mode === 'range'
-                ? workspace.item?.rating !== null &&
-                  workspace.item?.rating !== undefined
-                  ? 'Re-rank item'
-                  : 'Rank item'
-                : workspace.mode === 'edit'
-                  ? 'Edit item'
-                  : workspace.mode === 'add'
-                    ? 'Add item'
-                    : (selectedItem?.name ?? 'Item details')
+              : workspace.mode === 'edit'
+                ? 'Edit item'
+                : workspace.mode === 'add'
+                  ? 'Add item'
+                  : (selectedItem?.name ?? 'Item details')
           }
           onRequestClose={onMobileClose}
         >

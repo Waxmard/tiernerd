@@ -9,17 +9,14 @@ BASE = len(ALPHABET)  # 62
 
 
 def _char_to_index(c: str) -> int:
-    """Convert a character to its index in the alphabet."""
     return ALPHABET.index(c)
 
 
 def _index_to_char(i: int) -> str:
-    """Convert an index to its character in the alphabet."""
     return ALPHABET[i]
 
 
 def _increment_char(c: str) -> str | None:
-    """Increment a character by one, returning None if at max."""
     idx = _char_to_index(c)
     if idx >= BASE - 1:
         return None
@@ -27,7 +24,6 @@ def _increment_char(c: str) -> str | None:
 
 
 def _decrement_char(c: str) -> str | None:
-    """Decrement a character by one, returning None if at min."""
     idx = _char_to_index(c)
     if idx <= 0:
         return None

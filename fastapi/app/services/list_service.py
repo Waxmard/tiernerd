@@ -3,42 +3,14 @@
 from typing import Any
 
 from app.db.models import Item as ItemModel
-from app.services.ranking import SCORE_BANDS
 
 
 def get_items_best_first(items: list[ItemModel]) -> list[ItemModel]:
-    """
-    Order items best first: bands good, mid, bad, best position first within a
-    band, then unranked items.
-    """
+    """Order ranked items by descending position, then append unranked items."""
     ranked = [i for i in items if i.position is not None]
     unranked = [i for i in items if i.position is None]
-    ranked.sort(
-        key=lambda i: (
-            SCORE_BANDS.get(i.tier_set or "", (0.0, 0.0))[0],
-            i.position or "",
-        ),
-        reverse=True,
-    )
+    ranked.sort(key=lambda i: i.position or "", reverse=True)
     return ranked + unranked
-
-
-def build_list_response(
-    list_obj: Any, items: list[Any] | None = None
-) -> dict[str, Any]:
-    """Build a list model response, optionally including items."""
-    response: dict[str, Any] = {
-        "list_id": list_obj.list_id,
-        "user_id": list_obj.user_id,
-        "title": list_obj.title,
-        "description": list_obj.description,
-        "color": list_obj.color,
-        "created_at": list_obj.created_at,
-        "updated_at": list_obj.updated_at,
-    }
-    if items is not None:
-        response["items"] = items
-    return response
 
 
 def build_list_simple_response(row: tuple[Any, ...]) -> dict[str, Any]:
@@ -51,6 +23,7 @@ def build_list_simple_response(row: tuple[Any, ...]) -> dict[str, Any]:
         "title": list_obj.title,
         "description": list_obj.description,
         "color": list_obj.color,
+        "ranking_mode": list_obj.ranking_mode,
         "created_at": list_obj.created_at,
         "updated_at": list_obj.updated_at,
         "item_count": item_count,

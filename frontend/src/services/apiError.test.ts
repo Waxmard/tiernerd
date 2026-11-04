@@ -22,12 +22,12 @@ test('joins only string validation messages', () => {
           { msg: 'Name is required' },
           { msg: 7 },
           null,
-          { msg: 'Choose a range' },
+          { msg: 'Description is too long' },
         ],
       }),
       fallback
     ),
-    'Name is required, Choose a range'
+    'Name is required, Description is too long'
   );
 });
 

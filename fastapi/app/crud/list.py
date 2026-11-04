@@ -38,14 +38,19 @@ async def get_by_id_and_user(
 
 
 async def get_by_title_and_user(
-    db: AsyncSession, title: str, user_id: uuid.UUID
+    db: AsyncSession,
+    title: str,
+    user_id: uuid.UUID,
+    *,
+    for_update: bool = False,
 ) -> ListModel | None:
-    result = await db.execute(
-        select(ListModel).where(
-            ListModel.title == title,
-            ListModel.user_id == user_id,
-        )
+    query = select(ListModel).where(
+        ListModel.title == title,
+        ListModel.user_id == user_id,
     )
+    if for_update:
+        query = query.with_for_update(of=ListModel)
+    result = await db.execute(query.execution_options(populate_existing=True))
     return result.scalar_one_or_none()
 
 

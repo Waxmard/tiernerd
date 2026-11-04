@@ -25,7 +25,6 @@ class TestComparisonCRUD:
             list_id=test_list.list_id,
             new_item_id=test_item.item_id,
             target_item_id=test_item.item_id,
-            tier_set="good",
         )
         test_db.add(session)
         await test_db.commit()
@@ -43,13 +42,11 @@ class TestComparisonCRUD:
             list_id=test_list.list_id,
             new_item_id=test_item.item_id,
             target_item_id=test_item.item_id,
-            tier_set="good",
             status="ready_to_commit",
         )
         test_db.add(session)
         await test_db.commit()
 
-        assert await comparison_crud.get_active(test_db, session.session_id) is not None
         assert (
             await comparison_crud.get_active_by_item(test_db, test_item.item_id)
             is not None
@@ -62,13 +59,11 @@ class TestComparisonCRUD:
             list_id=test_list.list_id,
             new_item_id=test_item.item_id,
             target_item_id=None,
-            tier_set="good",
             status="completed",
         )
         test_db.add(session)
         await test_db.commit()
 
-        assert await comparison_crud.get_active(test_db, session.session_id) is None
         assert (
             await comparison_crud.get_active_by_item(test_db, test_item.item_id) is None
         )
@@ -110,14 +105,63 @@ class TestItemCRUD:
         result = await item_crud.get_by_list_id(test_db, test_list.list_id)
         assert result == []
 
-    async def test_get_by_list_and_tier_set_no_match(
-        self, test_db: AsyncSession, test_list: ListModel
+    async def test_get_by_list_id_includes_ranked_and_unranked_items(
+        self,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        multiple_items: list[ItemModel],
     ):
-        """Test getting items with tier_set that doesn't exist."""
-        result = await item_crud.get_by_list_and_tier_set(
-            test_db, test_list.list_id, "nonexistent"
+        unranked = ItemModel(list_id=test_list.list_id, name="Unranked")
+        other_list = ListModel(user_id=test_list.user_id, title="Other list")
+        test_db.add_all([unranked, other_list])
+        await test_db.flush()
+        other_item = ItemModel(list_id=other_list.list_id, name="Other item")
+        test_db.add(other_item)
+        await test_db.commit()
+
+        result = await item_crud.get_by_list_id(test_db, test_list.list_id)
+        assert {item.item_id for item in result} == {
+            *(item.item_id for item in multiple_items),
+            unranked.item_id,
+        }
+        assert unranked.position is None
+        assert unranked.rating is None
+
+    async def test_ranked_positions_are_unique_per_list(
+        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
+    ) -> None:
+        other_list = ListModel(user_id=test_list.user_id, title="Other list")
+        test_db.add(other_list)
+        await test_db.flush()
+        test_db.add_all(
+            [
+                ItemModel(list_id=test_list.list_id, name="Unranked one"),
+                ItemModel(list_id=test_list.list_id, name="Unranked two"),
+                ItemModel(
+                    list_id=other_list.list_id,
+                    name="Other list item",
+                    position=test_item.position,
+                    rating=10.0,
+                ),
+            ]
         )
-        assert result == []
+        await test_db.commit()
+
+        items = await item_crud.get_by_list_id(test_db, test_list.list_id)
+        assert {item.name for item in items if item.position is None} == {
+            "Unranked one",
+            "Unranked two",
+        }
+
+        duplicate = ItemModel(
+            list_id=test_list.list_id,
+            name="Duplicate position",
+            position=test_item.position,
+            rating=0.0,
+        )
+        with pytest.raises(IntegrityError):
+            await item_crud.create(test_db, duplicate)
+        await test_db.rollback()
 
     async def test_sqlite_duplicate_name_error_classification(
         self, test_db: AsyncSession, test_item: ItemModel
@@ -125,7 +169,6 @@ class TestItemCRUD:
         duplicate = ItemModel(
             list_id=test_item.list_id,
             name="  TEST ITEM  ",
-            tier_set="mid",
         )
         with pytest.raises(IntegrityError) as caught:
             await item_crud.create(test_db, duplicate)
@@ -147,7 +190,7 @@ def test_postgresql_duplicate_name_error_classification() -> None:
         constraint_name = "ix_items_list_name_key"
 
     class _OtherViolation(Exception):
-        constraint_name = "ix_items_list_tier_position"
+        constraint_name = "ix_items_list_position"
 
     assert item_crud.is_duplicate_name_error(
         IntegrityError("insert", {}, _DiagViolation())
@@ -210,22 +253,24 @@ class TestListCRUD:
         )
         test_db.add(list_obj)
         await test_db.flush()
-        new_item = ItemModel(list_id=list_obj.list_id, name="New", position="a1")
-        target_item = ItemModel(list_id=list_obj.list_id, name="Target", position="a0")
+        new_item = ItemModel(
+            list_id=list_obj.list_id, name="New", position="a1", rating=10.0
+        )
+        target_item = ItemModel(
+            list_id=list_obj.list_id, name="Target", position="a0", rating=0.0
+        )
         test_db.add_all([new_item, target_item])
         await test_db.flush()
         related = ComparisonSessionModel(
             list_id=list_obj.list_id,
             new_item_id=new_item.item_id,
             target_item_id=target_item.item_id,
-            tier_set="good",
             status="completed",
         )
         unrelated = ComparisonSessionModel(
             list_id=multiple_items[0].list_id,
             new_item_id=multiple_items[0].item_id,
             target_item_id=multiple_items[1].item_id,
-            tier_set="good",
         )
         test_db.add_all([related, unrelated])
         await test_db.commit()

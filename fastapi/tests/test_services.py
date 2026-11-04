@@ -14,13 +14,17 @@ from app.services.comparison_service import (
     start_comparison,
     undo_comparison,
 )
-from app.services.ranking import assign_scores_for_set, filter_ranked_items
-from app.utils.helper import sort_items_by_position
+from app.services.list_service import get_items_best_first
+from app.services.ranking import (
+    assign_scores,
+    filter_ranked_items,
+    score_for_rank,
+    sort_items_by_position,
+)
 
 
 def create_item(
     name: str = "Test Item",
-    tier_set: str = "good",
     list_id: uuid.UUID | None = None,
     position: str | None = "a0",
     rating: float | None = None,
@@ -34,51 +38,54 @@ def create_item(
         image_url=None,
         position=position,
         rating=rating,
-        tier_set=tier_set,
         created_at=now,
         updated_at=now,
     )
 
 
-async def test_empty_range_starts_ready_with_valid_preview(
+async def test_without_peers_starts_ready_with_valid_preview(
     test_db: AsyncSession, item_factory
 ) -> None:
-    candidate = item_factory(name="New", tier_set="bad", position=None)
+    candidate = item_factory(name="New", position=None)
     test_db.add(candidate)
     await test_db.commit()
 
-    session = await start_comparison(test_db, candidate, "bad", discard_on_cancel=True)
+    session = await start_comparison(test_db, candidate, discard_on_cancel=True)
     response = await build_comparison_session_response(test_db, session)
 
     assert response.status == "ready_to_commit"
     assert response.comparisons_answered == 0
     assert response.comparison_limit == 0
     assert response.preview is not None
-    assert response.preview.score == 2.5
+    assert response.preview.score == 10.0
     assert response.preview.rank == 1
+    assert response.preview.ranked_count == 1
+    assert response.item.position is None
+    assert response.item.rating is None
     assert response.discard_on_cancel is True
 
 
 async def test_answer_undo_and_commit_preserve_draft_until_commit(
     test_db: AsyncSession, test_item: ItemModel, item_factory
 ) -> None:
-    assign_scores_for_set([test_item], "good")
+    assign_scores([test_item])
     candidate = item_factory(name="Candidate", position=None)
     test_db.add(candidate)
     await test_db.commit()
 
-    session = await start_comparison(test_db, candidate, "good")
+    session = await start_comparison(test_db, candidate)
     await process_comparison_result(test_db, session, "better", revision=0)
     response = await build_comparison_session_response(test_db, session)
 
     assert response.status == "ready_to_commit"
     assert response.preview is not None
-    assert response.preview.score == 9.2
+    assert response.preview.score == 10.0
     assert response.preview.rank == 1
+    assert response.preview.ranked_count == 2
     assert candidate.position is None
     assert candidate.rating is None
     assert test_item.position == "a0"
-    assert test_item.rating == 8.5
+    assert test_item.rating == 10.0
 
     await undo_comparison(test_db, session, revision=1)
     assert session.status == "active"
@@ -87,12 +94,18 @@ async def test_answer_undo_and_commit_preserve_draft_until_commit(
     assert candidate.rating is None
 
     await process_comparison_result(test_db, session, "worse", revision=2)
+    response = await build_comparison_session_response(test_db, session)
+    assert response.preview is not None
+    assert response.preview.score == 0.0
+    assert response.preview.rank == 2
+    assert candidate.position is None
+    assert candidate.rating is None
     await finalize_comparison(test_db, session, revision=3)
     assert session.status == "completed"
     assert session.revision == 4
     assert candidate.position < test_item.position
-    assert candidate.rating == 7.8
-    assert test_item.rating == 9.2
+    assert candidate.rating == 0.0
+    assert test_item.rating == 10.0
 
     await finalize_comparison(test_db, session, revision=0)
     assert session.revision == 4
@@ -104,7 +117,7 @@ async def test_changed_peer_makes_draft_stale_without_mutation(
     candidate = item_factory(name="Candidate", position=None)
     test_db.add(candidate)
     await test_db.commit()
-    session = await start_comparison(test_db, candidate, "good")
+    session = await start_comparison(test_db, candidate)
 
     test_item.position = "z0"
     await test_db.commit()
@@ -119,43 +132,39 @@ async def test_changed_peer_makes_draft_stale_without_mutation(
 
 
 class TestRankingService:
-    def test_filter_ranked_items_empty(self) -> None:
-        assert filter_ranked_items([]) == []
-
-    def test_filter_ranked_items_all_ranked(self) -> None:
-        items = [create_item(name=f"Item {i}", position=f"a{i}") for i in range(3)]
-        assert len(filter_ranked_items(items)) == 3
-
-    def test_filter_ranked_items_excludes_unranked(self) -> None:
-        items = [
-            create_item(name="Ranked"),
-            create_item(name="Unranked", position=None),
-        ]
-        assert [item.name for item in filter_ranked_items(items)] == ["Ranked"]
-
-    def test_filter_ranked_items_excludes_specific_id(self) -> None:
+    def test_filter_ranked_items(self) -> None:
         excluded_id = uuid.uuid4()
-        items = [
-            create_item(name="Kept"),
-            create_item(name="Excluded", position="a1"),
-        ]
-        items[1].item_id = excluded_id
-        assert filter_ranked_items(items, excluded_id) == [items[0]]
+        ranked = create_item(name="Ranked")
+        excluded = create_item(name="Excluded", position="a1")
+        excluded.item_id = excluded_id
+        unranked = create_item(name="Unranked", position=None)
+        items = [ranked, excluded, unranked]
+        assert filter_ranked_items([]) == []
+        assert filter_ranked_items(items) == [ranked, excluded]
+        assert filter_ranked_items(items, excluded_id) == [ranked]
 
     @pytest.mark.parametrize(
-        ("tier_set", "expected"),
-        [("good", [7.4, 8.1, 8.9, 9.6]), ("mid", [4.4, 5.1, 5.9, 6.6])],
+        "best_first_scores",
+        [
+            [],
+            [10.0],
+            [10.0, 0.0],
+            [10.0, 5.0, 0.0],
+            [10.0, 6.7, 3.3, 0.0],
+        ],
     )
-    def test_assign_scores_for_set(self, tier_set: str, expected: list[float]) -> None:
-        items = [create_item(name=f"Item {i}", position=f"a{i}") for i in range(4)]
-        assign_scores_for_set(items, tier_set)
-        assert [item.rating for item in items] == expected
-
-    def test_assign_scores_for_set_empty_or_unknown(self) -> None:
-        item = create_item(tier_set="unknown")
-        assign_scores_for_set([], "good")
-        assign_scores_for_set([item], "unknown")
-        assert item.rating is None
+    def test_assign_scores(self, best_first_scores: list[float]) -> None:
+        items = [
+            create_item(name=f"Item {i}", position=f"a{i}")
+            for i in range(len(best_first_scores))
+        ]
+        assign_scores(items)
+        best_first = get_items_best_first(items)
+        assert best_first == list(reversed(items))
+        assert [item.rating for item in best_first] == best_first_scores
+        assert [
+            score_for_rank(rank, len(items)) for rank in range(1, len(items) + 1)
+        ] == best_first_scores
 
     def test_sort_items_by_position(self) -> None:
         items = [

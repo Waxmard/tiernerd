@@ -2,7 +2,6 @@ import { Image, Pressable, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { ComparisonSession, Item } from '../services/itemsService';
-import { RANGE_OPTIONS, RangeBadge } from './RangeSelector';
 
 export interface RankingContentProps {
   listTitle: string;
@@ -104,9 +103,6 @@ export function RankingContent({
   onReload,
   onRetryRefresh,
 }: RankingContentProps) {
-  const destinationOption = RANGE_OPTIONS.find(
-    (option) => option.value === session.tier_set
-  );
   const comparison = session.current_comparison;
   const candidate = session.item;
   const existingItem = comparison
@@ -177,18 +173,6 @@ export function RankingContent({
         <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
           {listTitle}
         </Text>
-        <View className="flex-row flex-wrap items-center gap-1">
-          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-            Ranking into
-          </Text>
-          {destinationOption ? (
-            <RangeBadge tierSet={session.tier_set} />
-          ) : (
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-              Range not selected
-            </Text>
-          )}
-        </View>
         {isAsking ? (
           <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
             Question {session.comparisons_answered + 1} · up to{' '}

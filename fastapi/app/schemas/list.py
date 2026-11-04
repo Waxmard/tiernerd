@@ -1,27 +1,26 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+RankingMode = Literal["rank", "score"]
+
 
 class ListBase(BaseModel):
-    """Base list schema with shared properties."""
-
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     color: str | None = None
+    ranking_mode: RankingMode = "score"
 
 
 class ListUpdate(BaseModel):
-    """Schema for list update."""
-
     title: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = None
+    ranking_mode: RankingMode = "score"
 
 
 class List(ListBase):
-    """Schema for list response."""
-
     list_id: UUID
     user_id: UUID
     title: str
@@ -33,8 +32,6 @@ class List(ListBase):
 
 
 class ListSimple(ListBase):
-    """Schema for simple list response (without items)."""
-
     list_id: UUID
     user_id: UUID
     title: str

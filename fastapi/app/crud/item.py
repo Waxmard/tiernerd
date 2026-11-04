@@ -41,17 +41,6 @@ async def get_by_id_with_ownership(
     return result.scalar_one_or_none()
 
 
-async def get_list_id_by_id_with_ownership(
-    db: AsyncSession, item_id: uuid.UUID, user_id: uuid.UUID
-) -> uuid.UUID | None:
-    result = await db.execute(
-        select(ItemModel.list_id)
-        .join(ListModel, ItemModel.list_id == ListModel.list_id)
-        .where(ItemModel.item_id == item_id, ListModel.user_id == user_id)
-    )
-    return result.scalar_one_or_none()
-
-
 async def get_by_name_key(
     db: AsyncSession,
     list_id: uuid.UUID,
@@ -85,45 +74,6 @@ async def get_by_list_id(
     db: AsyncSession, list_id: uuid.UUID, *, populate_existing: bool = True
 ) -> list[ItemModel]:
     query = select(ItemModel).where(ItemModel.list_id == list_id)
-    if populate_existing:
-        query = query.execution_options(populate_existing=True)
-    result = await db.execute(query)
-    return list(result.scalars().all())
-
-
-async def get_by_list_and_tier_set(
-    db: AsyncSession,
-    list_id: uuid.UUID,
-    tier_set: str,
-    *,
-    populate_existing: bool = True,
-) -> list[ItemModel]:
-    query = select(ItemModel).where(
-        ItemModel.list_id == list_id,
-        ItemModel.tier_set == tier_set,
-    )
-    if populate_existing:
-        query = query.execution_options(populate_existing=True)
-    result = await db.execute(query)
-    return list(result.scalars().all())
-
-
-async def get_ranked_by_list_and_tier_set(
-    db: AsyncSession,
-    list_id: uuid.UUID,
-    tier_set: str,
-    *,
-    populate_existing: bool = True,
-) -> list[ItemModel]:
-    query = (
-        select(ItemModel)
-        .where(
-            ItemModel.list_id == list_id,
-            ItemModel.tier_set == tier_set,
-            ItemModel.position.isnot(None),
-        )
-        .order_by(ItemModel.position)
-    )
     if populate_existing:
         query = query.execution_options(populate_existing=True)
     result = await db.execute(query)
