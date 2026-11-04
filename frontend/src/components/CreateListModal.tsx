@@ -10,14 +10,22 @@ import {
 import { Pressable, Text, type TextInput, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import {
-  LIST_COLORS,
   type ListColor,
+  type ListCover,
+  type ListIcon,
   palette,
 } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
 import { useTheme } from '../providers/ThemeProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import { type ListRankingMode, listsService } from '../services/listsService';
+import {
+  LIST_ICON_LABELS,
+  ListColorPicker,
+  ListCoverPicker,
+  ListIconPicker,
+  SWATCH_CLASS,
+} from './ImmersiveBoard';
 import { RankingModeSelector } from './ListRankingOptions';
 
 export interface CreatedList {
@@ -36,13 +44,6 @@ interface CreateListContentProps {
 
 const MAX_TITLE_LENGTH = 100;
 
-const SWATCH_CLASS: Record<ListColor, string> = {
-  blue: 'bg-list-blue-solid dark:bg-list-blue-solid-dark',
-  teal: 'bg-list-teal-solid dark:bg-list-teal-solid-dark',
-  amber: 'bg-list-amber-solid dark:bg-list-amber-solid-dark',
-  pink: 'bg-list-pink-solid dark:bg-list-pink-solid-dark',
-};
-
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
 type CreateListView = 'overview' | 'description' | 'color' | 'ranking-mode';
@@ -56,6 +57,8 @@ export const CreateListContent = forwardRef<
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState<ListColor | null>(null);
+  const [icon, setIcon] = useState<ListIcon | null>(null);
+  const [cover, setCover] = useState<ListCover | null>(null);
   const [rankingMode, setRankingMode] = useState<ListRankingMode>('score');
   const [view, setView] = useState<CreateListView>('overview');
   const [isLoading, setIsLoading] = useState(false);
@@ -73,6 +76,8 @@ export const CreateListContent = forwardRef<
     setTitle('');
     setDescription('');
     setColor(null);
+    setIcon(null);
+    setCover(null);
     setRankingMode('score');
     setView('overview');
     setFieldError(null);
@@ -129,7 +134,9 @@ export const CreateListContent = forwardRef<
         description.trim(),
         color,
         rankingMode,
-        token
+        token,
+        icon,
+        cover
       );
       clearForm();
       onSuccess({ listId: createdList.list_id, title: createdList.title });
@@ -157,7 +164,7 @@ export const CreateListContent = forwardRef<
           : view === 'description'
             ? 'Description'
             : view === 'color'
-              ? 'List color'
+              ? 'List appearance'
               : 'Ranking mode'
       }
       error={error}
@@ -219,8 +226,8 @@ export const CreateListContent = forwardRef<
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Color (optional): ${color ?? 'None'}`}
-            accessibilityHint="Choose a list color"
+            accessibilityLabel={`Appearance (optional): ${color ?? 'No color'}, ${icon ? LIST_ICON_LABELS[icon] : 'default icon'}, ${cover ? 'landscape cover' : 'no cover'}`}
+            accessibilityHint="Choose list color, icon, and cover"
             accessibilityState={{ disabled: isLoading }}
             disabled={isLoading}
             onPress={openColor}
@@ -228,10 +235,14 @@ export const CreateListContent = forwardRef<
           >
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-                Color (optional)
+                Appearance (optional)
               </Text>
               <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-                {color ?? 'None'}
+                {[
+                  color ?? 'No color',
+                  icon ? LIST_ICON_LABELS[icon] : 'Default icon',
+                  cover ? 'Landscape cover' : 'No cover',
+                ].join(' · ')}
               </Text>
             </View>
             {color ? (
@@ -299,33 +310,31 @@ export const CreateListContent = forwardRef<
           disabled={isLoading}
         />
       ) : (
-        <View className="flex-row flex-wrap gap-3">
-          {LIST_COLORS.map((hue) => {
-            const selected = color === hue;
-            return (
-              <Pressable
-                key={hue}
-                accessibilityRole="button"
-                accessibilityLabel={`Color ${hue}`}
-                accessibilityState={{ selected }}
-                disabled={isLoading}
-                onPress={() => setColor(selected ? null : hue)}
-                className={[
-                  'w-11 h-11 rounded-full items-center justify-center',
-                  SWATCH_CLASS[hue],
-                ].join(' ')}
-              >
-                {selected ? (
-                  <Ionicons
-                    name="checkmark"
-                    size={20}
-                    color={palette.list[hue][scheme]['on-solid']}
-                    accessible={false}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          })}
+        <View className="gap-4">
+          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+            Color
+          </Text>
+          <ListColorPicker
+            value={color}
+            onChange={setColor}
+            disabled={isLoading}
+          />
+          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+            Icon
+          </Text>
+          <ListIconPicker
+            value={icon}
+            onChange={setIcon}
+            disabled={isLoading}
+          />
+          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+            Cover
+          </Text>
+          <ListCoverPicker
+            value={cover}
+            onChange={setCover}
+            disabled={isLoading}
+          />
         </View>
       )}
     </BaseModalContent>

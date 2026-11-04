@@ -65,6 +65,8 @@ class List(Base):
     title: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     color: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    cover: Mapped[str | None] = mapped_column(String(16), nullable=True)
     ranking_mode: Mapped[str] = mapped_column(
         String(5), nullable=False, default="score", server_default="score"
     )

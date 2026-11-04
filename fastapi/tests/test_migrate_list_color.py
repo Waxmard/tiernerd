@@ -3,6 +3,10 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 
 from app.settings import get_settings
+from scripts.migrate_list_appearance import (
+    _arguments as appearance_arguments,
+    main as appearance_main,
+)
 from scripts.migrate_list_color import _arguments, main
 
 
@@ -61,5 +65,25 @@ def test_apply_adds_the_column_once_and_is_a_no_op_afterwards(
     assert main(["--apply"]) == 0
     assert main(["--check"]) == 0
     assert "color" in _list_columns(engine)
+
+    engine.dispose()
+
+
+def test_appearance_migration_check_and_idempotent_apply(
+    legacy_lists_database,
+) -> None:
+    engine = _sqlite_engine(legacy_lists_database)
+
+    assert {"color", "icon", "cover"}.isdisjoint(_list_columns(engine))
+    assert appearance_arguments([]).apply is False
+    assert appearance_main(["--check"]) == 0
+    assert {"color", "icon", "cover"}.isdisjoint(_list_columns(engine))
+
+    assert appearance_main(["--apply"]) == 0
+    assert {"color", "icon", "cover"}.issubset(_list_columns(engine))
+
+    assert appearance_main(["--apply"]) == 0
+    assert appearance_main(["--check"]) == 0
+    assert {"color", "icon", "cover"}.issubset(_list_columns(engine))
 
     engine.dispose()

@@ -201,6 +201,51 @@ class TestCreateList:
         )
         assert uncolored.status_code == 200
         assert uncolored.json()["color"] is None
+        assert uncolored.json()["icon"] is None
+        assert uncolored.json()["cover"] is None
+
+        styled = await client.post(
+            "/api/lists/",
+            params={
+                "name": "Immersive List",
+                "description": "With icon and cover",
+                "color": "violet",
+                "icon": "coffee",
+                "cover": "landscape",
+            },
+            headers=auth_headers,
+        )
+        assert styled.status_code == 200
+        styled_data = styled.json()
+        assert styled_data["color"] == "violet"
+        assert styled_data["icon"] == "coffee"
+        assert styled_data["cover"] == "landscape"
+
+        detail = await client.get(
+            f"/api/lists/{styled_data['list_id']}", headers=auth_headers
+        )
+        assert detail.status_code == 200
+        assert detail.json()["color"] == "violet"
+        assert detail.json()["icon"] == "coffee"
+        assert detail.json()["cover"] == "landscape"
+
+        summaries = await client.get("/api/lists/", headers=auth_headers)
+        assert summaries.status_code == 200
+        summary = next(
+            row for row in summaries.json() if row["list_id"] == styled_data["list_id"]
+        )
+        assert summary["color"] == "violet"
+        assert summary["icon"] == "coffee"
+        assert summary["cover"] == "landscape"
+
+        for bad_params in (
+            {"name": "Bad Icon", "description": "", "icon": "rocket"},
+            {"name": "Bad Cover", "description": "", "cover": "photo"},
+        ):
+            bad_res = await client.post(
+                "/api/lists/", params=bad_params, headers=auth_headers
+            )
+            assert bad_res.status_code == 422
 
     async def test_ranking_modes_round_trip_and_validate(
         self, client: AsyncClient, auth_headers: dict
@@ -341,6 +386,47 @@ class TestUpdateList:
         renamed = await client.put(url, json={"title": "Renamed"}, headers=auth_headers)
         assert renamed.status_code == 200
         assert renamed.json()["ranking_mode"] == "rank"
+
+        appearance = await client.put(
+            url,
+            json={"color": "coral", "icon": "heart", "cover": "landscape"},
+            headers=auth_headers,
+        )
+        assert appearance.status_code == 200
+        assert appearance.json()["ranking_mode"] == "rank"
+        assert appearance.json()["color"] == "coral"
+        assert appearance.json()["icon"] == "heart"
+        assert appearance.json()["cover"] == "landscape"
+        after_appearance = await client.get(f"{url}/items", headers=auth_headers)
+        assert after_appearance.json() == before
+        await test_db.refresh(session)
+        assert {
+            column.name: getattr(session, column.name)
+            for column in ComparisonSession.__table__.columns
+        } == original_session
+
+        cleared = await client.put(
+            url,
+            json={"color": None, "icon": None, "cover": None},
+            headers=auth_headers,
+        )
+        assert cleared.status_code == 200
+        assert cleared.json()["ranking_mode"] == "rank"
+        assert cleared.json()["color"] is None
+        assert cleared.json()["icon"] is None
+        assert cleared.json()["cover"] is None
+
+        for invalid_payload in (
+            {"color": "chartreuse"},
+            {"icon": "rocket"},
+            {"cover": "photo"},
+            {"title": None},
+        ):
+            bad_update = await client.put(
+                url, json=invalid_payload, headers=auth_headers
+            )
+            assert bad_update.status_code == 422
+
         for invalid in (None, "other"):
             response = await client.put(
                 url, json={"ranking_mode": invalid}, headers=auth_headers

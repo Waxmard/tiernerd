@@ -80,6 +80,8 @@ class TestBuildListSimpleResponse:
             title = "Test List"
             description = "Test description"
             color = None
+            icon = None
+            cover = None
             ranking_mode = "rank"
             created_at = datetime.now()
             updated_at = datetime.now()
@@ -100,6 +102,8 @@ class TestBuildListSimpleResponse:
             title = "Test List"
             description = "Test description"
             color = None
+            icon = None
+            cover = None
             ranking_mode = "score"
             created_at = datetime.now()
             updated_at = datetime.now()

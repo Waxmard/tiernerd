@@ -34,6 +34,8 @@ const listSimple: ListSimple = {
   title: 'Cache proof',
   description: null,
   color: null,
+  icon: null,
+  cover: null,
   ranking_mode: 'score',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
@@ -234,9 +236,13 @@ test('applies cached ranking mode and resets it when metadata is invalidated', (
     title: 'Cached list',
     description: null,
     color: null,
+    icon: 'coffee',
+    cover: 'landscape',
     rankingMode: 'rank',
   });
   assert.equal(restored.rankingMode, 'rank');
+  assert.equal(restored.listIcon, 'coffee');
+  assert.equal(restored.listCover, 'landscape');
   assert.equal(restored.metadataLoaded, false);
   assert.equal(
     createInvalidatedReadState(restored, 'List', 'Read failed').rankingMode,
@@ -293,6 +299,42 @@ test('drops payloads whose color is missing or not a known swatch', () => {
   assert.deepEqual(
     parseCachedLists(JSON.stringify([{ ...listSimple, color: 'teal' }])),
     [{ ...listSimple, color: 'teal' }]
+  );
+  assert.deepEqual(
+    parseCachedLists(
+      JSON.stringify([
+        {
+          ...listSimple,
+          color: 'violet',
+          icon: 'mountain',
+          cover: 'landscape',
+        },
+      ])
+    ),
+    [
+      {
+        ...listSimple,
+        color: 'violet',
+        icon: 'mountain',
+        cover: 'landscape',
+      },
+    ]
+  );
+
+  const legacyNoIconOrCover: Record<string, unknown> = { ...listSimple };
+  delete legacyNoIconOrCover.icon;
+  delete legacyNoIconOrCover.cover;
+  assert.deepEqual(parseCachedLists(JSON.stringify([legacyNoIconOrCover])), [
+    listSimple,
+  ]);
+
+  assert.equal(
+    parseCachedLists(JSON.stringify([{ ...listSimple, icon: 'rocket' }])),
+    null
+  );
+  assert.equal(
+    parseCachedLists(JSON.stringify([{ ...listSimple, cover: 'photo' }])),
+    null
   );
 });
 test('account switching drops in-flight reads and hydration for the previous account', () => {

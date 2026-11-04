@@ -2,8 +2,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
+import type {
+  ListColor,
+  ListCover,
+  ListIcon,
+} from '../design-system/tokens/colors';
 import { useThemeColors } from '../providers/ThemeProvider';
-import type { ListRankingMode } from '../services/listsService';
+import type {
+  ListOptionsInput,
+  ListRankingMode,
+} from '../services/listsService';
+import {
+  ListColorPicker,
+  ListCoverPicker,
+  ListIconPicker,
+} from './ImmersiveBoard';
 
 const choices: {
   value: ListRankingMode;
@@ -93,40 +106,59 @@ export function RankingModeSelector({
 
 export function ListRankingOptions({
   rankingMode,
+  color,
+  icon,
+  cover,
   disabled,
   onSave,
   onVisibilityChange,
 }: {
   rankingMode: ListRankingMode;
+  color: ListColor | null;
+  icon: ListIcon | null;
+  cover: ListCover | null;
   disabled: boolean;
-  onSave: (mode: ListRankingMode) => Promise<void>;
+  onSave: (options: ListOptionsInput) => Promise<void>;
   onVisibilityChange: (open: boolean) => void;
 }) {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(rankingMode);
+  const [draftColor, setDraftColor] = useState(color);
+  const [draftIcon, setDraftIcon] = useState(icon);
+  const [draftCover, setDraftCover] = useState(cover);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
+  const changed =
+    draft !== rankingMode ||
+    draftColor !== color ||
+    draftIcon !== icon ||
+    draftCover !== cover;
   const close = () => {
     if (savingRef.current) return;
     onVisibilityChange(false);
     setOpen(false);
   };
   const save = async () => {
-    if (savingRef.current || draft === rankingMode) return;
+    if (savingRef.current || !changed) return;
     savingRef.current = true;
     setSaving(true);
     setError(null);
     try {
-      await onSave(draft);
+      await onSave({
+        ranking_mode: draft,
+        color: draftColor,
+        icon: draftIcon,
+        cover: draftCover,
+      });
       onVisibilityChange(false);
       setOpen(false);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : 'Unable to save ranking mode. Try again.'
+          : 'Unable to save list options. Try again.'
       );
     } finally {
       savingRef.current = false;
@@ -143,6 +175,9 @@ export function ListRankingOptions({
         onPress={() => {
           if (disabled) return;
           setDraft(rankingMode);
+          setDraftColor(color);
+          setDraftIcon(icon);
+          setDraftCover(cover);
           setError(null);
           onVisibilityChange(true);
           setOpen(true);
@@ -184,20 +219,46 @@ export function ListRankingOptions({
                 size="large"
                 onPress={() => void save()}
                 loading={saving}
-                disabled={saving || draft === rankingMode}
+                disabled={saving || !changed}
                 className="min-w-[100px] max-w-full shrink"
               />
             </View>
           }
         >
-          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark mb-3">
-            Ranking mode
-          </Text>
-          <RankingModeSelector
-            value={draft}
-            onChange={setDraft}
-            disabled={saving}
-          />
+          <View className="gap-4">
+            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+              List icon
+            </Text>
+            <ListIconPicker
+              value={draftIcon}
+              onChange={setDraftIcon}
+              disabled={saving}
+            />
+            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+              Accent color
+            </Text>
+            <ListColorPicker
+              value={draftColor}
+              onChange={setDraftColor}
+              disabled={saving}
+            />
+            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+              Cover
+            </Text>
+            <ListCoverPicker
+              value={draftCover}
+              onChange={setDraftCover}
+              disabled={saving}
+            />
+            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+              Ranking mode
+            </Text>
+            <RankingModeSelector
+              value={draft}
+              onChange={setDraft}
+              disabled={saving}
+            />
+          </View>
         </BaseModalContent>
       </Modal>
     </>

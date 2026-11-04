@@ -38,7 +38,7 @@ import {
 import {
   INVALID_RANKING_MODE,
   type ListMetadata,
-  type ListRankingMode,
+  type ListOptionsInput,
   listsService,
 } from '../services/listsService';
 
@@ -364,6 +364,8 @@ export function useListDetailData({
             detailsTitle: list.title,
             listDescription: list.description,
             listColor: list.color,
+            listIcon: list.icon ?? null,
+            listCover: list.cover ?? null,
             rankingMode: list.ranking_mode,
             metadataError: false,
             metadataLoaded: true,
@@ -475,6 +477,8 @@ export function useListDetailData({
               title: cachedList.title,
               description: cachedList.description,
               color: cachedList.color,
+              icon: cachedList.icon,
+              cover: cachedList.cover,
               rankingMode: cachedList.ranking_mode,
             })
         );
@@ -585,8 +589,8 @@ export function useListDetailData({
     updateState,
     writeCachedSummary,
   ]);
-  const updateRankingMode = useCallback(
-    async (mode: ListRankingMode): Promise<void> => {
+  const updateListOptions = useCallback(
+    async (options: ListOptionsInput): Promise<void> => {
       const lifecycle = lifecycleRef.current;
       if (
         !lifecycle?.token ||
@@ -601,9 +605,9 @@ export function useListDetailData({
       const version = ++lifecycle.cacheVersion;
       lifecycle.hydrationRequest++;
       try {
-        const metadata = await listsService.setRankingMode(
+        const metadata = await listsService.updateListOptions(
           lifecycle.listId,
-          mode,
+          options,
           lifecycle.token
         );
         if (
@@ -630,6 +634,8 @@ export function useListDetailData({
             detailsTitle: metadata.title,
             listDescription: metadata.description,
             listColor: metadata.color,
+            listIcon: metadata.icon ?? null,
+            listCover: metadata.cover ?? null,
             rankingMode: metadata.ranking_mode,
             metadataError: false,
             metadataLoaded: true,
@@ -647,7 +653,7 @@ export function useListDetailData({
             ? error.message
             : getApiErrorMessage(
                 error,
-                'Unable to save ranking mode. Try again.'
+                'Unable to save list options. Try again.'
               )
         );
       } finally {
@@ -736,13 +742,15 @@ export function useListDetailData({
     detailsTitle: visibleState.detailsTitle,
     listDescription: visibleState.listDescription,
     listColor: visibleState.listColor,
+    listIcon: visibleState.listIcon,
+    listCover: visibleState.listCover,
     rankingMode: visibleState.rankingMode,
     metadataError: visibleState.metadataError,
     metadataLoaded: visibleState.metadataLoaded,
     fetchItems,
     refreshMetadata,
     refreshAfterMutation,
-    updateRankingMode,
+    updateListOptions,
     evictDeletedList,
   };
 }

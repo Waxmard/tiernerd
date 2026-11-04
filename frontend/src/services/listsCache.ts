@@ -1,4 +1,11 @@
-import { LIST_COLORS, type ListColor } from '../design-system/tokens/colors.ts';
+import {
+  LIST_COLORS,
+  LIST_COVERS,
+  LIST_ICONS,
+  type ListColor,
+  type ListCover,
+  type ListIcon,
+} from '../design-system/tokens/colors.ts';
 import { ApiError } from './apiError.ts';
 import type { Item } from './itemsService.ts';
 import type { ListRankingMode, ListSimple } from './listsService.ts';
@@ -70,8 +77,10 @@ export function sortListsByRecency(lists: ListSimple[]): ListSimple[] {
   });
 }
 
-type CachedListSimple = Omit<ListSimple, 'ranking_mode'> & {
+type CachedListSimple = Omit<ListSimple, 'ranking_mode' | 'icon' | 'cover'> & {
   ranking_mode?: ListRankingMode;
+  icon?: ListIcon | null;
+  cover?: ListCover | null;
 };
 
 const isListSimple = (value: unknown): value is CachedListSimple => {
@@ -85,6 +94,12 @@ const isListSimple = (value: unknown): value is CachedListSimple => {
     !Number.isNaN(Date.parse(candidate.updated_at)) &&
     (candidate.color === null ||
       LIST_COLORS.includes(candidate.color as ListColor)) &&
+    (!('icon' in candidate) ||
+      candidate.icon === null ||
+      LIST_ICONS.includes(candidate.icon as ListIcon)) &&
+    (!('cover' in candidate) ||
+      candidate.cover === null ||
+      LIST_COVERS.includes(candidate.cover as ListCover)) &&
     (!('ranking_mode' in candidate) ||
       candidate.ranking_mode === 'rank' ||
       candidate.ranking_mode === 'score')
@@ -104,6 +119,8 @@ export function parseCachedLists(raw: string | null): ListSimple[] | null {
     ? sortListsByRecency(
         parsed.map((list) => ({
           ...list,
+          icon: list.icon ?? null,
+          cover: list.cover ?? null,
           ranking_mode: list.ranking_mode ?? 'score',
         }))
       )
@@ -119,6 +136,8 @@ export interface ListDetailDataState {
   detailsTitle: string;
   listDescription: string | null;
   listColor: ListColor | null;
+  listIcon: ListIcon | null;
+  listCover: ListCover | null;
   rankingMode: ListRankingMode;
   metadataError: boolean;
   metadataLoaded: boolean;
@@ -157,6 +176,8 @@ export const createListDetailState = (
   detailsTitle: routeTitle,
   listDescription: null,
   listColor: null,
+  listIcon: null,
+  listCover: null,
   rankingMode: 'score',
   metadataError: false,
   metadataLoaded: false,
@@ -328,6 +349,8 @@ export const createInvalidatedReadState = (
   detailsTitle: routeTitle,
   listDescription: null,
   listColor: null,
+  listIcon: null,
+  listCover: null,
   rankingMode: 'score',
   metadataError: true,
   metadataLoaded: false,
@@ -360,6 +383,8 @@ export const applyCachedMetadataState = (
     title: string;
     description: string | null;
     color: ListColor | null;
+    icon?: ListIcon | null;
+    cover?: ListCover | null;
     rankingMode: ListRankingMode;
   }
 ): ListDetailDataState => ({
@@ -367,6 +392,8 @@ export const applyCachedMetadataState = (
   detailsTitle: metadata.title,
   listDescription: metadata.description,
   listColor: metadata.color,
+  listIcon: metadata.icon ?? null,
+  listCover: metadata.cover ?? null,
   rankingMode: metadata.rankingMode,
 });
 

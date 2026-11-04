@@ -1,4 +1,8 @@
-import type { ListColor } from '../design-system/tokens/colors';
+import type {
+  ListColor,
+  ListCover,
+  ListIcon,
+} from '../design-system/tokens/colors';
 import { api } from './api';
 import type { Item } from './itemsService';
 
@@ -9,6 +13,8 @@ export interface ListSimple {
   title: string;
   description: string | null;
   color: ListColor | null;
+  icon: ListIcon | null;
+  cover: ListCover | null;
   ranking_mode: ListRankingMode;
   created_at: string;
   updated_at: string;
@@ -16,6 +22,13 @@ export interface ListSimple {
 }
 
 export type ListMetadata = Omit<ListSimple, 'item_count'>;
+
+export interface ListOptionsInput {
+  ranking_mode: ListRankingMode;
+  color: ListColor | null;
+  icon: ListIcon | null;
+  cover: ListCover | null;
+}
 
 export const INVALID_RANKING_MODE =
   'This API does not support list ranking modes. Update the backend.';
@@ -47,11 +60,13 @@ export const listsService = {
     description: string,
     color: ListColor | null,
     rankingMode: ListRankingMode,
-    token: string
+    token: string,
+    icon: ListIcon | null = null,
+    cover: ListCover | null = null
   ): Promise<ListMetadata> =>
     api
       .post<ListMetadata>(
-        `/api/lists/?name=${encodeURIComponent(name)}&description=${encodeURIComponent(description)}${color ? `&color=${color}` : ''}&ranking_mode=${rankingMode}`,
+        `/api/lists/?name=${encodeURIComponent(name)}&description=${encodeURIComponent(description)}${color ? `&color=${color}` : ''}${icon ? `&icon=${icon}` : ''}${cover ? `&cover=${cover}` : ''}&ranking_mode=${rankingMode}`,
         undefined,
         token
       )
@@ -67,6 +82,14 @@ export const listsService = {
         { ranking_mode: rankingMode },
         token
       )
+      .then((list) => requireRankingMode(list)),
+  updateListOptions: (
+    listId: string,
+    options: ListOptionsInput,
+    token: string
+  ): Promise<ListMetadata> =>
+    api
+      .put<ListMetadata>(`/api/lists/${listId}`, options, token)
       .then((list) => requireRankingMode(list)),
   deleteList: (listId: string, token: string) =>
     api.delete<void>(`/api/lists/${listId}`, token),

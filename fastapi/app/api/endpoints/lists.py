@@ -1,6 +1,6 @@
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +10,15 @@ from app.crud import item as item_crud, list as list_crud
 from app.db.database import get_db
 from app.db.models import List as ListModel
 from app.schemas.item import Item
-from app.schemas.list import List, ListSimple, ListUpdate, RankingMode
+from app.schemas.list import (
+    List,
+    ListColor,
+    ListCover,
+    ListIcon,
+    ListSimple,
+    ListUpdate,
+    RankingMode,
+)
 from app.schemas.user import User
 from app.services.auth import get_current_user
 from app.services.list_service import (
@@ -41,7 +49,9 @@ async def read_lists(
 async def create_list(
     name: str,
     description: str,
-    color: Literal["blue", "teal", "amber", "pink"] | None = None,
+    color: ListColor | None = None,
+    icon: ListIcon | None = None,
+    cover: ListCover | None = None,
     ranking_mode: RankingMode = "score",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -62,6 +72,8 @@ async def create_list(
         user_id=current_user.user_id,
         description=description,
         color=color,
+        icon=icon,
+        cover=cover,
         ranking_mode=ranking_mode,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
@@ -128,6 +140,13 @@ async def update_list(
         )
 
     update_data = list_in.model_dump(exclude_unset=True)
+    if ("ranking_mode" in update_data and update_data["ranking_mode"] is None) or (
+        "title" in update_data and update_data["title"] is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Invalid list update",
+        )
     list_obj = await list_crud.update(db, list_obj, update_data)
 
     return list_obj

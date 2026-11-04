@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { ImmersiveScreenShell } from '../components/ImmersiveBoard';
 import { ListDetailHeader } from '../components/ListDetailHeader';
 import {
   ListDetailItemRow,
@@ -70,13 +71,15 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     detailsTitle,
     listDescription,
     listColor,
+    listIcon,
+    listCover,
     rankingMode,
     metadataError,
     metadataLoaded,
     fetchItems,
     refreshMetadata,
     refreshAfterMutation,
-    updateRankingMode,
+    updateListOptions,
     evictDeletedList,
   } = useListDetailData({ userId, token, listId, routeTitle });
   const canMutate =
@@ -692,13 +695,15 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   };
 
   return (
-    <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
+    <ImmersiveScreenShell>
       <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
             <ListDetailHeader
               title={detailsTitle}
               color={listColor}
+              icon={listIcon}
+              cover={listCover}
               description={listDescription}
               metadataError={metadataError}
               itemsError={itemsError}
@@ -720,7 +725,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
                   selectedItemId !== null &&
                   dismissedDetailsItemId !== selectedItemId)
               }
-              onSaveRankingMode={updateRankingMode}
+              onSaveOptions={updateListOptions}
               onOptionsVisibilityChange={(open) => {
                 if (identityRef.current !== screenIdentity) return;
                 isListOptionsOpenRef.current = open;
@@ -782,6 +787,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           </View>
         </View>
       </SafeAreaView>
-    </View>
+    </ImmersiveScreenShell>
   );
 };
