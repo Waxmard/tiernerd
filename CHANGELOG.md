@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.0](https://github.com/Waxmard/tiernerd/compare/v0.8.0...v0.9.0) (2026-11-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* let lists choose ranked positions or scores out of 10 ([#120](https://github.com/Waxmard/tiernerd/issues/120))
+
+### Features
+
+* let lists choose ranked positions or scores out of 10 ([#120](https://github.com/Waxmard/tiernerd/issues/120)) ([6584ea0](https://github.com/Waxmard/tiernerd/commit/6584ea0ddba9b69c7fce3c83ccc3b4b31989c5a9))
+
 ## [0.8.0](https://github.com/Waxmard/tiernerd/compare/v0.7.1...v0.8.0) (2026-11-03)
 
 
