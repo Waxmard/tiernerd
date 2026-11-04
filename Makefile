@@ -23,6 +23,7 @@ help:
 	@echo "  frontend-lint frontend-fix frontend-typecheck"
 	@echo "  ios             - Build, install and launch a standalone iOS Release app"
 	@echo "  ios IOS_REUSE=1 - Install and launch the existing iOS build"
+	@echo "  testflight      - Upload to TestFlight (automatic build number; override IOS_BUILD_NUMBER)"
 
 .PHONY: setup
 setup:
@@ -47,6 +48,10 @@ backend-%:
 ios:
 	IOS_REUSE="$(IOS_REUSE)" EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="$${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID-1015723670625-v0h15l5cj1eotf9h4u539q878e2mclm6.apps.googleusercontent.com}" bash scripts/ios.sh "$(IOS_DEVICE)"
 
+.PHONY: testflight
+testflight:
+	IOS_BUILD_NUMBER="$(IOS_BUILD_NUMBER)" bash scripts/build-ios-testflight.sh
+
 .PHONY: frontend-lint frontend-fix frontend-typecheck frontend-unit scripts-test
 frontend-lint:
 	cd frontend && npm run lint && npm run format:check
@@ -61,4 +66,4 @@ frontend-unit:
 	cd frontend && npm run test:unit
 
 scripts-test:
-	node --test scripts/ios-config.test.mjs
+	node --test scripts/ios-config.test.mjs scripts/testflight-build-number.test.mjs

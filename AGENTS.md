@@ -90,7 +90,7 @@ The command uses development Google OAuth web and iOS client IDs by default. To 
 
 The Release app uses the hosted development API by default and embeds its JavaScript, so it needs no Metro server after installation. Set `EXPO_PUBLIC_API_URL` to another public HTTPS API if needed. The command ignores Expo dotenv files. Re-running it replaces the app without deliberately removing its data. `npm run ios` remains the separate Expo development command.
 
-TestFlight builds run `scripts/build-ios-testflight.sh`; see [Deploys & Releases](CONTRIBUTING.md#deploys--releases) for the trigger, environment and signing secrets.
+For a local TestFlight upload, run `make testflight`; see [Deploys & Releases](CONTRIBUTING.md#deploys--releases) for the trigger, build numbering, and signing credentials.
 
 #### Simulator and development builds
 

@@ -13,14 +13,14 @@ export EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID:-101
 export EXPO_NO_DOTENV=1
 
 if [[ ! "$MARKETING_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  printf 'Invalid MARKETING_VERSION: %s\n' "$MARKETING_VERSION" >&2
+  echo 'Invalid MARKETING_VERSION: expected three numeric components.' >&2
   exit 1
 fi
 
 SMOKE="${SIMULATOR_SMOKE_ONLY:-0}"
 if [[ "$SMOKE" != "1" ]]; then
   missing=()
-  for var in IOS_BUILD_NUMBER ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPLE_CERTIFICATE_PASSWORD; do
+  for var in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPLE_CERTIFICATE_PASSWORD; do
     if [[ -z "${!var:-}" ]]; then
       missing+=("$var")
     fi
@@ -31,10 +31,18 @@ if [[ "$SMOKE" != "1" ]]; then
   fi
 fi
 
+if [[ "$SMOKE" == "1" ]]; then
+  IOS_BUILD_NUMBER="${IOS_BUILD_NUMBER:-1}"
+elif [[ -z "$IOS_BUILD_NUMBER" ]]; then
+  IOS_BUILD_NUMBER="$(IOS_BUNDLE_ID="$IOS_BUNDLE_ID" MARKETING_VERSION="$MARKETING_VERSION" node "$root/scripts/testflight-build-number.mjs")"
+fi
+
 if [[ -n "$IOS_BUILD_NUMBER" && ! "$IOS_BUILD_NUMBER" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
-  printf 'Invalid IOS_BUILD_NUMBER: %s\n' "$IOS_BUILD_NUMBER" >&2
+  echo 'Invalid IOS_BUILD_NUMBER: expected one to three numeric components.' >&2
   exit 1
 fi
+
+printf 'iOS version %s, build %s\n' "$MARKETING_VERSION" "$IOS_BUILD_NUMBER"
 
 node "$root/scripts/ios-config.mjs"
 
@@ -50,7 +58,6 @@ fi
 )
 
 if [[ "$SMOKE" == "1" ]]; then
-  IOS_BUILD_NUMBER="${IOS_BUILD_NUMBER:-1}"
   xcodebuild \
     -workspace "$root/frontend/ios/TierNerd.xcworkspace" \
     -scheme TierNerd \

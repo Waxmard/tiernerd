@@ -26,4 +26,4 @@ jobs:
           node-version: '24'
       - run: npm ci
         working-directory: frontend
-      - run: node --test scripts/ios-config.test.mjs
+      - run: make scripts-test
