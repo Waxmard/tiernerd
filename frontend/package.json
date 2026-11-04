@@ -46,7 +46,7 @@
     "babel-preset-expo": "~54.0.10",
     "patch-package": "^8.0.1",
     "tailwindcss": "^3.4.19",
-    "typescript": "~5.9.2"
+    "typescript": "~7.0.2"
   },
   "overrides": {
     "image-size": "^2.0.3",
