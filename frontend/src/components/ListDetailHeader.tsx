@@ -77,11 +77,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
     ? colors['ink-disabled']
     : colors['danger-text'];
   return (
-    <View className="gap-2 p-3 mt-2 mb-2 rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark shrink-0">
-      {cover === 'landscape' ? (
-        <LandscapeBackdrop variant={color} className="h-24 rounded-xl" />
-      ) : null}
-      <View className="flex-row items-start gap-2">
+    <View className="gap-3 p-3 mt-2 mb-2 rounded-2xl bg-surface dark:bg-surface-dark shrink-0">
+      <View className="flex-row items-center">
         <TouchableOpacity
           onPress={onBack}
           accessibilityRole="button"
@@ -96,25 +93,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
             accessible={false}
           />
         </TouchableOpacity>
-        <ListIdentityBadge color={color} icon={icon} cover={cover} />
-        <View className="flex-1 min-w-0 gap-1">
-          <Text
-            accessibilityRole="header"
-            className="text-headline-small text-ink dark:text-ink-dark text-left"
-          >
-            {title}
-          </Text>
-          {description?.trim() ? (
-            <ScrollView
-              className="max-h-[72px]"
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-            >
-              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-                {description}
-              </Text>
-            </ScrollView>
-          ) : null}
+        <View className="flex-1 min-w-0 px-2">
+          <ListIdentityBadge color={color} icon={icon} />
         </View>
         <ListRankingOptions
           key={optionsKey}
@@ -143,6 +123,28 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           />
         </TouchableOpacity>
       </View>
+      {cover === 'landscape' ? (
+        <View className="h-28 desktop:h-40 rounded-xl overflow-hidden">
+          <LandscapeBackdrop variant={color} className="absolute inset-0" />
+        </View>
+      ) : null}
+      <Text
+        accessibilityRole="header"
+        className="text-headline-large text-ink dark:text-ink-dark text-left"
+      >
+        {title}
+      </Text>
+      {description?.trim() ? (
+        <ScrollView
+          className="max-h-[72px]"
+          nestedScrollEnabled
+          showsVerticalScrollIndicator
+        >
+          <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+            {description}
+          </Text>
+        </ScrollView>
+      ) : null}
       {metadataError ? (
         <View className="flex-row items-center justify-between mt-2">
           <Text
