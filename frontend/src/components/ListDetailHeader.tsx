@@ -12,7 +12,7 @@ import type {
   ListOptionsInput,
   ListRankingMode,
 } from '../services/listsService';
-import { LandscapeBackdrop, ListIdentityBadge } from './ImmersiveBoard';
+import { LandscapeBackdrop } from './ImmersiveBoard';
 import { ListRankingOptions } from './ListRankingOptions';
 
 interface ListDetailHeaderProps {
@@ -20,8 +20,6 @@ interface ListDetailHeaderProps {
   color: ListColor | null;
   icon: ListIcon | null;
   cover: ListCover | null;
-  itemCount: number;
-  rankedCount: number;
   addDisabled: boolean;
   addLoading: boolean;
   onAdd: () => void;
@@ -52,8 +50,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   icon,
   cover,
   color,
-  itemCount,
-  rankedCount,
   addDisabled,
   addLoading,
   onAdd,
@@ -77,8 +73,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
     ? colors['ink-disabled']
     : colors['danger-text'];
   return (
-    <View className="gap-3 p-3 mt-2 mb-2 rounded-2xl bg-surface dark:bg-surface-dark shrink-0">
-      <View className="flex-row items-center">
+    <View className="gap-2 p-3 mt-2 mb-2 rounded-2xl bg-surface dark:bg-surface-dark shrink-0">
+      <View className="flex-row items-start">
         <TouchableOpacity
           onPress={onBack}
           accessibilityRole="button"
@@ -93,8 +89,13 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
             accessible={false}
           />
         </TouchableOpacity>
-        <View className="flex-1 min-w-0 px-2">
-          <ListIdentityBadge color={color} icon={icon} />
+        <View className="flex-1 min-w-0 min-h-11 justify-center px-2">
+          <Text
+            accessibilityRole="header"
+            className="text-headline-small text-ink dark:text-ink-dark text-left"
+          >
+            {title}
+          </Text>
         </View>
         <ListRankingOptions
           key={optionsKey}
@@ -128,12 +129,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           <LandscapeBackdrop variant={color} className="absolute inset-0" />
         </View>
       ) : null}
-      <Text
-        accessibilityRole="header"
-        className="text-headline-large text-ink dark:text-ink-dark text-left"
-      >
-        {title}
-      </Text>
       {description?.trim() ? (
         <ScrollView
           className="max-h-[72px]"
@@ -163,28 +158,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           </TouchableOpacity>
         </View>
       ) : null}
-      <View className="flex-row items-center gap-2">
-        <Text className="flex-1 min-w-0 text-body-medium text-ink-muted dark:text-ink-muted-dark">
-          {rankedCount} of {itemCount} ranked
-        </Text>
-        <Button
-          title="Add item"
-          onPress={onAdd}
-          disabled={addDisabled}
-          loading={addLoading}
-          size="small"
-          icon={
-            addLoading ? undefined : (
-              <Ionicons
-                name="add-circle-outline"
-                size={20}
-                color={colors[addDisabled ? 'ink-disabled' : 'on-accent']}
-                accessible={false}
-              />
-            )
-          }
-        />
-      </View>
       {showingSavedItems || addLoading ? (
         <Text
           accessibilityLiveRegion="polite"
@@ -213,6 +186,27 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           </TouchableOpacity>
         </View>
       ) : null}
+      <View className="flex-row justify-end">
+        <Button
+          title="Add item"
+          onPress={onAdd}
+          disabled={addDisabled}
+          loading={addLoading}
+          variant="text"
+          size="small"
+          className="shrink"
+          icon={
+            addLoading ? undefined : (
+              <Ionicons
+                name="add"
+                size={20}
+                color={colors[addDisabled ? 'ink-disabled' : 'accent-text']}
+                accessible={false}
+              />
+            )
+          }
+        />
+      </View>
     </View>
   );
 };

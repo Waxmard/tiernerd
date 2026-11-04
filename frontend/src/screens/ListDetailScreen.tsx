@@ -711,8 +711,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
                 hasItemsSnapshot && !itemsLoaded && !itemsError
               }
               onRetryItems={() => void fetchItems().catch(() => {})}
-              itemCount={items.length}
-              rankedCount={rankedCount}
               addLoading={isLoadingList}
               optionsKey={screenIdentity}
               rankingMode={rankingMode}
