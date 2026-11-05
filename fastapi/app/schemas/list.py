@@ -52,6 +52,10 @@ CoverSelection = Annotated[
 ]
 
 
+class CoverSearchAvailability(BaseModel):
+    enabled: bool
+
+
 class ListCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = None

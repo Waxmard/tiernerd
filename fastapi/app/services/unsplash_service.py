@@ -71,13 +71,17 @@ def _photo(value: Any) -> dict[str, str]:
     }
 
 
+def is_configured() -> bool:
+    return bool(get_settings().UNSPLASH_ACCESS_KEY.strip())
+
+
 async def _get(url: str, params: dict[str, str | int] | None = None) -> httpx.Response:
-    key = get_settings().UNSPLASH_ACCESS_KEY
-    if not key.strip():
+    if not is_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Unsplash photo search is not configured",
         )
+    key = get_settings().UNSPLASH_ACCESS_KEY
     try:
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
             response = await client.get(

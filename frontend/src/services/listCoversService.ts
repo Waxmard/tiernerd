@@ -232,3 +232,13 @@ export function searchCoverPhotos(
     token
   );
 }
+
+export async function getCoverSearchAvailability(
+  token: string
+): Promise<boolean> {
+  const { enabled } = await api.get<{ enabled: boolean }>(
+    '/api/lists/cover-search/availability',
+    token
+  );
+  return enabled;
+}

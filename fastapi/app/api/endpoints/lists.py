@@ -25,6 +25,7 @@ from app.db.database import get_db
 from app.db.models import List as ListModel
 from app.schemas.item import Item
 from app.schemas.list import (
+    CoverSearchAvailability,
     List,
     ListCreate,
     ListSimple,
@@ -114,6 +115,15 @@ async def read_lists(
         db, current_user.user_id, skip, limit
     )
     return [build_list_simple_response(row) for row in lists_with_counts]
+
+
+@router.get(
+    "/cover-search/availability",
+    response_model=CoverSearchAvailability,
+    dependencies=[Depends(get_current_user)],
+)
+async def cover_search_availability() -> Any:
+    return CoverSearchAvailability(enabled=unsplash_service.is_configured())
 
 
 @router.get("/cover-search", dependencies=[Depends(get_current_user)])

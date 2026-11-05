@@ -7,6 +7,7 @@ import { ApiError, getApiErrorMessage } from '../services/apiError';
 import {
   type CoverDraft,
   type CoverSearchResult,
+  getCoverSearchAvailability,
   type ListPhoto,
   pickLocalCover,
   searchCoverPhotos,
@@ -53,6 +54,7 @@ export function ListCoverPicker({
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [searchAvailable, setSearchAvailable] = useState(false);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
@@ -70,6 +72,19 @@ export function ListCoverPicker({
       pickerRequestRef.current += 1;
     };
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    getCoverSearchAvailability(token)
+      .then((enabled) => {
+        if (!cancelled) setSearchAvailable(enabled);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const invalidateSearch = () => {
     searchRequestRef.current += 1;
@@ -182,14 +197,18 @@ export function ListCoverPicker({
         onChange({ kind: 'landscape' });
       },
     },
-    {
-      label: 'Search photos',
-      selected: previewPhoto?.source === 'unsplash',
-      onPress: () => {
-        setError(null);
-        setSearchView(true);
-      },
-    },
+    ...(searchAvailable
+      ? [
+          {
+            label: 'Search photos',
+            selected: previewPhoto?.source === 'unsplash',
+            onPress: () => {
+              setError(null);
+              setSearchView(true);
+            },
+          },
+        ]
+      : []),
     {
       label: 'Choose from device',
       selected: value.kind === 'local' || previewPhoto?.source === 'upload',

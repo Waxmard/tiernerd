@@ -1740,6 +1740,33 @@ class TestListPhotoUnsplash:
         assert detail.json()["title"] == created["title"]
         assert detail.json()["cover_photo"] == old_photo
 
+    async def test_availability_reflects_unsplash_configuration(
+        self, client: AsyncClient, auth_headers: dict, monkeypatch: MonkeyPatch
+    ):
+        from types import SimpleNamespace
+
+        from app.services import unsplash_service
+
+        url = "/api/lists/cover-search/availability"
+        unauthenticated = await client.get(url)
+        assert unauthenticated.status_code == 401
+
+        monkeypatch.setattr(
+            unsplash_service,
+            "get_settings",
+            lambda: SimpleNamespace(UNSPLASH_ACCESS_KEY=""),
+        )
+        assert (await client.get(url, headers=auth_headers)).json() == {
+            "enabled": False
+        }
+
+        monkeypatch.setattr(
+            unsplash_service,
+            "get_settings",
+            lambda: SimpleNamespace(UNSPLASH_ACCESS_KEY="test-access-key"),
+        )
+        assert (await client.get(url, headers=auth_headers)).json() == {"enabled": True}
+
 
 class TestDeleteList:
     """Tests for deleting lists endpoint."""

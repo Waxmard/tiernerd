@@ -73,7 +73,7 @@ Load it at the point of use. Each read asks for Keychain approval.
 export UNSPLASH_ACCESS_KEY="$(security find-generic-password -s tiernerd:unsplash-access-key -a "$USER" -w)"
 ```
 
-For uploads, set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket with uniform access and public access prevention. Grant the runtime identity object read, write, and delete access only on that bucket. Hosted environments load the Unsplash key from Secret Manager. Without the corresponding setting, search or uploads return an unavailable response.
+For uploads, set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket with uniform access and public access prevention. Grant the runtime identity object read, write, and delete access only on that bucket. Hosted environments load the Unsplash key from Secret Manager. Without the corresponding setting, uploads return an unavailable response and the app hides photo search, which reappears on the next picker open once the key is configured.
 
 Fresh databases use the current schema. For an existing database, back it up and stop the old backend before applying the photo schema migration. From `fastapi/`, inspect the schema:
 
