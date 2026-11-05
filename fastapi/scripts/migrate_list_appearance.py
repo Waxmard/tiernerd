@@ -19,7 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
-APPEARANCE_COLUMNS = ("color", "icon", "cover")
+APPEARANCE_COLUMNS = {
+    "color": "ALTER TABLE lists ADD COLUMN color VARCHAR(16)",
+    "icon": "ALTER TABLE lists ADD COLUMN icon VARCHAR(16)",
+    "cover": "ALTER TABLE lists ADD COLUMN cover VARCHAR(16)",
+}
 
 
 def _columns(connection: Connection) -> Mapping[str, Any]:
@@ -59,9 +63,7 @@ async def _run(apply: bool) -> int:
                 print("lists appearance columns already exist; nothing to do.")
                 return 0
             for column_name in missing:
-                await connection.execute(
-                    text(f"ALTER TABLE lists ADD COLUMN {column_name} VARCHAR(16)")
-                )
+                await connection.execute(text(APPEARANCE_COLUMNS[column_name]))
     finally:
         await engine.dispose()
     print(f"Added lists appearance columns: {', '.join(missing)}.")
