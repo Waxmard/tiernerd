@@ -258,6 +258,16 @@ async def update_list(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Invalid list update",
         )
+    new_title = update_data.get("title")
+    if new_title is not None and new_title != list_obj.title:
+        existing = await list_crud.get_by_title_and_user(
+            db, new_title, current_user.user_id
+        )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=LIST_ALREADY_EXISTS_ERROR,
+            )
     previous_photo = list_obj.cover_photo
     update_data = await prepare_cover_update(
         update_data, file, previous_photo, current_user.user_id, creating=False

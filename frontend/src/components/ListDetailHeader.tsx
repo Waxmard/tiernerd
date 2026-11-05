@@ -104,6 +104,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         </View>
         <ListRankingOptions
           key={optionsKey}
+          title={title}
           rankingMode={rankingMode}
           color={color}
           icon={icon}

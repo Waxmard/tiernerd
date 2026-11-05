@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import { BaseModalContent, Button } from '../design-system/components';
+import { BaseModalContent, Button, Input } from '../design-system/components';
 import type {
   ListColor,
   ListCover,
@@ -20,6 +20,8 @@ import type {
 } from '../services/listsService';
 import { ListColorPicker, ListIconPicker } from './ImmersiveBoard';
 import { ListCoverPicker, releaseCoverDraft } from './ListCoverPicker';
+
+const MAX_TITLE_LENGTH = 100;
 
 const choices: {
   value: ListRankingMode;
@@ -108,6 +110,7 @@ export function RankingModeSelector({
 }
 
 export function ListRankingOptions({
+  title,
   rankingMode,
   color,
   icon,
@@ -118,6 +121,7 @@ export function ListRankingOptions({
   onSave,
   onVisibilityChange,
 }: {
+  title: string;
   rankingMode: ListRankingMode;
   color: ListColor | null;
   icon: ListIcon | null;
@@ -131,6 +135,8 @@ export function ListRankingOptions({
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(rankingMode);
+  const [draftTitle, setDraftTitle] = useState(title);
+  const [titleError, setTitleError] = useState<string | null>(null);
   const [draftColor, setDraftColor] = useState(color);
   const [draftIcon, setDraftIcon] = useState(icon);
   const [draftCover, setDraftCover] = useState<CoverDraft>(() =>
@@ -160,6 +166,7 @@ export function ListRankingOptions({
   useEffect(() => () => releaseCoverDraft(coverDraftRef.current), []);
 
   const changed =
+    draftTitle.trim() !== title ||
     draft !== rankingMode ||
     draftColor !== color ||
     draftIcon !== icon ||
@@ -171,15 +178,26 @@ export function ListRankingOptions({
     handleCoverBusyChange(false);
     changeCoverDraft({ kind: 'none' });
     setError(null);
+    setTitleError(null);
     setOpen(false);
   };
   const save = async () => {
     if (savingRef.current || coverBusyRef.current || !changed) return;
+    const trimmedTitle = draftTitle.trim();
+    if (!trimmedTitle) {
+      setTitleError('Title is required');
+      return;
+    }
+    if (Array.from(trimmedTitle).length > MAX_TITLE_LENGTH) {
+      setTitleError('Title must be 100 characters or less');
+      return;
+    }
     savingRef.current = true;
     setSaving(true);
     setError(null);
     try {
       await onSave({
+        title: trimmedTitle,
         ranking_mode: draft,
         color: draftColor,
         icon: draftIcon,
@@ -210,6 +228,8 @@ export function ListRankingOptions({
         onPress={() => {
           if (disabled) return;
           setDraft(rankingMode);
+          setDraftTitle(title);
+          setTitleError(null);
           setDraftColor(color);
           setDraftIcon(icon);
           changeCoverDraft(coverDraftFromSaved(cover, coverPhoto));
@@ -261,6 +281,19 @@ export function ListRankingOptions({
           }
         >
           <View className="gap-4">
+            <Input
+              label="Title"
+              placeholder="Enter list title"
+              value={draftTitle}
+              onChangeText={(value) => {
+                setDraftTitle(value);
+                setTitleError(null);
+                setError(null);
+              }}
+              error={titleError ?? undefined}
+              maxLength={MAX_TITLE_LENGTH}
+              editable={!saving}
+            />
             <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
               List icon
             </Text>

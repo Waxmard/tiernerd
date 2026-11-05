@@ -606,6 +606,30 @@ class TestUpdateList:
         assert data["title"] == "New Title Only"
         assert data["description"] == original_description
 
+    async def test_update_list_rejects_duplicate_title(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+        test_db: AsyncSession,
+    ):
+        other_list = ListModel(user_id=test_list.user_id, title="Other")
+        test_db.add(other_list)
+        await test_db.commit()
+        url = f"/api/lists/{test_list.list_id}"
+
+        response = await client.put(
+            url, files=metadata_files({"title": "Other"}), headers=auth_headers
+        )
+        assert response.status_code == 409
+        assert response.json()["detail"] == "List already exists for current user"
+
+        unchanged = await client.put(
+            url, files=metadata_files({"title": test_list.title}), headers=auth_headers
+        )
+        assert unchanged.status_code == 200
+        assert unchanged.json()["title"] == test_list.title
+
     async def test_update_list_unauthenticated(
         self, client: AsyncClient, test_list: ListModel
     ):

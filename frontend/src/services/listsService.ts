@@ -27,6 +27,7 @@ export interface ListSimple {
 export type ListMetadata = Omit<ListSimple, 'item_count'>;
 
 export interface ListOptionsInput {
+  title: string;
   ranking_mode: ListRankingMode;
   color: ListColor | null;
   icon: ListIcon | null;
@@ -140,6 +141,7 @@ export const listsService = {
         `/api/lists/${listId}`,
         listFormData(
           {
+            title: options.title,
             ranking_mode: options.ranking_mode,
             color: options.color,
             icon: options.icon,
