@@ -67,6 +67,9 @@ class List(Base):
     color: Mapped[str | None] = mapped_column(String(16), nullable=True)
     icon: Mapped[str | None] = mapped_column(String(16), nullable=True)
     cover: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    cover_photo: Mapped[dict[str, str] | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
     ranking_mode: Mapped[str] = mapped_column(
         String(5), nullable=False, default="score", server_default="score"
     )

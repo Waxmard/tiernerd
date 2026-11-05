@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
 import type {
@@ -8,15 +8,18 @@ import type {
   ListIcon,
 } from '../design-system/tokens/colors';
 import { useThemeColors } from '../providers/ThemeProvider';
+import {
+  type CoverDraft,
+  coverDraftFromSaved,
+  coverDraftMatchesSaved,
+  type ListPhoto,
+} from '../services/listCoversService';
 import type {
   ListOptionsInput,
   ListRankingMode,
 } from '../services/listsService';
-import {
-  ListColorPicker,
-  ListCoverPicker,
-  ListIconPicker,
-} from './ImmersiveBoard';
+import { ListColorPicker, ListIconPicker } from './ImmersiveBoard';
+import { ListCoverPicker, releaseCoverDraft } from './ListCoverPicker';
 
 const choices: {
   value: ListRankingMode;
@@ -109,6 +112,8 @@ export function ListRankingOptions({
   color,
   icon,
   cover,
+  coverPhoto,
+  listId,
   disabled,
   onSave,
   onVisibilityChange,
@@ -117,6 +122,8 @@ export function ListRankingOptions({
   color: ListColor | null;
   icon: ListIcon | null;
   cover: ListCover | null;
+  coverPhoto: ListPhoto | null;
+  listId: string;
   disabled: boolean;
   onSave: (options: ListOptionsInput) => Promise<void>;
   onVisibilityChange: (open: boolean) => void;
@@ -126,22 +133,48 @@ export function ListRankingOptions({
   const [draft, setDraft] = useState(rankingMode);
   const [draftColor, setDraftColor] = useState(color);
   const [draftIcon, setDraftIcon] = useState(icon);
-  const [draftCover, setDraftCover] = useState(cover);
+  const [draftCover, setDraftCover] = useState<CoverDraft>(() =>
+    coverDraftFromSaved(cover, coverPhoto)
+  );
   const [saving, setSaving] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
+  const coverBusyRef = useRef(false);
+  const coverDraftRef = useRef(draftCover);
+  const coverSessionRef = useRef(0);
+  const coverSession = coverSessionRef.current;
+  const handleCoverBusyChange = useCallback((busy: boolean) => {
+    coverBusyRef.current = busy;
+    setCoverBusy(busy);
+  }, []);
+
+  const changeCoverDraft = useCallback((next: CoverDraft) => {
+    if (coverDraftRef.current !== next) {
+      releaseCoverDraft(coverDraftRef.current);
+    }
+    coverDraftRef.current = next;
+    setDraftCover(next);
+  }, []);
+
+  useEffect(() => () => releaseCoverDraft(coverDraftRef.current), []);
+
   const changed =
     draft !== rankingMode ||
     draftColor !== color ||
     draftIcon !== icon ||
-    draftCover !== cover;
+    !coverDraftMatchesSaved(draftCover, cover, coverPhoto);
   const close = () => {
     if (savingRef.current) return;
+    coverSessionRef.current += 1;
     onVisibilityChange(false);
+    handleCoverBusyChange(false);
+    changeCoverDraft({ kind: 'none' });
+    setError(null);
     setOpen(false);
   };
   const save = async () => {
-    if (savingRef.current || !changed) return;
+    if (savingRef.current || coverBusyRef.current || !changed) return;
     savingRef.current = true;
     setSaving(true);
     setError(null);
@@ -150,9 +183,11 @@ export function ListRankingOptions({
         ranking_mode: draft,
         color: draftColor,
         icon: draftIcon,
-        cover: draftCover,
+        coverDraft: coverDraftRef.current,
       });
+      coverSessionRef.current += 1;
       onVisibilityChange(false);
+      changeCoverDraft({ kind: 'none' });
       setOpen(false);
     } catch (err) {
       setError(
@@ -177,7 +212,7 @@ export function ListRankingOptions({
           setDraft(rankingMode);
           setDraftColor(color);
           setDraftIcon(icon);
-          setDraftCover(cover);
+          changeCoverDraft(coverDraftFromSaved(cover, coverPhoto));
           setError(null);
           onVisibilityChange(true);
           setOpen(true);
@@ -219,7 +254,7 @@ export function ListRankingOptions({
                 size="large"
                 onPress={() => void save()}
                 loading={saving}
-                disabled={saving || !changed}
+                disabled={saving || coverBusy || !changed}
                 className="min-w-[100px] max-w-full shrink"
               />
             </View>
@@ -245,11 +280,27 @@ export function ListRankingOptions({
             <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
               Cover
             </Text>
-            <ListCoverPicker
-              value={draftCover}
-              onChange={setDraftCover}
-              disabled={saving}
-            />
+            {open ? (
+              <ListCoverPicker
+                key={coverSession}
+                value={draftCover}
+                onChange={(next) => {
+                  if (coverSessionRef.current === coverSession) {
+                    changeCoverDraft(next);
+                  } else {
+                    releaseCoverDraft(next);
+                  }
+                }}
+                color={draftColor}
+                listId={listId}
+                disabled={saving}
+                onBusyChange={(busy) => {
+                  if (coverSessionRef.current === coverSession) {
+                    handleCoverBusyChange(busy);
+                  }
+                }}
+              />
+            ) : null}
             <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
               Ranking mode
             </Text>

@@ -366,6 +366,7 @@ export function useListDetailData({
             listColor: list.color,
             listIcon: list.icon ?? null,
             listCover: list.cover ?? null,
+            listCoverPhoto: list.cover_photo ?? null,
             rankingMode: list.ranking_mode,
             metadataError: false,
             metadataLoaded: true,
@@ -479,6 +480,7 @@ export function useListDetailData({
               color: cachedList.color,
               icon: cachedList.icon,
               cover: cachedList.cover,
+              coverPhoto: cachedList.cover_photo,
               rankingMode: cachedList.ranking_mode,
             })
         );
@@ -636,6 +638,7 @@ export function useListDetailData({
             listColor: metadata.color,
             listIcon: metadata.icon ?? null,
             listCover: metadata.cover ?? null,
+            listCoverPhoto: metadata.cover_photo ?? null,
             rankingMode: metadata.ranking_mode,
             metadataError: false,
             metadataLoaded: true,
@@ -744,6 +747,7 @@ export function useListDetailData({
     listColor: visibleState.listColor,
     listIcon: visibleState.listIcon,
     listCover: visibleState.listCover,
+    listCoverPhoto: visibleState.listCoverPhoto,
     rankingMode: visibleState.rankingMode,
     metadataError: visibleState.metadataError,
     metadataLoaded: visibleState.metadataLoaded,

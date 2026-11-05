@@ -59,6 +59,48 @@ Draft sessions persist in the database. Answers and one-step undo update the dra
 
 Each list has a `ranking_mode` of `score` (the default) or `rank`. Set it when creating a list or updating its metadata. Both modes retain the same positions, ratings, and comparison workflow; switching modes changes presentation only.
 
+## Configure list cover photos
+
+Photo search needs an Unsplash developer application and its access key. On macOS, store the key in Keychain:
+
+```bash
+security add-generic-password -s tiernerd:unsplash-access-key -a "$USER" -T "" -w
+```
+
+Load it at the point of use. Each read asks for Keychain approval.
+
+```bash
+export UNSPLASH_ACCESS_KEY="$(security find-generic-password -s tiernerd:unsplash-access-key -a "$USER" -w)"
+```
+
+For uploads, set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket with uniform access and public access prevention. Grant the runtime identity object read, write, and delete access only on that bucket. Hosted environments load the Unsplash key from Secret Manager. Without the corresponding setting, search or uploads return an unavailable response.
+
+Fresh databases use the current schema. For an existing database, back it up and stop the old backend before applying the photo schema migration. From `fastapi/`, inspect the schema:
+
+```bash
+uv run python scripts/migrate_list_photos.py --check
+```
+
+After the backup and application stop, apply the migration:
+
+```bash
+uv run python scripts/migrate_list_photos.py --apply
+```
+
+Interrupted saves or database writes with an uncertain outcome can leave unreferenced uploads. With the correct `DATABASE_URL`, `COVER_UPLOAD_BUCKET`, and Google Cloud credentials loaded, list objects older than 24 hours that are no longer referenced:
+
+```bash
+uv run python scripts/cleanup_list_cover_uploads.py
+```
+
+After reviewing the output and authorizing deletion, remove those objects:
+
+```bash
+uv run python scripts/cleanup_list_cover_uploads.py --apply
+```
+
+Do not configure a bucket-wide expiration policy: it would also remove attached photos.
+
 ## Upgrade the list-ranking mode schema
 
 This PostgreSQL-only migration adds list display modes and repairs inconsistent stored scores without changing item positions. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from your environment's secret store; never put credentials in commands or tracked files. Confirm the API URL embedded in the iOS build before choosing a database. Fresh databases use the current model schema; `create_all` does not upgrade existing tables.

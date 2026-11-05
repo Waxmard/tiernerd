@@ -8,11 +8,12 @@ import type {
   ListIcon,
 } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
+import type { ListPhoto } from '../services/listCoversService';
 import type {
   ListOptionsInput,
   ListRankingMode,
 } from '../services/listsService';
-import { LandscapeBackdrop } from './ImmersiveBoard';
+import { ListPhotoCover, PhotoAttribution } from './ListPhotoCover';
 import { ListRankingOptions } from './ListRankingOptions';
 
 interface ListDetailHeaderProps {
@@ -20,6 +21,8 @@ interface ListDetailHeaderProps {
   color: ListColor | null;
   icon: ListIcon | null;
   cover: ListCover | null;
+  coverPhoto?: ListPhoto | null;
+  listId: string;
   addDisabled: boolean;
   addLoading: boolean;
   onAdd: () => void;
@@ -50,6 +53,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   icon,
   cover,
   color,
+  coverPhoto = null,
+  listId,
   addDisabled,
   addLoading,
   onAdd,
@@ -103,6 +108,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           color={color}
           icon={icon}
           cover={cover}
+          coverPhoto={coverPhoto}
+          listId={listId}
           disabled={optionsDisabled}
           onSave={onSaveOptions}
           onVisibilityChange={onOptionsVisibilityChange}
@@ -124,9 +131,20 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           />
         </TouchableOpacity>
       </View>
-      {cover === 'landscape' ? (
+      {cover === 'landscape' || coverPhoto ? (
         <View className="h-28 desktop:h-40 rounded-xl overflow-hidden">
-          <LandscapeBackdrop variant={color} className="absolute inset-0" />
+          <ListPhotoCover
+            cover={cover}
+            photo={coverPhoto}
+            listId={listId}
+            color={color}
+            className="w-full h-full"
+          />
+        </View>
+      ) : null}
+      {coverPhoto?.source === 'unsplash' ? (
+        <View className="px-1 -mt-1">
+          <PhotoAttribution photo={coverPhoto} />
         </View>
       ) : null}
       {description?.trim() ? (

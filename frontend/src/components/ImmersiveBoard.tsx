@@ -10,7 +10,9 @@ import {
   palette,
 } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
-
+import type { ListPhoto } from '../services/listCoversService';
+import { LandscapeBackdrop } from './LandscapeBackdrop';
+import { ListPhotoCover } from './ListPhotoCover';
 export const SWATCH_CLASS: Record<ListColor, string> = {
   blue: 'bg-list-blue-solid dark:bg-list-blue-solid-dark',
   teal: 'bg-list-teal-solid dark:bg-list-teal-solid-dark',
@@ -52,87 +54,6 @@ export const LIST_ICON_LABELS: Record<ListIcon, string> = {
   books: 'Books',
 };
 
-export function LandscapeBackdrop({
-  variant = 'workspace',
-  className = '',
-}: {
-  variant?: 'workspace' | ListColor | null;
-  className?: string;
-}) {
-  const { scheme, workspaceAppearance } = useTheme();
-  const isDark = scheme === 'dark';
-  const hue: ListColor =
-    variant && variant !== 'workspace' ? variant : workspaceAppearance.accent;
-  const sunColor =
-    variant && variant !== 'workspace'
-      ? palette.list[hue][scheme].solid
-      : '#F2B89B';
-  const skyColor = isDark ? '#183542' : '#CFE4EE';
-  const farRidge = isDark ? '#5A7688' : '#8BA9BC';
-  const midRidge = isDark ? '#375966' : '#5E8294';
-  const nearRidge = isDark ? '#1B3742' : '#385C6C';
-
-  return (
-    <View
-      accessible={false}
-      pointerEvents="none"
-      style={{ backgroundColor: skyColor }}
-      className={['overflow-hidden', className].filter(Boolean).join(' ')}
-    >
-      <View
-        style={{
-          position: 'absolute',
-          width: 88,
-          height: 88,
-          borderRadius: 44,
-          right: '16%',
-          top: '14%',
-          backgroundColor: sunColor,
-          opacity: isDark ? 0.85 : 0.9,
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          left: '-12%',
-          right: '18%',
-          bottom: '-28%',
-          height: '78%',
-          borderTopLeftRadius: 180,
-          borderTopRightRadius: 220,
-          backgroundColor: farRidge,
-          opacity: 0.72,
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          left: '18%',
-          right: '-16%',
-          bottom: '-32%',
-          height: '72%',
-          borderTopLeftRadius: 220,
-          borderTopRightRadius: 160,
-          backgroundColor: midRidge,
-          opacity: 0.88,
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          left: '-8%',
-          right: '-8%',
-          bottom: '-38%',
-          height: '62%',
-          borderTopLeftRadius: 240,
-          borderTopRightRadius: 240,
-          backgroundColor: nearRidge,
-        }}
-      />
-    </View>
-  );
-}
-
 export function ImmersiveScreenShell({ children }: { children: ReactNode }) {
   const { workspaceAppearance } = useTheme();
   return (
@@ -165,11 +86,15 @@ export function ListIdentityBadge({
   color,
   icon,
   cover = null,
+  photo = null,
+  listId,
   size = 'md',
 }: {
   color: ListColor | null;
   icon?: ListIcon | null;
   cover?: ListCover | null;
+  photo?: ListPhoto | null;
+  listId?: string;
   size?: 'sm' | 'md';
 }) {
   const { scheme, colors } = useTheme();
@@ -191,18 +116,28 @@ export function ListIdentityBadge({
           color ? CHIP_CLASS[color] : 'bg-accent-tint dark:bg-accent-tint-dark',
         ].join(' ')}
       >
-        {cover === 'landscape' ? (
-          <LandscapeBackdrop
-            variant={color}
-            className="absolute inset-0 opacity-35"
+        {photo ? (
+          <ListPhotoCover
+            photo={photo}
+            listId={listId}
+            className="w-full h-full"
           />
-        ) : null}
-        <Ionicons
-          name={glyph}
-          size={iconSize}
-          color={chipIconColor}
-          accessible={false}
-        />
+        ) : (
+          <>
+            {cover === 'landscape' ? (
+              <LandscapeBackdrop
+                variant={color}
+                className="absolute inset-0 opacity-35"
+              />
+            ) : null}
+            <Ionicons
+              name={glyph}
+              size={iconSize}
+              color={chipIconColor}
+              accessible={false}
+            />
+          </>
+        )}
       </View>
     </View>
   );
@@ -297,55 +232,6 @@ export function ListIconPicker({
             />
             <Text className="text-body-small font-semibold text-ink dark:text-ink-dark">
               {LIST_ICON_LABELS[iconKey]}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-export function ListCoverPicker({
-  value,
-  onChange,
-  disabled = false,
-}: {
-  value: ListCover | null;
-  onChange: (next: ListCover | null) => void;
-  disabled?: boolean;
-}) {
-  const options: { label: string; value: ListCover | null }[] = [
-    { label: 'None', value: null },
-    { label: 'Built-in landscape', value: 'landscape' },
-  ];
-  return (
-    <View className="flex-row flex-wrap gap-2">
-      {options.map((option) => {
-        const selected = value === option.value;
-        return (
-          <Pressable
-            key={option.label}
-            accessibilityRole="button"
-            accessibilityLabel={`Cover ${option.label}`}
-            accessibilityState={{ selected, disabled }}
-            disabled={disabled}
-            onPress={() => onChange(option.value)}
-            className={[
-              'flex-1 min-h-11 flex-row items-center justify-center gap-2 rounded-[10px] border px-3 py-2',
-              selected
-                ? 'border-accent dark:border-accent-dark bg-accent-tint dark:bg-accent-tint-dark'
-                : 'border-control dark:border-control-dark bg-surface dark:bg-surface-dark',
-            ].join(' ')}
-          >
-            <Text
-              className={[
-                'text-body-small font-semibold',
-                selected
-                  ? 'text-accent-text dark:text-accent-text-dark'
-                  : 'text-ink-muted dark:text-ink-muted-dark',
-              ].join(' ')}
-            >
-              {option.label}
             </Text>
           </Pressable>
         );

@@ -8,6 +8,7 @@ import {
 } from '../design-system/tokens/colors.ts';
 import { ApiError } from './apiError.ts';
 import type { Item } from './itemsService.ts';
+import type { ListPhoto } from './listCoversService.ts';
 import type { ListRankingMode, ListSimple } from './listsService.ts';
 
 export const listsCacheKey = (userId: string): string =>
@@ -77,10 +78,54 @@ export function sortListsByRecency(lists: ListSimple[]): ListSimple[] {
   });
 }
 
-type CachedListSimple = Omit<ListSimple, 'ranking_mode' | 'icon' | 'cover'> & {
+type CachedListSimple = Omit<
+  ListSimple,
+  'ranking_mode' | 'icon' | 'cover' | 'cover_photo'
+> & {
   ranking_mode?: ListRankingMode;
   icon?: ListIcon | null;
   cover?: ListCover | null;
+  cover_photo?: ListPhoto | null;
+};
+
+const isProviderUrl = (value: unknown, host: RegExp): boolean => {
+  if (typeof value !== 'string' || !host.test(value)) return false;
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if (code <= 32 || code === 127) return false;
+  }
+  return true;
+};
+
+const isListPhoto = (value: unknown): value is ListPhoto => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return false;
+  const photo = value as Record<string, unknown>;
+  if (photo.source === 'upload')
+    return (
+      Object.keys(photo).length === 2 &&
+      typeof photo.id === 'string' &&
+      photo.id.length === 36 &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        photo.id
+      )
+    );
+  return (
+    photo.source === 'unsplash' &&
+    Object.keys(photo).length === 6 &&
+    typeof photo.id === 'string' &&
+    photo.id.length >= 1 &&
+    photo.id.length <= 100 &&
+    !/[^A-Za-z0-9_-]/.test(photo.id) &&
+    typeof photo.photographer_name === 'string' &&
+    photo.photographer_name.trim().length > 0 &&
+    isProviderUrl(photo.url, /^https:\/\/images\.unsplash\.com\//i) &&
+    isProviderUrl(
+      photo.photographer_url,
+      /^https:\/\/(www\.)?unsplash\.com\//i
+    ) &&
+    isProviderUrl(photo.photo_url, /^https:\/\/(www\.)?unsplash\.com\//i)
+  );
 };
 
 const isListSimple = (value: unknown): value is CachedListSimple => {
@@ -100,6 +145,10 @@ const isListSimple = (value: unknown): value is CachedListSimple => {
     (!('cover' in candidate) ||
       candidate.cover === null ||
       LIST_COVERS.includes(candidate.cover as ListCover)) &&
+    (!('cover_photo' in candidate) ||
+      candidate.cover_photo === null ||
+      isListPhoto(candidate.cover_photo)) &&
+    (!candidate.cover || !candidate.cover_photo) &&
     (!('ranking_mode' in candidate) ||
       candidate.ranking_mode === 'rank' ||
       candidate.ranking_mode === 'score')
@@ -121,6 +170,7 @@ export function parseCachedLists(raw: string | null): ListSimple[] | null {
           ...list,
           icon: list.icon ?? null,
           cover: list.cover ?? null,
+          cover_photo: list.cover_photo ?? null,
           ranking_mode: list.ranking_mode ?? 'score',
         }))
       )
@@ -138,6 +188,7 @@ export interface ListDetailDataState {
   listColor: ListColor | null;
   listIcon: ListIcon | null;
   listCover: ListCover | null;
+  listCoverPhoto: ListPhoto | null;
   rankingMode: ListRankingMode;
   metadataError: boolean;
   metadataLoaded: boolean;
@@ -178,6 +229,7 @@ export const createListDetailState = (
   listColor: null,
   listIcon: null,
   listCover: null,
+  listCoverPhoto: null,
   rankingMode: 'score',
   metadataError: false,
   metadataLoaded: false,
@@ -351,6 +403,7 @@ export const createInvalidatedReadState = (
   listColor: null,
   listIcon: null,
   listCover: null,
+  listCoverPhoto: null,
   rankingMode: 'score',
   metadataError: true,
   metadataLoaded: false,
@@ -385,6 +438,7 @@ export const applyCachedMetadataState = (
     color: ListColor | null;
     icon?: ListIcon | null;
     cover?: ListCover | null;
+    coverPhoto?: ListPhoto | null;
     rankingMode: ListRankingMode;
   }
 ): ListDetailDataState => ({
@@ -394,6 +448,7 @@ export const applyCachedMetadataState = (
   listColor: metadata.color,
   listIcon: metadata.icon ?? null,
   listCover: metadata.cover ?? null,
+  listCoverPhoto: metadata.coverPhoto ?? null,
   rankingMode: metadata.rankingMode,
 });
 

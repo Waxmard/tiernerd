@@ -28,6 +28,7 @@ import {
   ImmersiveScreenShell,
   ListIdentityBadge,
 } from '../components/ImmersiveBoard';
+import { PhotoAttribution } from '../components/ListPhotoCover';
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button } from '../design-system/components';
@@ -41,6 +42,7 @@ import { useAuth } from '../providers/AuthContext';
 import { useThemeColors } from '../providers/ThemeProvider';
 import { ApiError } from '../services/apiError';
 import type { Item } from '../services/itemsService';
+import type { ListPhoto } from '../services/listCoversService';
 import {
   enqueueListCacheWrite,
   listItemsCacheKey,
@@ -58,6 +60,7 @@ interface TierList {
   color: ListColor | null;
   icon: ListIcon | null;
   cover: ListCover | null;
+  coverPhoto: ListPhoto | null;
   itemCount: number;
   updatedAt: Date;
 }
@@ -70,6 +73,7 @@ const toTierList = (list: ListSimple): TierList => ({
   icon: list.icon ?? null,
   cover: list.cover ?? null,
   itemCount: list.item_count,
+  coverPhoto: list.cover_photo ?? null,
   updatedAt: new Date(list.updated_at),
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
@@ -398,61 +402,69 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
   const renderRow = ({ item }: ListRenderItemInfo<TierList>) => {
     return (
-      <TouchableOpacity
-        accessibilityRole="button"
-        accessibilityLabel={
-          item.description?.trim()
-            ? `${item.title}, ${item.itemCount} items. ${item.description}`
-            : `${item.title}, ${item.itemCount} items`
-        }
-        accessibilityHint="Open tier list"
-        onPress={() =>
-          navigation.navigate('ListDetail', {
-            listId: item.id,
-            listTitle: item.title,
-          })
-        }
-        activeOpacity={0.7}
-        style={{ width: cardWidth }}
-        className="shrink-0 overflow-hidden rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
-      >
-        <View className="flex-row items-center gap-3 p-4">
-          <ListIdentityBadge
-            color={item.color}
-            icon={item.icon}
-            cover={item.cover}
-          />
-          <View className="flex-1 min-w-0 gap-1">
-            <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
-              {item.title}
-            </Text>
-            {item.description?.trim() ? (
-              <Text
-                numberOfLines={2}
-                className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
-              >
-                {item.description}
+      <View style={{ width: cardWidth }} className="shrink-0 gap-1">
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={
+            item.description?.trim()
+              ? `${item.title}, ${item.itemCount} items. ${item.description}`
+              : `${item.title}, ${item.itemCount} items`
+          }
+          accessibilityHint="Open tier list"
+          onPress={() =>
+            navigation.navigate('ListDetail', {
+              listId: item.id,
+              listTitle: item.title,
+            })
+          }
+          activeOpacity={0.7}
+          className="w-full shrink-0 overflow-hidden rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
+        >
+          <View className="flex-row items-center gap-3 p-4">
+            <ListIdentityBadge
+              color={item.color}
+              icon={item.icon}
+              cover={item.cover}
+              photo={item.coverPhoto}
+              listId={item.id}
+            />
+            <View className="flex-1 min-w-0 gap-1">
+              <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
+                {item.title}
               </Text>
-            ) : null}
+              {item.description?.trim() ? (
+                <Text
+                  numberOfLines={2}
+                  className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+                >
+                  {item.description}
+                </Text>
+              ) : null}
+            </View>
           </View>
-        </View>
-        <View className="flex-row items-center justify-between gap-2 border-t border-line px-3 py-2 dark:border-line-dark">
-          <View className="flex-1 min-w-0 flex-row flex-wrap items-center gap-3">
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-              {item.itemCount} items
-            </Text>
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-              Modified {formatDate(item.updatedAt)}
-            </Text>
+          <View className="flex-row items-center justify-between gap-2 border-t border-line px-3 py-2 dark:border-line-dark">
+            <View className="flex-1 min-w-0 flex-row flex-wrap items-center gap-3">
+              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+                {item.itemCount} items
+              </Text>
+              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+                Modified {formatDate(item.updatedAt)}
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors['ink-muted']}
+              accessible={false}
+            />
           </View>
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={colors['ink-muted']}
-            accessible={false}
-          />
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        {item.coverPhoto?.source === 'unsplash' ? (
+          <View className="px-2">
+            <PhotoAttribution photo={item.coverPhoto} />
+          </View>
+        ) : null}
+      </View>
     );
   };
   const content =

@@ -12,6 +12,10 @@ Previously opened lists show saved items, order, ranking mode, scores, and avail
 
 A saved list position is restored for up to 24 hours as items load. Dragging takes priority over the saved position.
 
+List covers can use the built-in landscape, a searchable Unsplash photo, or a photo chosen from the device. Photos created with Apple Intelligence can be imported after saving them to Photos. Choosing a photo previews it; saving the list applies it. Canceling leaves the saved cover unchanged.
+
+Unsplash photos are served by Unsplash with photographer and Unsplash credits. Device photos are uploaded to private storage and retrieved through the authenticated API. Search and uploads require backend configuration and a matching database schema; see [Configure list cover photos](../fastapi/README.md#configure-list-cover-photos). The app does not include image generation or camera capture.
+
 On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. On larger screens, dialogs stay centered and item details open in a 400px side pane only when you select an item or start a workspace action.
 
 The default appearance is **System**, which follows the device's appearance. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads; existing explicit choices are preserved. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on wide screens.
@@ -46,7 +50,7 @@ make ios IOS_REUSE=1              # Install and launch the existing build withou
 
 Reuse does not include source or configuration changes. Run `make ios` to build them.
 
-The build uses the hosted development API by default, or the API selected by `EXPO_PUBLIC_API_URL`. It does not migrate or deploy the backend. Upgrade the matching database and deploy the matching backend before building the updated app; see [the backend migration instructions](../fastapi/README.md#upgrade-the-list-ranking-mode-schema).
+The build uses the hosted development API by default, or the API selected by `EXPO_PUBLIC_API_URL`. It does not migrate or deploy the backend. Upgrade the matching database and deploy the matching backend before building the updated app; see the backend instructions for [ranking mode](../fastapi/README.md#upgrade-the-list-ranking-mode-schema) and [list cover photos](../fastapi/README.md#configure-list-cover-photos).
 
 ### Option 2: iOS Simulator
 
