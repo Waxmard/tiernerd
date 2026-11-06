@@ -305,9 +305,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     modalStep === 'create'
       ? 'Create New List'
       : workspace.mode === 'ranking'
-        ? workspace.view?.isDecided
-          ? 'Saving ranking…'
-          : 'Which is better?'
+        ? 'Which is better?'
         : 'Add item';
   useEffect(
     () =>

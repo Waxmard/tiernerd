@@ -94,12 +94,11 @@ export function RankingContent({
   onCancel,
   onPause,
 }: RankingContentProps) {
-  const isAsking = !view.isDecided && view.target !== null;
-  const title = view.isDecided ? 'Saving ranking…' : 'Which is better?';
+  const isAsking = view.target !== null;
 
   return (
     <BaseModalContent
-      title={title}
+      title="Which is better?"
       isLoading={isBusy}
       closeText="Cancel ranking"
       presentation={presentation}
@@ -136,18 +135,7 @@ export function RankingContent({
           </Text>
         ) : null}
       </View>
-      {view.isDecided ? (
-        <View className="gap-2">
-          <Text
-            accessibilityLiveRegion="polite"
-            className="text-body-medium text-ink dark:text-ink-dark text-left"
-          >
-            {view.preview
-              ? `Rank #${view.preview.rank} of ${view.preview.rankedCount} · ${view.preview.score.toFixed(1)} score`
-              : 'Saving ranking…'}
-          </Text>
-        </View>
-      ) : isAsking && view.target ? (
+      {isAsking && view.target ? (
         <View className="gap-2">
           <ComparisonChoice
             item={item}
@@ -161,22 +149,22 @@ export function RankingContent({
             isBusy={isBusy}
             onPress={() => onAnswer('worse')}
           />
-          {view.canUndo ? (
-            <Button
-              title="Undo last answer"
-              variant="secondary"
-              onPress={onUndo}
-              disabled={isBusy}
-              fullWidth
-              className="mt-2"
-            />
-          ) : null}
         </View>
       ) : (
         <Text className="text-body-medium text-ink dark:text-ink-dark text-left">
           Comparing this item against the list…
         </Text>
       )}
+      {view.canUndo ? (
+        <Button
+          title="Undo last answer"
+          variant="secondary"
+          onPress={onUndo}
+          disabled={isBusy}
+          fullWidth
+          className="mt-2"
+        />
+      ) : null}
     </BaseModalContent>
   );
 }

@@ -7,12 +7,6 @@ export interface RankingSession {
   answers: RankingAnswer[];
 }
 
-export interface RankingPreview {
-  score: number;
-  rank: number;
-  rankedCount: number;
-}
-
 export function createRankingSession(
   itemId: string,
   listId: string,
@@ -94,12 +88,6 @@ function halfEven1(value: number): number {
 export function scoreForRank(rank: number, rankedCount: number): number {
   if (rankedCount === 1) return 10;
   return halfEven1((10 * (rankedCount - rank)) / (rankedCount - 1));
-}
-
-export function preview(session: RankingSession): RankingPreview {
-  const rankedCount = session.peersWorstFirst.length + 1;
-  const rank = rankedCount - gap(session);
-  return { score: scoreForRank(rank, rankedCount), rank, rankedCount };
 }
 
 export function isDraftCurrent(

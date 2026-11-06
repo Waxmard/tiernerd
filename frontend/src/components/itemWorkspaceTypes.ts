@@ -27,15 +27,9 @@ export interface UseItemWorkspaceOptions {
 export interface RankingView {
   item: Item;
   target: Item | null;
-  isDecided: boolean;
   answered: number;
   limit: number;
   canUndo: boolean;
-  preview: {
-    score: number;
-    rank: number;
-    rankedCount: number;
-  } | null;
 }
 
 export interface ItemWorkspace extends ItemWorkspaceState {
@@ -48,7 +42,7 @@ export interface ItemWorkspace extends ItemWorkspaceState {
   startRanking: (item: Item) => Promise<void>;
   answer: (answer: RankingAnswer) => Promise<void>;
   undo: () => Promise<void>;
-  cancelRanking: () => Promise<void>;
+  cancelRanking: () => Promise<boolean>;
   deleteItem: (item: Item) => Promise<void>;
   requestClose: () => Promise<boolean>;
   pauseRanking: () => Promise<boolean>;

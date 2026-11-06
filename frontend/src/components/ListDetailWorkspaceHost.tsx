@@ -145,9 +145,7 @@ export const ListDetailWorkspaceHost: React.FC<
           animationType="none"
           accessibilityLabel={
             workspace.mode === 'ranking'
-              ? workspace.view?.isDecided
-                ? 'Saving ranking…'
-                : 'Which is better?'
+              ? 'Which is better?'
               : workspace.mode === 'edit'
                 ? 'Edit item'
                 : workspace.mode === 'add'

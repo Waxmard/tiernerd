@@ -50,9 +50,9 @@ See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/REA
 
 Choose **Ranked positions** or **Scores out of 10** when creating a list. Scores are the default. Change the choice later in **List options**; switching modes does not change the saved order or start new comparisons.
 
-Add an item and choose the better item in each comparison. Comparisons use neutral surfaces without scores. **Undo last answer** reverses the latest choice and is available only before the final answer. Ranking saves automatically after the final comparison; the first item in an empty list saves immediately.
+Add an item and choose the better item in each comparison. Comparisons use neutral surfaces without scores. **Undo last answer** reverses the latest choice and is available until the last comparison decides. The rank saves and the panel closes as soon as the comparisons finish; the first item in an empty list saves immediately.
 
-Select a row to view its description, image and overall rank. Score lists also show the score. **Edit** changes its metadata; **Re-rank** starts comparisons without changing the saved rank until they complete and save automatically. **Delete Item** is separate from editing and requires confirmation.
+Select a row to view its description, image and overall rank. Score lists also show the score. **Edit** changes its metadata; **Re-rank** starts comparisons without changing the saved rank until they finish. **Delete Item** is separate from editing and requires confirmation.
 
 Interrupted ranking drafts persist on the device. Reopening the list resumes the saved draft at the same question, or choose **Resume ranking** on the item. Cancelling a ranking keeps the item unranked. Unranked items without a draft offer **Rank now**.
 

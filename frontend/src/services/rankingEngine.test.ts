@@ -9,7 +9,6 @@ import {
   insertIndexBestFirst,
   isDecided,
   isDraftCurrent,
-  preview,
   scoreForRank,
   targetPeerId,
   undoAnswer,
@@ -23,20 +22,18 @@ const decide = (...answers: ('better' | 'worse')[]) =>
     createRankingSession('item', 'list', peers)
   );
 
-test('two better answers place the item at the top with a 10 score', () => {
+test('two better answers place the item at the top', () => {
   const session = decide('better', 'better');
   assert.equal(isDecided(session), true);
   assert.equal(gap(session), 4);
   assert.equal(insertIndexBestFirst(session), 0);
-  assert.deepEqual(preview(session), { score: 10, rank: 1, rankedCount: 5 });
 });
 
-test('three worse answers place the item last with a 0 score', () => {
+test('three worse answers place the item last', () => {
   const session = decide('worse', 'worse', 'worse');
   assert.equal(isDecided(session), true);
   assert.equal(gap(session), 0);
   assert.equal(insertIndexBestFirst(session), 4);
-  assert.deepEqual(preview(session), { score: 0, rank: 5, rankedCount: 5 });
 });
 
 test('the binary search narrows one question at a time', () => {
@@ -65,6 +62,19 @@ test('undo restores the previous question', () => {
     targetPeerId(createRankingSession('item', 'list', peers))
   );
   assert.deepEqual(undoAnswer(undone), undone);
+});
+
+test('undo walks back every answer, one question at a time', () => {
+  const start = createRankingSession('item', 'list', peers);
+  const once = applyAnswer(start, 'worse');
+  const twice = applyAnswer(once, 'worse');
+  assert.equal(isDecided(twice), false);
+  assert.equal(targetPeerId(start), 'second');
+  assert.equal(targetPeerId(once), 'third');
+  assert.equal(targetPeerId(twice), 'worst');
+  assert.equal(targetPeerId(undoAnswer(twice)), 'third');
+  assert.equal(targetPeerId(undoAnswer(undoAnswer(twice))), 'second');
+  assert.deepEqual(undoAnswer(undoAnswer(undoAnswer(twice))).answers, []);
 });
 
 test('comparison limits match the server bit-length rule', () => {

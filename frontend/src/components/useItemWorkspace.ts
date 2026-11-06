@@ -16,7 +16,6 @@ import {
   insertIndexBestFirst,
   isDecided,
   isDraftCurrent,
-  preview,
   type RankingAnswer,
   type RankingSession,
   targetPeerId,
@@ -147,7 +146,7 @@ export function useItemWorkspace({
   );
 
   const commit = useCallback(
-    async (session: RankingSession) => {
+    async (session: RankingSession): Promise<boolean> => {
       const current = workspaceRef.current;
       const activeUserId = optionsRef.current.userId;
       const item =
@@ -158,9 +157,9 @@ export function useItemWorkspace({
         null;
       if (!item || item.item_id !== session.itemId || !activeUserId) {
         notify(RANKING_SAVE_ERROR);
-        return;
+        return false;
       }
-      if (!beginBusy()) return;
+      if (!beginBusy()) return false;
       try {
         const outcome = await mutate(
           {
@@ -184,10 +183,11 @@ export function useItemWorkspace({
         await clearDraft(activeUserId);
         if (outcome.status === 'rejected') {
           notify(outcome.message);
-          return;
+          return false;
         }
         await optionsRef.current.onItemsChanged(item);
         closeWorkspace();
+        return true;
       } finally {
         setBusy(false);
       }
@@ -218,22 +218,21 @@ export function useItemWorkspace({
       const current = workspaceRef.current;
       const ranking = current.ranking;
       const activeUserId = optionsRef.current.userId;
-      if (
-        busyRef.current ||
-        current.mode !== 'ranking' ||
-        !ranking ||
-        !activeUserId
-      )
-        return;
+      if (current.mode !== 'ranking' || !ranking || !activeUserId) return;
       const next = applyAnswer(ranking, result);
-      await saveDraft(activeUserId, next);
       if (isDecided(next)) {
         await commit(next);
         return;
       }
-      updateWorkspace({ ranking: next });
+      if (!beginBusy()) return;
+      try {
+        updateWorkspace({ ranking: next });
+        await saveDraft(activeUserId, next);
+      } finally {
+        setBusy(false);
+      }
     },
-    [commit, updateWorkspace]
+    [beginBusy, commit, setBusy, updateWorkspace]
   );
 
   const undo = useCallback(async () => {
@@ -242,16 +241,33 @@ export function useItemWorkspace({
     if (busyRef.current || current.mode !== 'ranking' || !current.ranking)
       return;
     const next = undoAnswer(current.ranking);
-    if (activeUserId) await saveDraft(activeUserId, next);
     updateWorkspace({ ranking: next });
+    if (activeUserId) await saveDraft(activeUserId, next);
   }, [updateWorkspace]);
 
   const cancelRanking = useCallback(async () => {
-    if (busyRef.current) return;
+    if (busyRef.current) return false;
+    const current = workspaceRef.current;
     const activeUserId = optionsRef.current.userId;
+    if (current.mode === 'ranking' && current.ranking) {
+      if (!beginBusy()) return false;
+      try {
+        if (current.ranking.answers.length > 0) {
+          const confirmed = await confirmDestructive(
+            'Cancel ranking?',
+            'This item will stay unranked.',
+            'Cancel ranking'
+          );
+          if (!confirmed) return false;
+        }
+      } finally {
+        setBusy(false);
+      }
+    }
     if (activeUserId) await clearDraft(activeUserId);
     closeWorkspace();
-  }, [closeWorkspace]);
+    return true;
+  }, [beginBusy, closeWorkspace, setBusy]);
 
   const submitMetadata = useCallback(async () => {
     if (busyRef.current) return;
@@ -431,8 +447,9 @@ export function useItemWorkspace({
         ranking: session,
         fieldErrors: {},
       });
+      if (isDecided(session)) void commit(session);
     },
-    [notify, rankedPeerIds, updateWorkspace]
+    [commit, notify, rankedPeerIds, updateWorkspace]
   );
 
   const deleteItem = useCallback(
@@ -484,29 +501,24 @@ export function useItemWorkspace({
 
   const pauseRanking = useCallback(async () => {
     if (busyRef.current) return false;
+    const current = workspaceRef.current;
+    if (
+      current.mode === 'ranking' &&
+      current.ranking &&
+      isDecided(current.ranking)
+    ) {
+      return await commit(current.ranking);
+    }
     closeWorkspace();
     return true;
-  }, [closeWorkspace]);
+  }, [closeWorkspace, commit]);
 
   const requestClose = useCallback(async () => {
     if (busyRef.current) return false;
     const current = workspaceRef.current;
     if (current.mode === 'ranking' && current.ranking) {
-      if (!beginBusy()) return false;
-      try {
-        if (current.ranking.answers.length > 0) {
-          const confirmed = await confirmDestructive(
-            'Cancel ranking?',
-            'This item will stay unranked.',
-            'Cancel ranking'
-          );
-          if (!confirmed) return false;
-        }
-      } finally {
-        setBusy(false);
-      }
-      await cancelRanking();
-      return true;
+      if (isDecided(current.ranking)) return await commit(current.ranking);
+      return await cancelRanking();
     }
     if (current.mode === 'closed') {
       if (current.item) closeWorkspace();
@@ -527,7 +539,7 @@ export function useItemWorkspace({
     }
     closeWorkspace();
     return true;
-  }, [beginBusy, cancelRanking, closeWorkspace, setBusy]);
+  }, [beginBusy, cancelRanking, closeWorkspace, setBusy, commit]);
 
   const currentItem = workspace.item;
   const ranking = workspace.ranking;
@@ -542,15 +554,12 @@ export function useItemWorkspace({
     const target = peerId
       ? (items.find((item) => item.item_id === peerId) ?? null)
       : null;
-    const decided = isDecided(ranking);
     view = {
       item: rankingItem,
       target,
-      isDecided: decided,
       answered: ranking.answers.length,
       limit: comparisonLimit(ranking.peersWorstFirst.length),
       canUndo: ranking.answers.length > 0,
-      preview: decided ? preview(ranking) : null,
     };
   }
 
