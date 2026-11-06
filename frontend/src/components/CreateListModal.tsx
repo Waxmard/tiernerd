@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Pressable, Text, type TextInput, View } from 'react-native';
+import { Pressable, Text, type TextInputInstance, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import {
   type ListColor,
@@ -65,7 +65,7 @@ export const CreateListContent = forwardRef<
   const [coverBusy, setCoverBusy] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const titleRef = useRef<TextInput>(null);
+  const titleRef = useRef<TextInputInstance>(null);
   const hasVisitedOptionalFieldRef = useRef(false);
   const loadingRef = useRef(false);
   const coverBusyRef = useRef(false);

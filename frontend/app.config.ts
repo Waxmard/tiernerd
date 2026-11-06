@@ -19,7 +19,6 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
           microphonePermission: false,
         },
       ],
-      './withIosSceneLifecycle',
       './withQuietPods',
       './withIosDeploymentTarget',
       ...(clientId

@@ -1,6 +1,6 @@
 # TierNerd Frontend
 
-React Native mobile app built with Expo SDK 54.
+React Native mobile app built with Expo SDK 58.
 
 ## Browsing and ranking
 
@@ -28,16 +28,14 @@ Sign-in is available on iOS with Google. The Google OAuth web client ID in `EXPO
 
 - Node.js 24 ([`mise.toml`](../mise.toml); run `mise install`)
 - npm
-- An Xcode version compatible with Expo SDK 54 and CocoaPods for native iOS builds
+- An Xcode version compatible with Expo SDK 58 and CocoaPods for native iOS builds
 - A paired and trusted iPhone, Developer Mode when requested, and existing provisioning for the app's bundle ID and Apple team for standalone installation
 
 ## Setup
 
 ```bash
-npm install --legacy-peer-deps
+npm install
 ```
-
-Note: `--legacy-peer-deps` is required due to React 19 peer dependency conflicts.
 
 ## Running the App
 

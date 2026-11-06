@@ -1,6 +1,12 @@
 import type React from 'react';
 import { forwardRef, useId } from 'react';
-import { Text, TextInput, type TextInputProps, View } from 'react-native';
+import {
+  Text,
+  TextInput,
+  type TextInputInstance,
+  type TextInputProps,
+  View,
+} from 'react-native';
 import { useThemeColors } from '../../providers/ThemeProvider';
 
 interface InputProps extends TextInputProps {
@@ -10,7 +16,7 @@ interface InputProps extends TextInputProps {
   inputClassName?: string;
 }
 
-export const Input = forwardRef<TextInput, InputProps>(function Input(
+export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
   { label, error, leftIcon, inputClassName, ...textInputProps },
   ref
 ) {

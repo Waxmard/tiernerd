@@ -49,7 +49,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
     const reactPkg = JSON.parse(readFileSync(resolve(rootDir, 'frontend/node_modules/react/package.json'), 'utf8'));
     const rendererSource = readFileSync(
-      resolve(rootDir, 'frontend/node_modules/react-native/Libraries/Renderer/implementations/ReactNativeRenderer-prod.js'),
+      resolve(rootDir, 'frontend/node_modules/react-native/Libraries/Renderer/implementations/ReactFabric-prod.js'),
       'utf8',
     );
     validateReactRendererVersion(reactPkg.version, rendererSource);
