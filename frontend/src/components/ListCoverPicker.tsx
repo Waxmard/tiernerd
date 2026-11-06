@@ -16,9 +16,10 @@ import {
 import { ListPhotoCover, PhotoAttribution } from './ListPhotoCover';
 
 export function releaseCoverDraft(draft: CoverDraft) {
-  if (draft.kind === 'local' && draft.uri.startsWith('blob:')) {
-    URL.revokeObjectURL(draft.uri);
-  }
+  if (draft.kind !== 'local') return;
+  if (draft.uri.startsWith('blob:')) URL.revokeObjectURL(draft.uri);
+  const blob = draft.blob as (Blob & { close?: () => void }) | undefined;
+  blob?.close?.();
 }
 
 function searchErrorMessage(error: unknown) {

@@ -1,18 +1,18 @@
-import { Platform } from 'react-native';
 import type {
   ListColor,
   ListCover,
   ListIcon,
 } from '../design-system/tokens/colors';
 import { api } from './api';
+import {
+  type CoverPhotoSelection,
+  coverSelectionFromDraft,
+  listFormData,
+} from './coverDraft';
 import type { Item } from './itemsService';
 import type { CoverDraft, ListPhoto } from './listCoversService';
 
 export type ListRankingMode = 'rank' | 'score';
-
-export type CoverPhotoId =
-  | { source: 'unsplash'; id: string }
-  | { source: 'upload'; id: string };
 
 export interface ListSimple {
   list_id: string;
@@ -38,7 +38,7 @@ export interface ListCreatePayload {
   icon: ListIcon | null;
   ranking_mode: ListRankingMode;
   cover: ListCover | null;
-  cover_photo: CoverPhotoId | null;
+  cover_photo: CoverPhotoSelection | null;
 }
 
 export type ListMetadataPatch = Partial<
@@ -82,27 +82,6 @@ const requireRankingMode = <T extends ListMetadata>(list: T): T => {
   return list;
 };
 
-export function coverSelectionFromDraft(draft: CoverDraft): {
-  cover: ListCover | null;
-  cover_photo: CoverPhotoId | null;
-} {
-  if (draft.kind === 'landscape')
-    return { cover: 'landscape', cover_photo: null };
-  if (draft.kind === 'unsplash') {
-    return {
-      cover: null,
-      cover_photo: { source: 'unsplash', id: draft.photo.id },
-    };
-  }
-  if (draft.kind === 'persisted') {
-    return {
-      cover: null,
-      cover_photo: { source: draft.photo.source, id: draft.photo.id },
-    };
-  }
-  return { cover: null, cover_photo: null };
-}
-
 export function listOptionsPayload(options: ListOptionsInput): {
   metadata: ListMetadataPatch;
   coverPhoto: ListPhoto | null;
@@ -123,29 +102,6 @@ export function listOptionsPayload(options: ListOptionsInput): {
           ? { ...draft.photo, source: 'unsplash' }
           : null,
   };
-}
-
-function listFormData(metadata: object, draft?: CoverDraft): FormData {
-  const form = new FormData();
-  form.append('metadata', JSON.stringify(metadata));
-  if (draft?.kind === 'local') {
-    if (Platform.OS === 'web') {
-      if (!draft.blob) {
-        throw new Error('The selected photo is unavailable. Choose it again.');
-      }
-      form.append('file', draft.blob, 'cover.jpg');
-    } else {
-      if (!draft.uri.startsWith('file://')) {
-        throw new Error('The selected photo is unavailable. Choose it again.');
-      }
-      form.append('file', {
-        uri: draft.uri,
-        type: 'image/jpeg',
-        name: 'cover.jpg',
-      } as unknown as Blob);
-    }
-  }
-  return form;
 }
 
 export const listsService = {

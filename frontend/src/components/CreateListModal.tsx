@@ -18,10 +18,10 @@ import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
 import { getApiErrorMessage } from '../services/apiError';
+import { coverSelectionFromDraft } from '../services/coverDraft';
 import type { CoverDraft } from '../services/listCoversService';
 import {
   COVER_NEEDS_CONNECTION,
-  coverSelectionFromDraft,
   type ListCreatePayload,
   type ListRankingMode,
   type ListSimple,

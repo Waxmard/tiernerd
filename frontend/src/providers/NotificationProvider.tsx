@@ -12,7 +12,7 @@ import {
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const NOTIFICATION_MS = 3000;
+const NOTIFICATION_MS = 6000;
 
 interface NotificationValue {
   message: string | null;
