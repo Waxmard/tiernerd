@@ -113,7 +113,7 @@ async function convertWebImage(uri: string): Promise<Blob> {
 
 async function convertNativeImage(
   uri: string
-): Promise<{ uri: string; size: number }> {
+): Promise<{ uri: string; blob: Blob }> {
   const context = ImageManipulator.manipulate(uri);
   let image: ImageRef | undefined;
   let convertedUri: string;
@@ -137,9 +137,7 @@ async function convertNativeImage(
   const response = await fetch(convertedUri);
   if (!response.ok) throw new Error('Image could not be read');
   const blob = await response.blob();
-  const size = blob.size;
-  if ('close' in blob && typeof blob.close === 'function') blob.close();
-  return { uri: convertedUri, size };
+  return { uri: convertedUri, blob };
 }
 
 export async function pickLocalCover(): Promise<Extract<
@@ -167,11 +165,11 @@ export async function pickLocalCover(): Promise<Extract<
     throw new Error('Could not open the photo picker. Please try again.');
   }
 
-  let converted: { blob: Blob } | { uri: string; size: number };
+  let converted: { blob: Blob; uri: string | null };
   try {
     converted =
       Platform.OS === 'web'
-        ? { blob: await convertWebImage(assetUri) }
+        ? { blob: await convertWebImage(assetUri), uri: null }
         : await convertNativeImage(assetUri);
   } catch {
     throw new Error(
@@ -181,22 +179,19 @@ export async function pickLocalCover(): Promise<Extract<
     if (Platform.OS === 'web') URL.revokeObjectURL(assetUri);
   }
 
-  const size = 'blob' in converted ? converted.blob.size : converted.size;
-  if (!size) {
+  if (!converted.blob.size) {
     throw new Error('The selected photo is empty. Choose another image.');
   }
-  if (size > MAX_IMAGE_BYTES) {
+  if (converted.blob.size > MAX_IMAGE_BYTES) {
     throw new Error(
       'The photo is larger than 10 MiB after processing. Choose a smaller image.'
     );
   }
-  return 'blob' in converted
-    ? {
-        kind: 'local',
-        uri: URL.createObjectURL(converted.blob),
-        blob: converted.blob,
-      }
-    : { kind: 'local', uri: converted.uri };
+  return {
+    kind: 'local',
+    uri: converted.uri ?? URL.createObjectURL(converted.blob),
+    blob: converted.blob,
+  };
 }
 
 export function searchCoverPhotos(

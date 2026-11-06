@@ -50,21 +50,21 @@ See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/REA
 
 Choose **Ranked positions** or **Scores out of 10** when creating a list. Scores are the default. Change the choice later in **List options**; switching modes does not change the saved order or start new comparisons.
 
-Add an item and choose the better item in each comparison. Comparisons use neutral surfaces without scores. **Undo last answer** reverses the latest choice and is available only before the final answer. Ranking saves automatically after the final comparison; the first item in an empty list saves immediately. The refreshed list confirms the saved order. If saving fails, choose **Retry saving**. If the item refresh fails after saving, choose **Retry refresh**.
+Add an item and choose the better item in each comparison. Comparisons use neutral surfaces without scores. **Undo last answer** reverses the latest choice and is available until the last comparison decides. The rank saves and the panel closes as soon as the comparisons finish; the first item in an empty list saves immediately.
 
-Select a row to view its description, image and overall rank. Score lists also show the score. **Edit** changes its metadata; **Re-rank** starts comparisons without changing the saved rank until they complete and save automatically. **Delete Item** is separate from editing and requires confirmation.
+Select a row to view its description, image and overall rank. Score lists also show the score. **Edit** changes its metadata; **Re-rank** starts comparisons without changing the saved rank until they finish. **Delete Item** is separate from editing and requires confirmation.
 
-Interrupted ranking drafts persist. Select the item and choose **Resume ranking**, or **Restart ranking** if ranked peers changed. A ready draft saves automatically when resumed. Cancelling a new-item draft discards that item. Cancelling a re-ranking draft preserves the saved item and rank. Unranked items without a draft offer **Rank now**.
+Interrupted ranking drafts persist on the device. Reopening the list resumes the saved draft at the same question, or choose **Resume ranking** on the item. Cancelling a ranking keeps the item unranked. Unranked items without a draft offer **Rank now**.
+
+The app works without a connection. Lists, items and rankings are read from and written to the device first. Changes replay in order once the connection returns, and creates carry client-generated ids so a retry never duplicates a list or item. A change the server refuses as invalid stays on the device and keeps showing in its list; a notification names the field the server complained about, and the change syncs by itself once the server accepts it. A duplicate name resolves to the item already in the list, and an edit to something deleted on another device is discarded with a notification. Uploaded photo covers and photo search need a connection.
 
 Item names are unique within a list, ignoring surrounding whitespace and Unicode case. Different lists can use the same name.
-
-Deleting an item or list also discards its related active and completed comparison sessions. Sessions unrelated to the deleted item or list remain unchanged.
 
 Scores are relative to the order of ranked items in each list, not independent quality ratings. The best item scores 10.0 and the worst scores 0.0; a single ranked item scores 10.0. For best-first rank `r` among `n` ranked items, the score is `round(10 * (n - r) / (n - 1), 1)` when `n > 1`. For example, four items score 10.0, 6.7, 3.3 and 0.0.
 
 The API stores scores in `rating`. Score lists display them to one decimal place without a suffix; position lists display whole-number ranks. An item without a position has a null score and is shown as **Not ranked yet**. Adding, deleting or re-ranking items can change all scores in the list. Lists use position, not rounded scores, to order ranked items best first; unranked items appear last.
 
-Existing PostgreSQL databases require schema upgrades before running the updated application. See [Upgrade the list-ranking mode schema](fastapi/README.md#upgrade-the-list-ranking-mode-schema) for prerequisites and safe cutover. Fresh databases use the current model schema.
+Existing PostgreSQL databases require schema upgrades before running the updated application, including dropping the retired `comparison_sessions` table. See [Upgrade the list-ranking mode schema](fastapi/README.md#upgrade-the-list-ranking-mode-schema) for prerequisites and safe cutover. Fresh databases use the current model schema.
 
 
 ## Contributing

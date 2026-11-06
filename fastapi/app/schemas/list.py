@@ -57,6 +57,7 @@ class CoverSearchAvailability(BaseModel):
 
 
 class ListCreate(BaseModel):
+    list_id: UUID | None = None
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     color: ListColor | None = None

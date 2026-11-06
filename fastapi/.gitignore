@@ -23,3 +23,6 @@ sdist/
 
 .env.local
 .env
+
+# Last successful cloud deploy fingerprint
+.cloud-deploy-*.fingerprint

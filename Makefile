@@ -66,4 +66,4 @@ frontend-unit:
 	cd frontend && npm run test:unit
 
 scripts-test:
-	node --test scripts/ios-config.test.mjs scripts/testflight-build-number.test.mjs scripts/build-ios-testflight.test.mjs
+	node --test scripts/ios-config.test.mjs scripts/testflight-build-number.test.mjs scripts/build-ios-testflight.test.mjs scripts/deploy-backend-if-needed.test.mjs

@@ -1,3 +1,3 @@
-from app.services import comparison_service, list_service, ranking
+from app.services import list_service, ranking
 
-__all__ = ["comparison_service", "list_service", "ranking"]
+__all__ = ["list_service", "ranking"]

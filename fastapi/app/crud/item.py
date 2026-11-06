@@ -2,15 +2,11 @@ import sqlite3
 import uuid
 from typing import Any
 
-from sqlalchemy import delete as sql_delete, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import (
-    ComparisonSession as ComparisonSessionModel,
-    Item as ItemModel,
-    List as ListModel,
-)
+from app.db.models import Item as ItemModel, List as ListModel
 
 
 async def get_by_id(
@@ -98,10 +94,4 @@ async def update(
 
 
 async def delete(db: AsyncSession, item: ItemModel) -> None:
-    await db.execute(
-        sql_delete(ComparisonSessionModel).where(
-            (ComparisonSessionModel.new_item_id == item.item_id)
-            | (ComparisonSessionModel.target_item_id == item.item_id)
-        )
-    )
     await db.delete(item)
