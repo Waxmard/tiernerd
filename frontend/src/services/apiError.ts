@@ -35,9 +35,19 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
       const messages = detail.flatMap((entry) => {
         if (!entry || typeof entry !== 'object' || !('msg' in entry)) return [];
         const { msg } = entry;
-        return typeof msg === 'string' && msg.trim() ? [msg] : [];
+        if (typeof msg !== 'string' || !msg.trim()) return [];
+        const loc = 'loc' in entry ? entry.loc : undefined;
+        const path = Array.isArray(loc)
+          ? loc
+              .slice(1)
+              .filter(
+                (part) => typeof part === 'string' || typeof part === 'number'
+              )
+              .join('.')
+          : '';
+        return [path ? `${path}: ${msg}` : msg];
       });
-      if (messages.length) return messages.join(', ');
+      if (messages.length) return messages.join('; ');
     }
     return fallback;
   }

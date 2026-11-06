@@ -79,6 +79,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
   const queueUserIdRef = useRef<string | null>(null);
   const appliedOpsRef = useRef<Set<string>>(new Set());
   const droppedOpsRef = useRef<Map<string, string>>(new Map());
+  const notifiedRef = useRef<Set<string>>(new Set());
   if (userId && queueUserIdRef.current !== userId) {
     queueUserIdRef.current = userId;
     queueRef.current = createSyncQueue({
@@ -89,6 +90,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
     });
     appliedOpsRef.current = new Set();
     droppedOpsRef.current = new Map();
+    notifiedRef.current = new Set();
   } else if (!userId && queueUserIdRef.current !== null) {
     queueUserIdRef.current = null;
     queueRef.current = null;
@@ -107,6 +109,11 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
         droppedOpsRef.current.set(entry.opId, entry.message);
         notify(entry.message);
       }
+      for (const entry of outcome.refused) {
+        if (notifiedRef.current.has(entry.opId)) continue;
+        notifiedRef.current.add(entry.opId);
+        notify(`Saved on this device — sync failed: ${entry.message}`);
+      }
       if (outcome.applied.length > 0 || outcome.dropped.length > 0) {
         setLastSyncedAt(Date.now());
       }
@@ -123,7 +130,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
     const task = (async () => {
       let outcome = await queue.flush();
       recordOutcome(outcome);
-      while (outcome.status === 'idle' && (await queue.count()) > 0) {
+      while (outcome.applied.length > 0 && (await queue.count()) > 0) {
         outcome = await queue.flush();
         recordOutcome(outcome);
       }

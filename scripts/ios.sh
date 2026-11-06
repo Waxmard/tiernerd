@@ -3,6 +3,9 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 device="${1:-Gengar Phone}"
+
+bash "$root/scripts/deploy-backend-if-needed.sh"
+
 cd "$root/frontend"
 app="ios/DerivedData/Build/Products/Release-iphoneos/TierNerd.app"
 

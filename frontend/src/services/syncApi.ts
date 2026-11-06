@@ -25,11 +25,7 @@ export async function applyOpToApi(op: SyncOp, token: string): Promise<void> {
       try {
         await itemsService.createItem(op.listId, payload, token);
       } catch (error) {
-        if (
-          !(error instanceof ApiError) ||
-          (error.status !== 409 && error.status !== 422)
-        )
-          throw error;
+        if (!(error instanceof ApiError) || error.status !== 409) throw error;
         const items = await listsService.getListItems(op.listId, token);
         const present = items.some(
           (item) =>

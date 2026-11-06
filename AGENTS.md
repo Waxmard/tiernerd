@@ -114,12 +114,15 @@ npm run typecheck                 # TypeScript check
 
 The default backend for frontend work is the deployed dev API — no local containers. `make ios` and TestFlight builds target `https://tiernerd-api-dev-1015723670625.us-east1.run.app` by default; override `EXPO_PUBLIC_API_URL` to point at another public HTTPS API.
 
+`make ios` deploys the dev backend before building, and skips the deploy when a fingerprint of the backend inputs (`app/`, `scripts/`, `pyproject.toml`, `uv.lock`, `Dockerfile`, `cloudbuild.yaml`, `cloud/env.dev.yaml`) matches the last successful deploy. Without that step the app under test is local JavaScript against whatever code dev happens to be running, which is how a stale dev backend once surfaced as an app bug. `SKIP_DEPLOY=1` builds without deploying, and pointing `EXPO_PUBLIC_API_URL` at another API skips it too. A local `make testflight` deploys the same way; hosted release uploads and simulator smoke runs skip it because CI sets `CI`.
+
 The dev Cloud Run service has a service-level minimum of one instance to reduce cold starts. This is separate from the deploy recipe's revision-level `--min-instances 0` and incurs ongoing idle costs (estimated at $9.72/month before free-tier credits and active traffic).
 
 Deploy (from `fastapi/`):
 
 ```bash
 make cloud-deploy          # GCP_PROJECT/tiernerd-api-dev, CLOUD_ENV=dev
+make cloud-deploy-if-needed # deploy only if the backend inputs changed
 make cloud-url             # print the service URL
 make cloud-health          # curl the deployed /health
 make cloud-logs            # recent service logs
@@ -197,7 +200,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 - Comparison sessions are persistent database drafts; answers do not change saved ranks until commit.
 - API endpoints are prefixed with `/api/`.
 - Do **not** run `npm run ios` or `npx expo start` — the user runs these in a separate terminal.
-- Do **not** run `make cloud-deploy` unless asked — it mutates shared cloud state.
+- `make ios` deploys the dev backend itself when the backend inputs changed, and skips it otherwise; `SKIP_DEPLOY=1` opts out. Do **not** run `make cloud-deploy` by hand unless asked — it always mutates shared cloud state.
 - Run `make test` and `make typecheck` (or `make ci`) after changing frontend behavior.
 - Do **not** run `git commit`, `git add`, or `git push` — the user handles staging, committing, and pushing.
 

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { getApiErrorMessage } from '../services/apiError';
+import { normalizeItemName } from '../services/itemNames';
 import type { Item } from '../services/itemsService';
 import {
   applyCachedItemsState,
@@ -42,9 +43,47 @@ import {
   listsService,
 } from '../services/listsService';
 import { localLibrary } from '../services/localLibrary';
+import { pendingItemCreates } from '../services/syncQueue';
 import { newId } from '../utils/id';
 
 const ITEMS_ERROR = 'Unable to refresh items.';
+
+const withPendingCreates = async (
+  lifecycle: ListDetailLifecycle,
+  items: Item[]
+): Promise<Item[]> => {
+  if (!lifecycle.userId) return items;
+  const [pending, cachedRaw] = await Promise.all([
+    pendingItemCreates(lifecycle.userId, lifecycle.listId).catch(() => []),
+    AsyncStorage.getItem(
+      listItemsCacheKey(lifecycle.userId, lifecycle.listId)
+    ).catch(() => null),
+  ]);
+  if (pending.length === 0) return items;
+  const cached = parseCachedListItems(cachedRaw, lifecycle.listId) ?? [];
+  const ids = new Set(items.map((item) => item.item_id));
+  const names = new Set(items.map((item) => normalizeItemName(item.name)));
+  const local: Item[] = [];
+  for (const op of pending) {
+    if (ids.has(op.itemId) || names.has(normalizeItemName(op.name))) continue;
+    ids.add(op.itemId);
+    names.add(normalizeItemName(op.name));
+    local.push(
+      cached.find((item) => item.item_id === op.itemId) ?? {
+        item_id: op.itemId,
+        list_id: lifecycle.listId,
+        name: op.name,
+        description: op.description,
+        image_url: null,
+        rating: null,
+        position: null,
+        created_at: op.createdAt,
+        updated_at: op.createdAt,
+      }
+    );
+  }
+  return local.length ? [...items, ...local] : items;
+};
 
 interface UseListDetailDataOptions {
   userId: string | null;
@@ -248,10 +287,11 @@ export function useListDetailData({
         (previous) => ({ ...previous, isLoadingItems: true })
       );
       try {
-        const nextItems = await listsService.getListItems(
+        const serverItems = await listsService.getListItems(
           lifecycle.listId,
           lifecycle.token
         );
+        const nextItems = await withPendingCreates(lifecycle, serverItems);
         if (!canAcceptItemsResponse(lifecycle, requestId, lifecycleRef.current))
           throw new Error(ITEMS_ERROR);
         lifecycle.itemsAcceptedLive = true;

@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ApiError, NetworkError } from './apiError.ts';
-import { createSyncQueue, type SyncOp, type SyncStorage } from './syncQueue.ts';
+import {
+  createSyncQueue,
+  pendingItemCreates,
+  type SyncOp,
+  type SyncStorage,
+} from './syncQueue.ts';
 
 const USER = 'user-1';
 const NOW = '2026-01-01T00:00:00.000Z';
@@ -155,7 +160,7 @@ test('a conflict drops the op with the server message and keeps replaying', asyn
 
 test('a conflict without a server message falls back to generic text', async () => {
   const { queue } = makeQueue(async () => {
-    throw new ApiError(422, 'Unprocessable');
+    throw new ApiError(409, 'Conflict');
   });
   await queue.enqueue(itemCreate('1', 'a', 'Alpha'));
 
@@ -267,7 +272,89 @@ test('remaining and dropped counts describe a partial flush', async () => {
 
   assert.equal(outcome.status, 'offline');
   assert.equal(outcome.applied.length, 0);
-  assert.equal(outcome.dropped.length, 1);
-  assert.equal(outcome.remaining, 2);
+  assert.deepEqual(outcome.dropped, []);
+  assert.deepEqual(outcome.refused, [
+    { opId: '1', message: "Couldn't save a pending change." },
+  ]);
+  assert.equal(outcome.remaining, 3);
+  assert.equal(await queue.count(), 3);
+});
+
+test('a validation rejection keeps the op for a later flush', async () => {
+  let calls = 0;
+  const { queue } = makeQueue(async () => {
+    calls += 1;
+    if (calls === 1)
+      throw new ApiError(422, 'Unprocessable', {
+        detail: [
+          {
+            type: 'missing',
+            loc: ['query', 'list_title'],
+            msg: 'Field required',
+          },
+        ],
+      });
+  });
+  await queue.enqueue(itemCreate('1', 'a', 'Alpha'));
+
+  const first = await queue.flush();
+
+  assert.equal(first.status, 'idle');
+  assert.deepEqual(first.refused, [
+    { opId: '1', message: 'list_title: Field required' },
+  ]);
+  assert.deepEqual(first.dropped, []);
+  assert.equal(await queue.count(), 1);
+
+  const second = await queue.flush();
+
+  assert.deepEqual(second.applied, ['1']);
+  assert.equal(await queue.count(), 0);
+});
+
+test('a dependent edit waits for its refused create', async () => {
+  const applied: string[] = [];
+  const { queue, storage } = makeQueue(async (op) => {
+    if (op.id === '1') throw new ApiError(422, 'Unprocessable');
+    if (op.id === '2') throw new ApiError(404, 'Not Found');
+    applied.push(op.id);
+  });
+  storage.map.set(
+    `outbox:v1:${USER}`,
+    JSON.stringify([
+      itemCreate('1', 'a', 'Alpha'),
+      itemUpdate('2', 'a', 'Renamed'),
+      itemDelete('3', 'b'),
+    ])
+  );
+
+  const outcome = await queue.flush();
+
+  assert.deepEqual(applied, ['3']);
+  assert.deepEqual(outcome.dropped, []);
+  assert.deepEqual(
+    outcome.refused.map((entry) => entry.opId),
+    ['1']
+  );
   assert.equal(await queue.count(), 2);
+});
+
+test('pendingItemCreates returns creates for one list', async () => {
+  const storage = memoryStorage();
+  await storage.set(
+    `outbox:v1:${USER}`,
+    JSON.stringify([
+      itemCreate('1', 'a'),
+      { ...itemCreate('2', 'b'), listId: 'list-2' },
+      rankingSet('3', 'a', 1),
+    ])
+  );
+
+  const pending = await pendingItemCreates(USER, 'list-1', storage);
+
+  assert.deepEqual(
+    pending.map((op) => op.itemId),
+    ['a']
+  );
+  assert.deepEqual(await pendingItemCreates(USER, 'list-3', storage), []);
 });

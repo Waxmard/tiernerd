@@ -171,7 +171,11 @@ CLOUD_SECRET_PREFIX ?= tiernerd-$(CLOUD_ENV)
 UNSPLASH_SECRET ?=
 comma := ,
 
-.PHONY: cloud-deploy cloud-url cloud-health cloud-logs
+CLOUD_DEPLOY_INPUTS = $(shell find app scripts -type f -not -path '*/__pycache__/*' -not -path '*/.*' | sort)
+CLOUD_DEPLOY_FINGERPRINT = $(shell cat $(CLOUD_DEPLOY_INPUTS) pyproject.toml uv.lock Dockerfile cloudbuild.yaml $(CLOUD_ENV_FILE) 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
+CLOUD_DEPLOY_STAMP ?= .cloud-deploy-$(CLOUD_ENV).fingerprint
+
+.PHONY: cloud-deploy cloud-deploy-if-needed cloud-url cloud-health cloud-logs
 cloud-deploy:
 	@image="$(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/cloud-run-source-deploy/$(CLOUD_SERVICE):$$(date +%Y%m%d%H%M%S)-$$$$"; \
 	$(GCLOUD) builds submit --project $(GCP_PROJECT) --config cloudbuild.yaml \
@@ -185,7 +189,15 @@ cloud-deploy:
 		--cpu 1 --memory 512Mi \
 		--min-instances 0 --max-instances 1 \
 		--env-vars-file $(CLOUD_ENV_FILE) \
-		--update-secrets SECRET_KEY=$(CLOUD_SECRET_PREFIX)-secret-key:latest,DATABASE_URL=$(CLOUD_SECRET_PREFIX)-database-url:latest$(if $(strip $(UNSPLASH_SECRET)),$(comma)UNSPLASH_ACCESS_KEY=$(UNSPLASH_SECRET):latest)
+		--update-secrets SECRET_KEY=$(CLOUD_SECRET_PREFIX)-secret-key:latest,DATABASE_URL=$(CLOUD_SECRET_PREFIX)-database-url:latest$(if $(strip $(UNSPLASH_SECRET)),$(comma)UNSPLASH_ACCESS_KEY=$(UNSPLASH_SECRET):latest) && \
+	echo "$(CLOUD_DEPLOY_FINGERPRINT)" > $(CLOUD_DEPLOY_STAMP)
+
+cloud-deploy-if-needed:
+	@if [ "$(CLOUD_DEPLOY_FINGERPRINT)" = "$$(cat $(CLOUD_DEPLOY_STAMP) 2>/dev/null)" ]; then \
+		echo "$(CLOUD_SERVICE) already runs these backend inputs; skipping deploy."; \
+	else \
+		$(MAKE) cloud-deploy; \
+	fi
 
 cloud-url:
 	@$(GCLOUD) run services describe $(CLOUD_SERVICE) --project $(GCP_PROJECT) \

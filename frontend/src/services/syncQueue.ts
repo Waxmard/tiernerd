@@ -61,6 +61,7 @@ export interface FlushOutcome {
   status: 'idle' | 'offline' | 'auth';
   applied: string[];
   dropped: { opId: string; message: string }[];
+  refused: { opId: string; message: string }[];
   remaining: number;
 }
 
@@ -198,6 +199,16 @@ function notFoundMessage(op: SyncOp): string | null {
   return null;
 }
 
+function parseOps(raw: string | null): SyncOp[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as SyncOp[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export const asyncStorageSyncBackend: SyncStorage = {
   get: (key) => AsyncStorage.getItem(key),
   set: (key, value) => AsyncStorage.setItem(key, value),
@@ -224,16 +235,8 @@ export function createSyncQueue(options: {
     return run;
   };
 
-  const readOps = async (): Promise<SyncOp[]> => {
-    const raw = await storage.get(outboxKey(userId)).catch(() => null);
-    if (!raw) return [];
-    try {
-      const parsed: unknown = JSON.parse(raw);
-      return Array.isArray(parsed) ? (parsed as SyncOp[]) : [];
-    } catch {
-      return [];
-    }
-  };
+  const readOps = async (): Promise<SyncOp[]> =>
+    parseOps(await storage.get(outboxKey(userId)).catch(() => null));
 
   const writeOps = async (ops: SyncOp[]): Promise<void> => {
     await storage.set(outboxKey(userId), JSON.stringify(ops));
@@ -255,35 +258,57 @@ export function createSyncQueue(options: {
       serialize(async (): Promise<FlushOutcome> => {
         const ops = await readOps();
         if (ops.length === 0)
-          return { status: 'idle', applied: [], dropped: [], remaining: 0 };
+          return {
+            status: 'idle',
+            applied: [],
+            dropped: [],
+            refused: [],
+            remaining: 0,
+          };
         const token = getToken();
         if (!token) {
           return {
             status: 'auth',
             applied: [],
             dropped: [],
+            refused: [],
             remaining: ops.length,
           };
         }
 
         const applied: string[] = [];
         const dropped: { opId: string; message: string }[] = [];
+        const refused: { opId: string; message: string }[] = [];
+        const kept: SyncOp[] = [];
+        const refusedCreateIds = new Set<string>();
+
         for (let index = 0; index < ops.length; index += 1) {
           const op = ops[index];
           if (!op) break;
           try {
             await applyOp(op, token);
+            applied.push(op.id);
           } catch (error) {
             const offline =
               isNetworkError(error) ||
               (error instanceof ApiError && error.status >= 500);
             if (offline) {
+              kept.push(op, ...ops.slice(index + 1));
+              await writeOps(kept);
               return {
                 status: 'offline',
                 applied,
                 dropped,
-                remaining: ops.length - index,
+                refused,
+                remaining: kept.length,
               };
+            }
+            if (
+              (op.kind === 'item.update' || op.kind === 'ranking.set') &&
+              refusedCreateIds.has(op.itemId)
+            ) {
+              kept.push(op);
+              continue;
             }
             if (
               error instanceof ApiError &&
@@ -294,29 +319,55 @@ export function createSyncQueue(options: {
               applied.push(op.id);
               const message = notFoundMessage(op);
               if (message) dropped.push({ opId: op.id, message });
-              await writeOps(ops.slice(index + 1));
               continue;
             }
-            if (
-              error instanceof ApiError &&
-              (error.status === 409 || error.status === 422)
-            ) {
-              const message = getApiErrorMessage(error, GENERIC_MESSAGE);
-              dropped.push({ opId: op.id, message });
-              await writeOps(ops.slice(index + 1));
+            if (error instanceof ApiError && error.status === 409) {
+              dropped.push({
+                opId: op.id,
+                message: getApiErrorMessage(error, GENERIC_MESSAGE),
+              });
               continue;
             }
+            if (error instanceof ApiError && error.status === 422) {
+              refused.push({
+                opId: op.id,
+                message: getApiErrorMessage(error, GENERIC_MESSAGE),
+              });
+              kept.push(op);
+              if (op.kind === 'item.create') refusedCreateIds.add(op.itemId);
+              continue;
+            }
+            kept.push(op, ...ops.slice(index + 1));
+            await writeOps(kept);
             return {
               status: 'offline',
               applied,
               dropped,
-              remaining: ops.length - index,
+              refused,
+              remaining: kept.length,
             };
           }
-          applied.push(op.id);
-          await writeOps(ops.slice(index + 1));
         }
-        return { status: 'idle', applied, dropped, remaining: 0 };
+        await writeOps(kept);
+        return {
+          status: 'idle',
+          applied,
+          dropped,
+          refused,
+          remaining: kept.length,
+        };
       }),
   };
+}
+
+export async function pendingItemCreates(
+  userId: string,
+  listId: string,
+  storage: SyncStorage = asyncStorageSyncBackend
+): Promise<Extract<SyncOp, { kind: 'item.create' }>[]> {
+  const raw = await storage.get(outboxKey(userId)).catch(() => null);
+  return parseOps(raw).filter(
+    (op): op is Extract<SyncOp, { kind: 'item.create' }> =>
+      op.kind === 'item.create' && op.listId === listId
+  );
 }

@@ -56,7 +56,7 @@ Select a row to view its description, image and overall rank. Score lists also s
 
 Interrupted ranking drafts persist on the device. Reopening the list resumes the saved draft at the same question, or choose **Resume ranking** on the item. Cancelling a ranking keeps the item unranked. Unranked items without a draft offer **Rank now**.
 
-The app works without a connection. Lists, items and rankings are read from and written to the device first; a banner reports offline mode and how many changes are waiting. Changes replay in order once the connection returns, and creates carry client-generated ids so a retry never duplicates a list or item. Anything the server rejects, such as a duplicate name, appears in the banner with a **Dismiss** button and is discarded. Uploaded photo covers and photo search need a connection.
+The app works without a connection. Lists, items and rankings are read from and written to the device first. Changes replay in order once the connection returns, and creates carry client-generated ids so a retry never duplicates a list or item. A change the server refuses as invalid stays on the device and keeps showing in its list; a notification names the field the server complained about, and the change syncs by itself once the server accepts it. A duplicate name resolves to the item already in the list, and an edit to something deleted on another device is discarded with a notification. Uploaded photo covers and photo search need a connection.
 
 Item names are unique within a list, ignoring surrounding whitespace and Unicode case. Different lists can use the same name.
 
