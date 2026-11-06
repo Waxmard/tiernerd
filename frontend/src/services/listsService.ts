@@ -119,18 +119,6 @@ export const listsService = {
         token
       )
       .then((list) => requireRankingMode(list)),
-  setRankingMode: (
-    listId: string,
-    rankingMode: ListRankingMode,
-    token: string
-  ): Promise<ListMetadata> =>
-    api
-      .put<ListMetadata>(
-        `/api/lists/${listId}`,
-        listFormData({ ranking_mode: rankingMode }),
-        token
-      )
-      .then((list) => requireRankingMode(list)),
   updateListOptions: (
     listId: string,
     options: ListOptionsInput,
