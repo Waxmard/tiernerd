@@ -1,5 +1,3 @@
-"""Tests for list endpoints."""
-
 import json
 import logging
 import uuid
@@ -107,8 +105,6 @@ def record_cover_commits(monkeypatch, test_db, events):
 
 
 class TestReadLists:
-    """Tests for reading lists endpoint."""
-
     async def test_read_lists_authenticated(
         self,
         client: AsyncClient,
@@ -138,7 +134,6 @@ class TestReadLists:
         assert data[0]["title"] == test_list.title
 
     async def test_read_lists_unauthenticated(self, client: AsyncClient):
-        """Test reading lists without authentication fails."""
         response = await client.get("/api/lists/")
         assert response.status_code == 401
 
@@ -150,7 +145,6 @@ class TestReadLists:
         auth_headers: dict,
         auth_headers_user2: dict,
     ):
-        """Test that users only see their own lists."""
         response = await client.get("/api/lists/", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
@@ -197,8 +191,6 @@ class TestReadLists:
 
 
 class TestCreateList:
-    """Tests for creating lists endpoint."""
-
     async def test_create_list_success(
         self,
         client: AsyncClient,
@@ -233,7 +225,6 @@ class TestCreateList:
         assert str(db_list.list_id) == data["list_id"]
 
     async def test_create_list_unauthenticated(self, client: AsyncClient):
-        """Test creating list without authentication fails."""
         response = await client.post(
             "/api/lists/",
             files=metadata_files(
@@ -245,7 +236,6 @@ class TestCreateList:
     async def test_create_list_duplicate_title(
         self, client: AsyncClient, test_list: ListModel, auth_headers: dict
     ):
-        """Test creating list with duplicate title fails."""
         response = await client.post(
             "/api/lists/",
             files=metadata_files(
@@ -393,8 +383,6 @@ class TestCreateList:
 
 
 class TestReadList:
-    """Tests for reading a specific list endpoint."""
-
     async def test_read_list_success(
         self, client: AsyncClient, test_list: ListModel, auth_headers: dict
     ):
@@ -410,12 +398,10 @@ class TestReadList:
     async def test_read_list_unauthenticated(
         self, client: AsyncClient, test_list: ListModel
     ):
-        """Test reading a list without authentication fails."""
         response = await client.get(f"/api/lists/{test_list.list_id}")
         assert response.status_code == 401
 
     async def test_read_list_not_found(self, client: AsyncClient, auth_headers: dict):
-        """Test reading non-existent list fails."""
         import uuid
 
         fake_id = uuid.uuid4()
@@ -428,7 +414,6 @@ class TestReadList:
         test_list: ListModel,
         auth_headers_user2: dict,
     ):
-        """Test reading another user's list fails."""
         response = await client.get(
             f"/api/lists/{test_list.list_id}", headers=auth_headers_user2
         )
@@ -436,8 +421,6 @@ class TestReadList:
 
 
 class TestUpdateList:
-    """Tests for updating lists endpoint."""
-
     async def test_mode_switch_preserves_items_and_sessions(
         self,
         client: AsyncClient,
@@ -594,7 +577,6 @@ class TestUpdateList:
     async def test_update_list_partial(
         self, client: AsyncClient, test_list: ListModel, auth_headers: dict
     ):
-        """Test partial list update (only title)."""
         original_description = test_list.description
         response = await client.put(
             f"/api/lists/{test_list.list_id}",
@@ -633,7 +615,6 @@ class TestUpdateList:
     async def test_update_list_unauthenticated(
         self, client: AsyncClient, test_list: ListModel
     ):
-        """Test updating list without authentication fails."""
         response = await client.put(
             f"/api/lists/{test_list.list_id}",
             files=metadata_files({"title": "Updated Title"}),
@@ -641,7 +622,6 @@ class TestUpdateList:
         assert response.status_code == 401
 
     async def test_update_list_not_found(self, client: AsyncClient, auth_headers: dict):
-        """Test updating non-existent list fails."""
         import uuid
 
         fake_id = uuid.uuid4()
@@ -658,7 +638,6 @@ class TestUpdateList:
         test_list: ListModel,
         auth_headers_user2: dict,
     ):
-        """Test updating another user's list fails."""
         response = await client.put(
             f"/api/lists/{test_list.list_id}",
             files=metadata_files({"title": "Trying to update"}),
@@ -1914,8 +1893,6 @@ class TestListPhotoUnsplash:
 
 
 class TestDeleteList:
-    """Tests for deleting lists endpoint."""
-
     async def test_delete_list_success(
         self,
         client: AsyncClient,
@@ -1944,12 +1921,10 @@ class TestDeleteList:
     async def test_delete_list_unauthenticated(
         self, client: AsyncClient, test_list: ListModel
     ):
-        """Test deleting list without authentication fails."""
         response = await client.delete(f"/api/lists/{test_list.list_id}")
         assert response.status_code == 401
 
     async def test_delete_list_not_found(self, client: AsyncClient, auth_headers: dict):
-        """Test deleting non-existent list fails."""
         import uuid
 
         fake_id = uuid.uuid4()
@@ -1962,7 +1937,6 @@ class TestDeleteList:
         test_list: ListModel,
         auth_headers_user2: dict,
     ):
-        """Test deleting another user's list fails."""
         response = await client.delete(
             f"/api/lists/{test_list.list_id}", headers=auth_headers_user2
         )
@@ -1975,7 +1949,6 @@ class TestDeleteList:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test that deleting a list also deletes its items."""
         list_id = test_list.list_id
 
         items = []
@@ -2010,15 +1983,12 @@ class TestDeleteList:
 
 
 class TestReadListItems:
-    """Tests for reading list items endpoint."""
-
     async def test_read_list_items_empty(
         self,
         client: AsyncClient,
         test_list: ListModel,
         auth_headers: dict,
     ):
-        """Test reading items from empty list returns empty array."""
         response = await client.get(
             f"/api/lists/{test_list.list_id}/items", headers=auth_headers
         )
@@ -2074,7 +2044,6 @@ class TestReadListItems:
         client: AsyncClient,
         auth_headers: dict,
     ):
-        """Test reading items from non-existent list."""
         fake_id = uuid.uuid4()
         response = await client.get(f"/api/lists/{fake_id}/items", headers=auth_headers)
         assert response.status_code == 404
@@ -2085,7 +2054,6 @@ class TestReadListItems:
         test_list: ListModel,
         auth_headers_user2: dict,
     ):
-        """Test reading items from another user's list fails."""
         response = await client.get(
             f"/api/lists/{test_list.list_id}/items", headers=auth_headers_user2
         )
@@ -2096,6 +2064,5 @@ class TestReadListItems:
         client: AsyncClient,
         test_list: ListModel,
     ):
-        """Test reading list items without auth fails."""
         response = await client.get(f"/api/lists/{test_list.list_id}/items")
         assert response.status_code == 401
