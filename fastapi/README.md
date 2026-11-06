@@ -29,6 +29,8 @@ Development startup seeds accounts for fixture data, not password sign-in. Sign 
 - `/api/lists` — List creation and management
 - `/api/items` — Item management and ranking
 
+List writes use multipart `metadata` and an optional image file. Older clients can create lists with `name` and `description` query parameters and optional `color` and `ranking_mode` parameters. They can update `title`, `description`, or `ranking_mode` with JSON.
+
 ### Backend commands
 
 Setup, quality targets and the Cloud Run dev loop: see [AGENTS.md](../AGENTS.md#backend-fastapi).
@@ -74,6 +76,8 @@ export UNSPLASH_ACCESS_KEY="$(security find-generic-password -s tiernerd:unsplas
 ```
 
 For uploads, set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket with uniform access and public access prevention. Grant the runtime identity object read, write, and delete access only on that bucket. Hosted environments load the Unsplash key from Secret Manager. Without the corresponding setting, uploads return an unavailable response and the app hides photo search, which reappears on the next picker open once the key is configured.
+
+To configure or change the hosted Unsplash key, pass its Secret Manager name to `make cloud-deploy UNSPLASH_SECRET=<secret-name>`. Later deployments preserve the configured mapping when you omit the option.
 
 Fresh databases use the current schema. For an existing database, back it up and stop the old backend before applying the photo schema migration. From `fastapi/`, inspect the schema:
 

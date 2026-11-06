@@ -185,7 +185,7 @@ cloud-deploy:
 		--cpu 1 --memory 512Mi \
 		--min-instances 0 --max-instances 1 \
 		--env-vars-file $(CLOUD_ENV_FILE) \
-		--set-secrets SECRET_KEY=$(CLOUD_SECRET_PREFIX)-secret-key:latest,DATABASE_URL=$(CLOUD_SECRET_PREFIX)-database-url:latest$(if $(strip $(UNSPLASH_SECRET)),$(comma)UNSPLASH_ACCESS_KEY=$(UNSPLASH_SECRET):latest)
+		--update-secrets SECRET_KEY=$(CLOUD_SECRET_PREFIX)-secret-key:latest,DATABASE_URL=$(CLOUD_SECRET_PREFIX)-database-url:latest$(if $(strip $(UNSPLASH_SECRET)),$(comma)UNSPLASH_ACCESS_KEY=$(UNSPLASH_SECRET):latest)
 
 cloud-url:
 	@$(GCLOUD) run services describe $(CLOUD_SERVICE) --project $(GCP_PROJECT) \

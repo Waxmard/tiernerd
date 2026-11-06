@@ -26,6 +26,7 @@ from app.db.models import List as ListModel
 from app.schemas.item import Item
 from app.schemas.list import (
     CoverSearchAvailability,
+    LegacyListUpdate,
     List,
     ListCreate,
     ListSimple,
@@ -139,7 +140,7 @@ async def search_list_covers(
 @router.post("/", response_model=List)
 async def create_list(
     request: Request,
-    metadata: str = Form(...),
+    metadata: str | None = Form(None),
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -147,8 +148,21 @@ async def create_list(
     """
     Create new list.
     """
-    await _require_multipart(request)
-    list_in = parse_metadata(metadata, ListCreate)
+    content_type = request.headers.get("content-type", "").split(";", 1)[0].strip()
+    if content_type.lower() == "multipart/form-data":
+        await _require_multipart(request)
+        list_in = parse_metadata(metadata or "", ListCreate)
+    elif "name" in request.query_params or "description" in request.query_params:
+        params = request.query_params
+        if "name" not in params or "description" not in params:
+            raise HTTPException(status_code=422, detail="Invalid list metadata")
+        data = {"title": params["name"], "description": params["description"]}
+        for key in ("color", "ranking_mode"):
+            if key in params:
+                data[key] = params[key]
+        list_in = parse_metadata(data, ListCreate)
+    else:
+        raise HTTPException(status_code=415, detail="Unsupported list request")
     existing = await list_crud.get_by_title_and_user(
         db, list_in.title, current_user.user_id
     )
@@ -242,7 +256,7 @@ async def read_list_items(
 async def update_list(
     list_id: uuid.UUID,
     request: Request,
-    metadata: str = Form(...),
+    metadata: str | None = Form(None),
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -250,8 +264,20 @@ async def update_list(
     """
     Update a list.
     """
-    await _require_multipart(request)
-    list_in = parse_metadata(metadata, ListUpdate)
+    content_type = (
+        request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    )
+    if content_type == "multipart/form-data":
+        await _require_multipart(request)
+        list_in: ListUpdate | LegacyListUpdate = parse_metadata(
+            metadata or "", ListUpdate
+        )
+    elif content_type == "application/json" or (
+        content_type.startswith("application/") and content_type.endswith("+json")
+    ):
+        list_in = parse_metadata(await request.body(), LegacyListUpdate)
+    else:
+        raise HTTPException(status_code=415, detail="Unsupported list request")
     list_obj = await list_crud.get_by_id_and_user(
         db, list_id, current_user.user_id, for_update=True
     )

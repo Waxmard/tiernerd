@@ -43,29 +43,6 @@ export function coverDraftFromSaved(
   return cover === 'landscape' ? { kind: 'landscape' } : { kind: 'none' };
 }
 
-export function coverDraftMatchesSaved(
-  draft: CoverDraft,
-  cover: ListCover | null,
-  photo: ListPhoto | null
-): boolean {
-  switch (draft.kind) {
-    case 'none':
-      return !cover && !photo;
-    case 'landscape':
-      return cover === 'landscape' && !photo;
-    case 'persisted':
-      return (
-        photo !== null &&
-        photo.source === draft.photo.source &&
-        photo.id === draft.photo.id
-      );
-    case 'unsplash':
-      return photo?.source === 'unsplash' && photo.id === draft.photo.id;
-    case 'local':
-      return false;
-  }
-}
-
 const MAX_IMAGE_EDGE = 1600;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 

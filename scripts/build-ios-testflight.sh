@@ -4,7 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 APPLE_TEAM_ID="${APPLE_TEAM_ID:-48TY2FP59S}"
-IOS_BUNDLE_ID="${IOS_BUNDLE_ID:-com.maxwellward.tiernerd}"
+export IOS_BUNDLE_ID="${IOS_BUNDLE_ID:-com.maxwellward.tiernerd}"
 MARKETING_VERSION="${MARKETING_VERSION:-$(node -p "require('$root/frontend/package.json').version")}"
 IOS_BUILD_NUMBER="${IOS_BUILD_NUMBER:-}"
 export EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-https://tiernerd-api-dev-1015723670625.us-east1.run.app}"

@@ -8,10 +8,10 @@ import type {
   ListIcon,
 } from '../design-system/tokens/colors';
 import { useThemeColors } from '../providers/ThemeProvider';
+import { coverDraftMatchesSaved } from '../services/coverDraft';
 import {
   type CoverDraft,
   coverDraftFromSaved,
-  coverDraftMatchesSaved,
   type ListPhoto,
 } from '../services/listCoversService';
 import type {

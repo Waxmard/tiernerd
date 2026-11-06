@@ -10,8 +10,12 @@ from app.services import cover_upload_service, unsplash_service
 logger = logging.getLogger(__name__)
 
 
-def parse_metadata[Model: BaseModel](metadata: str, model: type[Model]) -> Model:
+def parse_metadata[Model: BaseModel](
+    metadata: str | bytes | dict[str, Any], model: type[Model]
+) -> Model:
     try:
+        if isinstance(metadata, dict):
+            return model.model_validate(metadata)
         return model.model_validate_json(metadata)
     except ValidationError as exc:
         raise HTTPException(

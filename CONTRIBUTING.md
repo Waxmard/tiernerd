@@ -88,4 +88,6 @@ unset ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPL
 
 The marketing version comes from `frontend/package.json`. The upload queries App Store Connect for the highest iOS build number for that version and increments its last component. A failed query stops the upload. To use a known-unused build number instead, run `make testflight IOS_BUILD_NUMBER=123`.
 
+To use another app identity, set `IOS_BUNDLE_ID` for the TestFlight build. Configure matching Apple provisioning and `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` for that bundle ID.
+
 Do not run local and hosted uploads at the same time: build-number allocation is not atomic. Apple may take time to list an upload. If Apple rejects a duplicate, wait for the previous upload to appear or provide a known-unused override; the script does not retry uploads.

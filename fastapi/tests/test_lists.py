@@ -1119,7 +1119,172 @@ class TestListPhotoContract:
         assert response.status_code == 413
         assert response.json()["detail"] == "Image exceeds 10 MiB"
 
-    async def test_old_json_and_query_formats_are_rejected(
+    async def test_legacy_create_query_preserves_validation_and_data(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+    ):
+        params = {
+            "name": "Cafés & tea",
+            "description": "",
+            "color": "teal",
+            "ranking_mode": "rank",
+        }
+        denied = await client.post("/api/lists/", params=params)
+        assert denied.status_code == 401
+
+        created = await client.post("/api/lists/", params=params, headers=auth_headers)
+        assert created.status_code == 200
+        assert created.json()["title"] == params["name"]
+        assert created.json()["description"] == ""
+        assert created.json()["color"] == "teal"
+        assert created.json()["ranking_mode"] == "rank"
+        assert created.json()["cover_photo"] is None
+
+        detail = await client.get(
+            f"/api/lists/{created.json()['list_id']}", headers=auth_headers
+        )
+        assert detail.status_code == 200
+        assert detail.json() == created.json()
+
+        defaulted = await client.post(
+            "/api/lists/",
+            params={"name": "Default legacy list", "description": ""},
+            headers=auth_headers,
+        )
+        assert defaulted.status_code == 200
+        assert defaulted.json()["color"] is None
+        assert defaulted.json()["ranking_mode"] == "score"
+
+        duplicate = await client.post(
+            "/api/lists/",
+            params={"name": test_list.title, "description": ""},
+            headers=auth_headers,
+        )
+        assert duplicate.status_code == 409
+
+        for invalid in (
+            {"description": ""},
+            {"name": "Missing description"},
+            {"name": "", "description": ""},
+            {"name": "x" * 101, "description": ""},
+            {"name": "Bad color", "description": "", "color": "chartreuse"},
+            {"name": "Bad mode", "description": "", "ranking_mode": "other"},
+        ):
+            response = await client.post(
+                "/api/lists/", params=invalid, headers=auth_headers
+            )
+            assert response.status_code == 422
+
+    async def test_legacy_json_update_preserves_new_fields_and_validates(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+        auth_headers_user2: dict,
+        test_db: AsyncSession,
+        cover_storage,
+    ):
+        photo = {"source": "upload", "id": str(uuid.uuid4())}
+        test_list.color = "teal"
+        test_list.icon = "heart"
+        test_list.cover_photo = photo
+        test_db.add(ListModel(user_id=test_list.user_id, title="Existing title"))
+        await test_db.commit()
+        url = f"/api/lists/{test_list.list_id}"
+
+        denied = await client.put(url, json={"ranking_mode": "rank"})
+        assert denied.status_code == 401
+        other_user = await client.put(
+            url, json={"ranking_mode": "rank"}, headers=auth_headers_user2
+        )
+        assert other_user.status_code == 404
+
+        updated = await client.put(
+            url,
+            json={
+                "title": "Legacy rename",
+                "description": "Legacy description",
+                "ranking_mode": "rank",
+                "color": "pink",
+                "cover_photo": None,
+            },
+            headers=auth_headers,
+        )
+        assert updated.status_code == 200
+        assert updated.json()["title"] == "Legacy rename"
+        assert updated.json()["description"] == "Legacy description"
+        assert updated.json()["ranking_mode"] == "rank"
+        assert updated.json()["color"] == "teal"
+        assert updated.json()["icon"] == "heart"
+        assert updated.json()["cover_photo"] == photo
+
+        partial = await client.put(
+            url, json={"description": None}, headers=auth_headers
+        )
+        assert partial.status_code == 200
+        assert partial.json()["description"] is None
+        assert partial.json()["title"] == "Legacy rename"
+        assert partial.json()["ranking_mode"] == "rank"
+        assert partial.json()["cover_photo"] == photo
+
+        for invalid in (
+            {"title": ""},
+            {"title": "x" * 101},
+            {"title": None},
+            {"ranking_mode": None},
+            {"ranking_mode": "other"},
+            {"description": 123},
+        ):
+            response = await client.put(url, json=invalid, headers=auth_headers)
+            assert response.status_code == 422
+        duplicate = await client.put(
+            url, json={"title": "Existing title"}, headers=auth_headers
+        )
+        assert duplicate.status_code == 409
+        malformed = await client.put(
+            url,
+            content="{",
+            headers=auth_headers | {"Content-Type": "application/json"},
+        )
+        assert malformed.status_code == 422
+        wrong_type = await client.put(url, json=[], headers=auth_headers)
+        assert wrong_type.status_code == 422
+
+        detail = await client.get(url, headers=auth_headers)
+        assert detail.status_code == 200
+        assert detail.json() == partial.json()
+        assert cover_storage[1] == []
+
+    async def test_legacy_json_update_enforces_stream_size_limit(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+        monkeypatch: MonkeyPatch,
+    ):
+        from app.api.endpoints import lists
+
+        monkeypatch.setattr(lists, "MAX_LIST_WRITE_BYTES", 32)
+
+        async def body():
+            yield b'{"description":"'
+            yield b"x" * 32
+            yield b'"}'
+
+        url = f"/api/lists/{test_list.list_id}"
+        response = await client.put(
+            url,
+            content=body(),
+            headers=auth_headers | {"Content-Type": "application/json"},
+        )
+        assert response.status_code == 413
+        assert response.request.headers["transfer-encoding"] == "chunked"
+        detail = await client.get(url, headers=auth_headers)
+        assert detail.json()["description"] == test_list.description
+
+    async def test_unsupported_list_write_formats_are_rejected(
         self,
         client: AsyncClient,
         test_list: ListModel,
@@ -1127,16 +1292,8 @@ class TestListPhotoContract:
     ):
         original_title = test_list.title
         url = f"/api/lists/{test_list.list_id}"
-        old_create = await client.post(
-            "/api/lists/",
-            params={"name": "Old query", "description": ""},
-            headers=auth_headers,
-        )
         json_create = await client.post(
             "/api/lists/", json={"title": "Old JSON"}, headers=auth_headers
-        )
-        old_update = await client.put(
-            url, json={"title": "Old JSON"}, headers=auth_headers
         )
         query_update = await client.put(
             url, params={"title": "Old query"}, headers=auth_headers
@@ -1154,9 +1311,7 @@ class TestListPhotoContract:
                 headers=auth_headers,
             )
             assert form_metadata.status_code in (415, 422)
-        assert old_create.status_code in (415, 422)
         assert json_create.status_code in (415, 422)
-        assert old_update.status_code in (415, 422)
         assert query_update.status_code in (415, 422)
         detail = await client.get(url, headers=auth_headers)
         assert detail.status_code == 200

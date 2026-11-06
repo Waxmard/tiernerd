@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { LIST_COLORS } from '../design-system/tokens/colors.ts';
 import {
-  DEFAULT_WORKSPACE_APPEARANCE,
   parseThemePreference,
   parseWorkspaceAppearance,
 } from './themePreference.ts';
@@ -21,20 +20,15 @@ test('accepts the three stored preferences', () => {
 });
 
 test('parseWorkspaceAppearance defaults missing or malformed values', () => {
-  assert.deepEqual(
-    parseWorkspaceAppearance(null),
-    DEFAULT_WORKSPACE_APPEARANCE
-  );
-  assert.deepEqual(parseWorkspaceAppearance(''), DEFAULT_WORKSPACE_APPEARANCE);
-  assert.deepEqual(
-    parseWorkspaceAppearance('not-json'),
-    DEFAULT_WORKSPACE_APPEARANCE
-  );
+  const expected = { accent: 'blue', background: 'landscape' };
+  assert.deepEqual(parseWorkspaceAppearance(null), expected);
+  assert.deepEqual(parseWorkspaceAppearance(''), expected);
+  assert.deepEqual(parseWorkspaceAppearance('not-json'), expected);
   assert.deepEqual(
     parseWorkspaceAppearance(
       JSON.stringify({ accent: 'chartreuse', background: 'photo' })
     ),
-    DEFAULT_WORKSPACE_APPEARANCE
+    expected
   );
 });
 

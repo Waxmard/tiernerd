@@ -47,7 +47,11 @@ case "$1" in
   delete-keychain) echo security-delete >> "$STUB_LOG" ;;
   *) echo security-other >> "$STUB_LOG" ;;
 esac`);
-  stub('npx', 'echo expo >> "$STUB_LOG"; exit 42');
+  stub('npx', `echo expo >> "$STUB_LOG"
+if [[ "\${STUB_RESOLVE_CONFIG:-}" == 1 ]]; then
+  node -e 'const { getConfig } = require("./node_modules/@expo/config"); console.log(JSON.stringify(getConfig(process.cwd()).exp.ios))' > "$STUB_CONFIG_LOG" || exit $?
+fi
+exit 42`);
   for (const command of ['pod', 'xcodebuild', 'xcrun']) {
     stub(command, `echo ${command} >> "$STUB_LOG"; exit 42`);
   }
@@ -58,13 +62,14 @@ esac`);
       HOME: dir,
       PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin:/usr/sbin:/sbin`,
       RUNNER_TEMP: runnerTemp,
+      STUB_CONFIG_LOG: join(dir, 'config.json'),
       STUB_LOG: log,
       STUB_IDENTITY: '',
       REAL_NODE: process.execPath,
       ...extraEnv,
     },
   });
-  return { result, calls: readFileSync(log, 'utf8').trim().split('\n').filter(Boolean), runnerTemp };
+  return { result, calls: readFileSync(log, 'utf8').trim().split('\n').filter(Boolean), runnerTemp, configPath: join(dir, 'config.json') };
 }
 
 function assertCleaned(calls, runnerTemp) {
@@ -118,4 +123,19 @@ test('simulator preparation bypasses credentials, build lookup, and keychains', 
   assert.doesNotMatch(result.stderr, /Missing required environment/);
   assert.deepEqual(calls, ['expo']);
   assert.deepEqual(readdirSync(runnerTemp), []);
+});
+
+test('prebuild receives the configured app bundle ID', (t) => {
+  for (const bundleId of [undefined, 'com.example.tiernerd']) {
+    const { result, configPath } = run(t, {
+      SIMULATOR_SMOKE_ONLY: '1',
+      STUB_RESOLVE_CONFIG: '1',
+      ...(bundleId ? { IOS_BUNDLE_ID: bundleId } : {}),
+    });
+    assert.equal(result.status, 42, result.stderr);
+    const ios = JSON.parse(readFileSync(configPath, 'utf8'));
+    assert.equal(ios.bundleIdentifier, bundleId ?? 'com.maxwellward.tiernerd');
+    assert.equal(ios.appleTeamId, '48TY2FP59S');
+    assert.equal(ios.supportsTablet, true);
+  }
 });

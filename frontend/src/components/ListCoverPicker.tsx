@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Button, Input } from '../design-system/components';
 import type { ListColor } from '../design-system/tokens/colors';
@@ -55,9 +55,12 @@ export function ListCoverPicker({
   const [hasMore, setHasMore] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchAvailable, setSearchAvailable] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const availabilityRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
   const pickerRequestRef = useRef(0);
   const pickingRef = useRef(false);
@@ -73,18 +76,39 @@ export function ListCoverPicker({
     };
   }, []);
 
-  useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
-    getCoverSearchAvailability(token)
-      .then((enabled) => {
-        if (!cancelled) setSearchAvailable(enabled);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+  const checkAvailability = useCallback(async () => {
+    const request = ++availabilityRequestRef.current;
+    if (!token) {
+      setSearchAvailable(false);
+      setAvailabilityError(false);
+      setCheckingAvailability(false);
+      return;
+    }
+    setSearchAvailable(false);
+    setCheckingAvailability(true);
+    try {
+      const enabled = await getCoverSearchAvailability(token);
+      if (request === availabilityRequestRef.current) {
+        setSearchAvailable(enabled);
+        setAvailabilityError(false);
+      }
+    } catch {
+      if (request === availabilityRequestRef.current) {
+        setAvailabilityError(true);
+      }
+    } finally {
+      if (request === availabilityRequestRef.current) {
+        setCheckingAvailability(false);
+      }
+    }
   }, [token]);
+
+  useEffect(() => {
+    void checkAvailability();
+    return () => {
+      availabilityRequestRef.current += 1;
+    };
+  }, [checkAvailability]);
 
   const invalidateSearch = () => {
     searchRequestRef.current += 1;
@@ -222,6 +246,27 @@ export function ListCoverPicker({
 
   return (
     <View className="gap-3">
+      {availabilityError ? (
+        <View className="flex-row flex-wrap items-center justify-between gap-2">
+          <Text
+            accessibilityRole="alert"
+            className="flex-1 text-body-small text-danger-text dark:text-danger-text-dark"
+          >
+            {checkingAvailability
+              ? 'Checking photo search availability…'
+              : 'Unable to check photo search availability.'}
+          </Text>
+          <Button
+            title="Retry"
+            accessibilityLabel="Retry checking photo search availability"
+            variant="secondary"
+            size="small"
+            disabled={inactive}
+            loading={checkingAvailability}
+            onPress={() => void checkAvailability()}
+          />
+        </View>
+      ) : null}
       {searchView ? (
         <>
           <Input

@@ -78,6 +78,12 @@ class ListBase(BaseModel):
     ranking_mode: RankingMode = "score"
 
 
+class LegacyListUpdate(BaseModel):
+    title: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = None
+    ranking_mode: RankingMode = "score"
+
+
 class ListUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = None

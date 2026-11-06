@@ -1,6 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Button } from '../design-system/components';
 import type {
   ListColor,
@@ -77,7 +83,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   const deleteIconColor = deleteDisabled
     ? colors['ink-disabled']
     : colors['danger-text'];
-  return (
+  const header = (
     <View className="gap-2 p-3 mt-2 mb-2 rounded-2xl bg-surface dark:bg-surface-dark shrink-0">
       <View className="flex-row items-start">
         <TouchableOpacity
@@ -151,6 +157,11 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
       {description?.trim() ? (
         <ScrollView
           className="max-h-[72px]"
+          role={Platform.OS === 'web' ? 'region' : undefined}
+          accessibilityLabel={
+            Platform.OS === 'web' ? 'List description' : undefined
+          }
+          tabIndex={Platform.OS === 'web' ? 0 : undefined}
           nestedScrollEnabled
           showsVerticalScrollIndicator
         >
@@ -227,5 +238,18 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         />
       </View>
     </View>
+  );
+  return (
+    <ScrollView
+      role={Platform.OS === 'web' ? 'region' : undefined}
+      accessibilityLabel={Platform.OS === 'web' ? 'List details' : undefined}
+      tabIndex={Platform.OS === 'web' ? 0 : undefined}
+      style={{ flexGrow: 0, minHeight: 0, maxHeight: '50%' }}
+      alwaysBounceVertical={false}
+      nestedScrollEnabled
+      showsVerticalScrollIndicator
+    >
+      {header}
+    </ScrollView>
   );
 };

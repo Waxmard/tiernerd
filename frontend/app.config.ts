@@ -5,6 +5,10 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
 
   return {
     ...config,
+    ios: {
+      ...config.ios,
+      bundleIdentifier: process.env.IOS_BUNDLE_ID || config.ios?.bundleIdentifier,
+    },
     plugins: [
       ...(config.plugins ?? []),
       [

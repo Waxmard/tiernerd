@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -40,18 +41,24 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
   const [workspaceAppearance, setWorkspaceAppearanceState] =
     useState<WorkspaceAppearance>(DEFAULT_WORKSPACE_APPEARANCE);
+  const preferenceChanged = useRef(false);
+  const workspaceAppearanceChanged = useRef(false);
   const scheme: ColorSchemeName = resolvedScheme ?? 'light';
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      AsyncStorage.getItem(THEME_PREFERENCE_KEY),
-      AsyncStorage.getItem(WORKSPACE_APPEARANCE_KEY),
-    ])
-      .then(([rawTheme, rawAppearance]) => {
-        if (cancelled) return;
-        setPreferenceState(parseThemePreference(rawTheme));
-        setWorkspaceAppearanceState(parseWorkspaceAppearance(rawAppearance));
+    void AsyncStorage.getItem(THEME_PREFERENCE_KEY)
+      .then((rawTheme) => {
+        if (!cancelled && !preferenceChanged.current) {
+          setPreferenceState(parseThemePreference(rawTheme));
+        }
+      })
+      .catch(() => undefined);
+    void AsyncStorage.getItem(WORKSPACE_APPEARANCE_KEY)
+      .then((rawAppearance) => {
+        if (!cancelled && !workspaceAppearanceChanged.current) {
+          setWorkspaceAppearanceState(parseWorkspaceAppearance(rawAppearance));
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -66,11 +73,13 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const colors = useMemo(() => themeColors(scheme), [scheme]);
 
   const setPreference = useCallback((next: ThemePreference) => {
+    preferenceChanged.current = true;
     setPreferenceState(next);
     void AsyncStorage.setItem(THEME_PREFERENCE_KEY, next);
   }, []);
 
   const setWorkspaceAppearance = useCallback((next: WorkspaceAppearance) => {
+    workspaceAppearanceChanged.current = true;
     setWorkspaceAppearanceState(next);
     void AsyncStorage.setItem(WORKSPACE_APPEARANCE_KEY, JSON.stringify(next));
   }, []);
