@@ -15,7 +15,7 @@ import {
   palette,
 } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
-import { useSync } from '../providers/SyncProvider';
+import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
 import { getApiErrorMessage } from '../services/apiError';
 import type { CoverDraft } from '../services/listCoversService';
@@ -64,6 +64,7 @@ export const CreateListContent = forwardRef<
 >(function CreateListContent({ onClose, onSuccess }, ref) {
   const { user, token } = useAuth();
   const { mutate, isOffline } = useSync();
+  const notify = useNotifyWhenOnline();
   const { scheme } = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -75,7 +76,6 @@ export const CreateListContent = forwardRef<
   const [isLoading, setIsLoading] = useState(false);
   const [coverBusy, setCoverBusy] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<TextInputInstance>(null);
   const hasVisitedOptionalFieldRef = useRef(false);
   const loadingRef = useRef(false);
@@ -126,7 +126,6 @@ export const CreateListContent = forwardRef<
     setRankingMode('score');
     setView('overview');
     setFieldError(null);
-    setError(null);
   }, [changeCoverDraft, handleCoverBusyChange]);
 
   const requestClose = useCallback(async () => {
@@ -159,28 +158,24 @@ export const CreateListContent = forwardRef<
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       setFieldError('Title is required');
-      setError(null);
       return;
     }
     if (Array.from(trimmedTitle).length > MAX_TITLE_LENGTH) {
       setFieldError('Title must be 100 characters or less');
-      setError(null);
       return;
     }
     if (!token || !user) {
-      setError('Authentication required');
+      notify('Authentication required');
       return;
     }
     if (isOffline && coverDraftRef.current.kind === 'local') {
       setFieldError(COVER_NEEDS_CONNECTION);
-      setError(null);
       return;
     }
 
     loadingRef.current = true;
     setIsLoading(true);
     setFieldError(null);
-    setError(null);
     const listId = newId();
     const now = new Date().toISOString();
     const payload: ListCreatePayload = {
@@ -238,14 +233,14 @@ export const CreateListContent = forwardRef<
         if (outcome.message.toLowerCase().includes('title')) {
           setFieldError(outcome.message);
         } else {
-          setError(outcome.message);
+          notify(outcome.message);
         }
         return;
       }
       clearForm();
       onSuccess(localList);
     } catch (error) {
-      setError(
+      notify(
         getApiErrorMessage(error, 'Failed to create list. Please try again.')
       );
     } finally {
@@ -265,7 +260,6 @@ export const CreateListContent = forwardRef<
               ? 'List appearance'
               : 'Ranking mode'
       }
-      error={error}
       isLoading={isLoading || coverBusy}
       submitText={view === 'overview' ? 'Create' : 'Done'}
       closeText={view === 'overview' ? 'Cancel' : 'Back'}
@@ -288,7 +282,6 @@ export const CreateListContent = forwardRef<
             onChangeText={(value) => {
               setTitle(value);
               setFieldError(null);
-              setError(null);
             }}
             error={fieldError ?? undefined}
             maxLength={MAX_TITLE_LENGTH}

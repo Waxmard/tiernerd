@@ -12,7 +12,6 @@ export interface ItemDetailContentProps {
   canMutate: boolean;
   hasDraft: boolean;
   isBusy: boolean;
-  error: string | null;
   presentation: 'modal' | 'panel';
   onRank: () => void;
   onEdit: () => void;
@@ -33,7 +32,6 @@ export function ItemDetailContent({
   canMutate,
   hasDraft,
   isBusy,
-  error,
   presentation,
   onRank,
   onEdit,
@@ -53,7 +51,6 @@ export function ItemDetailContent({
   return (
     <BaseModalContent
       title={item.name}
-      error={error}
       presentation={presentation}
       onClose={onClose}
       footer={

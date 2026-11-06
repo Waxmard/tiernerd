@@ -15,14 +15,12 @@ import { applyOpToApi } from '../services/syncApi';
 import {
   asyncStorageSyncBackend,
   createSyncQueue,
-  dismissIssue as dismissStoredIssue,
   type FlushOutcome,
-  loadIssues,
-  type SyncIssue,
   type SyncOp,
   type SyncQueue,
 } from '../services/syncQueue';
 import { useAuth } from './AuthContext';
+import { useNotify } from './NotificationProvider';
 
 export type MutationOutcome =
   | { status: 'saved' }
@@ -31,9 +29,6 @@ export type MutationOutcome =
 
 export interface SyncContextValue {
   isOffline: boolean;
-  isSyncing: boolean;
-  pendingCount: number;
-  issues: SyncIssue[];
   lastSyncedAt: number;
   mutate(
     op: SyncOp,
@@ -43,7 +38,6 @@ export interface SyncContextValue {
     }
   ): Promise<MutationOutcome>;
   flush: () => Promise<void>;
-  dismissIssue: (id: string) => void;
 }
 
 const SyncContext = createContext<SyncContextValue | undefined>(undefined);
@@ -56,12 +50,25 @@ export const useSync = (): SyncContextValue => {
   return context;
 };
 
-const BACKOFF_SECONDS = [5, 15, 30, 60, 300];
+export const useNotifyWhenOnline = (): ((message: string) => void) => {
+  const notify = useNotify();
+  const { isOffline } = useSync();
+  const offlineRef = useRef(isOffline);
+  offlineRef.current = isOffline;
+  return useCallback(
+    (message: string) => {
+      if (offlineRef.current) return;
+      notify(message);
+    },
+    [notify]
+  );
+};
 
 export const SyncProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const { user, token } = useAuth();
+  const notify = useNotify();
   const userId = user?.id ?? null;
   const tokenRef = useRef(token);
   tokenRef.current = token;
@@ -90,35 +97,22 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
   const [isOffline, setIsOffline] = useState(false);
   const isOfflineRef = useRef(isOffline);
   isOfflineRef.current = isOffline;
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
-  const attemptRef = useRef(0);
-  const previousPendingRef = useRef(0);
-  const [issues, setIssues] = useState<SyncIssue[]>([]);
   const [lastSyncedAt, setLastSyncedAt] = useState(0);
   const flushRef = useRef<Promise<void> | null>(null);
 
-  const refreshQueueState = useCallback(async () => {
-    const queue = queueRef.current;
-    const currentUserId = userIdRef.current;
-    if (!queue || !currentUserId) return;
-    const [pending, storedIssues] = await Promise.all([
-      queue.count(),
-      loadIssues(currentUserId),
-    ]);
-    setPendingCount(pending);
-    setIssues(storedIssues);
-  }, []);
-
-  const recordOutcome = useCallback((outcome: FlushOutcome) => {
-    for (const id of outcome.applied) appliedOpsRef.current.add(id);
-    for (const entry of outcome.dropped) {
-      droppedOpsRef.current.set(entry.opId, entry.message);
-    }
-    if (outcome.applied.length > 0 || outcome.dropped.length > 0) {
-      setLastSyncedAt(Date.now());
-    }
-  }, []);
+  const recordOutcome = useCallback(
+    (outcome: FlushOutcome) => {
+      for (const id of outcome.applied) appliedOpsRef.current.add(id);
+      for (const entry of outcome.dropped) {
+        droppedOpsRef.current.set(entry.opId, entry.message);
+        notify(entry.message);
+      }
+      if (outcome.applied.length > 0 || outcome.dropped.length > 0) {
+        setLastSyncedAt(Date.now());
+      }
+    },
+    [notify]
+  );
 
   const flush = useCallback(async (): Promise<void> => {
     if (flushRef.current) {
@@ -127,18 +121,14 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
     const queue = queueRef.current;
     if (!queue || !userIdRef.current) return;
     const task = (async () => {
-      setIsSyncing(true);
-      try {
-        let outcome = await queue.flush();
+      let outcome = await queue.flush();
+      recordOutcome(outcome);
+      while (outcome.status === 'idle' && (await queue.count()) > 0) {
+        outcome = await queue.flush();
         recordOutcome(outcome);
-        while (outcome.status === 'idle' && (await queue.count()) > 0) {
-          outcome = await queue.flush();
-          recordOutcome(outcome);
-        }
-        await refreshQueueState();
-      } finally {
-        setIsSyncing(false);
       }
+      if (outcome.status === 'auth')
+        notify('Sign in again to save your pending changes.');
     })();
     flushRef.current = task;
     try {
@@ -146,7 +136,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
     } finally {
       if (flushRef.current === task) flushRef.current = null;
     }
-  }, [recordOutcome, refreshQueueState]);
+  }, [notify, recordOutcome]);
 
   const mutate = useCallback(
     async (
@@ -159,27 +149,20 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
       await options.applyLocal();
       const queue = queueRef.current;
       if (!queue) return { status: 'queued' };
-      setPendingCount(await queue.enqueue(op));
+      await queue.enqueue(op);
       if (isOfflineRef.current) return { status: 'queued' };
       await flush();
       const dropped = droppedOpsRef.current.get(op.id);
       if (dropped !== undefined) {
         await options.rollbackLocal?.();
-        await refreshQueueState();
         return { status: 'rejected', message: dropped };
       }
       return appliedOpsRef.current.has(op.id)
         ? { status: 'saved' }
         : { status: 'queued' };
     },
-    [flush, refreshQueueState]
+    [flush]
   );
-
-  const dismissIssue = useCallback((id: string) => {
-    const currentUserId = userIdRef.current;
-    if (!currentUserId) return;
-    void dismissStoredIssue(currentUserId, id).then(setIssues);
-  }, []);
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -199,55 +182,13 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
   }, [flush]);
 
   useEffect(() => {
-    if (!userId) {
-      setPendingCount(0);
-      setIssues([]);
-      attemptRef.current = 0;
-      previousPendingRef.current = 0;
-      return;
-    }
-    void refreshQueueState().then(() => flush());
-  }, [flush, refreshQueueState, userId]);
-
-  useEffect(() => {
-    if (pendingCount < previousPendingRef.current) attemptRef.current = 0;
-    previousPendingRef.current = pendingCount;
-    if (pendingCount === 0 || isOffline) {
-      attemptRef.current = 0;
-      return;
-    }
-    const delay =
-      BACKOFF_SECONDS[
-        Math.min(attemptRef.current, BACKOFF_SECONDS.length - 1)
-      ] ?? 300;
-    const timer = setTimeout(() => {
-      attemptRef.current += 1;
-      void flush();
-    }, delay * 1000);
-    return () => clearTimeout(timer);
-  }, [flush, isOffline, pendingCount]);
+    if (!userId) return;
+    void flush();
+  }, [flush, userId]);
 
   const value = useMemo(
-    () => ({
-      isOffline,
-      isSyncing,
-      pendingCount,
-      issues,
-      lastSyncedAt,
-      mutate,
-      flush,
-      dismissIssue,
-    }),
-    [
-      dismissIssue,
-      flush,
-      isOffline,
-      isSyncing,
-      issues,
-      lastSyncedAt,
-      mutate,
-      pendingCount,
-    ]
+    () => ({ isOffline, lastSyncedAt, mutate, flush }),
+    [flush, isOffline, lastSyncedAt, mutate]
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

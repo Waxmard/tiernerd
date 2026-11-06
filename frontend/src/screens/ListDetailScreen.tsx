@@ -18,7 +18,6 @@ import {
   ListItemEmptyState,
 } from '../components/ListDetailItemRow';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
-import { SyncStatusBanner } from '../components/SyncStatusBanner';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { useListDetailData } from '../components/useListDetailData';
 import { useListViewRestore } from '../components/useListViewRestore';
@@ -63,11 +62,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     listCover,
     listCoverPhoto,
     rankingMode,
-    metadataError,
     metadataLoaded,
     hasMetadataSnapshot,
-    fetchItems,
-    refreshMetadata,
     refreshAfterMutation,
     updateListOptions,
     evictDeletedList,
@@ -330,7 +326,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     )
       return;
     if (
-      (workspace.mode !== 'closed' || workspace.item || workspace.error) &&
+      (workspace.mode !== 'closed' || workspace.item) &&
       !(await requestCloseForSwitch())
     )
       return;
@@ -366,7 +362,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       void workspace.requestClose().catch(() => false);
       return;
     }
-    if (workspace.item || workspace.error) {
+    if (workspace.item) {
       const identity = screenIdentity;
       const itemId = selectedItemIdRef.current;
       void workspace
@@ -391,7 +387,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     view,
     workspace.mode,
     workspace.item,
-    workspace.error,
     workspace.isBusy,
     workspace.requestClose,
   ]);
@@ -544,13 +539,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               coverPhoto={listCoverPhoto}
               listId={listId}
               description={listDescription}
-              metadataError={metadataError}
-              itemsError={itemsError}
-              hasItemsSnapshot={hasItemsSnapshot}
-              showingSavedItems={
-                hasItemsSnapshot && !itemsLoaded && !itemsError
-              }
-              onRetryItems={() => void fetchItems().catch(() => {})}
               addLoading={isLoadingList}
               optionsKey={screenIdentity}
               rankingMode={rankingMode}
@@ -579,9 +567,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
               onBack={() => navigation.goBack()}
               onDelete={() => void handleDeleteList()}
-              onRetryMetadata={() => void refreshMetadata()}
             />
-            <SyncStatusBanner />
             <ListDetailWorkspaceHost
               canMutate={canMutate}
               isDesktop={isDesktop}

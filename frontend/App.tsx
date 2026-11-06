@@ -4,6 +4,10 @@ import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/providers/AuthContext';
+import {
+  NotificationProvider,
+  NotificationToast,
+} from './src/providers/NotificationProvider';
 import { SyncProvider } from './src/providers/SyncProvider';
 import { ThemeProvider, useTheme } from './src/providers/ThemeProvider';
 import { AppNavigator } from './src/navigation/AppNavigator';
@@ -35,6 +39,7 @@ const AppShell = () => {
     <>
       <View className="flex-1 min-h-0">
         <AppNavigator />
+        <NotificationToast />
       </View>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </>
@@ -45,11 +50,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AuthProvider>
-          <SyncProvider>
-            <AppShell />
-          </SyncProvider>
-        </AuthProvider>
+        <NotificationProvider>
+          <AuthProvider>
+            <SyncProvider>
+              <AppShell />
+            </SyncProvider>
+          </AuthProvider>
+        </NotificationProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

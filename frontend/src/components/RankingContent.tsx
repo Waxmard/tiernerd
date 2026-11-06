@@ -11,7 +11,6 @@ export interface RankingContentProps {
   view: RankingView;
   presentation: 'modal' | 'panel';
   isBusy: boolean;
-  error: string | null;
   onAnswer: (result: RankingAnswer) => void;
   onUndo: () => void;
   onCancel: () => void;
@@ -90,7 +89,6 @@ export function RankingContent({
   view,
   presentation,
   isBusy,
-  error,
   onAnswer,
   onUndo,
   onCancel,
@@ -102,7 +100,6 @@ export function RankingContent({
   return (
     <BaseModalContent
       title={title}
-      error={error}
       isLoading={isBusy}
       closeText="Cancel ranking"
       presentation={presentation}

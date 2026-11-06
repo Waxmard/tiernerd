@@ -13,7 +13,6 @@ import type {
   ListCover,
   ListIcon,
 } from '../design-system/tokens/colors';
-import { useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
 import type { ListPhoto } from '../services/listCoversService';
 import type {
@@ -34,11 +33,6 @@ interface ListDetailHeaderProps {
   addLoading: boolean;
   onAdd: () => void;
   description: string | null;
-  metadataError: boolean;
-  itemsError: string | null;
-  hasItemsSnapshot: boolean;
-  showingSavedItems: boolean;
-  onRetryItems: () => void;
   deleteDisabled: boolean;
   optionsKey: string;
   rankingMode: ListRankingMode;
@@ -47,14 +41,7 @@ interface ListDetailHeaderProps {
   onOptionsVisibilityChange: (open: boolean) => void;
   onBack: () => void;
   onDelete: () => void;
-  onRetryMetadata: () => void;
 }
-
-const RETRY_BUTTON_CLASS =
-  'border border-control dark:border-control-dark rounded px-4 py-1 min-h-11 justify-center';
-
-const RETRY_TEXT_CLASS =
-  'text-label-medium font-semibold text-accent-text dark:text-accent-text-dark';
 
 export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   title,
@@ -67,11 +54,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   addLoading,
   onAdd,
   description,
-  metadataError,
-  itemsError,
-  hasItemsSnapshot,
-  showingSavedItems,
-  onRetryItems,
   deleteDisabled,
   optionsKey,
   rankingMode,
@@ -80,11 +62,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   onOptionsVisibilityChange,
   onBack,
   onDelete,
-  onRetryMetadata,
 }) => {
   const { colors } = useTheme();
-  const { isOffline } = useSync();
-  const offlineSnapshot = isOffline && hasItemsSnapshot;
   const deleteIconColor = deleteDisabled
     ? colors['ink-disabled']
     : colors['danger-text'];
@@ -175,58 +154,13 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           </Text>
         </ScrollView>
       ) : null}
-      {offlineSnapshot ? (
+      {addLoading ? (
         <Text
           accessibilityLiveRegion="polite"
           className="text-body-small text-ink-muted dark:text-ink-muted-dark"
         >
-          Showing saved items. Changes will sync when you reconnect.
+          Loading list…
         </Text>
-      ) : metadataError ? (
-        <View className="flex-row items-center justify-between mt-2">
-          <Text
-            className="text-body-small text-danger-text dark:text-danger-text-dark shrink"
-            accessibilityRole="alert"
-          >
-            Unable to load list details.
-          </Text>
-          <TouchableOpacity
-            onPress={onRetryMetadata}
-            accessibilityRole="button"
-            accessibilityLabel="Retry loading list details"
-            className={RETRY_BUTTON_CLASS}
-          >
-            <Text className={RETRY_TEXT_CLASS}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-      {showingSavedItems || addLoading ? (
-        <Text
-          accessibilityLiveRegion="polite"
-          className="text-body-small text-ink-muted dark:text-ink-muted-dark"
-        >
-          {showingSavedItems
-            ? 'Showing saved items. Refreshing…'
-            : 'Loading list…'}
-        </Text>
-      ) : null}
-      {itemsError && !offlineSnapshot ? (
-        <View className="flex-row items-center justify-between">
-          <Text
-            accessibilityRole="alert"
-            className="text-body-small text-danger-text dark:text-danger-text-dark shrink"
-          >
-            {itemsError}
-          </Text>
-          <TouchableOpacity
-            onPress={onRetryItems}
-            accessibilityRole="button"
-            accessibilityLabel="Retry refreshing items"
-            className={RETRY_BUTTON_CLASS}
-          >
-            <Text className={RETRY_TEXT_CLASS}>Retry</Text>
-          </TouchableOpacity>
-        </View>
       ) : null}
       <View className="flex-row justify-end">
         <Button

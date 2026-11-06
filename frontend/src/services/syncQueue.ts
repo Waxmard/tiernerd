@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiError, isNetworkError } from './apiError.ts';
+import { ApiError, getApiErrorMessage, isNetworkError } from './apiError.ts';
 import type { ListCreatePayload, ListMetadataPatch } from './listsService.ts';
 
 export type SyncOp =
@@ -52,12 +52,6 @@ export type SyncOp =
       gap: number;
     };
 
-export interface SyncIssue {
-  id: string;
-  message: string;
-  createdAt: string;
-}
-
 export interface SyncStorage {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
@@ -71,18 +65,11 @@ export interface FlushOutcome {
 }
 
 const outboxKey = (userId: string): string => `outbox:v1:${userId}`;
-const issuesKey = (userId: string): string => `syncIssues:v1:${userId}`;
-const MAX_ISSUES = 5;
 
-const itemNameOf = (op: SyncOp): string =>
-  'name' in op && typeof op.name === 'string' ? op.name : 'an item';
-
-const DUPLICATE_LIST_ISSUE =
-  'A list with that title already exists. Your new list was discarded.';
-const GENERIC_ISSUE = "Couldn't save a pending change.";
-const LIST_DELETED_ISSUE =
+const GENERIC_MESSAGE = "Couldn't save a pending change.";
+const LIST_DELETED_MESSAGE =
   'A list you edited was deleted on another device. Your edit was discarded.';
-const ITEM_DELETED_ISSUE =
+const ITEM_DELETED_MESSAGE =
   'An item you edited was deleted on another device. Your edit was discarded.';
 
 function mergeMetadata(
@@ -205,48 +192,10 @@ export function compact(ops: SyncOp[]): SyncOp[] {
   return result;
 }
 
-function conflictIssue(op: SyncOp): string {
-  if (op.kind === 'list.create') return DUPLICATE_LIST_ISSUE;
-  if (op.kind === 'item.create') {
-    return `An item named "${itemNameOf(op)}" already exists. Your new item was discarded.`;
-  }
-  return GENERIC_ISSUE;
-}
-
-function notFoundIssue(op: SyncOp): string | null {
-  if (op.kind === 'list.update') return LIST_DELETED_ISSUE;
-  if (op.kind === 'item.update') return ITEM_DELETED_ISSUE;
+function notFoundMessage(op: SyncOp): string | null {
+  if (op.kind === 'list.update') return LIST_DELETED_MESSAGE;
+  if (op.kind === 'item.update') return ITEM_DELETED_MESSAGE;
   return null;
-}
-
-export async function loadIssues(userId: string): Promise<SyncIssue[]> {
-  const raw = await AsyncStorage.getItem(issuesKey(userId)).catch(() => null);
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (issue): issue is SyncIssue =>
-        typeof issue === 'object' &&
-        issue !== null &&
-        typeof issue.id === 'string' &&
-        typeof issue.message === 'string' &&
-        typeof issue.createdAt === 'string'
-    );
-  } catch {
-    return [];
-  }
-}
-
-export async function dismissIssue(
-  userId: string,
-  issueId: string
-): Promise<SyncIssue[]> {
-  const remaining = (await loadIssues(userId)).filter(
-    (issue) => issue.id !== issueId
-  );
-  await AsyncStorage.setItem(issuesKey(userId), JSON.stringify(remaining));
-  return remaining;
 }
 
 export const asyncStorageSyncBackend: SyncStorage = {
@@ -290,23 +239,6 @@ export function createSyncQueue(options: {
     await storage.set(outboxKey(userId), JSON.stringify(ops));
   };
 
-  const recordIssue = async (message: string): Promise<void> => {
-    const existing = await loadIssuesFromStorage(storage, userId);
-    const issue: SyncIssue = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      message,
-      createdAt: new Date().toISOString(),
-    };
-    const next = [
-      ...existing.filter((entry) => entry.message !== message),
-      issue,
-    ];
-    await storage.set(
-      issuesKey(userId),
-      JSON.stringify(next.slice(-MAX_ISSUES))
-    );
-  };
-
   return {
     enqueue: (op: SyncOp): Promise<number> =>
       serialize(async () => {
@@ -326,7 +258,6 @@ export function createSyncQueue(options: {
           return { status: 'idle', applied: [], dropped: [], remaining: 0 };
         const token = getToken();
         if (!token) {
-          await recordIssue('Sign in again to save your pending changes.');
           return {
             status: 'auth',
             applied: [],
@@ -361,8 +292,8 @@ export function createSyncQueue(options: {
               op.kind !== 'list.create'
             ) {
               applied.push(op.id);
-              const message = notFoundIssue(op);
-              if (message) await recordIssue(message);
+              const message = notFoundMessage(op);
+              if (message) dropped.push({ opId: op.id, message });
               await writeOps(ops.slice(index + 1));
               continue;
             }
@@ -370,8 +301,7 @@ export function createSyncQueue(options: {
               error instanceof ApiError &&
               (error.status === 409 || error.status === 422)
             ) {
-              const message = conflictIssue(op);
-              await recordIssue(message);
+              const message = getApiErrorMessage(error, GENERIC_MESSAGE);
               dropped.push({ opId: op.id, message });
               await writeOps(ops.slice(index + 1));
               continue;
@@ -389,18 +319,4 @@ export function createSyncQueue(options: {
         return { status: 'idle', applied, dropped, remaining: 0 };
       }),
   };
-}
-
-async function loadIssuesFromStorage(
-  storage: SyncStorage,
-  userId: string
-): Promise<SyncIssue[]> {
-  const raw = await storage.get(issuesKey(userId)).catch(() => null);
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as SyncIssue[]) : [];
-  } catch {
-    return [];
-  }
 }

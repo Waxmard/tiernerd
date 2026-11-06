@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { useSync } from '../providers/SyncProvider';
+import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
+import { duplicateItemName } from '../services/itemNames';
 import type { Item } from '../services/itemsService';
 import { localLibrary } from '../services/localLibrary';
 import {
@@ -38,10 +39,11 @@ const EMPTY_WORKSPACE: ItemWorkspaceState = {
   fieldErrors: {},
   ranking: null,
   isBusy: false,
-  error: null,
 };
 const AUTH_ERROR = 'Authentication required';
-const RANKING_SAVE_ERROR = 'Unable to save this ranking. Try again.';
+const RANKING_SAVE_ERROR = 'Unable to save this ranking.';
+const DUPLICATE_NAME_ERROR =
+  'An item with this name already exists in this list.';
 
 export function useItemWorkspace({
   userId,
@@ -52,6 +54,7 @@ export function useItemWorkspace({
   onClosed,
 }: UseItemWorkspaceOptions): ItemWorkspace {
   const { mutate } = useSync();
+  const notify = useNotifyWhenOnline();
   const [workspace, setWorkspace] =
     useState<ItemWorkspaceState>(EMPTY_WORKSPACE);
   const workspaceRef = useRef(workspace);
@@ -138,7 +141,6 @@ export function useItemWorkspace({
       updateWorkspace({
         form: { ...current.form, ...patch },
         fieldErrors,
-        error: null,
       });
     },
     [updateWorkspace]
@@ -155,7 +157,7 @@ export function useItemWorkspace({
         ) ??
         null;
       if (!item || item.item_id !== session.itemId || !activeUserId) {
-        updateWorkspace({ error: RANKING_SAVE_ERROR });
+        notify(RANKING_SAVE_ERROR);
         return;
       }
       if (!beginBusy()) return;
@@ -181,7 +183,7 @@ export function useItemWorkspace({
         );
         await clearDraft(activeUserId);
         if (outcome.status === 'rejected') {
-          updateWorkspace({ error: outcome.message });
+          notify(outcome.message);
           return;
         }
         await optionsRef.current.onItemsChanged(item);
@@ -190,7 +192,7 @@ export function useItemWorkspace({
         setBusy(false);
       }
     },
-    [beginBusy, closeWorkspace, mutate, setBusy, updateWorkspace]
+    [beginBusy, closeWorkspace, mutate, notify, setBusy]
   );
 
   const resumeRanking = useCallback(
@@ -229,7 +231,7 @@ export function useItemWorkspace({
         await commit(next);
         return;
       }
-      updateWorkspace({ ranking: next, error: null });
+      updateWorkspace({ ranking: next });
     },
     [commit, updateWorkspace]
   );
@@ -241,7 +243,7 @@ export function useItemWorkspace({
       return;
     const next = undoAnswer(current.ranking);
     if (activeUserId) await saveDraft(activeUserId, next);
-    updateWorkspace({ ranking: next, error: null });
+    updateWorkspace({ ranking: next });
   }, [updateWorkspace]);
 
   const cancelRanking = useCallback(async () => {
@@ -262,11 +264,17 @@ export function useItemWorkspace({
     else if (Array.from(name).length > 100)
       fieldErrors.name = 'Name must be 100 characters or less';
     if (Object.keys(fieldErrors).length) {
-      updateWorkspace({ fieldErrors, error: null });
+      updateWorkspace({ fieldErrors });
+      return;
+    }
+    if (
+      duplicateItemName(optionsRef.current.items, name, current.item?.item_id)
+    ) {
+      updateWorkspace({ fieldErrors: { name: DUPLICATE_NAME_ERROR } });
       return;
     }
     if (!activeUserId) {
-      updateWorkspace({ error: AUTH_ERROR });
+      notify(AUTH_ERROR);
       return;
     }
     if (!beginBusy()) return;
@@ -306,17 +314,14 @@ export function useItemWorkspace({
           }
         );
         if (outcome.status === 'rejected') {
+          const duplicate = outcome.message.includes('already exists');
           updateWorkspace({
-            fieldErrors: outcome.message.includes('already exists')
-              ? { name: outcome.message }
-              : {},
-            error: outcome.message.includes('already exists')
-              ? null
-              : outcome.message,
+            fieldErrors: duplicate ? { name: outcome.message } : {},
           });
+          if (!duplicate) notify(outcome.message);
           return;
         }
-        updateWorkspace({ item: updated, fieldErrors: {}, error: null });
+        updateWorkspace({ item: updated, fieldErrors: {} });
         await optionsRef.current.onItemsChanged(updated);
         closeWorkspace();
         return;
@@ -360,14 +365,11 @@ export function useItemWorkspace({
         }
       );
       if (outcome.status === 'rejected') {
+        const duplicate = outcome.message.includes('already exists');
         updateWorkspace({
-          fieldErrors: outcome.message.includes('already exists')
-            ? { name: outcome.message }
-            : {},
-          error: outcome.message.includes('already exists')
-            ? null
-            : outcome.message,
+          fieldErrors: duplicate ? { name: outcome.message } : {},
         });
+        if (!duplicate) notify(outcome.message);
         return;
       }
 
@@ -383,7 +385,7 @@ export function useItemWorkspace({
         );
         next = firstRanked;
       }
-      updateWorkspace({ item: next, fieldErrors: {}, error: null });
+      updateWorkspace({ item: next, fieldErrors: {} });
       await optionsRef.current.onItemsChanged(next);
       if (peers.length === 0) {
         closeWorkspace();
@@ -399,6 +401,7 @@ export function useItemWorkspace({
     beginBusy,
     closeWorkspace,
     mutate,
+    notify,
     rankedPeerIds,
     setBusy,
     updateWorkspace,
@@ -410,7 +413,7 @@ export function useItemWorkspace({
       const activeUserId = optionsRef.current.userId;
       const activeListId = optionsRef.current.listId;
       if (!activeUserId) {
-        updateWorkspace({ error: AUTH_ERROR });
+        notify(AUTH_ERROR);
         return;
       }
       const peers = rankedPeerIds(item.item_id);
@@ -426,11 +429,10 @@ export function useItemWorkspace({
         mode: 'ranking',
         item,
         ranking: session,
-        error: null,
         fieldErrors: {},
       });
     },
-    [rankedPeerIds, updateWorkspace]
+    [notify, rankedPeerIds, updateWorkspace]
   );
 
   const deleteItem = useCallback(
@@ -438,7 +440,7 @@ export function useItemWorkspace({
       if (busyRef.current) return;
       const activeUserId = optionsRef.current.userId;
       if (!activeUserId) {
-        updateWorkspace({ error: AUTH_ERROR });
+        notify(AUTH_ERROR);
         return;
       }
       if (!beginBusy()) return;
@@ -469,7 +471,7 @@ export function useItemWorkspace({
           }
         );
         if (outcome.status === 'rejected') {
-          updateWorkspace({ error: outcome.message });
+          notify(outcome.message);
           return;
         }
         await optionsRef.current.onItemsChanged(item);
@@ -477,7 +479,7 @@ export function useItemWorkspace({
         setBusy(false);
       }
     },
-    [beginBusy, mutate, setBusy, updateWorkspace]
+    [beginBusy, mutate, notify, setBusy]
   );
 
   const pauseRanking = useCallback(async () => {
@@ -507,7 +509,7 @@ export function useItemWorkspace({
       return true;
     }
     if (current.mode === 'closed') {
-      if (current.item || current.error) closeWorkspace();
+      if (current.item) closeWorkspace();
       return true;
     }
     const dirty =

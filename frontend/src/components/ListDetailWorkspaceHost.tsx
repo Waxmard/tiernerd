@@ -65,7 +65,6 @@ export const ListDetailWorkspaceHost: React.FC<
           view={workspace.view}
           presentation={presentation}
           isBusy={isBusy}
-          error={workspace.error}
           onAnswer={(answer) => void workspace.answer(answer)}
           onUndo={() => void workspace.undo()}
           onCancel={() => void workspace.cancelRanking()}
@@ -82,7 +81,6 @@ export const ListDetailWorkspaceHost: React.FC<
           onFormChange={workspace.setForm}
           fieldErrors={workspace.fieldErrors}
           isBusy={isBusy}
-          error={workspace.error}
           onSubmit={workspace.submitMetadata}
           onClose={() => void workspace.requestClose()}
           presentation={presentation}
@@ -111,7 +109,6 @@ export const ListDetailWorkspaceHost: React.FC<
         presentation={presentation}
         hasDraft={workspace.ranking !== null}
         isBusy={isBusy}
-        error={workspace.error}
         onRank={onStartRanking}
         onEdit={onEdit}
         onDelete={onDelete}

@@ -30,7 +30,6 @@ import {
 } from '../components/ImmersiveBoard';
 import { PhotoAttribution } from '../components/ListPhotoCover';
 import { RankingContent } from '../components/RankingContent';
-import { SyncStatusBanner } from '../components/SyncStatusBanner';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button } from '../design-system/components';
 import type {
@@ -40,7 +39,7 @@ import type {
 } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
-import { useSync } from '../providers/SyncProvider';
+import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
 import { ApiError } from '../services/apiError';
 import type { Item } from '../services/itemsService';
@@ -80,6 +79,7 @@ const toTierList = (list: ListSimple): TierList => ({
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
   const { isOffline, lastSyncedAt } = useSync();
+  const notify = useNotifyWhenOnline();
   const userId = user?.id ?? null;
   const colors = useThemeColors();
   const safeAreaInsets = useSafeAreaInsets();
@@ -105,7 +105,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     snapshotIdentity.token === token;
   const visibleLists = currentSnapshot ? lists : [];
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
@@ -129,7 +128,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setLists([]);
     setHasSnapshot(false);
     setSnapshotIdentity({ userId, token });
-    setError(null);
     setIsLoading(Boolean(token));
   }, [token, userId]);
   const refreshLists = useCallback(
@@ -149,7 +147,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         setLists(result.map(toTierList));
         setSnapshotIdentity({ userId, token });
         setHasSnapshot(true);
-        setError(null);
         if (userId) {
           const key = listsCacheKey(userId);
           if (isCurrent())
@@ -160,7 +157,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
       } catch (err: unknown) {
         if (isCurrent()) {
-          setError(err instanceof Error ? err.message : 'Failed to load lists');
+          notify(
+            err instanceof Error ? err.message : "Couldn't load your lists."
+          );
           if (
             err instanceof ApiError &&
             (err.status === 401 || err.status === 403)
@@ -183,7 +182,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (isCurrent()) setIsLoading(false);
       }
     },
-    [isIdentityCurrent, token, userId]
+    [isIdentityCurrent, notify, token, userId]
   );
   const fetchLists = useCallback(async () => {
     try {
@@ -443,21 +442,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View className="flex-1 items-center justify-center px-6">
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
-    ) : error && !currentSnapshot ? (
-      <View className="flex-1 items-center justify-center px-6">
-        <Ionicons
-          name="alert-circle-outline"
-          size={48}
-          color={colors['ink-muted']}
-        />
-        <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark mt-4 mb-1">
-          Something went wrong
-        </Text>
-        <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark text-center mb-6">
-          {error}
-        </Text>
-        <Button title="Try again" onPress={() => void fetchLists()} />
-      </View>
     ) : (
       <FlatList
         key={columns}
@@ -496,17 +480,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 accessibilityLabel="Create new list"
               />
             </View>
-            {error && !(isOffline && currentSnapshot) ? (
-              <View className="flex-row items-center justify-between gap-3 rounded-xl border border-danger-text p-3">
-                <Text
-                  accessibilityLiveRegion="polite"
-                  className="flex-1 text-body-medium text-danger-text dark:text-danger-text-dark"
-                >
-                  {error}
-                </Text>
-                <Button title="Try again" onPress={() => void fetchLists()} />
-              </View>
-            ) : null}
           </View>
         }
         ListEmptyComponent={
@@ -584,7 +557,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 )}
               </TouchableOpacity>
             </View>
-            <SyncStatusBanner />
             <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>
@@ -629,7 +601,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 view={workspace.view}
                 presentation="modal"
                 isBusy={workspace.isBusy}
-                error={workspace.error}
                 onAnswer={(answer) => void workspace.answer(answer)}
                 onUndo={() => void workspace.undo()}
                 onCancel={() => void workspace.cancelRanking()}
@@ -652,7 +623,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 onFormChange={workspace.setForm}
                 fieldErrors={workspace.fieldErrors}
                 isBusy={workspace.isBusy}
-                error={workspace.error}
                 onSubmit={() => void workspace.submitMetadata()}
                 onClose={() => void workspace.requestClose().catch(() => false)}
                 presentation="modal"

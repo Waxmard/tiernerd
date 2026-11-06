@@ -13,7 +13,6 @@ export interface ItemWorkspaceState {
   fieldErrors: { name?: string };
   ranking: RankingSession | null;
   isBusy: boolean;
-  error: string | null;
 }
 
 export interface UseItemWorkspaceOptions {

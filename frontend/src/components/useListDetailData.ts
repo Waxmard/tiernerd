@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSync } from '../providers/SyncProvider';
+import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { getApiErrorMessage } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import {
@@ -44,7 +44,7 @@ import {
 import { localLibrary } from '../services/localLibrary';
 import { newId } from '../utils/id';
 
-const ITEMS_ERROR = 'Unable to refresh items. Try again.';
+const ITEMS_ERROR = 'Unable to refresh items.';
 
 interface UseListDetailDataOptions {
   userId: string | null;
@@ -59,6 +59,7 @@ export function useListDetailData({
   routeTitle,
 }: UseListDetailDataOptions) {
   const { mutate, isOffline } = useSync();
+  const notify = useNotifyWhenOnline();
   const isOfflineRef = useRef(isOffline);
   isOfflineRef.current = isOffline;
   const identity = useMemo(
@@ -294,6 +295,7 @@ export function useListDetailData({
           if (isDefinitiveReadError(error)) {
             invalidateDefinitiveRead(lifecycle);
           } else {
+            notify("Couldn't refresh this list.");
             updateState(
               lifecycle,
               () => lifecycle.itemsRequest === requestId,
@@ -318,7 +320,7 @@ export function useListDetailData({
         }
       }
     },
-    [invalidateDefinitiveRead, queueCacheWork, updateState]
+    [invalidateDefinitiveRead, notify, queueCacheWork, updateState]
   );
   const refreshMetadataFor = useCallback(
     async (lifecycle: ListDetailLifecycle): Promise<ListMetadata | null> => {
@@ -387,6 +389,7 @@ export function useListDetailData({
           if (isDefinitiveReadError(error)) {
             invalidateDefinitiveRead(lifecycle);
           } else {
+            notify("Couldn't load this list.");
             updateState(
               lifecycle,
               () => lifecycle.metadataRequest === requestId,
@@ -401,51 +404,8 @@ export function useListDetailData({
         return null;
       }
     },
-    [invalidateDefinitiveRead, updateState]
+    [invalidateDefinitiveRead, notify, updateState]
   );
-  const fetchItems = useCallback(async () => {
-    const lifecycle = lifecycleRef.current as ListDetailLifecycle;
-    const version = lifecycle.cacheVersion;
-    const promise = fetchItemsFor(lifecycle);
-    const itemsRequestId = lifecycle.itemsRequest;
-    const items = await promise;
-    const accepted = metadataRef.current;
-    if (
-      accepted?.lifecycle === lifecycle &&
-      canWriteCachedSummary(
-        lifecycle,
-        version,
-        accepted.requestId,
-        itemsRequestId,
-        lifecycleRef.current
-      )
-    )
-      void writeCachedSummary(
-        lifecycle,
-        version,
-        accepted.metadata,
-        items.length,
-        accepted.requestId,
-        itemsRequestId
-      ).catch(() => {});
-    return items;
-  }, [fetchItemsFor, writeCachedSummary]);
-  const refreshMetadata = useCallback(async () => {
-    const lifecycle = lifecycleRef.current as ListDetailLifecycle;
-    const version = lifecycle.cacheVersion;
-    const promise = refreshMetadataFor(lifecycle);
-    const requestId = lifecycle.metadataRequest;
-    const metadata = await promise;
-    if (metadata && lifecycle.itemsAcceptedLive)
-      void writeCachedSummary(
-        lifecycle,
-        version,
-        metadata,
-        itemsRef.current.length,
-        requestId
-      ).catch(() => {});
-    return metadata;
-  }, [refreshMetadataFor, writeCachedSummary]);
   const reloadFromCache = useCallback(
     async (respectLive = false): Promise<void> => {
       const lifecycle = lifecycleRef.current;
@@ -646,10 +606,7 @@ export function useListDetailData({
               error.message === COVER_NEEDS_CONNECTION ||
               error.message === ITEMS_ERROR)
             ? error.message
-            : getApiErrorMessage(
-                error,
-                'Unable to save list options. Try again.'
-              )
+            : getApiErrorMessage(error, 'Unable to save list options.')
         );
       } finally {
         if (modeSaveRef.current === lifecycle) modeSaveRef.current = null;
@@ -755,11 +712,8 @@ export function useListDetailData({
     listCover: visibleState.listCover,
     listCoverPhoto: visibleState.listCoverPhoto,
     rankingMode: visibleState.rankingMode,
-    metadataError: visibleState.metadataError,
     metadataLoaded: visibleState.metadataLoaded,
     hasMetadataSnapshot: visibleState.hasMetadataSnapshot,
-    fetchItems,
-    refreshMetadata,
     refreshAfterMutation,
     updateListOptions,
     evictDeletedList,

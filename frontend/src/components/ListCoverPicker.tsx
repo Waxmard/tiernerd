@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Button, Input } from '../design-system/components';
 import type { ListColor } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
-import { useSync } from '../providers/SyncProvider';
+import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import {
   type CoverDraft,
@@ -48,6 +48,7 @@ export function ListCoverPicker({
 }) {
   const { token } = useAuth();
   const { isOffline } = useSync();
+  const notify = useNotifyWhenOnline();
   const [searchView, setSearchView] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CoverSearchResult[]>([]);
@@ -57,10 +58,7 @@ export function ListCoverPicker({
   const [hasMore, setHasMore] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchAvailable, setSearchAvailable] = useState(false);
-  const [availabilityError, setAvailabilityError] = useState(false);
-  const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
   const availabilityRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
@@ -82,28 +80,18 @@ export function ListCoverPicker({
     const request = ++availabilityRequestRef.current;
     if (!token) {
       setSearchAvailable(false);
-      setAvailabilityError(false);
-      setCheckingAvailability(false);
       return;
     }
     setSearchAvailable(false);
-    setCheckingAvailability(true);
     try {
       const enabled = await getCoverSearchAvailability(token);
-      if (request === availabilityRequestRef.current) {
+      if (request === availabilityRequestRef.current)
         setSearchAvailable(enabled);
-        setAvailabilityError(false);
-      }
     } catch {
-      if (request === availabilityRequestRef.current) {
-        setAvailabilityError(true);
-      }
-    } finally {
-      if (request === availabilityRequestRef.current) {
-        setCheckingAvailability(false);
-      }
+      if (request === availabilityRequestRef.current)
+        notify('Unable to check photo search availability.');
     }
-  }, [token]);
+  }, [notify, token]);
 
   useEffect(() => {
     void checkAvailability();
@@ -121,12 +109,11 @@ export function ListCoverPicker({
     const term = nextPage === 1 ? query.trim() : resultsQuery;
     if (!term) return;
     if (!token) {
-      setError('Sign in to search photos.');
+      notify('Sign in to search photos.');
       return;
     }
     const request = ++searchRequestRef.current;
     setSearching(true);
-    setError(null);
     setEmptyQuery(null);
     try {
       const response = await searchCoverPhotos(term, nextPage, token);
@@ -143,7 +130,7 @@ export function ListCoverPicker({
       }
     } catch (err) {
       if (mountedRef.current && request === searchRequestRef.current) {
-        setError(searchErrorMessage(err));
+        notify(searchErrorMessage(err));
       }
     } finally {
       if (mountedRef.current && request === searchRequestRef.current) {
@@ -158,7 +145,6 @@ export function ListCoverPicker({
     const request = ++pickerRequestRef.current;
     onBusyChange(true);
     setPicking(true);
-    setError(null);
     try {
       const picked = await pickLocalCover();
       if (!picked) return;
@@ -173,10 +159,10 @@ export function ListCoverPicker({
       onChange(picked);
     } catch (err) {
       if (mountedRef.current && request === pickerRequestRef.current) {
-        setError(
+        notify(
           err instanceof Error && err.message
             ? err.message
-            : 'Unable to choose a photo. Please try again.'
+            : 'Unable to choose a photo.'
         );
       }
     } finally {
@@ -217,7 +203,6 @@ export function ListCoverPicker({
       label: 'None',
       selected: value.kind === 'none',
       onPress: () => {
-        setError(null);
         onChange({ kind: 'none' });
       },
     },
@@ -225,7 +210,6 @@ export function ListCoverPicker({
       label: 'Landscape',
       selected: value.kind === 'landscape',
       onPress: () => {
-        setError(null);
         onChange({ kind: 'landscape' });
       },
     },
@@ -236,7 +220,6 @@ export function ListCoverPicker({
             selected: previewPhoto?.source === 'unsplash',
             disabled: photoTabsDisabled,
             onPress: () => {
-              setError(null);
               setSearchView(true);
             },
           },
@@ -249,34 +232,11 @@ export function ListCoverPicker({
       onPress: () => void chooseLocal(),
     },
   ];
-  const showResults =
-    resultsQuery !== null &&
-    (resultsQuery === query.trim() || error !== null || emptyQuery !== null);
+  const showResults = resultsQuery !== null;
   const previousResults = resultsQuery !== query.trim() || emptyQuery !== null;
 
   return (
     <View className="gap-3">
-      {availabilityError ? (
-        <View className="flex-row flex-wrap items-center justify-between gap-2">
-          <Text
-            accessibilityRole="alert"
-            className="flex-1 text-body-small text-danger-text dark:text-danger-text-dark"
-          >
-            {checkingAvailability
-              ? 'Checking photo search availability…'
-              : 'Unable to check photo search availability.'}
-          </Text>
-          <Button
-            title="Retry"
-            accessibilityLabel="Retry checking photo search availability"
-            variant="secondary"
-            size="small"
-            disabled={inactive}
-            loading={checkingAvailability}
-            onPress={() => void checkAvailability()}
-          />
-        </View>
-      ) : null}
       {searchView ? (
         <>
           <Input
@@ -287,7 +247,6 @@ export function ListCoverPicker({
             onChangeText={(text) => {
               invalidateSearch();
               setQuery(text);
-              setError(null);
               setEmptyQuery(null);
             }}
             editable={!inactive}
@@ -307,7 +266,6 @@ export function ListCoverPicker({
               disabled={inactive}
               onPress={() => {
                 invalidateSearch();
-                setError(null);
                 setSearchView(false);
               }}
             />
@@ -323,14 +281,6 @@ export function ListCoverPicker({
               className="text-body-small text-ink-muted dark:text-ink-muted-dark"
             >
               No photos found for “{emptyQuery}”. Try another search.
-            </Text>
-          ) : null}
-          {error ? (
-            <Text
-              accessibilityRole="alert"
-              className="text-body-small text-danger-text dark:text-danger-text-dark"
-            >
-              {error}
             </Text>
           ) : null}
           {showResults ? (
@@ -357,7 +307,6 @@ export function ListCoverPicker({
                       disabled={inactive}
                       onPress={() => {
                         invalidateSearch();
-                        setError(null);
                         onChange({ kind: 'unsplash', photo });
                         setSearchView(false);
                       }}
@@ -453,14 +402,6 @@ export function ListCoverPicker({
           {picking ? (
             <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
               Preparing photo…
-            </Text>
-          ) : null}
-          {error ? (
-            <Text
-              accessibilityRole="alert"
-              className="text-body-small text-danger-text dark:text-danger-text-dark"
-            >
-              {error}
             </Text>
           ) : null}
         </>

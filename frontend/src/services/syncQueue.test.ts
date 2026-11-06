@@ -133,10 +133,11 @@ test('a missing token keeps everything and reports auth', async () => {
   assert.equal(await queue.count(), 1);
 });
 
-test('a conflict drops the op with its message and keeps replaying', async () => {
+test('a conflict drops the op with the server message and keeps replaying', async () => {
   const applied: string[] = [];
   const { queue } = makeQueue(async (op) => {
-    if (op.id === '1') throw new ApiError(409, 'Conflict');
+    if (op.id === '1')
+      throw new ApiError(409, 'Conflict', { detail: 'Item ID already in use' });
     applied.push(op.id);
   });
   await queue.enqueue(itemCreate('1', 'a', 'Alpha'));
@@ -146,17 +147,26 @@ test('a conflict drops the op with its message and keeps replaying', async () =>
 
   assert.deepEqual(applied, ['2']);
   assert.deepEqual(outcome.dropped, [
-    {
-      opId: '1',
-      message:
-        'An item named "Alpha" already exists. Your new item was discarded.',
-    },
+    { opId: '1', message: 'Item ID already in use' },
   ]);
   assert.equal(outcome.status, 'idle');
   assert.equal(await queue.count(), 0);
 });
 
-test('a missing delete target counts as success without an issue', async () => {
+test('a conflict without a server message falls back to generic text', async () => {
+  const { queue } = makeQueue(async () => {
+    throw new ApiError(422, 'Unprocessable');
+  });
+  await queue.enqueue(itemCreate('1', 'a', 'Alpha'));
+
+  const outcome = await queue.flush();
+
+  assert.deepEqual(outcome.dropped, [
+    { opId: '1', message: "Couldn't save a pending change." },
+  ]);
+});
+
+test('a missing delete target counts as success with no message', async () => {
   const { queue } = makeQueue(async () => {
     throw new ApiError(404, 'Not Found');
   });
@@ -167,6 +177,24 @@ test('a missing delete target counts as success without an issue', async () => {
   assert.deepEqual(outcome.applied, ['1']);
   assert.deepEqual(outcome.dropped, []);
   assert.equal(await queue.count(), 0);
+});
+
+test('a missing update target is dropped with the deleted message', async () => {
+  const { queue } = makeQueue(async () => {
+    throw new ApiError(404, 'Not Found', { detail: 'Item not found' });
+  });
+  await queue.enqueue(itemUpdate('1', 'a', 'Renamed'));
+
+  const outcome = await queue.flush();
+
+  assert.deepEqual(outcome.applied, ['1']);
+  assert.deepEqual(outcome.dropped, [
+    {
+      opId: '1',
+      message:
+        'An item you edited was deleted on another device. Your edit was discarded.',
+    },
+  ]);
 });
 
 test('an update folds into the pending create for the same item', async () => {

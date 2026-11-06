@@ -15,7 +15,6 @@ export interface AddItemContentProps {
   onFormChange: (patch: Partial<ItemFormDraft>) => void;
   fieldErrors: AddItemFieldErrors;
   isBusy: boolean;
-  error: string | null;
   onSubmit: () => void;
   onClose: () => void;
   presentation: 'modal' | 'panel';
@@ -34,7 +33,6 @@ export function AddItemContent({
   onFormChange,
   fieldErrors,
   isBusy,
-  error,
   onSubmit,
   onClose,
   presentation,
@@ -71,7 +69,6 @@ export function AddItemContent({
             : 'Add item'
           : 'Description'
       }
-      error={error}
       isLoading={isBusy}
       submitText={view === 'overview' ? (isEdit ? 'Save' : 'Add item') : 'Done'}
       closeText={view === 'overview' ? 'Cancel' : 'Back'}
