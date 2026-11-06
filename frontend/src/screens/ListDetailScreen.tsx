@@ -37,7 +37,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   navigation,
 }) => {
   const { user, token } = useAuth();
-  const { lastSyncedAt } = useSync();
+  const { isOffline, lastSyncedAt } = useSync();
   const userId = user?.id ?? null;
   const colors = useThemeColors();
   const { width: windowWidth } = useWindowDimensions();
@@ -127,6 +127,14 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     if (lastSyncedAt === 0) return;
     void refreshAfterMutation().catch(() => undefined);
   }, [lastSyncedAt, refreshAfterMutation]);
+
+  const wasOfflineRef = useRef(isOffline);
+  useEffect(() => {
+    if (wasOfflineRef.current && !isOffline) {
+      void refreshAfterMutation().catch(() => undefined);
+    }
+    wasOfflineRef.current = isOffline;
+  }, [isOffline, refreshAfterMutation]);
 
   const scrollToOffset = useCallback(
     (offset: number) =>

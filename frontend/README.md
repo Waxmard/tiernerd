@@ -16,6 +16,8 @@ List covers can use the built-in landscape, a searchable Unsplash photo, or a ph
 
 Unsplash photos are served by Unsplash with photographer and Unsplash credits. Device photos are uploaded to private storage and retrieved through the authenticated API. Search and uploads require backend configuration and a matching database schema; see [Configure list cover photos](../fastapi/README.md#configure-list-cover-photos). The app does not include image generation or camera capture.
 
+Uploaded covers on a phone are cached on the device after they load once, so they still show offline, and a cover that failed to load retries by itself when the connection returns. On the web the browser's own caching rules apply.
+
 On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. On larger screens, dialogs stay centered and item details open in a 400px side pane only when you select an item or start a workspace action.
 
 The default appearance is **System**, which follows the device's appearance. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads; existing explicit choices are preserved. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on wide screens.

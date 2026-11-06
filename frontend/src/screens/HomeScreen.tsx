@@ -355,6 +355,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     if (lastSyncedAt === 0) return;
     void refreshLists().catch(() => undefined);
   }, [lastSyncedAt, refreshLists]);
+
+  const wasOfflineRef = useRef(isOffline);
+  useEffect(() => {
+    if (wasOfflineRef.current && !isOffline) {
+      void refreshLists().catch(() => undefined);
+    }
+    wasOfflineRef.current = isOffline;
+  }, [isOffline, refreshLists]);
+
   const formatDate = (date: Date) => {
     const age = Math.floor((Date.now() - date.getTime()) / 86400000);
     if (age === 0) return 'today';
