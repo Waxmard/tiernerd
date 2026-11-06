@@ -19,11 +19,15 @@ from fastapi.routing import APIRoute
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.types import Message
 
-from app.core.constants import LIST_ALREADY_EXISTS_ERROR, LIST_NOT_FOUND_ERROR
+from app.core.constants import (
+    ITEM_NOT_FOUND_ERROR,
+    LIST_ALREADY_EXISTS_ERROR,
+    LIST_NOT_FOUND_ERROR,
+)
 from app.crud import item as item_crud, list as list_crud
 from app.db.database import get_db
 from app.db.models import List as ListModel
-from app.schemas.item import Item
+from app.schemas.item import Item, RankingSetRequest
 from app.schemas.list import (
     CoverSearchAvailability,
     LegacyListUpdate,
@@ -44,6 +48,7 @@ from app.services.list_service import (
     build_list_simple_response,
     get_items_best_first,
 )
+from app.services.ranking import set_item_ranking
 
 MAX_LIST_WRITE_BYTES = cover_upload_service.MAX_UPLOAD_BYTES + 1024 * 1024 + 64 * 1024
 
@@ -163,6 +168,15 @@ async def create_list(
         list_in = parse_metadata(data, ListCreate)
     else:
         raise HTTPException(status_code=415, detail="Unsupported list request")
+    if list_in.list_id is not None:
+        by_id = await list_crud.get_by_id(db, list_in.list_id)
+        if by_id is not None:
+            if by_id.user_id == current_user.user_id:
+                return by_id
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="List ID already in use",
+            )
     existing = await list_crud.get_by_title_and_user(
         db, list_in.title, current_user.user_id
     )
@@ -172,7 +186,7 @@ async def create_list(
             detail=LIST_ALREADY_EXISTS_ERROR,
         )
     data = await prepare_cover_update(
-        list_in.model_dump(mode="json", exclude_unset=True),
+        list_in.model_dump(mode="json", exclude_unset=True, exclude={"list_id"}),
         file,
         None,
         current_user.user_id,
@@ -180,7 +194,7 @@ async def create_list(
     )
 
     list_obj = ListModel(
-        list_id=uuid.uuid4(),
+        list_id=list_in.list_id or uuid.uuid4(),
         **data,
         user_id=current_user.user_id,
         created_at=datetime.now(UTC),
@@ -250,6 +264,36 @@ async def read_list_items(
         return []
 
     return get_items_best_first(items)
+
+
+@router.put("/{list_id}/ranking", response_model=list[Item])
+async def set_list_ranking(
+    list_id: uuid.UUID,
+    request: RankingSetRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Place an item at the requested gap (0 = worst, ranked count = best).
+    """
+    list_obj = await list_crud.get_by_id_and_user(
+        db, list_id, current_user.user_id, for_update=True
+    )
+    if not list_obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=LIST_NOT_FOUND_ERROR
+        )
+    item_obj = await item_crud.get_by_id_with_ownership(
+        db, request.item_id, current_user.user_id
+    )
+    if item_obj is None or item_obj.list_id != list_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
+        )
+
+    items = await set_item_ranking(db, list_obj, item_obj, request.gap)
+    await db.commit()
+    return [Item.model_validate(row) for row in items]
 
 
 @router.put("/{list_id}", response_model=List)

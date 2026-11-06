@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Button, Input } from '../design-system/components';
 import type { ListColor } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
+import { useSync } from '../providers/SyncProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import {
   type CoverDraft,
@@ -46,6 +47,7 @@ export function ListCoverPicker({
   onBusyChange: (busy: boolean) => void;
 }) {
   const { token } = useAuth();
+  const { isOffline } = useSync();
   const [searchView, setSearchView] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CoverSearchResult[]>([]);
@@ -204,7 +206,13 @@ export function ListCoverPicker({
             ? 'Uploaded photo selected'
             : 'Photo selected';
   const inactive = disabled || picking;
-  const options = [
+  const photoTabsDisabled = inactive || isOffline;
+  const options: {
+    label: string;
+    selected: boolean;
+    disabled?: boolean;
+    onPress: () => void;
+  }[] = [
     {
       label: 'None',
       selected: value.kind === 'none',
@@ -226,6 +234,7 @@ export function ListCoverPicker({
           {
             label: 'Search photos',
             selected: previewPhoto?.source === 'unsplash',
+            disabled: photoTabsDisabled,
             onPress: () => {
               setError(null);
               setSearchView(true);
@@ -236,6 +245,7 @@ export function ListCoverPicker({
     {
       label: 'Choose from device',
       selected: value.kind === 'local' || previewPhoto?.source === 'upload',
+      disabled: photoTabsDisabled,
       onPress: () => void chooseLocal(),
     },
   ];
@@ -379,37 +389,48 @@ export function ListCoverPicker({
       ) : (
         <>
           <View className="flex-row flex-wrap gap-2">
-            {options.map((option) => (
-              <Pressable
-                key={option.label}
-                accessibilityRole="button"
-                accessibilityLabel={`Cover ${option.label}`}
-                accessibilityState={{
-                  selected: option.selected,
-                  disabled: inactive,
-                }}
-                disabled={inactive}
-                onPress={option.onPress}
-                className={[
-                  'min-w-[44%] flex-1 min-h-11 flex-row items-center justify-center rounded-[10px] border px-3 py-2',
-                  option.selected
-                    ? 'border-accent dark:border-accent-dark bg-accent-tint dark:bg-accent-tint-dark'
-                    : 'border-control dark:border-control-dark bg-surface dark:bg-surface-dark',
-                ].join(' ')}
-              >
-                <Text
+            {options.map((option) => {
+              const blocked = inactive || option.disabled === true;
+              return (
+                <Pressable
+                  key={option.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Cover ${option.label}`}
+                  accessibilityState={{
+                    selected: option.selected,
+                    disabled: blocked,
+                  }}
+                  disabled={blocked}
+                  onPress={option.onPress}
                   className={[
-                    'text-body-small font-semibold text-center',
+                    'min-w-[44%] flex-1 min-h-11 flex-row items-center justify-center rounded-[10px] border px-3 py-2',
                     option.selected
-                      ? 'text-accent-text dark:text-accent-text-dark'
-                      : 'text-ink-muted dark:text-ink-muted-dark',
+                      ? 'border-accent dark:border-accent-dark bg-accent-tint dark:bg-accent-tint-dark'
+                      : 'border-control dark:border-control-dark bg-surface dark:bg-surface-dark',
                   ].join(' ')}
                 >
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text
+                    className={[
+                      'text-body-small font-semibold text-center',
+                      option.selected
+                        ? 'text-accent-text dark:text-accent-text-dark'
+                        : 'text-ink-muted dark:text-ink-muted-dark',
+                    ].join(' ')}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
+          {isOffline ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              className="text-body-small text-ink-muted dark:text-ink-muted-dark"
+            >
+              Photo covers need a connection.
+            </Text>
+          ) : null}
           <Text
             accessibilityLiveRegion="polite"
             className="text-body-small text-ink-muted dark:text-ink-muted-dark"

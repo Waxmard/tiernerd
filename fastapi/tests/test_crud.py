@@ -7,66 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crud import comparison as comparison_crud, item as item_crud, list as list_crud
-from app.db.models import (
-    ComparisonSession as ComparisonSessionModel,
-    Item as ItemModel,
-    List as ListModel,
-    User,
-)
-
-
-class TestComparisonCRUD:
-    async def test_lookup_by_id_and_list_id(
-        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ) -> None:
-        session = ComparisonSessionModel(
-            session_id=uuid.uuid4(),
-            list_id=test_list.list_id,
-            new_item_id=test_item.item_id,
-            target_item_id=test_item.item_id,
-        )
-        test_db.add(session)
-        await test_db.commit()
-
-        found = await comparison_crud.get_by_id(test_db, session.session_id)
-        assert found is not None and found.session_id == session.session_id
-        assert (
-            await comparison_crud.get_list_id(test_db, session.session_id)
-            == test_list.list_id
-        )
-        assert await comparison_crud.get_by_id(test_db, uuid.uuid4()) is None
-
-    async def test_get_active_by_item(self, test_db, test_list, test_item) -> None:
-        session = ComparisonSessionModel(
-            list_id=test_list.list_id,
-            new_item_id=test_item.item_id,
-            target_item_id=test_item.item_id,
-            status="ready_to_commit",
-        )
-        test_db.add(session)
-        await test_db.commit()
-
-        assert (
-            await comparison_crud.get_active_by_item(test_db, test_item.item_id)
-            is not None
-        )
-
-    async def test_completed_session_is_not_active(
-        self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
-    ) -> None:
-        session = ComparisonSessionModel(
-            list_id=test_list.list_id,
-            new_item_id=test_item.item_id,
-            target_item_id=None,
-            status="completed",
-        )
-        test_db.add(session)
-        await test_db.commit()
-
-        assert (
-            await comparison_crud.get_active_by_item(test_db, test_item.item_id) is None
-        )
+from app.crud import item as item_crud, list as list_crud
+from app.db.models import Item as ItemModel, List as ListModel, User
 
 
 class TestItemCRUD:
@@ -243,9 +185,7 @@ class TestListCRUD:
         )
         assert result is None
 
-    async def test_delete_list(
-        self, test_db: AsyncSession, test_user: User, multiple_items: list[ItemModel]
-    ):
+    async def test_delete_list(self, test_db: AsyncSession, test_user: User):
         list_obj = ListModel(
             list_id=uuid.uuid4(),
             user_id=test_user.user_id,
@@ -256,23 +196,7 @@ class TestListCRUD:
         new_item = ItemModel(
             list_id=list_obj.list_id, name="New", position="a1", rating=10.0
         )
-        target_item = ItemModel(
-            list_id=list_obj.list_id, name="Target", position="a0", rating=0.0
-        )
-        test_db.add_all([new_item, target_item])
-        await test_db.flush()
-        related = ComparisonSessionModel(
-            list_id=list_obj.list_id,
-            new_item_id=new_item.item_id,
-            target_item_id=target_item.item_id,
-            status="completed",
-        )
-        unrelated = ComparisonSessionModel(
-            list_id=multiple_items[0].list_id,
-            new_item_id=multiple_items[0].item_id,
-            target_item_id=multiple_items[1].item_id,
-        )
-        test_db.add_all([related, unrelated])
+        test_db.add(new_item)
         await test_db.commit()
 
         list_id = list_obj.list_id
@@ -280,5 +204,3 @@ class TestListCRUD:
 
         assert await list_crud.get_by_id(test_db, list_id) is None
         assert await item_crud.get_by_id(test_db, new_item.item_id) is None
-        sessions = await test_db.execute(select(ComparisonSessionModel.session_id))
-        assert list(sessions.scalars()) == [unrelated.session_id]

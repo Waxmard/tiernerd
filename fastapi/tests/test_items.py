@@ -12,12 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.endpoints import items as items_endpoints
 from app.core.constants import ITEM_NAME_ALREADY_EXISTS_ERROR
 from app.crud import item as item_crud
-from app.db.models import (
-    ComparisonSession as ComparisonSessionModel,
-    Item as ItemModel,
-    List as ListModel,
-    User,
-)
+from app.db.models import Item as ItemModel, List as ListModel, User
 
 
 class TestCreateItem:
@@ -33,7 +28,7 @@ class TestCreateItem:
         """Test creating first item in an empty list."""
         response = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={
                 "name": "First Item",
                 "description": "The first item",
@@ -61,32 +56,26 @@ class TestCreateItem:
         assert db_items[0].position == data["position"]
         assert db_items[0].rating == 10.0
 
-    async def test_create_second_item_starts_comparison(
+    async def test_create_second_item_is_unranked(
         self,
         client: AsyncClient,
         test_list: ListModel,
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        """Test creating second item starts a comparison session."""
+        """Test creating a second item leaves it unranked for the client to place."""
         first = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={"name": "First Item"},
             headers=auth_headers,
         )
         assert first.status_code == 200
         assert first.json()["rating"] == 10.0
 
-        result = await test_db.execute(
-            select(ItemModel).where(ItemModel.list_id == test_list.list_id)
-        )
-        items_before = result.scalars().all()
-        assert len(items_before) == 1
-
         response = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={
                 "name": "Second Item",
                 "description": "The second item",
@@ -96,25 +85,15 @@ class TestCreateItem:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "session_id" in data
-        assert data["status"] == "active"
-        assert data["discard_on_cancel"] is True
-        comparison = data["current_comparison"]
-        assert "reference_item" in comparison
-        assert "target_item" in comparison
-        assert comparison["reference_item"]["name"] == "Second Item"
-        assert comparison["reference_item"]["position"] is None
-        assert comparison["reference_item"]["rating"] is None
-        assert comparison["target_item"]["item_id"] == first.json()["item_id"]
-        assert data["comparisons_answered"] == 0
-        assert data["revision"] == 0
+        assert data["name"] == "Second Item"
+        assert data["position"] is None
+        assert data["rating"] is None
 
-        # Second item is saved to database during comparison (but not yet ranked)
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == test_list.list_id)
         )
         items_after = result.scalars().all()
-        assert len(items_after) == 2  # Both items exist now
+        assert len(items_after) == 2
         candidate = next(item for item in items_after if item.name == "Second Item")
         assert candidate.position is None
         assert candidate.rating is None
@@ -125,7 +104,7 @@ class TestCreateItem:
         """Test creating item without authentication fails."""
         response = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={
                 "name": "New Item",
                 "description": "Description",
@@ -140,7 +119,7 @@ class TestCreateItem:
         """Test creating item in non-existent list fails."""
         response = await client.post(
             "/api/items/",
-            params={"list_title": "Nonexistent List"},
+            params={"list_id": str(uuid.uuid4())},
             json={
                 "name": "New Item",
                 "description": "Description",
@@ -156,7 +135,7 @@ class TestCreateItem:
         """Test creating item in another user's list fails."""
         response = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={
                 "name": "New Item",
                 "description": "Description",
@@ -439,25 +418,8 @@ class TestDeleteItem:
         test_db: AsyncSession,
     ):
         list_id = multiple_items[0].list_id
-        victim = multiple_items[2]
         unranked = ItemModel(list_id=list_id, name="Abandoned")
-        new_reference = ComparisonSessionModel(
-            list_id=list_id,
-            new_item_id=victim.item_id,
-            target_item_id=multiple_items[0].item_id,
-            status="completed",
-        )
-        target_reference = ComparisonSessionModel(
-            list_id=list_id,
-            new_item_id=multiple_items[3].item_id,
-            target_item_id=victim.item_id,
-        )
-        unrelated = ComparisonSessionModel(
-            list_id=list_id,
-            new_item_id=multiple_items[0].item_id,
-            target_item_id=multiple_items[1].item_id,
-        )
-        test_db.add_all([unranked, new_reference, target_reference, unrelated])
+        test_db.add(unranked)
         await test_db.commit()
         response = await client.delete(
             f"/api/items/items/{multiple_items[2].item_id}", headers=auth_headers
@@ -475,8 +437,6 @@ class TestDeleteItem:
             (multiple_items[3].item_id, "a3", 6.7),
             (multiple_items[4].item_id, "a4", 10.0),
         ]
-        sessions = await test_db.execute(select(ComparisonSessionModel.session_id))
-        assert list(sessions.scalars()) == [unrelated.session_id]
         await test_db.refresh(unranked)
         assert unranked.rating is None
         assert unranked.position is None
@@ -550,7 +510,7 @@ class TestItemCreateValidation:
     ) -> None:
         first = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={"name": "  Blue Bottle  "},
             headers=auth_headers,
         )
@@ -559,7 +519,7 @@ class TestItemCreateValidation:
 
         duplicate = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={"name": "blue bottle"},
             headers=auth_headers,
         )
@@ -571,14 +531,14 @@ class TestItemCreateValidation:
 
         unicode_name = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={"name": "Straße"},
             headers=auth_headers,
         )
         assert unicode_name.status_code == 200
         unicode_duplicate = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={"name": "STRASSE"},
             headers=auth_headers,
         )
@@ -590,7 +550,7 @@ class TestItemCreateValidation:
         for name in ("   ", "x" * 101):
             response = await client.post(
                 "/api/items/",
-                params={"list_title": test_list.title},
+                params={"list_id": str(test_list.list_id)},
                 json={"name": name},
                 headers=auth_headers,
             )
@@ -605,7 +565,7 @@ class TestItemCreateValidation:
     ) -> None:
         created = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={"name": "Other"},
             headers=auth_headers,
         )
@@ -639,39 +599,6 @@ class TestItemCreateValidation:
             assert response.status_code == 422
 
 
-class TestItemComparisonSessionRoutes:
-    """Item-addressable comparison-session routes stay inside item ownership."""
-
-    async def test_lookup_rejects_unknown_and_foreign_items(
-        self,
-        client: AsyncClient,
-        test_item: ItemModel,
-        auth_headers: dict,
-        auth_headers_user2: dict,
-    ) -> None:
-        unknown = uuid.uuid4()
-        responses = (
-            await client.get(
-                f"/api/items/items/{unknown}/comparison-session", headers=auth_headers
-            ),
-            await client.post(
-                f"/api/items/items/{unknown}/comparison-session",
-                json={},
-                headers=auth_headers,
-            ),
-            await client.get(
-                f"/api/items/items/{test_item.item_id}/comparison-session",
-                headers=auth_headers_user2,
-            ),
-            await client.post(
-                f"/api/items/items/{test_item.item_id}/comparison-session",
-                json={},
-                headers=auth_headers_user2,
-            ),
-        )
-        assert [response.status_code for response in responses] == [404, 404, 404, 404]
-
-
 class TestDuplicateNameRace:
     """Name conflicts enforced by the database when the pre-check misses."""
 
@@ -699,7 +626,7 @@ class TestDuplicateNameRace:
         self.bypass_precheck(monkeypatch)
         response = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={"name": "test item"},
             headers=auth_headers,
         )
@@ -719,7 +646,7 @@ class TestDuplicateNameRace:
         list_id = test_list.list_id
         response = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={"name": "  TEST ITEM  "},
             headers=auth_headers,
         )
@@ -742,7 +669,7 @@ class TestDuplicateNameRace:
     ) -> None:
         created = await client.post(
             "/api/items/",
-            params={"list_title": test_list.title},
+            params={"list_id": str(test_list.list_id)},
             json={"name": "Other"},
             headers=auth_headers,
         )
@@ -776,3 +703,76 @@ class TestDuplicateNameRace:
         assert not item_crud.is_duplicate_name_error(caught.value)
         with pytest.raises(IntegrityError):
             await items_endpoints._raise_item_name_error(test_db, caught.value)
+
+
+class TestClientSuppliedItemId:
+    """Creates are idempotent for a client-generated item id."""
+
+    async def test_create_uses_supplied_id_and_retry_returns_same_item(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+        test_db: AsyncSession,
+    ) -> None:
+        item_id = uuid.uuid4()
+        payload = {"item_id": str(item_id), "name": "Offline item"}
+        first = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json=payload,
+            headers=auth_headers,
+        )
+        assert first.status_code == 200
+        assert first.json()["item_id"] == str(item_id)
+
+        retry = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json=payload,
+            headers=auth_headers,
+        )
+        assert retry.status_code == 200
+        assert retry.json() == first.json()
+        stored = await test_db.scalar(
+            select(func.count())
+            .select_from(ItemModel)
+            .where(ItemModel.list_id == test_list.list_id)
+        )
+        assert stored == 1
+
+    async def test_item_id_reuse_across_lists_is_rejected(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        test_user: User,
+        auth_headers: dict,
+    ) -> None:
+        item_id = uuid.uuid4()
+        first = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json={"item_id": str(item_id), "name": "First list item"},
+            headers=auth_headers,
+        )
+        assert first.status_code == 200
+
+        other_list = ListModel(
+            list_id=uuid.uuid4(),
+            user_id=test_user.user_id,
+            title="Another list",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        test_db.add(other_list)
+        await test_db.commit()
+
+        conflict = await client.post(
+            "/api/items/",
+            params={"list_id": str(other_list.list_id)},
+            json={"item_id": str(item_id), "name": "Second list item"},
+            headers=auth_headers,
+        )
+        assert conflict.status_code == 409
+        assert conflict.json()["detail"] == "Item ID already in use"

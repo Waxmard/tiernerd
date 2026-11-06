@@ -157,7 +157,7 @@ Autofixed files are re-staged automatically (`stage_fixed: true`). Hooks install
 ### Backend Structure (`fastapi/app/`)
 
 - `api/endpoints/` — Route handlers (users, lists, items)
-- `services/` — Business logic (auth/JWT, comparison, list, ranking)
+- `services/` — Business logic (auth/JWT, list, ranking placement, covers)
 - `core/` — Pure utilities (constants, fractional index)
 - `crud/` — Database operations
 - `db/` — SQLAlchemy models and async database setup
@@ -182,7 +182,8 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 - **Backend**: Async SQLAlchemy 2.0+, FastAPI dependency injection, JWT auth
 - **Frontend**: Context API for state, token-based design system, TypeScript strict mode
 - **Items**: Ordered via Base-62 fractional index `position` column (`app/core/fractional_index.py`)
-- **Ranking**: Binary search comparison workflow in `app/services/comparison_service.py`
+- **Offline**: The client keeps an AsyncStorage outbox (`frontend/src/services/syncQueue.ts`) and cache (`localLibrary.ts`); creates accept client-generated `list_id`/`item_id`
+- **Ranking**: The client runs the binary search; `PUT /api/lists/{id}/ranking` stores the chosen gap in `app/services/ranking.py`
 
 ### Database
 

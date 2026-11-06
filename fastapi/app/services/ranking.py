@@ -1,8 +1,14 @@
 """Ranking and score assignment business logic."""
 
 import uuid
+from datetime import UTC, datetime
 
-from app.db.models import Item as ItemModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.fractional_index import generate_key_between
+from app.crud import item as item_crud
+from app.db.models import Item as ItemModel, List as ListModel
+from app.services.list_service import get_items_best_first
 
 
 def score_for_rank(rank: int, ranked_count: int) -> float:
@@ -40,3 +46,22 @@ def sort_items_by_position(items: list[ItemModel]) -> list[ItemModel]:
     unranked = [item for item in items if item.position is None]
     ranked.sort(key=lambda x: x.position or "")
     return ranked + unranked
+
+
+async def set_item_ranking(
+    db: AsyncSession, list_obj: ListModel, item: ItemModel, gap: int
+) -> list[ItemModel]:
+    """Place item so that `gap` worse-ranked peers sit below it; rescore the list."""
+    items = await item_crud.get_by_list_id(db, list_obj.list_id)
+    peers = sort_items_by_position(filter_ranked_items(items, exclude_id=item.item_id))
+    clamped = max(0, min(gap, len(peers)))
+    lower = peers[clamped - 1].position if clamped else None
+    upper = peers[clamped].position if clamped < len(peers) else None
+    now = datetime.now(UTC)
+    item.position = generate_key_between(lower, upper)
+    item.updated_at = now
+    list_obj.updated_at = now
+    peers.insert(clamped, item)
+    assign_scores(peers)
+    await db.flush()
+    return get_items_best_first(await item_crud.get_by_list_id(db, list_obj.list_id))

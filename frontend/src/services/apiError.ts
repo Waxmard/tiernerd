@@ -17,6 +17,16 @@ export class ApiError extends Error {
   }
 }
 
+export class NetworkError extends Error {
+  constructor() {
+    super('Unable to reach the server. Check your connection and try again.');
+    this.name = 'NetworkError';
+  }
+}
+
+export const isNetworkError = (error: unknown): boolean =>
+  error instanceof NetworkError;
+
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
     const detail = error.data?.detail;
@@ -30,6 +40,9 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
       if (messages.length) return messages.join(', ');
     }
     return fallback;
+  }
+  if (error instanceof NetworkError) {
+    return error.message;
   }
   if (error instanceof TypeError) {
     return 'Unable to reach the server. Check your connection and try again.';

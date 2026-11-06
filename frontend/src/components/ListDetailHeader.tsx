@@ -13,6 +13,7 @@ import type {
   ListCover,
   ListIcon,
 } from '../design-system/tokens/colors';
+import { useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
 import type { ListPhoto } from '../services/listCoversService';
 import type {
@@ -35,6 +36,7 @@ interface ListDetailHeaderProps {
   description: string | null;
   metadataError: boolean;
   itemsError: string | null;
+  hasItemsSnapshot: boolean;
   showingSavedItems: boolean;
   onRetryItems: () => void;
   deleteDisabled: boolean;
@@ -67,6 +69,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   description,
   metadataError,
   itemsError,
+  hasItemsSnapshot,
   showingSavedItems,
   onRetryItems,
   deleteDisabled,
@@ -80,6 +83,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   onRetryMetadata,
 }) => {
   const { colors } = useTheme();
+  const { isOffline } = useSync();
+  const offlineSnapshot = isOffline && hasItemsSnapshot;
   const deleteIconColor = deleteDisabled
     ? colors['ink-disabled']
     : colors['danger-text'];
@@ -170,7 +175,14 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           </Text>
         </ScrollView>
       ) : null}
-      {metadataError ? (
+      {offlineSnapshot ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-body-small text-ink-muted dark:text-ink-muted-dark"
+        >
+          Showing saved items. Changes will sync when you reconnect.
+        </Text>
+      ) : metadataError ? (
         <View className="flex-row items-center justify-between mt-2">
           <Text
             className="text-body-small text-danger-text dark:text-danger-text-dark shrink"
@@ -198,7 +210,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
             : 'Loading list…'}
         </Text>
       ) : null}
-      {itemsError ? (
+      {itemsError && !offlineSnapshot ? (
         <View className="flex-row items-center justify-between">
           <Text
             accessibilityRole="alert"

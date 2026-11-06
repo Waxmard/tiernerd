@@ -10,7 +10,7 @@ from pytest import MonkeyPatch
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import ComparisonSession, Item as ItemModel, List as ListModel, User
+from app.db.models import Item as ItemModel, List as ListModel, User
 from app.main import app
 
 
@@ -421,7 +421,7 @@ class TestReadList:
 
 
 class TestUpdateList:
-    async def test_mode_switch_preserves_items_and_sessions(
+    async def test_mode_switch_preserves_items(
         self,
         client: AsyncClient,
         test_list: ListModel,
@@ -436,21 +436,7 @@ class TestUpdateList:
             list_id=test_list.list_id, name="Second", position="a0", rating=0.0
         )
         test_db.add_all([first, second])
-        await test_db.flush()
-        session = ComparisonSession(
-            list_id=test_list.list_id,
-            new_item_id=first.item_id,
-            target_item_id=second.item_id,
-            status="active",
-            revision=3,
-        )
-        test_db.add(session)
         await test_db.commit()
-        await test_db.refresh(session)
-        original_session = {
-            column.name: getattr(session, column.name)
-            for column in ComparisonSession.__table__.columns
-        }
         url = f"/api/lists/{test_list.list_id}"
         initial = await client.get(f"{url}/items", headers=auth_headers)
         assert initial.status_code == 200
@@ -471,11 +457,6 @@ class TestUpdateList:
             after = await client.get(f"{url}/items", headers=auth_headers)
             assert after.status_code == 200
             assert after.json() == before
-            await test_db.refresh(session)
-            assert {
-                column.name: getattr(session, column.name)
-                for column in ComparisonSession.__table__.columns
-            } == original_session
 
         renamed = await client.put(
             url,
@@ -499,11 +480,6 @@ class TestUpdateList:
         assert appearance.json()["cover"] == "landscape"
         after_appearance = await client.get(f"{url}/items", headers=auth_headers)
         assert after_appearance.json() == before
-        await test_db.refresh(session)
-        assert {
-            column.name: getattr(session, column.name)
-            for column in ComparisonSession.__table__.columns
-        } == original_session
 
         cleared = await client.put(
             url,
@@ -2066,3 +2042,52 @@ class TestReadListItems:
     ):
         response = await client.get(f"/api/lists/{test_list.list_id}/items")
         assert response.status_code == 401
+
+
+class TestCreateListClientId:
+    async def test_created_list_uses_supplied_id(
+        self, client: AsyncClient, auth_headers: dict
+    ) -> None:
+        list_id = str(uuid.uuid4())
+        response = await client.post(
+            "/api/lists/",
+            files=metadata_files({"list_id": list_id, "title": "Offline list"}),
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["list_id"] == list_id
+
+    async def test_retrying_the_same_id_returns_the_same_list(
+        self, client: AsyncClient, auth_headers: dict
+    ) -> None:
+        list_id = str(uuid.uuid4())
+        files = metadata_files({"list_id": list_id, "title": "Offline list"})
+        first = await client.post("/api/lists/", files=files, headers=auth_headers)
+        assert first.status_code == 200
+
+        retry = await client.post(
+            "/api/lists/",
+            files=metadata_files({"list_id": list_id, "title": "Offline list"}),
+            headers=auth_headers,
+        )
+        assert retry.status_code == 200
+        assert retry.json() == first.json()
+
+        lists = await client.get("/api/lists/", headers=auth_headers)
+        assert [row["list_id"] for row in lists.json()] == [list_id]
+
+    async def test_another_users_list_id_is_rejected(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers_user2: dict,
+    ) -> None:
+        response = await client.post(
+            "/api/lists/",
+            files=metadata_files(
+                {"list_id": str(test_list.list_id), "title": "Stolen id"}
+            ),
+            headers=auth_headers_user2,
+        )
+        assert response.status_code == 409
+        assert response.json()["detail"] == "List ID already in use"

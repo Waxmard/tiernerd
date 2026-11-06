@@ -192,6 +192,7 @@ export interface ListDetailDataState {
   rankingMode: ListRankingMode;
   metadataError: boolean;
   metadataLoaded: boolean;
+  hasMetadataSnapshot: boolean;
 }
 
 export interface ListDetailLifecycle {
@@ -233,6 +234,7 @@ export const createListDetailState = (
   rankingMode: 'score',
   metadataError: false,
   metadataLoaded: false,
+  hasMetadataSnapshot: false,
 });
 
 export const createListDetailLifecycle = (options: {
@@ -407,6 +409,7 @@ export const createInvalidatedReadState = (
   rankingMode: 'score',
   metadataError: true,
   metadataLoaded: false,
+  hasMetadataSnapshot: false,
 });
 
 export const applyLiveItemsState = (
@@ -450,6 +453,7 @@ export const applyCachedMetadataState = (
   listCover: metadata.cover ?? null,
   listCoverPhoto: metadata.coverPhoto ?? null,
   rankingMode: metadata.rankingMode,
+  hasMetadataSnapshot: true,
 });
 
 export const applyMutationRefreshState = (

@@ -17,13 +17,11 @@ export interface AddItemContentProps {
   isBusy: boolean;
   error: string | null;
   onSubmit: () => void;
-  onRetryRefresh?: () => void;
   onClose: () => void;
   presentation: 'modal' | 'panel';
   introText?: string;
 }
 
-const REFRESH_ERROR = 'Unable to refresh items. Try again.';
 const MAX_NAME_LENGTH = 100;
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
@@ -38,7 +36,6 @@ export function AddItemContent({
   isBusy,
   error,
   onSubmit,
-  onRetryRefresh,
   onClose,
   presentation,
   introText,
@@ -76,25 +73,11 @@ export function AddItemContent({
       }
       error={error}
       isLoading={isBusy}
-      submitText={
-        view === 'overview'
-          ? error === REFRESH_ERROR
-            ? 'Retry refresh'
-            : isEdit
-              ? 'Save'
-              : 'Add item'
-          : 'Done'
-      }
+      submitText={view === 'overview' ? (isEdit ? 'Save' : 'Add item') : 'Done'}
       closeText={view === 'overview' ? 'Cancel' : 'Back'}
       presentation={presentation}
       onClose={view === 'overview' ? onClose : returnToOverview}
-      onSubmit={
-        view === 'overview'
-          ? error === REFRESH_ERROR && onRetryRefresh
-            ? onRetryRefresh
-            : onSubmit
-          : returnToOverview
-      }
+      onSubmit={view === 'overview' ? onSubmit : returnToOverview}
     >
       {view === 'overview' ? (
         <>

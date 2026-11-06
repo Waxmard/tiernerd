@@ -1,46 +1,56 @@
-import type { ComparisonSession, Item } from '../services/itemsService';
+import type { Item } from '../services/itemsService';
+import type { RankingAnswer, RankingSession } from '../services/rankingEngine';
 
 export interface ItemFormDraft {
   name: string;
   description: string;
 }
-export type ItemWorkspaceMode = 'closed' | 'add' | 'edit' | 'ranking';
+
 export interface ItemWorkspaceState {
-  mode: ItemWorkspaceMode;
+  mode: 'closed' | 'add' | 'edit' | 'ranking';
   item: Item | null;
   form: ItemFormDraft;
   fieldErrors: { name?: string };
-  session: ComparisonSession | null;
+  ranking: RankingSession | null;
   isBusy: boolean;
   error: string | null;
 }
+
 export interface UseItemWorkspaceOptions {
+  userId: string | null;
+  listId: string;
   listTitle: string;
-  token: string | null;
+  items: Item[];
   onItemsChanged: (item?: Item) => Promise<void>;
   onClosed: () => void;
 }
+
+export interface RankingView {
+  item: Item;
+  target: Item | null;
+  isDecided: boolean;
+  answered: number;
+  limit: number;
+  canUndo: boolean;
+  preview: {
+    score: number;
+    rank: number;
+    rankedCount: number;
+  } | null;
+}
+
 export interface ItemWorkspace extends ItemWorkspaceState {
-  recoveryRequired: boolean;
+  view: RankingView | null;
   openAdd: () => void;
   openEdit: (item: Item) => void;
-  resume: (session: ComparisonSession) => void;
+  resumeRanking: (session: RankingSession) => void;
   setForm: (patch: Partial<ItemFormDraft>) => void;
   submitMetadata: () => Promise<void>;
   startRanking: (item: Item) => Promise<void>;
-  answer: (result: 'better' | 'worse') => Promise<void>;
+  answer: (answer: RankingAnswer) => Promise<void>;
   undo: () => Promise<void>;
-  retryCommit: () => Promise<void>;
-  restart: () => Promise<void>;
+  cancelRanking: () => Promise<void>;
   deleteItem: (item: Item) => Promise<void>;
-  retryRefresh: () => Promise<void>;
   requestClose: () => Promise<boolean>;
-  pauseRanking: () => boolean;
-  reloadSession: () => Promise<void>;
-  closeMissingItem: (itemId: string) => boolean;
-}
-export interface PendingRefresh {
-  item?: Item;
-  closeAfter: boolean;
-  closeOnRefreshFailure?: boolean;
+  pauseRanking: () => Promise<boolean>;
 }

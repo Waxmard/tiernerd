@@ -8,24 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import ITEM_NAME_ALREADY_EXISTS_ERROR, ITEM_NOT_FOUND_ERROR
 from app.core.fractional_index import generate_key_between
-from app.crud import comparison as comparison_crud, item as item_crud, list as list_crud
+from app.crud import item as item_crud, list as list_crud
 from app.db.database import get_db
 from app.db.models import Item as ItemModel
-from app.schemas.item import (
-    ComparisonSession,
-    ComparisonSessionStartRequest,
-    Item,
-    ItemCreate,
-    ItemUpdate,
-)
+from app.schemas.item import Item, ItemCreate, ItemUpdate
 from app.schemas.user import User
 from app.services.auth import get_current_user
-from app.services.comparison_service import (
-    ComparisonConflict,
-    ComparisonItemNotFound,
-    build_comparison_session_response,
-    start_comparison,
-)
 from app.services.ranking import assign_scores, filter_ranked_items
 
 router = APIRouter()
@@ -41,21 +29,31 @@ async def _raise_item_name_error(db: AsyncSession, error: IntegrityError) -> NoR
     raise error
 
 
-@router.post("/", response_model=Item | ComparisonSession)
+@router.post("/", response_model=Item)
 async def create_item(
-    list_title: str,
+    list_id: uuid.UUID,
     item_in: ItemCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Item | ComparisonSession:
-    list_obj = await list_crud.get_by_title_and_user(
-        db, list_title, current_user.user_id, for_update=True
+) -> Item:
+    list_obj = await list_crud.get_by_id_and_user(
+        db, list_id, current_user.user_id, for_update=True
     )
     if list_obj is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="List not found or does not belong to current user",
         )
+
+    if item_in.item_id is not None:
+        existing = await item_crud.get_by_id(db, item_in.item_id)
+        if existing is not None:
+            if existing.list_id == list_obj.list_id:
+                return Item.model_validate(existing)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Item ID already in use",
+            )
 
     name_key = item_in.name.casefold()
     if await item_crud.get_by_name_key(db, list_obj.list_id, name_key):
@@ -66,7 +64,7 @@ async def create_item(
 
     now = datetime.now(UTC)
     item_obj = ItemModel(
-        item_id=uuid.uuid4(),
+        item_id=item_in.item_id or uuid.uuid4(),
         list_id=list_obj.list_id,
         name=item_in.name,
         description=item_in.description,
@@ -76,115 +74,19 @@ async def create_item(
         created_at=now,
         updated_at=now,
     )
-    items = await item_crud.get_by_list_id(db, list_obj.list_id)
-    ranked_items = filter_ranked_items(items)
     list_obj.updated_at = now
 
-    if not ranked_items:
+    if not filter_ranked_items(await item_crud.get_by_list_id(db, list_obj.list_id)):
         item_obj.position = generate_key_between(None, None)
         assign_scores([item_obj])
-        try:
-            await item_crud.create(db, item_obj)
-        except IntegrityError as error:
-            await _raise_item_name_error(db, error)
-        await db.commit()
-        await db.refresh(item_obj)
-        return Item.model_validate(item_obj)
 
     try:
         await item_crud.create(db, item_obj)
-        session = await start_comparison(db, item_obj, discard_on_cancel=True)
     except IntegrityError as error:
         await _raise_item_name_error(db, error)
     await db.commit()
-    await db.refresh(session)
-    try:
-        return await build_comparison_session_response(db, session)
-    except ComparisonItemNotFound:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        ) from None
-
-
-@router.get(
-    "/items/{item_id}/comparison-session", response_model=ComparisonSession | None
-)
-async def get_item_comparison_session(
-    item_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> ComparisonSession | None:
-    item_obj = await item_crud.get_by_id_with_ownership(
-        db, item_id, current_user.user_id
-    )
-    if item_obj is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    session = await comparison_crud.get_active_by_item(
-        db, item_obj.item_id, populate_existing=True
-    )
-    if session is None:
-        return None
-    if session.list_id != item_obj.list_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    try:
-        return await build_comparison_session_response(db, session)
-    except ComparisonItemNotFound:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        ) from None
-
-
-@router.post("/items/{item_id}/comparison-session", response_model=ComparisonSession)
-async def start_item_comparison_session(
-    item_id: uuid.UUID,
-    request: ComparisonSessionStartRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> ComparisonSession:
-    item_obj = await item_crud.get_by_id_with_ownership(
-        db, item_id, current_user.user_id, populate_existing=True
-    )
-    if item_obj is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    list_obj = await list_crud.get_by_id_and_user(
-        db, item_obj.list_id, current_user.user_id, for_update=True
-    )
-    if list_obj is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        )
-    active_session = await comparison_crud.get_active_by_item(
-        db, item_id, populate_existing=True
-    )
-    if request.restart and active_session is not None and request.revision is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="A revision is required to restart a ranking",
-        )
-    try:
-        session = await start_comparison(
-            db,
-            item_obj,
-            restart=request.restart,
-            revision=request.revision,
-        )
-        await db.commit()
-        await db.refresh(session)
-        return await build_comparison_session_response(db, session)
-    except ComparisonConflict as error:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=str(error)
-        ) from error
-    except ComparisonItemNotFound:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
-        ) from None
+    await db.refresh(item_obj)
+    return Item.model_validate(item_obj)
 
 
 @router.get("/items/{item_id}", response_model=Item)

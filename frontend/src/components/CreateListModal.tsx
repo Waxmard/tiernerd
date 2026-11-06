@@ -15,10 +15,20 @@ import {
   palette,
 } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
+import { useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
-import { ApiError, getApiErrorMessage } from '../services/apiError';
+import { getApiErrorMessage } from '../services/apiError';
 import type { CoverDraft } from '../services/listCoversService';
-import { type ListRankingMode, listsService } from '../services/listsService';
+import {
+  COVER_NEEDS_CONNECTION,
+  coverSelectionFromDraft,
+  type ListCreatePayload,
+  type ListRankingMode,
+  type ListSimple,
+  listsService,
+} from '../services/listsService';
+import { localLibrary } from '../services/localLibrary';
+import { newId } from '../utils/id';
 import {
   LIST_ICON_LABELS,
   ListColorPicker,
@@ -39,7 +49,7 @@ export interface CreateListContentHandle {
 
 interface CreateListContentProps {
   onClose: () => void;
-  onSuccess: (list: CreatedList) => void;
+  onSuccess: (list: ListSimple) => void;
 }
 
 const MAX_TITLE_LENGTH = 100;
@@ -52,7 +62,8 @@ export const CreateListContent = forwardRef<
   CreateListContentHandle,
   CreateListContentProps
 >(function CreateListContent({ onClose, onSuccess }, ref) {
-  const { token } = useAuth();
+  const { user, token } = useAuth();
+  const { mutate, isOffline } = useSync();
   const { scheme } = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -156,8 +167,13 @@ export const CreateListContent = forwardRef<
       setError(null);
       return;
     }
-    if (!token) {
+    if (!token || !user) {
       setError('Authentication required');
+      return;
+    }
+    if (isOffline && coverDraftRef.current.kind === 'local') {
+      setFieldError(COVER_NEEDS_CONNECTION);
+      setError(null);
       return;
     }
 
@@ -165,28 +181,73 @@ export const CreateListContent = forwardRef<
     setIsLoading(true);
     setFieldError(null);
     setError(null);
+    const listId = newId();
+    const now = new Date().toISOString();
+    const payload: ListCreatePayload = {
+      list_id: listId,
+      title: trimmedTitle,
+      description: description.trim(),
+      color,
+      icon,
+      ranking_mode: rankingMode,
+      ...coverSelectionFromDraft(coverDraftRef.current),
+    };
+    const localList: ListSimple = {
+      ...payload,
+      cover_photo: null,
+      created_at: now,
+      updated_at: now,
+      item_count: 0,
+    };
     try {
-      const createdList = await listsService.createList(
-        trimmedTitle,
-        description.trim(),
-        color,
-        rankingMode,
-        token,
-        icon,
-        coverDraftRef.current
-      );
-      clearForm();
-      onSuccess({ listId: createdList.list_id, title: createdList.title });
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
-        setFieldError(
-          getApiErrorMessage(error, 'A list with this title already exists')
+      if (coverDraftRef.current.kind === 'local') {
+        const saved = await listsService.createList(
+          payload,
+          token,
+          coverDraftRef.current
         );
-      } else {
-        setError(
-          getApiErrorMessage(error, 'Failed to create list. Please try again.')
-        );
+        await localLibrary.applyLocalListCreate(user.id, {
+          ...localList,
+          cover: saved.cover,
+          cover_photo: saved.cover_photo,
+        });
+        clearForm();
+        onSuccess({
+          ...localList,
+          cover: saved.cover,
+          cover_photo: saved.cover_photo,
+        });
+        return;
       }
+      const outcome = await mutate(
+        {
+          id: newId(),
+          createdAt: now,
+          kind: 'list.create',
+          listId,
+          list: payload,
+        },
+        {
+          applyLocal: () =>
+            localLibrary.applyLocalListCreate(user.id, localList),
+          rollbackLocal: () =>
+            localLibrary.applyLocalListDelete(user.id, listId),
+        }
+      );
+      if (outcome.status === 'rejected') {
+        if (outcome.message.toLowerCase().includes('title')) {
+          setFieldError(outcome.message);
+        } else {
+          setError(outcome.message);
+        }
+        return;
+      }
+      clearForm();
+      onSuccess(localList);
+    } catch (error) {
+      setError(
+        getApiErrorMessage(error, 'Failed to create list. Please try again.')
+      );
     } finally {
       loadingRef.current = false;
       setIsLoading(false);

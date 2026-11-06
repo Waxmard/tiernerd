@@ -30,6 +30,7 @@ import {
 } from '../components/ImmersiveBoard';
 import { PhotoAttribution } from '../components/ListPhotoCover';
 import { RankingContent } from '../components/RankingContent';
+import { SyncStatusBanner } from '../components/SyncStatusBanner';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button } from '../design-system/components';
 import type {
@@ -39,13 +40,13 @@ import type {
 } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
+import { useSync } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
 import { ApiError } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import type { ListPhoto } from '../services/listCoversService';
 import {
   enqueueListCacheWrite,
-  listItemsCacheKey,
   listsCacheKey,
   parseCachedLists,
   sortListsByRecency,
@@ -78,6 +79,7 @@ const toTierList = (list: ListSimple): TierList => ({
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
+  const { isOffline, lastSyncedAt } = useSync();
   const userId = user?.id ?? null;
   const colors = useThemeColors();
   const safeAreaInsets = useSafeAreaInsets();
@@ -238,54 +240,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     async (item?: Item) => {
       const expectedUserId = userId;
       const expectedToken = token;
-      const lifecycleId = ++overviewLifecycleRef.current;
-      const requestId = ++listsRequestRef.current;
-      setIsLoading(false);
-      if (expectedUserId) {
-        const overviewKey = listsCacheKey(expectedUserId);
-        const itemKey = pendingList
-          ? listItemsCacheKey(expectedUserId, pendingList.listId)
-          : null;
-        const keys = [overviewKey, itemKey].filter(
-          (key): key is string => key !== null
-        );
-        await Promise.all(
-          keys.map((key) => {
-            if (
-              requestId !== listsRequestRef.current ||
-              lifecycleId !== overviewLifecycleRef.current ||
-              !isIdentityCurrent(expectedUserId, expectedToken)
-            )
-              return Promise.resolve();
-            return enqueueListCacheWrite(key, async () => {
-              if (
-                requestId === listsRequestRef.current &&
-                lifecycleId === overviewLifecycleRef.current &&
-                isIdentityCurrent(expectedUserId, expectedToken)
-              )
-                await AsyncStorage.removeItem(key);
-            }).catch(() => {});
-          })
-        );
-      }
+      await refreshLists().catch(() => undefined);
       if (
-        requestId !== listsRequestRef.current ||
-        lifecycleId !== overviewLifecycleRef.current ||
+        !item ||
+        !pendingList ||
         !isIdentityCurrent(expectedUserId, expectedToken)
       )
         return;
-      await refreshLists();
-      if (
-        item &&
-        pendingList &&
-        lifecycleId === overviewLifecycleRef.current &&
-        isIdentityCurrent(expectedUserId, expectedToken)
-      )
-        navigation.navigate('ListDetail', {
-          listId: pendingList.listId,
-          listTitle: pendingList.title,
-          completedItemId: item.item_id,
-        });
+      navigation.navigate('ListDetail', {
+        listId: pendingList.listId,
+        listTitle: pendingList.title,
+        completedItemId: item.item_id,
+      });
     },
     [isIdentityCurrent, navigation, pendingList, refreshLists, token, userId]
   );
@@ -294,53 +260,45 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setPendingList(null);
   }, []);
   const workspace = useItemWorkspace({
+    userId,
+    listId: pendingList?.listId ?? '',
     listTitle: pendingList?.title ?? '',
-    token,
+    items: [],
     onItemsChanged: handleWorkspaceItemsChanged,
     onClosed: handleWorkspaceClosed,
   });
   const handleListCreated = useCallback(
-    (list: CreatedList) => {
+    (list: ListSimple) => {
       const expectedUserId = userId;
       const expectedToken = token;
-      const lifecycleId = ++overviewLifecycleRef.current;
-      const requestId = ++listsRequestRef.current;
+      const created = toTierList(list);
+      setLists((previous) =>
+        [created, ...previous.filter((entry) => entry.id !== created.id)].sort(
+          (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+        )
+      );
+      setSnapshotIdentity({ userId: expectedUserId, token: expectedToken });
+      setHasSnapshot(true);
       setIsLoading(false);
-      setPendingList(list);
+      setPendingList({ listId: list.list_id, title: list.title });
       workspace.openAdd();
       setModalStep('addItem');
-      if (
-        expectedUserId &&
-        requestId === listsRequestRef.current &&
-        lifecycleId === overviewLifecycleRef.current &&
-        isIdentityCurrent(expectedUserId, expectedToken)
-      ) {
-        const key = listsCacheKey(expectedUserId);
-        void enqueueListCacheWrite(key, async () => {
-          if (
-            requestId === listsRequestRef.current &&
-            lifecycleId === overviewLifecycleRef.current &&
-            isIdentityCurrent(expectedUserId, expectedToken)
+      void refreshLists().catch(async () => {
+        if (!expectedUserId) return;
+        const cached = parseCachedLists(
+          await AsyncStorage.getItem(listsCacheKey(expectedUserId)).catch(
+            () => null
           )
-            await AsyncStorage.removeItem(key);
-        })
-          .catch(() => {})
-          .then(() => {
-            if (
-              requestId === listsRequestRef.current &&
-              lifecycleId === overviewLifecycleRef.current &&
-              isIdentityCurrent(expectedUserId, expectedToken)
-            )
-              return refreshLists();
-          })
-          .catch(() => {});
-      } else if (
-        requestId === listsRequestRef.current &&
-        lifecycleId === overviewLifecycleRef.current &&
-        isIdentityCurrent(expectedUserId, expectedToken)
-      ) {
-        void refreshLists().catch(() => {});
-      }
+        );
+        if (!cached || !isIdentityCurrent(expectedUserId, expectedToken))
+          return;
+        setLists(cached.map(toTierList));
+        setSnapshotIdentity({
+          userId: expectedUserId,
+          token: expectedToken,
+        });
+        setHasSnapshot(true);
+      });
     },
     [isIdentityCurrent, refreshLists, token, userId, workspace.openAdd]
   );
@@ -348,7 +306,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     modalStep === 'create'
       ? 'Create New List'
       : workspace.mode === 'ranking'
-        ? workspace.session?.status === 'ready_to_commit'
+        ? workspace.view?.isDecided
           ? 'Saving ranking…'
           : 'Which is better?'
         : 'Add item';
@@ -393,6 +351,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       workspace.requestClose,
     ]
   );
+  useEffect(() => {
+    if (lastSyncedAt === 0) return;
+    void refreshLists().catch(() => undefined);
+  }, [lastSyncedAt, refreshLists]);
   const formatDate = (date: Date) => {
     const age = Math.floor((Date.now() - date.getTime()) / 86400000);
     if (age === 0) return 'today';
@@ -525,7 +487,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 accessibilityLabel="Create new list"
               />
             </View>
-            {error ? (
+            {error && !(isOffline && currentSnapshot) ? (
               <View className="flex-row items-center justify-between gap-3 rounded-xl border border-danger-text p-3">
                 <Text
                   accessibilityLiveRegion="polite"
@@ -613,6 +575,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 )}
               </TouchableOpacity>
             </View>
+            <SyncStatusBanner />
             <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>
@@ -627,11 +590,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             else if (modalStep === 'addItem') {
               if (workspace.mode === 'ranking') {
                 const list = pendingList;
-                if (workspace.pauseRanking() && list)
-                  navigation.navigate('ListDetail', {
-                    listId: list.listId,
-                    listTitle: list.title,
-                  });
+                void workspace.pauseRanking().then((paused) => {
+                  if (paused && list)
+                    navigation.navigate('ListDetail', {
+                      listId: list.listId,
+                      listTitle: list.title,
+                    });
+                });
               } else void workspace.requestClose().catch(() => false);
             }
           }}
@@ -648,39 +613,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           )}
           {modalStep === 'addItem' &&
             pendingList &&
-            (workspace.mode === 'ranking' && workspace.session ? (
+            (workspace.mode === 'ranking' && workspace.view ? (
               <RankingContent
                 listTitle={pendingList.title}
-                session={workspace.session}
+                item={workspace.view.item}
+                view={workspace.view}
                 presentation="modal"
                 isBusy={workspace.isBusy}
                 error={workspace.error}
-                recoveryRequired={workspace.recoveryRequired}
-                onAnswer={(result) => void workspace.answer(result)}
+                onAnswer={(answer) => void workspace.answer(answer)}
                 onUndo={() => void workspace.undo()}
-                onRetryCommit={() => void workspace.retryCommit()}
-                onCancel={() =>
-                  void workspace.requestClose().catch(() => false)
-                }
+                onCancel={() => void workspace.cancelRanking()}
                 onPause={() => {
                   const list = pendingList;
-                  if (workspace.pauseRanking() && list) {
-                    navigation.navigate('ListDetail', {
-                      listId: list.listId,
-                      listTitle: list.title,
-                    });
-                  }
+                  void workspace.pauseRanking().then((paused) => {
+                    if (paused && list) {
+                      navigation.navigate('ListDetail', {
+                        listId: list.listId,
+                        listTitle: list.title,
+                      });
+                    }
+                  });
                 }}
-                onRestart={() => void workspace.restart()}
-                onReload={workspace.reloadSession}
-                onRetryRefresh={workspace.retryRefresh}
               />
             ) : workspace.mode === 'add' || workspace.mode === 'edit' ? (
               <AddItemContent
                 mode={workspace.mode}
                 form={workspace.form}
                 onFormChange={workspace.setForm}
-                onRetryRefresh={workspace.retryRefresh}
                 fieldErrors={workspace.fieldErrors}
                 isBusy={workspace.isBusy}
                 error={workspace.error}

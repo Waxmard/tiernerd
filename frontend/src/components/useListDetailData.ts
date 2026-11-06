@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSync } from '../providers/SyncProvider';
 import { getApiErrorMessage } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import {
@@ -11,9 +12,6 @@ import {
   bumpLifecycleMutation,
   canAcceptItemsResponse,
   canAcceptMetadataResponse,
-  canApplyCachedItems,
-  canApplyCachedMetadata,
-  canApplyHydration,
   canWriteCachedItems,
   canWriteCachedSummary,
   createInvalidatedReadState,
@@ -36,11 +34,15 @@ import {
   sortListsByRecency,
 } from '../services/listsCache';
 import {
+  COVER_NEEDS_CONNECTION,
   INVALID_RANKING_MODE,
   type ListMetadata,
   type ListOptionsInput,
+  listOptionsPayload,
   listsService,
 } from '../services/listsService';
+import { localLibrary } from '../services/localLibrary';
+import { newId } from '../utils/id';
 
 const ITEMS_ERROR = 'Unable to refresh items. Try again.';
 
@@ -56,6 +58,9 @@ export function useListDetailData({
   listId,
   routeTitle,
 }: UseListDetailDataOptions) {
+  const { mutate, isOffline } = useSync();
+  const isOfflineRef = useRef(isOffline);
+  isOfflineRef.current = isOffline;
   const identity = useMemo(
     () => JSON.stringify([userId, token, listId]),
     [listId, token, userId]
@@ -370,6 +375,7 @@ export function useListDetailData({
             rankingMode: list.ranking_mode,
             metadataError: false,
             metadataLoaded: true,
+            hasMetadataSnapshot: true,
           })
         );
         return list;
@@ -397,98 +403,6 @@ export function useListDetailData({
     },
     [invalidateDefinitiveRead, updateState]
   );
-  const hydrateCache = useCallback(
-    async (lifecycle: ListDetailLifecycle): Promise<void> => {
-      if (
-        !isLifecycleReadable(lifecycle, lifecycleRef.current) ||
-        !lifecycle.userId
-      )
-        return;
-      const { hydrationId, version } = {
-        hydrationId: ++lifecycle.hydrationRequest,
-        version: lifecycle.cacheVersion,
-      };
-      const itemKey = listItemsCacheKey(lifecycle.userId, lifecycle.listId);
-      const overviewKey = listsCacheKey(lifecycle.userId);
-      const entries = await AsyncStorage.multiGet([itemKey, overviewKey]).catch(
-        () => null
-      );
-      if (!entries) return;
-      if (
-        !canApplyHydration(
-          lifecycle,
-          hydrationId,
-          version,
-          lifecycleRef.current
-        )
-      )
-        return;
-      const cachedItems = parseCachedListItems(
-        entries.find(([key]) => key === itemKey)?.[1] ?? null,
-        lifecycle.listId
-      );
-      if (
-        cachedItems &&
-        canApplyCachedItems(
-          lifecycle,
-          hydrationId,
-          version,
-          lifecycleRef.current
-        )
-      ) {
-        itemsRef.current = cachedItems;
-        updateState(
-          lifecycle,
-          () =>
-            canApplyCachedItems(
-              lifecycle,
-              hydrationId,
-              version,
-              lifecycleRef.current
-            ),
-          (previous) => applyCachedItemsState(previous, cachedItems)
-        );
-      }
-      const cachedLists = parseCachedLists(
-        entries.find(([key]) => key === overviewKey)?.[1] ?? null
-      );
-      const cachedList = cachedLists?.find(
-        (candidate) => candidate.list_id === lifecycle.listId
-      );
-      if (
-        cachedList &&
-        canApplyCachedMetadata(
-          lifecycle,
-          hydrationId,
-          version,
-          lifecycleRef.current
-        )
-      ) {
-        updateState(
-          lifecycle,
-          () =>
-            canApplyCachedMetadata(
-              lifecycle,
-              hydrationId,
-              version,
-              lifecycleRef.current
-            ),
-          (previous) =>
-            applyCachedMetadataState(previous, {
-              title: cachedList.title,
-              description: cachedList.description,
-              color: cachedList.color,
-              icon: cachedList.icon,
-              cover: cachedList.cover,
-              coverPhoto: cachedList.cover_photo,
-              rankingMode: cachedList.ranking_mode,
-            })
-        );
-      }
-    },
-    [updateState]
-  );
-
   const fetchItems = useCallback(async () => {
     const lifecycle = lifecycleRef.current as ListDetailLifecycle;
     const version = lifecycle.cacheVersion;
@@ -532,10 +446,58 @@ export function useListDetailData({
       ).catch(() => {});
     return metadata;
   }, [refreshMetadataFor, writeCachedSummary]);
+  const reloadFromCache = useCallback(
+    async (respectLive = false): Promise<void> => {
+      const lifecycle = lifecycleRef.current;
+      if (
+        !lifecycle?.userId ||
+        !isLifecycleReadable(lifecycle, lifecycleRef.current)
+      )
+        return;
+      const entries = await AsyncStorage.multiGet([
+        listItemsCacheKey(lifecycle.userId, lifecycle.listId),
+        listsCacheKey(lifecycle.userId),
+      ]).catch(() => null);
+      if (!entries || !isLifecycleReadable(lifecycle, lifecycleRef.current))
+        return;
+      const cachedItems = parseCachedListItems(
+        entries[0]?.[1] ?? null,
+        lifecycle.listId
+      );
+      if (cachedItems && (!respectLive || !lifecycle.itemsAcceptedLive)) {
+        itemsRef.current = cachedItems;
+        updateState(
+          lifecycle,
+          () => true,
+          (previous) => applyCachedItemsState(previous, cachedItems)
+        );
+      }
+      const summary = parseCachedLists(entries[1]?.[1] ?? null)?.find(
+        (list) => list.list_id === lifecycle.listId
+      );
+      if (summary && (!respectLive || !lifecycle.metadataAcceptedLive))
+        updateState(
+          lifecycle,
+          () => true,
+          (previous) =>
+            applyCachedMetadataState(previous, {
+              title: summary.title,
+              description: summary.description,
+              color: summary.color,
+              icon: summary.icon,
+              cover: summary.cover,
+              coverPhoto: summary.cover_photo,
+              rankingMode: summary.ranking_mode,
+            })
+        );
+    },
+    [updateState]
+  );
   const refreshAfterMutation = useCallback(async (): Promise<Item[]> => {
+    await reloadFromCache();
     const lifecycle = lifecycleRef.current;
     if (!lifecycle || !isLifecycleReadable(lifecycle, lifecycleRef.current))
-      throw new Error(ITEMS_ERROR);
+      return itemsRef.current;
     const version = bumpLifecycleMutation(lifecycle);
     lifecycle.metadataAcceptedLive = false;
     updateState(
@@ -546,48 +508,34 @@ export function useListDetailData({
         metadataLoaded: false,
       })
     );
-    await removeCachedItems(lifecycle, version).catch(() => undefined);
-    if (
-      !isLifecycleReadable(lifecycle, lifecycleRef.current) ||
-      lifecycle.cacheVersion !== version
-    )
-      throw new Error(ITEMS_ERROR);
     const itemsPromise = fetchItemsFor(lifecycle);
     const metadataPromise = refreshMetadataFor(lifecycle);
     const requestId = lifecycle.metadataRequest;
-    const [items, metadata] = await Promise.all([
+    const [itemsResult, metadataResult] = await Promise.allSettled([
       itemsPromise,
       metadataPromise,
     ]);
+    const metadata =
+      metadataResult.status === 'fulfilled' ? metadataResult.value : null;
+    const items =
+      itemsResult.status === 'fulfilled' ? itemsResult.value : itemsRef.current;
     if (
-      !metadata ||
-      !isCacheCurrent(lifecycle, version, lifecycleRef.current) ||
-      !canAcceptMetadataResponse(lifecycle, requestId, lifecycleRef.current)
-    ) {
-      lifecycle.itemsAcceptedLive = false;
-      updateState(
+      metadata &&
+      isCacheCurrent(lifecycle, version, lifecycleRef.current) &&
+      canAcceptMetadataResponse(lifecycle, requestId, lifecycleRef.current)
+    )
+      void writeCachedSummary(
         lifecycle,
-        () => lifecycle.cacheVersion === version,
-        (previous) => ({
-          ...previous,
-          itemsLoaded: false,
-          itemsError: ITEMS_ERROR,
-        })
-      );
-      throw new Error(ITEMS_ERROR);
-    }
-    void writeCachedSummary(
-      lifecycle,
-      version,
-      metadata,
-      items.length,
-      requestId
-    ).catch(() => {});
+        version,
+        metadata,
+        items.length,
+        requestId
+      ).catch(() => {});
     return items;
   }, [
     fetchItemsFor,
     refreshMetadataFor,
-    removeCachedItems,
+    reloadFromCache,
     updateState,
     writeCachedSummary,
   ]);
@@ -596,63 +544,107 @@ export function useListDetailData({
       const lifecycle = lifecycleRef.current;
       if (
         !lifecycle?.token ||
+        !lifecycle.userId ||
         !isLifecycleReadable(lifecycle, lifecycleRef.current) ||
-        !lifecycle.itemsAcceptedLive ||
-        !lifecycle.metadataAcceptedLive ||
         modeSaveRef.current === lifecycle
       )
         throw new Error(ITEMS_ERROR);
+      const usesLocalCover = options.coverDraft.kind === 'local';
+      if (isOfflineRef.current && usesLocalCover)
+        throw new Error(COVER_NEEDS_CONNECTION);
+      const { metadata, coverPhoto } = listOptionsPayload(options);
+      const now = new Date().toISOString();
       modeSaveRef.current = lifecycle;
       const requestId = ++lifecycle.metadataRequest;
       const version = ++lifecycle.cacheVersion;
       lifecycle.hydrationRequest++;
       try {
-        const metadata = await listsService.updateListOptions(
-          lifecycle.listId,
-          options,
-          lifecycle.token
-        );
-        if (
-          !canAcceptMetadataResponse(
-            lifecycle,
-            requestId,
-            lifecycleRef.current
-          ) ||
-          !isCacheCurrent(lifecycle, version, lifecycleRef.current)
-        )
-          throw new Error(ITEMS_ERROR);
-        metadataRef.current = { lifecycle, requestId, metadata };
-        lifecycle.metadataAcceptedLive = true;
-        updateState(
-          lifecycle,
-          () =>
-            canAcceptMetadataResponse(
+        let saved: ListMetadata | null = null;
+        if (usesLocalCover) {
+          saved = await listsService.updateListOptions(
+            lifecycle.listId,
+            metadata,
+            lifecycle.token,
+            options.coverDraft
+          );
+          if (
+            !canAcceptMetadataResponse(
               lifecycle,
               requestId,
               lifecycleRef.current
-            ),
+            ) ||
+            !isCacheCurrent(lifecycle, version, lifecycleRef.current)
+          )
+            throw new Error(ITEMS_ERROR);
+          lifecycle.metadataAcceptedLive = true;
+          await writeCachedSummary(
+            lifecycle,
+            version,
+            saved,
+            itemsRef.current.length
+          ).catch(() => {});
+        } else {
+          const outcome = await mutate(
+            {
+              id: newId(),
+              createdAt: now,
+              kind: 'list.update',
+              listId: lifecycle.listId,
+              metadata,
+            },
+            {
+              applyLocal: () =>
+                localLibrary.applyLocalListUpdate(
+                  lifecycle.userId as string,
+                  lifecycle.listId,
+                  { ...metadata, cover_photo: coverPhoto },
+                  now
+                ),
+            }
+          );
+          if (outcome.status === 'rejected') throw new Error(outcome.message);
+          const base =
+            metadataRef.current?.lifecycle === lifecycle
+              ? metadataRef.current.metadata
+              : null;
+          saved = base
+            ? {
+                ...base,
+                title: options.title,
+                color: options.color,
+                icon: options.icon,
+                cover:
+                  options.coverDraft.kind === 'landscape' ? 'landscape' : null,
+                cover_photo: coverPhoto,
+                ranking_mode: options.ranking_mode,
+                updated_at: now,
+              }
+            : null;
+        }
+        if (saved)
+          metadataRef.current = { lifecycle, requestId, metadata: saved };
+        updateState(
+          lifecycle,
+          () => isLifecycleReadable(lifecycle, lifecycleRef.current),
           (previous) => ({
             ...previous,
-            detailsTitle: metadata.title,
-            listDescription: metadata.description,
-            listColor: metadata.color,
-            listIcon: metadata.icon ?? null,
-            listCover: metadata.cover ?? null,
-            listCoverPhoto: metadata.cover_photo ?? null,
-            rankingMode: metadata.ranking_mode,
+            detailsTitle: saved?.title ?? options.title,
+            listColor: saved?.color ?? options.color,
+            listIcon: saved?.icon ?? options.icon,
+            listCover: saved?.cover ?? null,
+            listCoverPhoto: saved ? saved.cover_photo : coverPhoto,
+            rankingMode: saved?.ranking_mode ?? options.ranking_mode,
             metadataError: false,
             metadataLoaded: true,
+            hasMetadataSnapshot: true,
           })
         );
-        await writeCachedSummary(
-          lifecycle,
-          version,
-          metadata,
-          itemsRef.current.length
-        ).catch(() => {});
       } catch (error: unknown) {
         throw new Error(
-          error instanceof Error && error.message === INVALID_RANKING_MODE
+          error instanceof Error &&
+            (error.message === INVALID_RANKING_MODE ||
+              error.message === COVER_NEEDS_CONNECTION ||
+              error.message === ITEMS_ERROR)
             ? error.message
             : getApiErrorMessage(
                 error,
@@ -663,16 +655,31 @@ export function useListDetailData({
         if (modeSaveRef.current === lifecycle) modeSaveRef.current = null;
       }
     },
-    [updateState, writeCachedSummary]
+    [mutate, updateState, writeCachedSummary]
   );
   const evictDeletedList = useCallback(async (): Promise<void> => {
     const lifecycle = lifecycleRef.current;
     if (
-      !lifecycle ||
+      !lifecycle?.userId ||
       !isLifecycleActive(lifecycle, lifecycleRef.current) ||
       lifecycle.deleted
     )
       return;
+    await mutate(
+      {
+        id: newId(),
+        createdAt: new Date().toISOString(),
+        kind: 'list.delete',
+        listId: lifecycle.listId,
+      },
+      {
+        applyLocal: () =>
+          localLibrary.applyLocalListDelete(
+            lifecycle.userId as string,
+            lifecycle.listId
+          ),
+      }
+    );
     const version = evictLifecycleList(lifecycle);
     itemsRef.current = [];
     updateState(
@@ -681,8 +688,7 @@ export function useListDetailData({
       () => applyEvictedListState(lifecycle.identity, lifecycle.routeTitle)
     );
     await clearPersistedList(lifecycle, version);
-  }, [clearPersistedList, updateState]);
-
+  }, [clearPersistedList, mutate, updateState]);
   useEffect(() => {
     const lifecycle = lifecycleRef.current;
     if (!lifecycle || lifecycle.identity !== identity) return;
@@ -719,15 +725,15 @@ export function useListDetailData({
           ).catch(() => {});
       })
       .catch(() => {});
-    void hydrateCache(lifecycle);
+    void reloadFromCache(true);
     return () => {
       deactivateLifecycle(lifecycle);
     };
   }, [
     fetchItemsFor,
-    hydrateCache,
     identity,
     refreshMetadataFor,
+    reloadFromCache,
     writeCachedSummary,
   ]);
 
@@ -751,6 +757,7 @@ export function useListDetailData({
     rankingMode: visibleState.rankingMode,
     metadataError: visibleState.metadataError,
     metadataLoaded: visibleState.metadataLoaded,
+    hasMetadataSnapshot: visibleState.hasMetadataSnapshot,
     fetchItems,
     refreshMetadata,
     refreshAfterMutation,
