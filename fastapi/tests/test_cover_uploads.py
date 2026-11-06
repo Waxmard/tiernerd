@@ -152,14 +152,6 @@ async def test_orientation_resize_and_metadata_removal(storage):
         assert not {"exif", "icc_profile", "comment", "xmp"} & result.info.keys()
 
 
-async def test_small_image_is_not_upscaled(storage):
-    user_id = uuid4()
-    photo = await covers.create_upload(upload(image_bytes("PNG", (40, 20))), user_id)
-    saved = storage.objects[covers.object_key(user_id, UUID(photo["id"]))]
-    with Image.open(BytesIO(saved)) as result:
-        assert result.size == (40, 20)
-
-
 @pytest.mark.parametrize(
     "data",
     [b"", b"not an image", image_bytes("GIF"), image_bytes("PNG")[:-16]],

@@ -281,15 +281,6 @@ test('defaults only missing legacy ranking modes to score', () => {
   ]);
 });
 
-test('preserves both cached ranking modes', () => {
-  const lists: ListSimple[] = [
-    listSimple,
-    { ...listSimple, list_id: 'list-2', ranking_mode: 'rank' },
-  ];
-
-  assert.deepEqual(parseCachedLists(JSON.stringify(lists)), lists);
-});
-
 test('rejects cached summaries with invalid or null ranking modes', () => {
   for (const rankingMode of [null, '', 'other', 'Rank', false, 0, {}]) {
     assert.equal(

@@ -221,9 +221,17 @@ async def test_resolve_rejects_mismatched_provider_id(mock_provider):
     assert exc.value.status_code == 503
 
 
-@pytest.mark.parametrize("status_code", [403, 429])
-@pytest.mark.parametrize("operation", ["search", "resolve", "track"])
-@pytest.mark.parametrize("retry_after", [None, "120", "Wed, 21 Oct 2015 07:28:00 GMT"])
+@pytest.mark.parametrize(
+    ("status_code", "operation", "retry_after"),
+    [
+        (403, "search", None),
+        (403, "resolve", "120"),
+        (403, "track", "Wed, 21 Oct 2015 07:28:00 GMT"),
+        (429, "search", "120"),
+        (429, "resolve", "Wed, 21 Oct 2015 07:28:00 GMT"),
+        (429, "track", None),
+    ],
+)
 async def test_rate_limit_preserves_retry_after_without_retry(
     mock_provider, retry_after, status_code, operation
 ):

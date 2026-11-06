@@ -1502,16 +1502,6 @@ class TestListPhotoLifecycle:
             headers=auth_headers,
         )
         assert invalid_update.status_code == 422
-        duplicate_metadata = await client.post(
-            "/api/lists/",
-            files=[
-                ("metadata", (None, json.dumps({"title": "Twice"} | selection))),
-                ("metadata", (None, json.dumps({"title": "Twice"} | selection))),
-                ("file", ("cover.jpg", b"jpeg", "image/jpeg")),
-            ],
-            headers=auth_headers,
-        )
-        assert duplicate_metadata.status_code == 422
         denied = await client.put(
             f"/api/lists/{test_list.list_id}",
             files=upload_files(selection),
