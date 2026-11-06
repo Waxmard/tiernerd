@@ -1,9 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import { BaseModalContent, Button } from '../design-system/components';
+import { BaseModalContent, Button, Input } from '../design-system/components';
+import type {
+  ListColor,
+  ListCover,
+  ListIcon,
+} from '../design-system/tokens/colors';
 import { useThemeColors } from '../providers/ThemeProvider';
-import type { ListRankingMode } from '../services/listsService';
+import { coverDraftMatchesSaved } from '../services/coverDraft';
+import {
+  type CoverDraft,
+  coverDraftFromSaved,
+  type ListPhoto,
+} from '../services/listCoversService';
+import type {
+  ListOptionsInput,
+  ListRankingMode,
+} from '../services/listsService';
+import { ListColorPicker, ListIconPicker } from './ImmersiveBoard';
+import { ListCoverPicker, releaseCoverDraft } from './ListCoverPicker';
+
+const MAX_TITLE_LENGTH = 100;
 
 const choices: {
   value: ListRankingMode;
@@ -92,41 +110,108 @@ export function RankingModeSelector({
 }
 
 export function ListRankingOptions({
+  title,
   rankingMode,
+  color,
+  icon,
+  cover,
+  coverPhoto,
+  listId,
   disabled,
   onSave,
   onVisibilityChange,
 }: {
+  title: string;
   rankingMode: ListRankingMode;
+  color: ListColor | null;
+  icon: ListIcon | null;
+  cover: ListCover | null;
+  coverPhoto: ListPhoto | null;
+  listId: string;
   disabled: boolean;
-  onSave: (mode: ListRankingMode) => Promise<void>;
+  onSave: (options: ListOptionsInput) => Promise<void>;
   onVisibilityChange: (open: boolean) => void;
 }) {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(rankingMode);
+  const [draftTitle, setDraftTitle] = useState(title);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [draftColor, setDraftColor] = useState(color);
+  const [draftIcon, setDraftIcon] = useState(icon);
+  const [draftCover, setDraftCover] = useState<CoverDraft>(() =>
+    coverDraftFromSaved(cover, coverPhoto)
+  );
   const [saving, setSaving] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
+  const coverBusyRef = useRef(false);
+  const coverDraftRef = useRef(draftCover);
+  const coverSessionRef = useRef(0);
+  const coverSession = coverSessionRef.current;
+  const handleCoverBusyChange = useCallback((busy: boolean) => {
+    coverBusyRef.current = busy;
+    setCoverBusy(busy);
+  }, []);
+
+  const changeCoverDraft = useCallback((next: CoverDraft) => {
+    if (coverDraftRef.current !== next) {
+      releaseCoverDraft(coverDraftRef.current);
+    }
+    coverDraftRef.current = next;
+    setDraftCover(next);
+  }, []);
+
+  useEffect(() => () => releaseCoverDraft(coverDraftRef.current), []);
+
+  const changed =
+    draftTitle.trim() !== title ||
+    draft !== rankingMode ||
+    draftColor !== color ||
+    draftIcon !== icon ||
+    !coverDraftMatchesSaved(draftCover, cover, coverPhoto);
   const close = () => {
     if (savingRef.current) return;
+    coverSessionRef.current += 1;
     onVisibilityChange(false);
+    handleCoverBusyChange(false);
+    changeCoverDraft({ kind: 'none' });
+    setError(null);
+    setTitleError(null);
     setOpen(false);
   };
   const save = async () => {
-    if (savingRef.current || draft === rankingMode) return;
+    if (savingRef.current || coverBusyRef.current || !changed) return;
+    const trimmedTitle = draftTitle.trim();
+    if (!trimmedTitle) {
+      setTitleError('Title is required');
+      return;
+    }
+    if (Array.from(trimmedTitle).length > MAX_TITLE_LENGTH) {
+      setTitleError('Title must be 100 characters or less');
+      return;
+    }
     savingRef.current = true;
     setSaving(true);
     setError(null);
     try {
-      await onSave(draft);
+      await onSave({
+        title: trimmedTitle,
+        ranking_mode: draft,
+        color: draftColor,
+        icon: draftIcon,
+        coverDraft: coverDraftRef.current,
+      });
+      coverSessionRef.current += 1;
       onVisibilityChange(false);
+      changeCoverDraft({ kind: 'none' });
       setOpen(false);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : 'Unable to save ranking mode. Try again.'
+          : 'Unable to save list options. Try again.'
       );
     } finally {
       savingRef.current = false;
@@ -143,6 +228,11 @@ export function ListRankingOptions({
         onPress={() => {
           if (disabled) return;
           setDraft(rankingMode);
+          setDraftTitle(title);
+          setTitleError(null);
+          setDraftColor(color);
+          setDraftIcon(icon);
+          changeCoverDraft(coverDraftFromSaved(cover, coverPhoto));
           setError(null);
           onVisibilityChange(true);
           setOpen(true);
@@ -184,20 +274,75 @@ export function ListRankingOptions({
                 size="large"
                 onPress={() => void save()}
                 loading={saving}
-                disabled={saving || draft === rankingMode}
+                disabled={saving || coverBusy || !changed}
                 className="min-w-[100px] max-w-full shrink"
               />
             </View>
           }
         >
-          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark mb-3">
-            Ranking mode
-          </Text>
-          <RankingModeSelector
-            value={draft}
-            onChange={setDraft}
-            disabled={saving}
-          />
+          <View className="gap-4">
+            <Input
+              label="Title"
+              placeholder="Enter list title"
+              value={draftTitle}
+              onChangeText={(value) => {
+                setDraftTitle(value);
+                setTitleError(null);
+                setError(null);
+              }}
+              error={titleError ?? undefined}
+              maxLength={MAX_TITLE_LENGTH}
+              editable={!saving}
+            />
+            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+              List icon
+            </Text>
+            <ListIconPicker
+              value={draftIcon}
+              onChange={setDraftIcon}
+              disabled={saving}
+            />
+            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+              Accent color
+            </Text>
+            <ListColorPicker
+              value={draftColor}
+              onChange={setDraftColor}
+              disabled={saving}
+            />
+            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+              Cover
+            </Text>
+            {open ? (
+              <ListCoverPicker
+                key={coverSession}
+                value={draftCover}
+                onChange={(next) => {
+                  if (coverSessionRef.current === coverSession) {
+                    changeCoverDraft(next);
+                  } else {
+                    releaseCoverDraft(next);
+                  }
+                }}
+                color={draftColor}
+                listId={listId}
+                disabled={saving}
+                onBusyChange={(busy) => {
+                  if (coverSessionRef.current === coverSession) {
+                    handleCoverBusyChange(busy);
+                  }
+                }}
+              />
+            ) : null}
+            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+              Ranking mode
+            </Text>
+            <RankingModeSelector
+              value={draft}
+              onChange={setDraft}
+              disabled={saving}
+            />
+          </View>
         </BaseModalContent>
       </Modal>
     </>

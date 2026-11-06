@@ -5,9 +5,20 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
 
   return {
     ...config,
+    ios: {
+      ...config.ios,
+      bundleIdentifier: process.env.IOS_BUNDLE_ID || config.ios?.bundleIdentifier,
+    },
     plugins: [
       ...(config.plugins ?? []),
-      './withIosSceneLifecycle',
+      [
+        'expo-image-picker',
+        {
+          photosPermission: 'Choose a photo to use as a list cover.',
+          cameraPermission: false,
+          microphonePermission: false,
+        },
+      ],
       './withQuietPods',
       './withIosDeploymentTarget',
       ...(clientId

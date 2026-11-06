@@ -7,17 +7,25 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Pressable, Text, type TextInput, View } from 'react-native';
+import { Pressable, Text, type TextInputInstance, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import {
-  LIST_COLORS,
   type ListColor,
+  type ListIcon,
   palette,
 } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
 import { useTheme } from '../providers/ThemeProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
+import type { CoverDraft } from '../services/listCoversService';
 import { type ListRankingMode, listsService } from '../services/listsService';
+import {
+  LIST_ICON_LABELS,
+  ListColorPicker,
+  ListIconPicker,
+  SWATCH_CLASS,
+} from './ImmersiveBoard';
+import { ListCoverPicker, releaseCoverDraft } from './ListCoverPicker';
 import { RankingModeSelector } from './ListRankingOptions';
 
 export interface CreatedList {
@@ -36,13 +44,6 @@ interface CreateListContentProps {
 
 const MAX_TITLE_LENGTH = 100;
 
-const SWATCH_CLASS: Record<ListColor, string> = {
-  blue: 'bg-list-blue-solid dark:bg-list-blue-solid-dark',
-  teal: 'bg-list-teal-solid dark:bg-list-teal-solid-dark',
-  amber: 'bg-list-amber-solid dark:bg-list-amber-solid-dark',
-  pink: 'bg-list-pink-solid dark:bg-list-pink-solid-dark',
-};
-
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
 type CreateListView = 'overview' | 'description' | 'color' | 'ranking-mode';
@@ -56,28 +57,66 @@ export const CreateListContent = forwardRef<
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState<ListColor | null>(null);
+  const [icon, setIcon] = useState<ListIcon | null>(null);
+  const [coverDraft, setCoverDraft] = useState<CoverDraft>({ kind: 'none' });
   const [rankingMode, setRankingMode] = useState<ListRankingMode>('score');
   const [view, setView] = useState<CreateListView>('overview');
   const [isLoading, setIsLoading] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const titleRef = useRef<TextInput>(null);
+  const titleRef = useRef<TextInputInstance>(null);
   const hasVisitedOptionalFieldRef = useRef(false);
   const loadingRef = useRef(false);
+  const coverBusyRef = useRef(false);
+  const coverDraftRef = useRef(coverDraft);
+  const coverSessionRef = useRef(0);
+  const coverSession = coverSessionRef.current;
+
+  const handleCoverBusyChange = useCallback((busy: boolean) => {
+    coverBusyRef.current = busy;
+    setCoverBusy(busy);
+  }, []);
+
+  const changeCoverDraft = useCallback((draft: CoverDraft) => {
+    if (coverDraftRef.current !== draft) {
+      releaseCoverDraft(coverDraftRef.current);
+    }
+    coverDraftRef.current = draft;
+    setCoverDraft(draft);
+  }, []);
+
+  const coverDescription =
+    coverDraft.kind === 'none'
+      ? 'No cover'
+      : coverDraft.kind === 'landscape'
+        ? 'Landscape cover'
+        : coverDraft.kind === 'local'
+          ? 'Device photo cover'
+          : coverDraft.kind === 'persisted' &&
+              coverDraft.photo.source === 'upload'
+            ? 'Uploaded photo cover'
+            : 'Photo cover';
+
+  useEffect(() => () => releaseCoverDraft(coverDraftRef.current), []);
 
   useEffect(() => {
     if (fieldError) titleRef.current?.focus();
   }, [fieldError]);
 
   const clearForm = useCallback(() => {
+    coverSessionRef.current += 1;
     setTitle('');
     setDescription('');
     setColor(null);
+    setIcon(null);
+    changeCoverDraft({ kind: 'none' });
+    handleCoverBusyChange(false);
     setRankingMode('score');
     setView('overview');
     setFieldError(null);
     setError(null);
-  }, []);
+  }, [changeCoverDraft, handleCoverBusyChange]);
 
   const requestClose = useCallback(async () => {
     if (loadingRef.current) return false;
@@ -99,10 +138,13 @@ export const CreateListContent = forwardRef<
   };
 
   const returnToOverview = () => {
+    if (coverBusyRef.current) return;
+    coverSessionRef.current += 1;
     setView('overview');
   };
 
   const handleCreate = async () => {
+    if (loadingRef.current || coverBusyRef.current) return;
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       setFieldError('Title is required');
@@ -129,7 +171,9 @@ export const CreateListContent = forwardRef<
         description.trim(),
         color,
         rankingMode,
-        token
+        token,
+        icon,
+        coverDraftRef.current
       );
       clearForm();
       onSuccess({ listId: createdList.list_id, title: createdList.title });
@@ -157,11 +201,11 @@ export const CreateListContent = forwardRef<
           : view === 'description'
             ? 'Description'
             : view === 'color'
-              ? 'List color'
+              ? 'List appearance'
               : 'Ranking mode'
       }
       error={error}
-      isLoading={isLoading}
+      isLoading={isLoading || coverBusy}
       submitText={view === 'overview' ? 'Create' : 'Done'}
       closeText={view === 'overview' ? 'Cancel' : 'Back'}
       onClose={() => {
@@ -219,8 +263,8 @@ export const CreateListContent = forwardRef<
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Color (optional): ${color ?? 'None'}`}
-            accessibilityHint="Choose a list color"
+            accessibilityLabel={`Appearance (optional): ${color ?? 'No color'}, ${icon ? LIST_ICON_LABELS[icon] : 'default icon'}, ${coverDescription}`}
+            accessibilityHint="Choose list color, icon, and cover"
             accessibilityState={{ disabled: isLoading }}
             disabled={isLoading}
             onPress={openColor}
@@ -228,10 +272,14 @@ export const CreateListContent = forwardRef<
           >
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-                Color (optional)
+                Appearance (optional)
               </Text>
               <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-                {color ?? 'None'}
+                {[
+                  color ?? 'No color',
+                  icon ? LIST_ICON_LABELS[icon] : 'Default icon',
+                  coverDescription,
+                ].join(' · ')}
               </Text>
             </View>
             {color ? (
@@ -299,33 +347,44 @@ export const CreateListContent = forwardRef<
           disabled={isLoading}
         />
       ) : (
-        <View className="flex-row flex-wrap gap-3">
-          {LIST_COLORS.map((hue) => {
-            const selected = color === hue;
-            return (
-              <Pressable
-                key={hue}
-                accessibilityRole="button"
-                accessibilityLabel={`Color ${hue}`}
-                accessibilityState={{ selected }}
-                disabled={isLoading}
-                onPress={() => setColor(selected ? null : hue)}
-                className={[
-                  'w-11 h-11 rounded-full items-center justify-center',
-                  SWATCH_CLASS[hue],
-                ].join(' ')}
-              >
-                {selected ? (
-                  <Ionicons
-                    name="checkmark"
-                    size={20}
-                    color={palette.list[hue][scheme]['on-solid']}
-                    accessible={false}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          })}
+        <View className="gap-4">
+          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+            Color
+          </Text>
+          <ListColorPicker
+            value={color}
+            onChange={setColor}
+            disabled={isLoading || coverBusy}
+          />
+          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+            Icon
+          </Text>
+          <ListIconPicker
+            value={icon}
+            onChange={setIcon}
+            disabled={isLoading || coverBusy}
+          />
+          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
+            Cover
+          </Text>
+          <ListCoverPicker
+            key={coverSession}
+            value={coverDraft}
+            onChange={(draft) => {
+              if (coverSessionRef.current === coverSession) {
+                changeCoverDraft(draft);
+              } else {
+                releaseCoverDraft(draft);
+              }
+            }}
+            color={color}
+            disabled={isLoading}
+            onBusyChange={(busy) => {
+              if (coverSessionRef.current === coverSession) {
+                handleCoverBusyChange(busy);
+              }
+            }}
+          />
         </View>
       )}
     </BaseModalContent>

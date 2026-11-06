@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, type TextInput, View } from 'react-native';
+import { Pressable, Text, type TextInputInstance, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { ItemFormDraft } from './itemWorkspaceTypes';
@@ -43,7 +43,7 @@ export function AddItemContent({
   presentation,
   introText,
 }: AddItemContentProps) {
-  const nameRef = useRef<TextInput>(null);
+  const nameRef = useRef<TextInputInstance>(null);
   const [view, setView] = useState<AddItemView>('overview');
   const hasVisitedDescriptionRef = useRef(false);
   const previousModeRef = useRef(mode);

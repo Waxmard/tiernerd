@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import ClassVar
 
 from app.db.models import Item as ItemModel
 from app.services.list_service import (
@@ -80,6 +81,9 @@ class TestBuildListSimpleResponse:
             title = "Test List"
             description = "Test description"
             color = None
+            icon = None
+            cover = None
+            cover_photo: ClassVar = {"source": "upload", "id": str(uuid.uuid4())}
             ranking_mode = "rank"
             created_at = datetime.now()
             updated_at = datetime.now()
@@ -90,6 +94,7 @@ class TestBuildListSimpleResponse:
         assert result["title"] == "Test List"
         assert result["item_count"] == 10
         assert result["ranking_mode"] == "rank"
+        assert result["cover_photo"] == row[0].cover_photo
 
     def test_build_simple_response_with_none_values(self):
         """Test building simple response with None counts."""
@@ -100,6 +105,9 @@ class TestBuildListSimpleResponse:
             title = "Test List"
             description = "Test description"
             color = None
+            icon = None
+            cover = None
+            cover_photo = None
             ranking_mode = "score"
             created_at = datetime.now()
             updated_at = datetime.now()
@@ -108,3 +116,4 @@ class TestBuildListSimpleResponse:
         result = build_list_simple_response(row)
 
         assert result["item_count"] == 0
+        assert result["cover_photo"] is None

@@ -11,6 +11,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ImmersiveScreenShell,
+  ListColorPicker,
+} from '../components/ImmersiveBoard';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useTheme, useThemeColors } from '../providers/ThemeProvider';
@@ -26,7 +30,12 @@ const THEME_OPTIONS = [
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
-  const { preference, setPreference } = useTheme();
+  const {
+    preference,
+    setPreference,
+    workspaceAppearance,
+    setWorkspaceAppearance,
+  } = useTheme();
   const colors = useThemeColors();
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
 
@@ -39,14 +48,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
+    <ImmersiveScreenShell>
       <SafeAreaView className="flex-1">
         <ScrollView
           contentContainerClassName="w-full grow"
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-[560px] self-center px-4 pb-4">
-            <View className="flex-row items-center justify-between py-4 mb-4">
+            <View className="flex-row items-center justify-between py-2 px-2 my-3 rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel="Back"
@@ -161,6 +170,62 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   );
                 })}
               </View>
+              <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark uppercase mt-4 mb-2">
+                Workspace background
+              </Text>
+              <View className="flex-row gap-2">
+                {(
+                  [
+                    { label: 'Built-in landscape', value: 'landscape' },
+                    { label: 'Solid canvas', value: 'none' },
+                  ] as const
+                ).map((option) => {
+                  const selected =
+                    workspaceAppearance.background === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="button"
+                      accessibilityLabel={option.label}
+                      accessibilityState={{ selected }}
+                      onPress={() =>
+                        setWorkspaceAppearance({
+                          ...workspaceAppearance,
+                          background: option.value,
+                        })
+                      }
+                      className={[
+                        'flex-1 min-h-[44px] items-center justify-center border rounded-[10px] px-3 py-2',
+                        selected
+                          ? 'bg-accent-tint dark:bg-accent-tint-dark border-accent dark:border-accent-dark'
+                          : 'bg-surface dark:bg-surface-dark border-line dark:border-line-dark',
+                      ].join(' ')}
+                    >
+                      <Text
+                        className={[
+                          'text-label-large',
+                          selected
+                            ? 'text-accent-text dark:text-accent-text-dark'
+                            : 'text-ink-muted dark:text-ink-muted-dark',
+                        ].join(' ')}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark uppercase mt-4 mb-2">
+                Workspace accent
+              </Text>
+              <ListColorPicker
+                value={workspaceAppearance.accent}
+                allowNone={false}
+                onChange={(accent) => {
+                  if (accent)
+                    setWorkspaceAppearance({ ...workspaceAppearance, accent });
+                }}
+              />
             </View>
 
             <TouchableOpacity
@@ -198,6 +263,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           </View>
         </ScrollView>
       </SafeAreaView>
-    </View>
+    </ImmersiveScreenShell>
   );
 };

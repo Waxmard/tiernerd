@@ -22,6 +22,7 @@
         { "type": "fix", "section": "Bug Fixes" },
         { "type": "perf", "section": "Performance Improvements" },
         { "type": "refactor", "section": "Code Refactoring" },
+        { "type": "ci", "section": "CI", "hidden": false },
         { "type": "docs", "section": "Documentation", "hidden": true },
         { "type": "chore", "section": "Miscellaneous", "hidden": true },
         { "type": "test", "section": "Tests", "hidden": true }

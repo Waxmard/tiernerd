@@ -29,6 +29,8 @@ Development startup seeds accounts for fixture data, not password sign-in. Sign 
 - `/api/lists` — List creation and management
 - `/api/items` — Item management and ranking
 
+List writes use multipart `metadata` and an optional image file. Older clients can create lists with `name` and `description` query parameters and optional `color` and `ranking_mode` parameters. They can update `title`, `description`, or `ranking_mode` with JSON.
+
 ### Backend commands
 
 Setup, quality targets and the Cloud Run dev loop: see [AGENTS.md](../AGENTS.md#backend-fastapi).
@@ -58,6 +60,50 @@ The ranking service uses binary search in `app/services/comparison_service.py` t
 Draft sessions persist in the database. Answers and one-step undo update the draft, not the saved item. Comparisons use all other ranked items in the list. Commit applies the new position and recalculates scores across the list (see [Ranking lists](../README.md#ranking-lists) for the score formula). Unranked items have null positions and ratings. Mutation requests carry the current session revision; stale revisions or changed ranking snapshots return 409. Status reads expose stale drafts so the client can restart them.
 
 Each list has a `ranking_mode` of `score` (the default) or `rank`. Set it when creating a list or updating its metadata. Both modes retain the same positions, ratings, and comparison workflow; switching modes changes presentation only.
+
+## Configure list cover photos
+
+Photo search needs an Unsplash developer application and its access key. On macOS, store the key in Keychain:
+
+```bash
+security add-generic-password -s tiernerd:unsplash-access-key -a "$USER" -T "" -w
+```
+
+Load it at the point of use. Each read asks for Keychain approval.
+
+```bash
+export UNSPLASH_ACCESS_KEY="$(security find-generic-password -s tiernerd:unsplash-access-key -a "$USER" -w)"
+```
+
+For uploads, set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket with uniform access and public access prevention. Grant the runtime identity object read, write, and delete access only on that bucket. Hosted environments load the Unsplash key from Secret Manager. Without the corresponding setting, uploads return an unavailable response and the app hides photo search, which reappears on the next picker open once the key is configured.
+
+To configure or change the hosted Unsplash key, pass its Secret Manager name to `make cloud-deploy UNSPLASH_SECRET=<secret-name>`. Later deployments preserve the configured mapping when you omit the option.
+
+Fresh databases use the current schema. For an existing database, back it up and stop the old backend before applying the photo schema migration. From `fastapi/`, inspect the schema:
+
+```bash
+uv run python scripts/migrate_list_photos.py --check
+```
+
+After the backup and application stop, apply the migration:
+
+```bash
+uv run python scripts/migrate_list_photos.py --apply
+```
+
+Interrupted saves or database writes with an uncertain outcome can leave unreferenced uploads. With the correct `DATABASE_URL`, `COVER_UPLOAD_BUCKET`, and Google Cloud credentials loaded, list objects older than 24 hours that are no longer referenced:
+
+```bash
+uv run python scripts/cleanup_list_cover_uploads.py
+```
+
+After reviewing the output and authorizing deletion, remove those objects:
+
+```bash
+uv run python scripts/cleanup_list_cover_uploads.py --apply
+```
+
+Do not configure a bucket-wide expiration policy: it would also remove attached photos.
 
 ## Upgrade the list-ranking mode schema
 

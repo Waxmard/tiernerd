@@ -21,7 +21,7 @@ else
     echo 'CocoaPods is required. Install it with Homebrew (brew install cocoapods) and ensure pod is on PATH.' >&2
     exit 1
   fi
-  fp=$( { cat app.config.ts app.json package.json package-lock.json withIosSceneLifecycle.js withQuietPods.js withIosDeploymentTarget.js "$root/scripts/ios-config.mjs"; find patches assets -type f | sort | xargs cat; echo "${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID:-}|$EXPO_PUBLIC_GOOGLE_CLIENT_ID|$EXPO_PUBLIC_API_URL"; } | shasum -a 256 | cut -d' ' -f1)
+  fp=$( { cat app.config.ts app.json package.json package-lock.json withQuietPods.js withIosDeploymentTarget.js "$root/scripts/ios-config.mjs"; find assets -type f | sort | xargs cat; echo "${EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID:-}|$EXPO_PUBLIC_GOOGLE_CLIENT_ID|$EXPO_PUBLIC_API_URL"; } | shasum -a 256 | cut -d' ' -f1)
   if [[ "${FORCE_PREBUILD:-0}" != 1 && -d ios/Pods && -d ios/TierNerd.xcworkspace && "$(cat ios/.native-fingerprint 2>/dev/null)" == "$fp" ]]; then
     echo 'Native inputs unchanged; skipping prebuild and pod install.'
   else

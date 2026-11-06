@@ -21,6 +21,7 @@ async function request<T>(
 
   if (
     fetchOptions.body &&
+    !(fetchOptions.body instanceof FormData) &&
     !(headers as Record<string, string>)['Content-Type']
   ) {
     (headers as Record<string, string>)['Content-Type'] = 'application/json';
@@ -56,14 +57,14 @@ export const api = {
   post: <T>(endpoint: string, body?: unknown, token?: string) =>
     request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: body instanceof FormData ? body : JSON.stringify(body),
       token,
     }),
 
   put: <T>(endpoint: string, body?: unknown, token?: string) =>
     request<T>(endpoint, {
       method: 'PUT',
-      body: JSON.stringify(body),
+      body: body instanceof FormData ? body : JSON.stringify(body),
       token,
     }),
 

@@ -76,8 +76,9 @@ async def get_by_user_with_stats(
 
 async def create(db: AsyncSession, list_obj: ListModel) -> ListModel:
     db.add(list_obj)
-    await db.commit()
+    await db.flush()
     await db.refresh(list_obj)
+    await db.commit()
     return list_obj
 
 
@@ -87,8 +88,9 @@ async def update(
     for field, value in update_data.items():
         setattr(list_obj, field, value)
     db.add(list_obj)
-    await db.commit()
+    await db.flush()
     await db.refresh(list_obj)
+    await db.commit()
     return list_obj
 
 

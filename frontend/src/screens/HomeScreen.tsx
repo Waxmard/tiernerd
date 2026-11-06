@@ -24,15 +24,25 @@ import {
   CreateListContent,
   type CreateListContentHandle,
 } from '../components/CreateListModal';
+import {
+  ImmersiveScreenShell,
+  ListIdentityBadge,
+} from '../components/ImmersiveBoard';
+import { PhotoAttribution } from '../components/ListPhotoCover';
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button } from '../design-system/components';
-import { type ListColor, palette } from '../design-system/tokens/colors';
+import type {
+  ListColor,
+  ListCover,
+  ListIcon,
+} from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
-import { useTheme, useThemeColors } from '../providers/ThemeProvider';
+import { useThemeColors } from '../providers/ThemeProvider';
 import { ApiError } from '../services/apiError';
 import type { Item } from '../services/itemsService';
+import type { ListPhoto } from '../services/listCoversService';
 import {
   enqueueListCacheWrite,
   listItemsCacheKey,
@@ -48,28 +58,27 @@ interface TierList {
   title: string;
   description: string | null;
   color: ListColor | null;
+  icon: ListIcon | null;
+  cover: ListCover | null;
+  coverPhoto: ListPhoto | null;
   itemCount: number;
   updatedAt: Date;
 }
 type HomeScreenProps = RootStackScreenProps<'Main'>;
-const CHIP_CLASS: Record<ListColor, string> = {
-  blue: 'bg-list-blue-tint dark:bg-list-blue-tint-dark',
-  teal: 'bg-list-teal-tint dark:bg-list-teal-tint-dark',
-  amber: 'bg-list-amber-tint dark:bg-list-amber-tint-dark',
-  pink: 'bg-list-pink-tint dark:bg-list-pink-tint-dark',
-};
 const toTierList = (list: ListSimple): TierList => ({
   id: list.list_id,
   title: list.title,
   description: list.description,
   color: list.color,
+  icon: list.icon ?? null,
+  cover: list.cover ?? null,
   itemCount: list.item_count,
+  coverPhoto: list.cover_photo ?? null,
   updatedAt: new Date(list.updated_at),
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
   const userId = user?.id ?? null;
-  const { scheme } = useTheme();
   const colors = useThemeColors();
   const safeAreaInsets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -392,75 +401,70 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   };
   const renderRow = ({ item }: ListRenderItemInfo<TierList>) => {
-    const chipIconColor = item.color
-      ? palette.list[item.color][scheme]['on-tint']
-      : colors['accent-text'];
     return (
-      <TouchableOpacity
-        accessibilityRole="button"
-        accessibilityLabel={
-          item.description?.trim()
-            ? `${item.title}, ${item.itemCount} items. ${item.description}`
-            : `${item.title}, ${item.itemCount} items`
-        }
-        accessibilityHint="Open tier list"
-        onPress={() =>
-          navigation.navigate('ListDetail', {
-            listId: item.id,
-            listTitle: item.title,
-          })
-        }
-        activeOpacity={0.7}
-        style={{ width: cardWidth }}
-        className="shrink-0 overflow-hidden rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
-      >
-        <View className="flex-row items-center gap-3 p-4">
-          <View
-            className={[
-              'w-8 h-8 items-center justify-center rounded-lg',
-              item.color
-                ? CHIP_CLASS[item.color]
-                : 'bg-accent-tint dark:bg-accent-tint-dark',
-            ].join(' ')}
-          >
+      <View style={{ width: cardWidth }} className="shrink-0 gap-1">
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={
+            item.description?.trim()
+              ? `${item.title}, ${item.itemCount} items. ${item.description}`
+              : `${item.title}, ${item.itemCount} items`
+          }
+          accessibilityHint="Open tier list"
+          onPress={() =>
+            navigation.navigate('ListDetail', {
+              listId: item.id,
+              listTitle: item.title,
+            })
+          }
+          activeOpacity={0.7}
+          className="w-full shrink-0 overflow-hidden rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
+        >
+          <View className="flex-row items-center gap-3 p-4">
+            <ListIdentityBadge
+              color={item.color}
+              icon={item.icon}
+              cover={item.cover}
+              photo={item.coverPhoto}
+              listId={item.id}
+            />
+            <View className="flex-1 min-w-0 gap-1">
+              <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
+                {item.title}
+              </Text>
+              {item.description?.trim() ? (
+                <Text
+                  numberOfLines={2}
+                  className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+                >
+                  {item.description}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <View className="flex-row items-center justify-between gap-2 border-t border-line px-3 py-2 dark:border-line-dark">
+            <View className="flex-1 min-w-0 flex-row flex-wrap items-center gap-3">
+              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+                {item.itemCount} items
+              </Text>
+              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+                Modified {formatDate(item.updatedAt)}
+              </Text>
+            </View>
             <Ionicons
-              name="layers-outline"
+              name="chevron-forward"
               size={20}
-              color={chipIconColor}
+              color={colors['ink-muted']}
               accessible={false}
             />
           </View>
-          <View className="flex-1 min-w-0 gap-1">
-            <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
-              {item.title}
-            </Text>
-            {item.description?.trim() ? (
-              <Text
-                numberOfLines={2}
-                className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
-              >
-                {item.description}
-              </Text>
-            ) : null}
+        </TouchableOpacity>
+        {item.coverPhoto?.source === 'unsplash' ? (
+          <View className="px-2">
+            <PhotoAttribution photo={item.coverPhoto} />
           </View>
-        </View>
-        <View className="flex-row items-center justify-between gap-2 border-t border-line px-3 py-2 dark:border-line-dark">
-          <View className="flex-1 min-w-0 flex-row flex-wrap items-center gap-3">
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-              {item.itemCount} items
-            </Text>
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-              Modified {formatDate(item.updatedAt)}
-            </Text>
-          </View>
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={colors['ink-muted']}
-            accessible={false}
-          />
-        </View>
-      </TouchableOpacity>
+        ) : null}
+      </View>
     );
   };
   const content =
@@ -499,7 +503,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }}
         ListHeaderComponent={
           <View className="gap-2">
-            <View className="w-full flex-row flex-wrap items-center justify-between gap-2">
+            <View className="w-full flex-row flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-4 py-3 dark:border-line-dark dark:bg-surface-dark">
               <Text
                 accessibilityRole="header"
                 className="text-headline-small text-ink dark:text-ink-dark"
@@ -561,14 +565,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       />
     );
   return (
-    <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
+    <ImmersiveScreenShell>
       <SafeAreaView className="min-h-0 flex-1" edges={['top', 'left', 'right']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View
             className="flex-1 min-h-0"
             style={{ marginHorizontal: horizontalGutter }}
           >
-            <View className="py-2 flex-row justify-between items-center gap-2 shrink-0 bg-canvas dark:bg-canvas-dark">
+            <View className="my-2 py-2 px-3 flex-row justify-between items-center gap-2 shrink-0 rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
               <View className="flex-row items-center gap-2 shrink min-w-0">
                 <Image
                   source={require('../../assets/brand-mark.png')}
@@ -688,6 +692,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             ) : null)}
         </Modal>
       </SafeAreaView>
-    </View>
+    </ImmersiveScreenShell>
   );
 };

@@ -46,7 +46,48 @@ This is currently a solo-maintained repo, so there is no `.github/CODEOWNERS` an
 
 Two things ship on or alongside `main`:
 
-- **TestFlight (`deploy-testflight.yml`)** — every push to `main` (and manual `workflow_dispatch`) builds a signed iOS Release archive on `macos-26` against the development Cloud Run API and uploads `TierNerd.ipa` to App Store Connect / TestFlight using the `preview` environment secrets (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `APPLE_CERTIFICATE_P12_BASE64`, `APPLE_CERTIFICATE_PASSWORD`).
+- **TestFlight (`deploy-testflight.yml`)** — A published GitHub Release builds its tag. A manual `workflow_dispatch` run builds the commit captured when the run starts, even if the branch advances. Ordinary pushes do not upload. Both paths build a signed iOS Release archive on `macos-26` against the development Cloud Run API and upload `TierNerd.ipa` using the `preview` environment secrets (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `APPLE_CERTIFICATE_P12_BASE64`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64`, `APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD`). Uploads do not wait for CI and do not prove that TestFlight processing or installation succeeded.
 - **Backend** — deploy Cloud Run from `fastapi/` with `make cloud-deploy` (not triggered by a release).
 
 This is why commit hygiene matters: every commit on `main` is read by the release tooling.
+
+### Upload to TestFlight locally
+
+Use macOS with Node.js 24, frontend dependencies, Xcode, CocoaPods, Apple team access, an App Store Connect API key, and existing Apple development and distribution certificates with their private keys. The upload uses the development API unless `EXPO_PUBLIC_API_URL` is set.
+
+Create the Keychain items with the commands below. Each command prompts twice without putting the entered value in shell history. The prompt truncates values longer than 128 characters, so enter a short temporary value for the private key and certificate items. For the other items, enter the actual value if it fits; otherwise use a temporary value there too.
+
+```bash
+security add-generic-password -s tiernerd:asc-key-id -a "$USER" -T "" -w
+security add-generic-password -s tiernerd:asc-issuer-id -a "$USER" -T "" -w
+security add-generic-password -s tiernerd:asc-private-key -a "$USER" -T "" -w
+security add-generic-password -s tiernerd:apple-certificate-p12-base64 -a "$USER" -T "" -w
+security add-generic-password -s tiernerd:apple-certificate-password -a "$USER" -T "" -w
+security add-generic-password -s tiernerd:apple-development-certificate-p12-base64 -a "$USER" -T "" -w
+security add-generic-password -s tiernerd:apple-development-certificate-password -a "$USER" -T "" -w
+```
+
+In Keychain Access, replace each temporary value with the full credential using a private input method. Store the entire `.p8` file as a single-line Base64 value in `tiernerd:asc-private-key`. Store the distribution `.p12` as single-line Base64 in `tiernerd:apple-certificate-p12-base64` and the development `.p12` as single-line Base64 in `tiernerd:apple-development-certificate-p12-base64`. Do not print, log, or save new copies of the encoded values. If you use a clipboard, disable its history and sync first and clear it afterward. In each item's **Access Control**, retain **Confirm before allowing access** with no trusted applications.
+
+To update an existing short item from the terminal, add `-U` before the final `-w`. Use Keychain Access for longer values.
+
+Disable shell tracing, then load the credentials immediately before the upload. Keychain asks for approval on each read.
+
+```bash
+set +x
+export ASC_KEY_ID="$(security find-generic-password -s tiernerd:asc-key-id -a "$USER" -w)"
+export ASC_ISSUER_ID="$(security find-generic-password -s tiernerd:asc-issuer-id -a "$USER" -w)"
+export ASC_PRIVATE_KEY="$(security find-generic-password -s tiernerd:asc-private-key -a "$USER" -w | openssl base64 -d -A)"
+export APPLE_CERTIFICATE_P12_BASE64="$(security find-generic-password -s tiernerd:apple-certificate-p12-base64 -a "$USER" -w)"
+export APPLE_CERTIFICATE_PASSWORD="$(security find-generic-password -s tiernerd:apple-certificate-password -a "$USER" -w)"
+export APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64="$(security find-generic-password -s tiernerd:apple-development-certificate-p12-base64 -a "$USER" -w)"
+export APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD="$(security find-generic-password -s tiernerd:apple-development-certificate-password -a "$USER" -w)"
+make testflight
+unset ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64 APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD
+```
+
+The marketing version comes from `frontend/package.json`. The upload queries App Store Connect for the highest iOS build number for that version and increments its last component. A failed query stops the upload. To use a known-unused build number instead, run `make testflight IOS_BUILD_NUMBER=123`.
+
+To use another app identity, set `IOS_BUNDLE_ID` for the TestFlight build. Configure matching Apple provisioning and `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` for that bundle ID.
+
+Do not run local and hosted uploads at the same time: build-number allocation is not atomic. Apple may take time to list an upload. If Apple rejects a duplicate, wait for the previous upload to appear or provide a known-unused override; the script does not retry uploads.

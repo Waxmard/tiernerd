@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -15,9 +16,13 @@ import {
   themeColors,
 } from '../design-system/tokens/colors';
 import {
+  DEFAULT_WORKSPACE_APPEARANCE,
   parseThemePreference,
+  parseWorkspaceAppearance,
   THEME_PREFERENCE_KEY,
   type ThemePreference,
+  WORKSPACE_APPEARANCE_KEY,
+  type WorkspaceAppearance,
 } from '../services/themePreference';
 
 interface ThemeContextValue {
@@ -25,6 +30,8 @@ interface ThemeContextValue {
   setPreference: (preference: ThemePreference) => void;
   scheme: ColorSchemeName;
   colors: ThemeColors;
+  workspaceAppearance: WorkspaceAppearance;
+  setWorkspaceAppearance: (next: WorkspaceAppearance) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -32,13 +39,26 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const { colorScheme: resolvedScheme } = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [workspaceAppearance, setWorkspaceAppearanceState] =
+    useState<WorkspaceAppearance>(DEFAULT_WORKSPACE_APPEARANCE);
+  const preferenceChanged = useRef(false);
+  const workspaceAppearanceChanged = useRef(false);
   const scheme: ColorSchemeName = resolvedScheme ?? 'light';
 
   useEffect(() => {
     let cancelled = false;
-    AsyncStorage.getItem(THEME_PREFERENCE_KEY)
-      .then((raw) => {
-        if (!cancelled) setPreferenceState(parseThemePreference(raw));
+    void AsyncStorage.getItem(THEME_PREFERENCE_KEY)
+      .then((rawTheme) => {
+        if (!cancelled && !preferenceChanged.current) {
+          setPreferenceState(parseThemePreference(rawTheme));
+        }
+      })
+      .catch(() => undefined);
+    void AsyncStorage.getItem(WORKSPACE_APPEARANCE_KEY)
+      .then((rawAppearance) => {
+        if (!cancelled && !workspaceAppearanceChanged.current) {
+          setWorkspaceAppearanceState(parseWorkspaceAppearance(rawAppearance));
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -53,13 +73,33 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const colors = useMemo(() => themeColors(scheme), [scheme]);
 
   const setPreference = useCallback((next: ThemePreference) => {
+    preferenceChanged.current = true;
     setPreferenceState(next);
     void AsyncStorage.setItem(THEME_PREFERENCE_KEY, next);
   }, []);
 
+  const setWorkspaceAppearance = useCallback((next: WorkspaceAppearance) => {
+    workspaceAppearanceChanged.current = true;
+    setWorkspaceAppearanceState(next);
+    void AsyncStorage.setItem(WORKSPACE_APPEARANCE_KEY, JSON.stringify(next));
+  }, []);
   const value = useMemo(
-    () => ({ preference, setPreference, scheme, colors }),
-    [preference, setPreference, scheme, colors]
+    () => ({
+      preference,
+      setPreference,
+      scheme,
+      colors,
+      workspaceAppearance,
+      setWorkspaceAppearance,
+    }),
+    [
+      preference,
+      setPreference,
+      scheme,
+      colors,
+      workspaceAppearance,
+      setWorkspaceAppearance,
+    ]
   );
 
   return (

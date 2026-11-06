@@ -88,9 +88,9 @@ make ios IOS_DEVICE="Other Phone" # choose another paired device
 
 The command uses development Google OAuth web and iOS client IDs by default. To use another iOS client for bundle ID `com.maxwellward.tiernerd`, set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` in the environment. To use another web client, set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to the same client ID as the backend's `GOOGLE_CLIENT_ID`.
 
-The Release app uses the hosted development API by default and embeds its JavaScript, so it needs no Metro server after installation. Set `EXPO_PUBLIC_API_URL` to another public HTTPS API if needed. The command ignores Expo dotenv files. Re-running it replaces the app without deliberately removing its data. `npm run ios` remains the separate Expo development command.
+The Release app uses the hosted development API by default and embeds its JavaScript, so it needs no Metro server after installation. Set `EXPO_PUBLIC_API_URL` to another public HTTPS API if needed. The command ignores Expo dotenv files. Preserve unsynced data and the bundle/signing identity before replacement; local records are not guaranteed to survive. Never uninstall or clear storage to fix signing; stop if replacement fails. See the [standalone procedure and acceptance checks](frontend/README.md#option-1-standalone-ios-release-physical-iphone), which are separate from TestFlight acceptance. `npm run ios` remains the separate Expo development command.
 
-TestFlight builds run `scripts/build-ios-testflight.sh`; see [Deploys & Releases](CONTRIBUTING.md#deploys--releases) for the trigger, environment and signing secrets.
+For a local TestFlight upload, run `make testflight`; see [Deploys & Releases](CONTRIBUTING.md#deploys--releases) for the trigger, build numbering, and signing credentials.
 
 #### Simulator and development builds
 

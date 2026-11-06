@@ -1,17 +1,34 @@
 import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Button } from '../design-system/components';
-import { type ListColor, palette } from '../design-system/tokens/colors';
+import type {
+  ListColor,
+  ListCover,
+  ListIcon,
+} from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
-import type { ListRankingMode } from '../services/listsService';
+import type { ListPhoto } from '../services/listCoversService';
+import type {
+  ListOptionsInput,
+  ListRankingMode,
+} from '../services/listsService';
+import { ListPhotoCover, PhotoAttribution } from './ListPhotoCover';
 import { ListRankingOptions } from './ListRankingOptions';
 
 interface ListDetailHeaderProps {
   title: string;
   color: ListColor | null;
-  itemCount: number;
-  rankedCount: number;
+  icon: ListIcon | null;
+  cover: ListCover | null;
+  coverPhoto?: ListPhoto | null;
+  listId: string;
   addDisabled: boolean;
   addLoading: boolean;
   onAdd: () => void;
@@ -24,19 +41,12 @@ interface ListDetailHeaderProps {
   optionsKey: string;
   rankingMode: ListRankingMode;
   optionsDisabled: boolean;
-  onSaveRankingMode: (mode: ListRankingMode) => Promise<void>;
+  onSaveOptions: (options: ListOptionsInput) => Promise<void>;
   onOptionsVisibilityChange: (open: boolean) => void;
   onBack: () => void;
   onDelete: () => void;
   onRetryMetadata: () => void;
 }
-
-const CHIP_CLASS: Record<ListColor, string> = {
-  blue: 'bg-list-blue-tint dark:bg-list-blue-tint-dark',
-  teal: 'bg-list-teal-tint dark:bg-list-teal-tint-dark',
-  amber: 'bg-list-amber-tint dark:bg-list-amber-tint-dark',
-  pink: 'bg-list-pink-tint dark:bg-list-pink-tint-dark',
-};
 
 const RETRY_BUTTON_CLASS =
   'border border-control dark:border-control-dark rounded px-4 py-1 min-h-11 justify-center';
@@ -46,9 +56,11 @@ const RETRY_TEXT_CLASS =
 
 export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   title,
+  icon,
+  cover,
   color,
-  itemCount,
-  rankedCount,
+  coverPhoto = null,
+  listId,
   addDisabled,
   addLoading,
   onAdd,
@@ -61,25 +73,19 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   optionsKey,
   rankingMode,
   optionsDisabled,
-  onSaveRankingMode,
+  onSaveOptions,
   onOptionsVisibilityChange,
   onBack,
   onDelete,
   onRetryMetadata,
 }) => {
-  const { scheme, colors } = useTheme();
-  const chipClass = color
-    ? CHIP_CLASS[color]
-    : 'bg-accent-tint dark:bg-accent-tint-dark';
-  const chipIconColor = color
-    ? palette.list[color][scheme]['on-tint']
-    : colors['accent-text'];
+  const { colors } = useTheme();
   const deleteIconColor = deleteDisabled
     ? colors['ink-disabled']
     : colors['danger-text'];
-  return (
-    <View className="gap-2 pt-2 pb-3 bg-canvas dark:bg-canvas-dark border-b border-line dark:border-line-dark shrink-0">
-      <View className="flex-row items-start gap-2">
+  const header = (
+    <View className="gap-2 p-3 mt-2 mb-2 rounded-2xl bg-surface dark:bg-surface-dark shrink-0">
+      <View className="flex-row items-start">
         <TouchableOpacity
           onPress={onBack}
           accessibilityRole="button"
@@ -94,43 +100,25 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
             accessible={false}
           />
         </TouchableOpacity>
-        <View
-          className={[
-            'w-6 h-6 rounded-lg shrink-0 items-center justify-center mt-2',
-            chipClass,
-          ].join(' ')}
-        >
-          <Ionicons
-            name="layers-outline"
-            size={16}
-            color={chipIconColor}
-            accessible={false}
-          />
-        </View>
-        <View className="flex-1 min-w-0 gap-1">
+        <View className="flex-1 min-w-0 min-h-11 justify-center px-2">
           <Text
             accessibilityRole="header"
             className="text-headline-small text-ink dark:text-ink-dark text-left"
           >
             {title}
           </Text>
-          {description?.trim() ? (
-            <ScrollView
-              className="max-h-[72px]"
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-            >
-              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-                {description}
-              </Text>
-            </ScrollView>
-          ) : null}
         </View>
         <ListRankingOptions
           key={optionsKey}
+          title={title}
           rankingMode={rankingMode}
+          color={color}
+          icon={icon}
+          cover={cover}
+          coverPhoto={coverPhoto}
+          listId={listId}
           disabled={optionsDisabled}
-          onSave={onSaveRankingMode}
+          onSave={onSaveOptions}
           onVisibilityChange={onOptionsVisibilityChange}
         />
         <TouchableOpacity
@@ -150,6 +138,38 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           />
         </TouchableOpacity>
       </View>
+      {cover === 'landscape' || coverPhoto ? (
+        <View className="h-28 desktop:h-40 rounded-xl overflow-hidden">
+          <ListPhotoCover
+            cover={cover}
+            photo={coverPhoto}
+            listId={listId}
+            color={color}
+            className="w-full h-full"
+          />
+        </View>
+      ) : null}
+      {coverPhoto?.source === 'unsplash' ? (
+        <View className="px-1 -mt-1">
+          <PhotoAttribution photo={coverPhoto} />
+        </View>
+      ) : null}
+      {description?.trim() ? (
+        <ScrollView
+          className="max-h-[72px]"
+          role={Platform.OS === 'web' ? 'region' : undefined}
+          accessibilityLabel={
+            Platform.OS === 'web' ? 'List description' : undefined
+          }
+          tabIndex={Platform.OS === 'web' ? 0 : undefined}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator
+        >
+          <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+            {description}
+          </Text>
+        </ScrollView>
+      ) : null}
       {metadataError ? (
         <View className="flex-row items-center justify-between mt-2">
           <Text
@@ -168,28 +188,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           </TouchableOpacity>
         </View>
       ) : null}
-      <View className="flex-row items-center gap-2">
-        <Text className="flex-1 min-w-0 text-body-medium text-ink-muted dark:text-ink-muted-dark">
-          {rankedCount} of {itemCount} ranked
-        </Text>
-        <Button
-          title="Add item"
-          onPress={onAdd}
-          disabled={addDisabled}
-          loading={addLoading}
-          size="small"
-          icon={
-            addLoading ? undefined : (
-              <Ionicons
-                name="add-circle-outline"
-                size={20}
-                color={colors[addDisabled ? 'ink-disabled' : 'on-accent']}
-                accessible={false}
-              />
-            )
-          }
-        />
-      </View>
       {showingSavedItems || addLoading ? (
         <Text
           accessibilityLiveRegion="polite"
@@ -218,6 +216,40 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           </TouchableOpacity>
         </View>
       ) : null}
+      <View className="flex-row justify-end">
+        <Button
+          title="Add item"
+          onPress={onAdd}
+          disabled={addDisabled}
+          loading={addLoading}
+          variant="text"
+          size="small"
+          className="shrink"
+          icon={
+            addLoading ? undefined : (
+              <Ionicons
+                name="add"
+                size={20}
+                color={colors[addDisabled ? 'ink-disabled' : 'accent-text']}
+                accessible={false}
+              />
+            )
+          }
+        />
+      </View>
     </View>
+  );
+  return (
+    <ScrollView
+      role={Platform.OS === 'web' ? 'region' : undefined}
+      accessibilityLabel={Platform.OS === 'web' ? 'List details' : undefined}
+      tabIndex={Platform.OS === 'web' ? 0 : undefined}
+      style={{ flexGrow: 0, minHeight: 0, maxHeight: '50%' }}
+      alwaysBounceVertical={false}
+      nestedScrollEnabled
+      showsVerticalScrollIndicator
+    >
+      {header}
+    </ScrollView>
   );
 };

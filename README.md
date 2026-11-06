@@ -22,7 +22,7 @@ your items ──1v1 comparisons──▶ TierNerd ──▶ ranked list, with p
 
 ## Technology
 
-- **Frontend:** React Native with Expo (SDK 54)
+- **Frontend:** React Native with Expo (SDK 58)
 - **Backend:** Python with FastAPI
 - **Database:** PostgreSQL (async via asyncpg)
 - **Auth:** Google sign-in and JWT sessions

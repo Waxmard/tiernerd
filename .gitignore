@@ -12,4 +12,7 @@ htmlcov/
 .husky/
 .neon
 .env.local
+.omp/mcp.json
+.agents/skills/
+skills-lock.json
 node_modules/

@@ -1,2 +1,14 @@
-export type { ColorSchemeName, ListColor, ThemeColors } from './colors';
-export { LIST_COLORS, palette, themeColors } from './colors';
+export type {
+  ColorSchemeName,
+  ListColor,
+  ListCover,
+  ListIcon,
+  ThemeColors,
+} from './colors';
+export {
+  LIST_COLORS,
+  LIST_COVERS,
+  LIST_ICONS,
+  palette,
+  themeColors,
+} from './colors';

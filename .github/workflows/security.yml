@@ -18,7 +18,7 @@ jobs:
     name: Semgrep SAST
     runs-on: ubuntu-latest
     container:
-      image: semgrep/semgrep:1.183.0
+      image: semgrep/semgrep:1.184.0
     steps:
       - uses: actions/checkout@v7
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -49,7 +49,7 @@ jobs:
         env:
           TRIVY_INCLUDE_DEV_DEPS: 'true'
         with:
-          version: v0.76.1
+          version: v0.76.2
           scan-type: fs
           scan-ref: .
           format: table
@@ -62,7 +62,7 @@ jobs:
         env:
           TRIVY_INCLUDE_DEV_DEPS: 'true'
         with:
-          version: v0.76.1
+          version: v0.76.2
           scan-type: fs
           scan-ref: .
           format: sarif
@@ -86,7 +86,7 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          version: v0.76.1
+          version: v0.76.2
           scan-type: image
           image-ref: tiernerd-backend:ci
           format: table
@@ -97,7 +97,7 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          version: v0.76.1
+          version: v0.76.2
           scan-type: image
           image-ref: tiernerd-backend:ci
           format: sarif
