@@ -30,6 +30,7 @@ import {
   type ListDetailLifecycle,
   listItemsCacheKey,
   listsCacheKey,
+  mergePendingItems,
   parseCachedListItems,
   parseCachedLists,
   sortListsByRecency,
@@ -82,7 +83,7 @@ const withPendingCreates = async (
       }
     );
   }
-  return local.length ? [...items, ...local] : items;
+  return local.length ? mergePendingItems(items, local) : items;
 };
 
 interface UseListDetailDataOptions {

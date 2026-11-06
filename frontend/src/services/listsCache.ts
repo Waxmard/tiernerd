@@ -69,6 +69,24 @@ export function parseCachedListItems(
   return parsed.every((item) => isItem(item, listId)) ? parsed : null;
 }
 
+export function mergePendingItems(items: Item[], pending: Item[]): Item[] {
+  const merged = [...items];
+  const placed = new Set(merged.map((item) => item.item_id));
+  for (const entry of pending) {
+    if (placed.has(entry.item_id)) continue;
+    placed.add(entry.item_id);
+    const rating = entry.rating;
+    const index =
+      rating === null
+        ? -1
+        : merged.findIndex(
+            (item) => item.rating === null || item.rating < rating
+          );
+    merged.splice(index === -1 ? merged.length : index, 0, entry);
+  }
+  return merged;
+}
+
 export function sortListsByRecency(lists: ListSimple[]): ListSimple[] {
   return [...lists].sort((a, b) => {
     const difference = Date.parse(b.updated_at) - Date.parse(a.updated_at);

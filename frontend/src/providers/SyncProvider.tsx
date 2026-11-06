@@ -114,9 +114,6 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
         notifiedRef.current.add(entry.opId);
         notify(`Saved on this device — sync failed: ${entry.message}`);
       }
-      if (outcome.applied.length > 0 || outcome.dropped.length > 0) {
-        setLastSyncedAt(Date.now());
-      }
     },
     [notify]
   );
@@ -130,12 +127,15 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
     const task = (async () => {
       let outcome = await queue.flush();
       recordOutcome(outcome);
+      let synced = outcome.applied.length > 0 || outcome.dropped.length > 0;
       while (outcome.applied.length > 0 && (await queue.count()) > 0) {
         outcome = await queue.flush();
         recordOutcome(outcome);
+        synced ||= outcome.applied.length > 0 || outcome.dropped.length > 0;
       }
       if (outcome.status === 'auth')
         notify('Sign in again to save your pending changes.');
+      if (synced) setLastSyncedAt(Date.now());
     })();
     flushRef.current = task;
     try {
