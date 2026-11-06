@@ -20,7 +20,7 @@ fi
 SMOKE="${SIMULATOR_SMOKE_ONLY:-0}"
 if [[ "$SMOKE" != "1" ]]; then
   missing=()
-  for var in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPLE_CERTIFICATE_PASSWORD; do
+  for var in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64 APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD; do
     if [[ -z "${!var:-}" ]]; then
       missing+=("$var")
     fi
@@ -46,6 +46,51 @@ printf 'iOS version %s, build %s\n' "$MARKETING_VERSION" "$IOS_BUILD_NUMBER"
 
 node "$root/scripts/ios-config.mjs"
 
+if [[ "$SMOKE" != "1" ]]; then
+  umask 077
+  WORK_DIR="$(mktemp -d "${RUNNER_TEMP:-/tmp}/tiernerd-ios.XXXXXX")"
+  KEYCHAIN_PATH="$WORK_DIR/build.keychain-db"
+  KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+  existing_keychains=()
+  restore_keychains=0
+  cleanup() {
+    if [[ "$restore_keychains" == 1 ]]; then
+      security list-keychains -d user -s ${existing_keychains[@]+"${existing_keychains[@]}"} >/dev/null 2>&1 \
+        || echo 'Could not restore the keychain search list.' >&2
+    fi
+    security delete-keychain "$KEYCHAIN_PATH" >/dev/null 2>&1 || true
+    rm -rf "$WORK_DIR"
+  }
+  trap cleanup EXIT
+
+  printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode >"$WORK_DIR/dist.p12"
+  printf '%s' "$APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64" | base64 --decode >"$WORK_DIR/development.p12"
+
+  keychain_list="$(security list-keychains -d user)"
+  while IFS= read -r line; do
+    trimmed="${line#"${line%%[![:space:]]*}"}"
+    trimmed="${trimmed%\"}"
+    trimmed="${trimmed#\"}"
+    [[ -n "$trimmed" ]] && existing_keychains+=("$trimmed")
+  done <<< "$keychain_list"
+
+  security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+  security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+  security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+  restore_keychains=1
+  security list-keychains -d user -s "$KEYCHAIN_PATH" ${existing_keychains[@]+"${existing_keychains[@]}"}
+
+  security import "$WORK_DIR/dist.p12" -k "$KEYCHAIN_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -t cert -f pkcs12
+  security import "$WORK_DIR/development.p12" -k "$KEYCHAIN_PATH" -P "$APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -t cert -f pkcs12
+  security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+  identities="$(security find-identity -v -p codesigning "$KEYCHAIN_PATH")"
+  if [[ ! "$identities" =~ \"(Apple\ Development|iPhone\ Developer):\  ]]; then
+    echo 'No valid Apple Development signing identity in the build keychain; supply an existing development certificate with its private key.' >&2
+    exit 1
+  fi
+fi
+
 if ! command -v pod >/dev/null 2>&1; then
   echo 'CocoaPods is required. Install it with Homebrew (brew install cocoapods) and ensure pod is on PATH.' >&2
   exit 1
@@ -64,7 +109,6 @@ if [[ "$SMOKE" == "1" ]]; then
     -configuration Release \
     -destination 'generic/platform=iOS Simulator' \
     DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-    PRODUCT_BUNDLE_IDENTIFIER="$IOS_BUNDLE_ID" \
     MARKETING_VERSION="$MARKETING_VERSION" \
     CURRENT_PROJECT_VERSION="$IOS_BUILD_NUMBER" \
     IPHONEOS_DEPLOYMENT_TARGET=17.0 \
@@ -72,42 +116,6 @@ if [[ "$SMOKE" == "1" ]]; then
     build
   exit 0
 fi
-
-umask 077
-WORK_DIR="$(mktemp -d "${RUNNER_TEMP:-/tmp}/tiernerd-ios.XXXXXX")"
-KEYCHAIN_PATH="$WORK_DIR/build.keychain-db"
-KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
-existing_keychains=()
-restore_keychains=0
-cleanup() {
-  if [[ "$restore_keychains" == 1 ]]; then
-    security list-keychains -d user -s ${existing_keychains[@]+"${existing_keychains[@]}"} >/dev/null 2>&1 \
-      || echo 'Could not restore the keychain search list.' >&2
-  fi
-  security delete-keychain "$KEYCHAIN_PATH" >/dev/null 2>&1 || true
-  rm -rf "$WORK_DIR"
-}
-trap cleanup EXIT
-
-printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode >"$WORK_DIR/dist.p12"
-
-security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-security list-keychains -d user >"$WORK_DIR/existing-keychains"
-
-while IFS= read -r line; do
-  trimmed="${line#"${line%%[![:space:]]*}"}"
-  trimmed="${trimmed%\"}"
-  trimmed="${trimmed#\"}"
-  [[ -n "$trimmed" ]] && existing_keychains+=("$trimmed")
-done <"$WORK_DIR/existing-keychains"
-restore_keychains=1
-security list-keychains -d user -s "$KEYCHAIN_PATH" ${existing_keychains[@]+"${existing_keychains[@]}"}
-
-security import "$WORK_DIR/dist.p12" -k "$KEYCHAIN_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -t cert -f pkcs12
-security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
 AUTH_KEY_PATH="$WORK_DIR/AuthKey_${ASC_KEY_ID}.p8"
 printf '%s\n' "$ASC_PRIVATE_KEY" >"$AUTH_KEY_PATH"
@@ -142,7 +150,6 @@ xcodebuild \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE_PATH" \
   DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-  PRODUCT_BUNDLE_IDENTIFIER="$IOS_BUNDLE_ID" \
   MARKETING_VERSION="$MARKETING_VERSION" \
   CURRENT_PROJECT_VERSION="$IOS_BUILD_NUMBER" \
   IPHONEOS_DEPLOYMENT_TARGET=17.0 \
