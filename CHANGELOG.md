@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/Waxmard/tiernerd/compare/v0.9.0...v0.10.0) (2026-11-06)
+
+
+### Features
+
+* add searchable and uploaded cover photos for lists ([#123](https://github.com/Waxmard/tiernerd/issues/123)) ([16c867d](https://github.com/Waxmard/tiernerd/commit/16c867dd870bb69cb9958364dc72243082328bcd))
+
 ## [0.9.0](https://github.com/Waxmard/tiernerd/compare/v0.8.0...v0.9.0) (2026-11-04)
 
 
