@@ -176,6 +176,7 @@ CLOUD_DEPLOY_FINGERPRINT = $(shell cat $(CLOUD_DEPLOY_INPUTS) pyproject.toml uv.
 CLOUD_DEPLOY_STAMP ?= .cloud-deploy-$(CLOUD_ENV).fingerprint
 
 .PHONY: cloud-deploy cloud-deploy-if-needed cloud-url cloud-health cloud-logs
+# gcloud preserves traffic pinned to an older revision; move it to LATEST after every deploy.
 cloud-deploy:
 	@image="$(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/cloud-run-source-deploy/$(CLOUD_SERVICE):$$(date +%Y%m%d%H%M%S)-$$$$"; \
 	$(GCLOUD) builds submit --project $(GCP_PROJECT) --config cloudbuild.yaml \
@@ -190,6 +191,10 @@ cloud-deploy:
 		--min-instances 0 --max-instances 1 \
 		--env-vars-file $(CLOUD_ENV_FILE) \
 		--update-secrets SECRET_KEY=$(CLOUD_SECRET_PREFIX)-secret-key:latest,DATABASE_URL=$(CLOUD_SECRET_PREFIX)-database-url:latest$(if $(strip $(UNSPLASH_SECRET)),$(comma)UNSPLASH_ACCESS_KEY=$(UNSPLASH_SECRET):latest) && \
+	$(GCLOUD) run services update-traffic $(CLOUD_SERVICE) \
+		--to-latest \
+		--project $(GCP_PROJECT) \
+		--region $(GCP_REGION) && \
 	echo "$(CLOUD_DEPLOY_FINGERPRINT)" > $(CLOUD_DEPLOY_STAMP)
 
 cloud-deploy-if-needed:
