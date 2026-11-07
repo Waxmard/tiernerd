@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.11.0](https://github.com/Waxmard/tiernerd/compare/v0.10.0...v0.11.0) (2026-11-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* rank items and queue changes offline ([#125](https://github.com/Waxmard/tiernerd/issues/125))
+
+### Features
+
+* rank items and queue changes offline ([#125](https://github.com/Waxmard/tiernerd/issues/125)) ([5b0dc1d](https://github.com/Waxmard/tiernerd/commit/5b0dc1dc3d7785bdaf1c034369664d5e7851c99c))
+
 ## [0.10.0](https://github.com/Waxmard/tiernerd/compare/v0.9.0...v0.10.0) (2026-11-06)
 
 
