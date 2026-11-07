@@ -55,6 +55,7 @@ exit 42`);
   for (const command of ['pod', 'xcodebuild', 'xcrun']) {
     stub(command, `echo ${command} >> "$STUB_LOG"; exit 42`);
   }
+  stub('make', `echo make >> "$STUB_LOG"`);
   stub('node', `if [[ "\${1:-}" == */testflight-build-number.mjs ]]; then echo build-number >> "$STUB_LOG"; exit 42; fi\nexec "$REAL_NODE" "$@"`);
   const result = spawnSync('/bin/bash', [script], {
     encoding: 'utf8',
@@ -78,7 +79,7 @@ function assertCleaned(calls, runnerTemp) {
   assert.ok(calls.includes('security-delete'));
   assert.ok(calls.indexOf('security-restore') < calls.indexOf('security-delete'));
   assert.deepEqual(readdirSync(runnerTemp), []);
-  for (const command of ['pod', 'xcodebuild', 'xcrun', 'build-number']) {
+  for (const command of ['pod', 'xcodebuild', 'xcrun', 'build-number', 'make']) {
     assert.ok(!calls.includes(command), `${command} must not run`);
   }
 }

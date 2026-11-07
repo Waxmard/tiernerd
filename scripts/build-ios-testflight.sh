@@ -117,6 +117,8 @@ if [[ "$SMOKE" == "1" ]]; then
   exit 0
 fi
 
+bash "$root/scripts/deploy-backend-if-needed.sh"
+
 AUTH_KEY_PATH="$WORK_DIR/AuthKey_${ASC_KEY_ID}.p8"
 printf '%s\n' "$ASC_PRIVATE_KEY" >"$AUTH_KEY_PATH"
 

@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { NotificationToast } from '../../providers/NotificationProvider';
 import { Button } from './Button';
 
 const CARD_SHADOW = {
@@ -22,7 +23,6 @@ const CARD_SHADOW = {
 interface BaseModalContentProps {
   title: string;
   children: React.ReactNode;
-  error?: string | null;
   isLoading?: boolean;
   submitText?: string;
   closeText?: string;
@@ -36,7 +36,6 @@ interface BaseModalContentProps {
 export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   title,
   children,
-  error,
   isLoading = false,
   submitText = 'Submit',
   closeText = 'Cancel',
@@ -75,14 +74,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
       >
         {children}
       </ScrollView>
-      {error ? (
-        <Text
-          className="text-body-small text-danger-text dark:text-danger-text-dark shrink-0 mt-4"
-          accessibilityRole="alert"
-        >
-          {error}
-        </Text>
-      ) : null}
+      <NotificationToast variant="inline" />
       <View
         className="shrink-0 mt-4"
         style={{ paddingBottom: isPanel ? 0 : safeAreaInsets.bottom }}

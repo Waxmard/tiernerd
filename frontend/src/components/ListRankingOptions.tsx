@@ -7,6 +7,7 @@ import type {
   ListCover,
   ListIcon,
 } from '../design-system/tokens/colors';
+import { useNotifyWhenOnline } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
 import { coverDraftMatchesSaved } from '../services/coverDraft';
 import {
@@ -133,6 +134,7 @@ export function ListRankingOptions({
   onVisibilityChange: (open: boolean) => void;
 }) {
   const colors = useThemeColors();
+  const notify = useNotifyWhenOnline();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(rankingMode);
   const [draftTitle, setDraftTitle] = useState(title);
@@ -144,7 +146,6 @@ export function ListRankingOptions({
   );
   const [saving, setSaving] = useState(false);
   const [coverBusy, setCoverBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
   const coverBusyRef = useRef(false);
   const coverDraftRef = useRef(draftCover);
@@ -177,7 +178,6 @@ export function ListRankingOptions({
     onVisibilityChange(false);
     handleCoverBusyChange(false);
     changeCoverDraft({ kind: 'none' });
-    setError(null);
     setTitleError(null);
     setOpen(false);
   };
@@ -194,7 +194,6 @@ export function ListRankingOptions({
     }
     savingRef.current = true;
     setSaving(true);
-    setError(null);
     try {
       await onSave({
         title: trimmedTitle,
@@ -208,10 +207,8 @@ export function ListRankingOptions({
       changeCoverDraft({ kind: 'none' });
       setOpen(false);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to save list options. Try again.'
+      notify(
+        err instanceof Error ? err.message : 'Unable to save list options.'
       );
     } finally {
       savingRef.current = false;
@@ -233,7 +230,6 @@ export function ListRankingOptions({
           setDraftColor(color);
           setDraftIcon(icon);
           changeCoverDraft(coverDraftFromSaved(cover, coverPhoto));
-          setError(null);
           onVisibilityChange(true);
           setOpen(true);
         }}
@@ -258,7 +254,6 @@ export function ListRankingOptions({
       >
         <BaseModalContent
           title="List options"
-          error={error}
           onClose={close}
           footer={
             <View className="flex-row flex-wrap items-center justify-end gap-2">
@@ -288,7 +283,6 @@ export function ListRankingOptions({
               onChangeText={(value) => {
                 setDraftTitle(value);
                 setTitleError(null);
-                setError(null);
               }}
               error={titleError ?? undefined}
               maxLength={MAX_TITLE_LENGTH}

@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
@@ -17,7 +16,7 @@ class ItemBase(BaseModel):
 
 
 class ItemCreate(ItemBase):
-    pass
+    item_id: uuid.UUID | None = None
 
 
 class ItemUpdate(BaseModel):
@@ -44,48 +43,8 @@ class Item(ItemBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-ComparisonResult = Literal["better", "worse"]
-ComparisonStatus = Literal["active", "ready_to_commit", "completed", "cancelled"]
-
-
-class Comparison(BaseModel):
-    reference_item: Item
-    target_item: Item
-
-
-class ComparisonPreview(BaseModel):
-    score: float
-    rank: int
-    ranked_count: int
-
-
-class ComparisonSession(BaseModel):
-    session_id: str
-    list_id: uuid.UUID
+class RankingSetRequest(BaseModel):
     item_id: uuid.UUID
-    status: ComparisonStatus
-    revision: int
-    comparisons_answered: int
-    comparison_limit: int
-    can_undo: bool
-    discard_on_cancel: bool
-    is_stale: bool
-    item: Item
-    current_comparison: Comparison | None
-    preview: ComparisonPreview | None
-    created_at: datetime
-    updated_at: datetime
+    gap: int = 0
 
-
-class ComparisonSessionStartRequest(BaseModel):
-    restart: bool = False
-    revision: int | None = None
-
-
-class ComparisonResultRequest(BaseModel):
-    result: ComparisonResult
-    revision: int
-
-
-class ComparisonRevisionRequest(BaseModel):
-    revision: int
+    model_config = ConfigDict(extra="forbid")

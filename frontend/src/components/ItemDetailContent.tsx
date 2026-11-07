@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
-import { useThemeColors } from '../providers/ThemeProvider';
-import type { ComparisonSession, Item } from '../services/itemsService';
+import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
 
 export interface ItemDetailContentProps {
@@ -11,22 +10,14 @@ export interface ItemDetailContentProps {
   rankedCount: number;
   rankingMode: ListRankingMode;
   canMutate: boolean;
-  session: ComparisonSession | null;
-  isLoadingSession: boolean;
+  hasDraft: boolean;
   isBusy: boolean;
-  error: string | null;
-  sessionError?: string | null;
   presentation: 'modal' | 'panel';
-  onRetrySession: () => void;
   onRank: () => void;
-  onResume: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onRetryRefresh?: () => void;
   onClose: () => void;
 }
-
-const REFRESH_ERROR = 'Unable to refresh items. Try again.';
 
 const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
 
@@ -39,56 +30,34 @@ export function ItemDetailContent({
   rankedCount,
   rankingMode,
   canMutate,
-  session,
-  isLoadingSession,
+  hasDraft,
   isBusy,
-  error,
-  sessionError,
   presentation,
-  onRetrySession,
   onRank,
-  onResume,
   onEdit,
   onDelete,
-  onRetryRefresh,
   onClose,
 }: ItemDetailContentProps) {
-  const colors = useThemeColors();
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const imageFailed =
     item.image_url !== null && failedImageUrl === item.image_url;
-
-  const liveSession =
-    session && ['active', 'ready_to_commit'].includes(session.status)
-      ? session
-      : null;
-  const refreshPending = error === REFRESH_ERROR;
-  const actionsBlocked =
-    !canMutate ||
-    isBusy ||
-    isLoadingSession ||
-    Boolean(sessionError) ||
-    refreshPending;
-  const rankTitle = liveSession
-    ? liveSession.is_stale
-      ? 'Restart ranking'
-      : 'Resume ranking'
+  const actionsBlocked = !canMutate || isBusy;
+  const rankTitle = hasDraft
+    ? 'Resume ranking'
     : item.position === null
       ? 'Rank now'
       : 'Re-rank';
-  const canRetryRefresh = refreshPending && onRetryRefresh !== undefined;
-  const deleteTitle = canRetryRefresh ? 'Retry refresh' : 'Delete Item';
+
   return (
     <BaseModalContent
       title={item.name}
-      error={error}
       presentation={presentation}
       onClose={onClose}
       footer={
         <View className="gap-2">
           <Button
             title={rankTitle}
-            onPress={liveSession ? onResume : onRank}
+            onPress={onRank}
             disabled={actionsBlocked}
             loading={isBusy}
             fullWidth
@@ -98,26 +67,15 @@ export function ItemDetailContent({
               title="Edit"
               variant="secondary"
               onPress={onEdit}
-              disabled={!canMutate || isBusy || refreshPending}
+              disabled={actionsBlocked}
               className="flex-1 min-w-[120px]"
             />
             <Button
-              title={deleteTitle}
-              variant={canRetryRefresh ? 'secondary' : 'text'}
-              onPress={canRetryRefresh ? onRetryRefresh : onDelete}
-              disabled={
-                isBusy ||
-                (!canRetryRefresh &&
-                  (!canMutate ||
-                    isLoadingSession ||
-                    Boolean(sessionError) ||
-                    refreshPending))
-              }
-              textClassName={
-                canRetryRefresh
-                  ? undefined
-                  : 'text-danger-text dark:text-danger-text-dark'
-              }
+              title="Delete Item"
+              variant="text"
+              onPress={onDelete}
+              disabled={actionsBlocked}
+              textClassName="text-danger-text dark:text-danger-text-dark"
               className="flex-1 min-w-[120px]"
             />
           </View>
@@ -125,7 +83,7 @@ export function ItemDetailContent({
             title="Close details"
             variant="text"
             onPress={onClose}
-            disabled={isBusy || refreshPending}
+            disabled={isBusy}
             fullWidth
           />
         </View>
@@ -181,31 +139,6 @@ export function ItemDetailContent({
               className="w-full h-[220px] rounded-2xl bg-canvas dark:bg-canvas-dark border border-line dark:border-line-dark"
             />
           )
-        ) : null}
-
-        {isLoadingSession ? (
-          <View className="gap-2">
-            <ActivityIndicator color={colors['accent-text']} />
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark text-center">
-              Checking ranking status
-            </Text>
-          </View>
-        ) : sessionError ? (
-          <View className="gap-2">
-            <Text
-              accessibilityRole="alert"
-              className="text-body-small text-danger-text dark:text-danger-text-dark"
-            >
-              {sessionError}
-            </Text>
-            <Button
-              title="Retry"
-              variant="secondary"
-              onPress={onRetrySession}
-              disabled={isBusy}
-              fullWidth
-            />
-          </View>
         ) : null}
       </View>
     </BaseModalContent>

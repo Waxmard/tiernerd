@@ -1,7 +1,7 @@
 import type React from 'react';
 import { ActivityIndicator, Modal, View } from 'react-native';
 import { useThemeColors } from '../providers/ThemeProvider';
-import type { ComparisonSession, Item } from '../services/itemsService';
+import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
 import { AddItemContent } from './AddItemContent';
 import { ItemDetailContent } from './ItemDetailContent';
@@ -18,15 +18,10 @@ interface ListDetailWorkspaceHostProps {
   selectedRank: number | null;
   rankedCount: number;
   rankingMode: ListRankingMode;
-  selectedSession: ComparisonSession | null;
-  isLoadingSession: boolean;
-  sessionError: string | null;
   isLoadingItems: boolean;
   itemsLoaded: boolean;
   canMutate: boolean;
   workspace: ItemWorkspace;
-  onRetrySession: () => void;
-  onResume: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onDetailsClose: () => void;
@@ -47,15 +42,10 @@ export const ListDetailWorkspaceHost: React.FC<
   selectedRank,
   rankedCount,
   rankingMode,
-  selectedSession,
-  isLoadingSession,
-  sessionError,
   isLoadingItems,
   itemsLoaded,
   canMutate,
   workspace,
-  onRetrySession,
-  onResume,
   onEdit,
   onDelete,
   onDetailsClose,
@@ -67,23 +57,18 @@ export const ListDetailWorkspaceHost: React.FC<
   const isBusy = workspace.isBusy || isScreenBusy;
 
   const renderWorkspace = (presentation: 'modal' | 'panel') => {
-    if (workspace.mode === 'ranking' && workspace.session) {
+    if (workspace.mode === 'ranking' && workspace.view) {
       return (
         <RankingContent
           listTitle={listTitle}
-          session={workspace.session}
+          item={workspace.view.item}
+          view={workspace.view}
           presentation={presentation}
           isBusy={isBusy}
-          error={workspace.error}
-          recoveryRequired={workspace.recoveryRequired}
-          onAnswer={workspace.answer}
-          onUndo={workspace.undo}
-          onRetryCommit={workspace.retryCommit}
-          onCancel={() => workspace.requestClose().catch(() => false)}
-          onPause={workspace.pauseRanking}
-          onRestart={workspace.restart}
-          onReload={workspace.reloadSession}
-          onRetryRefresh={workspace.retryRefresh}
+          onAnswer={(answer) => void workspace.answer(answer)}
+          onUndo={() => void workspace.undo()}
+          onCancel={() => void workspace.cancelRanking()}
+          onPause={() => void workspace.pauseRanking()}
         />
       );
     }
@@ -94,12 +79,10 @@ export const ListDetailWorkspaceHost: React.FC<
           mode={workspace.mode}
           form={workspace.form}
           onFormChange={workspace.setForm}
-          onRetryRefresh={workspace.retryRefresh}
           fieldErrors={workspace.fieldErrors}
           isBusy={isBusy}
-          error={workspace.error}
           onSubmit={workspace.submitMetadata}
-          onClose={() => workspace.requestClose().catch(() => false)}
+          onClose={() => void workspace.requestClose()}
           presentation={presentation}
         />
       );
@@ -124,15 +107,9 @@ export const ListDetailWorkspaceHost: React.FC<
         rankedCount={rankedCount}
         rankingMode={rankingMode}
         presentation={presentation}
-        session={selectedSession}
-        isLoadingSession={isLoadingSession}
+        hasDraft={workspace.ranking !== null}
         isBusy={isBusy}
-        error={workspace.error}
-        sessionError={sessionError}
-        onRetrySession={onRetrySession}
-        onRetryRefresh={workspace.retryRefresh}
         onRank={onStartRanking}
-        onResume={onResume}
         onEdit={onEdit}
         onDelete={onDelete}
         onClose={onDetailsClose}
@@ -168,9 +145,7 @@ export const ListDetailWorkspaceHost: React.FC<
           animationType="none"
           accessibilityLabel={
             workspace.mode === 'ranking'
-              ? workspace.session?.status === 'ready_to_commit'
-                ? 'Saving ranking…'
-                : 'Which is better?'
+              ? 'Which is better?'
               : workspace.mode === 'edit'
                 ? 'Edit item'
                 : workspace.mode === 'add'

@@ -55,11 +55,11 @@ Module layout, layering and the tach boundary rule: see [AGENTS.md](../AGENTS.md
 
 ## Ranking Algorithm
 
-The ranking service uses binary search in `app/services/comparison_service.py` to determine item positions through pairwise comparisons.
+The client runs the binary search over a list's other ranked items and sends the resulting gap; the server owns storage. `PUT /api/lists/{list_id}/ranking` with `{"item_id": "...", "gap": n}` places the item so that `n` worse-ranked peers sit below it (`0` is worst, the ranked item count is best). The server clamps the gap to the current peers, generates a fractional position key between the neighbours, and recalculates scores across the list (see [Ranking lists](../README.md#ranking-lists) for the score formula). Replaying the same request against an unchanged list keeps the same order. Unranked items have null positions and ratings.
 
-Draft sessions persist in the database. Answers and one-step undo update the draft, not the saved item. Comparisons use all other ranked items in the list. Commit applies the new position and recalculates scores across the list (see [Ranking lists](../README.md#ranking-lists) for the score formula). Unranked items have null positions and ratings. Mutation requests carry the current session revision; stale revisions or changed ranking snapshots return 409. Status reads expose stale drafts so the client can restart them.
+Creates accept client-generated ids so a retried request is safe: `POST /api/lists/` reads an optional `list_id` from the list metadata, and `POST /api/items/?list_id=` reads an optional `item_id` in the body. A request that reuses the caller's own id returns the stored row instead of creating a duplicate; an id owned by someone else returns 409. This is what lets the mobile client queue mutations offline and replay them later.
 
-Each list has a `ranking_mode` of `score` (the default) or `rank`. Set it when creating a list or updating its metadata. Both modes retain the same positions, ratings, and comparison workflow; switching modes changes presentation only.
+Each list has a `ranking_mode` of `score` (the default) or `rank`. Set it when creating a list or updating its metadata. Both modes retain the same positions and ratings; switching modes changes presentation only.
 
 ## Configure list cover photos
 
@@ -128,7 +128,7 @@ uv run python scripts/migrate_list_ranking_mode.py --apply
 
 The migration preserves existing valid mode choices, item order, metadata and sessions. It recalculates incorrect ratings in a locked transaction and rolls back if verification fails.
 
-Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its top saved score is 10.0. Then run a fresh `make ios` from the repository root and confirm the device displays 10.0 without a suffix. A client build alone does not migrate or deploy the backend.
+Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its top saved score is 10.0. Then run a fresh `make ios` from the repository root and confirm the device displays 10.0 without a suffix. `make ios` deploys the backend itself when its inputs changed, but no build or deploy migrates the database.
 
 ## Upgrade the overall-ranking schema
 
@@ -169,6 +169,19 @@ uv run python scripts/migrate_ui_ranking.py --apply
 ```
 
 The migration trims display names, backfills normalized identity keys, and adds uniqueness and draft-session constraints in one locked transaction. Legacy active sessions become cancelled without deleting items or changing ranks; historical completed sessions remain completed. Previously unranked items can start a fresh ranking. Unknown partial schemas are rejected. A verified upgraded schema is a no-op on rerun.
+
+## Drop the comparison-session schema
+
+Once every client ranks locally, `comparison_sessions` is unused. Run the UI-ranking upgrade first if the database is older, then drop the table. Back up the database and stop the application before applying it.
+
+From `fastapi/`:
+
+```bash
+uv run python scripts/migrate_drop_comparison_sessions.py --check
+uv run python scripts/migrate_drop_comparison_sessions.py --apply
+```
+
+`--check` reports whether the table exists and how many rows it holds; it never changes the database. `--apply` drops the table and prints the discarded row count. Reapplying is a no-op. Deploy the matching backend after the drop.
 
 ## Upgrade the Google authentication schema
 

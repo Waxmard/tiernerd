@@ -39,13 +39,13 @@ import type {
 } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
+import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
 import { ApiError } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import type { ListPhoto } from '../services/listCoversService';
 import {
   enqueueListCacheWrite,
-  listItemsCacheKey,
   listsCacheKey,
   parseCachedLists,
   sortListsByRecency,
@@ -78,6 +78,8 @@ const toTierList = (list: ListSimple): TierList => ({
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
+  const { isOffline, lastSyncedAt } = useSync();
+  const notify = useNotifyWhenOnline();
   const userId = user?.id ?? null;
   const colors = useThemeColors();
   const safeAreaInsets = useSafeAreaInsets();
@@ -103,7 +105,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     snapshotIdentity.token === token;
   const visibleLists = currentSnapshot ? lists : [];
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
@@ -127,7 +128,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setLists([]);
     setHasSnapshot(false);
     setSnapshotIdentity({ userId, token });
-    setError(null);
     setIsLoading(Boolean(token));
   }, [token, userId]);
   const refreshLists = useCallback(
@@ -147,7 +147,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         setLists(result.map(toTierList));
         setSnapshotIdentity({ userId, token });
         setHasSnapshot(true);
-        setError(null);
         if (userId) {
           const key = listsCacheKey(userId);
           if (isCurrent())
@@ -158,7 +157,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
       } catch (err: unknown) {
         if (isCurrent()) {
-          setError(err instanceof Error ? err.message : 'Failed to load lists');
+          notify(
+            err instanceof Error ? err.message : "Couldn't load your lists."
+          );
           if (
             err instanceof ApiError &&
             (err.status === 401 || err.status === 403)
@@ -181,7 +182,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (isCurrent()) setIsLoading(false);
       }
     },
-    [isIdentityCurrent, token, userId]
+    [isIdentityCurrent, notify, token, userId]
   );
   const fetchLists = useCallback(async () => {
     try {
@@ -238,54 +239,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     async (item?: Item) => {
       const expectedUserId = userId;
       const expectedToken = token;
-      const lifecycleId = ++overviewLifecycleRef.current;
-      const requestId = ++listsRequestRef.current;
-      setIsLoading(false);
-      if (expectedUserId) {
-        const overviewKey = listsCacheKey(expectedUserId);
-        const itemKey = pendingList
-          ? listItemsCacheKey(expectedUserId, pendingList.listId)
-          : null;
-        const keys = [overviewKey, itemKey].filter(
-          (key): key is string => key !== null
-        );
-        await Promise.all(
-          keys.map((key) => {
-            if (
-              requestId !== listsRequestRef.current ||
-              lifecycleId !== overviewLifecycleRef.current ||
-              !isIdentityCurrent(expectedUserId, expectedToken)
-            )
-              return Promise.resolve();
-            return enqueueListCacheWrite(key, async () => {
-              if (
-                requestId === listsRequestRef.current &&
-                lifecycleId === overviewLifecycleRef.current &&
-                isIdentityCurrent(expectedUserId, expectedToken)
-              )
-                await AsyncStorage.removeItem(key);
-            }).catch(() => {});
-          })
-        );
-      }
+      await refreshLists().catch(() => undefined);
       if (
-        requestId !== listsRequestRef.current ||
-        lifecycleId !== overviewLifecycleRef.current ||
+        !item ||
+        !pendingList ||
         !isIdentityCurrent(expectedUserId, expectedToken)
       )
         return;
-      await refreshLists();
-      if (
-        item &&
-        pendingList &&
-        lifecycleId === overviewLifecycleRef.current &&
-        isIdentityCurrent(expectedUserId, expectedToken)
-      )
-        navigation.navigate('ListDetail', {
-          listId: pendingList.listId,
-          listTitle: pendingList.title,
-          completedItemId: item.item_id,
-        });
+      navigation.navigate('ListDetail', {
+        listId: pendingList.listId,
+        listTitle: pendingList.title,
+        completedItemId: item.item_id,
+      });
     },
     [isIdentityCurrent, navigation, pendingList, refreshLists, token, userId]
   );
@@ -294,53 +259,45 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setPendingList(null);
   }, []);
   const workspace = useItemWorkspace({
+    userId,
+    listId: pendingList?.listId ?? '',
     listTitle: pendingList?.title ?? '',
-    token,
+    items: [],
     onItemsChanged: handleWorkspaceItemsChanged,
     onClosed: handleWorkspaceClosed,
   });
   const handleListCreated = useCallback(
-    (list: CreatedList) => {
+    (list: ListSimple) => {
       const expectedUserId = userId;
       const expectedToken = token;
-      const lifecycleId = ++overviewLifecycleRef.current;
-      const requestId = ++listsRequestRef.current;
+      const created = toTierList(list);
+      setLists((previous) =>
+        [created, ...previous.filter((entry) => entry.id !== created.id)].sort(
+          (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+        )
+      );
+      setSnapshotIdentity({ userId: expectedUserId, token: expectedToken });
+      setHasSnapshot(true);
       setIsLoading(false);
-      setPendingList(list);
+      setPendingList({ listId: list.list_id, title: list.title });
       workspace.openAdd();
       setModalStep('addItem');
-      if (
-        expectedUserId &&
-        requestId === listsRequestRef.current &&
-        lifecycleId === overviewLifecycleRef.current &&
-        isIdentityCurrent(expectedUserId, expectedToken)
-      ) {
-        const key = listsCacheKey(expectedUserId);
-        void enqueueListCacheWrite(key, async () => {
-          if (
-            requestId === listsRequestRef.current &&
-            lifecycleId === overviewLifecycleRef.current &&
-            isIdentityCurrent(expectedUserId, expectedToken)
+      void refreshLists().catch(async () => {
+        if (!expectedUserId) return;
+        const cached = parseCachedLists(
+          await AsyncStorage.getItem(listsCacheKey(expectedUserId)).catch(
+            () => null
           )
-            await AsyncStorage.removeItem(key);
-        })
-          .catch(() => {})
-          .then(() => {
-            if (
-              requestId === listsRequestRef.current &&
-              lifecycleId === overviewLifecycleRef.current &&
-              isIdentityCurrent(expectedUserId, expectedToken)
-            )
-              return refreshLists();
-          })
-          .catch(() => {});
-      } else if (
-        requestId === listsRequestRef.current &&
-        lifecycleId === overviewLifecycleRef.current &&
-        isIdentityCurrent(expectedUserId, expectedToken)
-      ) {
-        void refreshLists().catch(() => {});
-      }
+        );
+        if (!cached || !isIdentityCurrent(expectedUserId, expectedToken))
+          return;
+        setLists(cached.map(toTierList));
+        setSnapshotIdentity({
+          userId: expectedUserId,
+          token: expectedToken,
+        });
+        setHasSnapshot(true);
+      });
     },
     [isIdentityCurrent, refreshLists, token, userId, workspace.openAdd]
   );
@@ -348,9 +305,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     modalStep === 'create'
       ? 'Create New List'
       : workspace.mode === 'ranking'
-        ? workspace.session?.status === 'ready_to_commit'
-          ? 'Saving ranking…'
-          : 'Which is better?'
+        ? 'Which is better?'
         : 'Add item';
   useEffect(
     () =>
@@ -393,6 +348,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       workspace.requestClose,
     ]
   );
+  useEffect(() => {
+    if (lastSyncedAt === 0) return;
+    void refreshLists().catch(() => undefined);
+  }, [lastSyncedAt, refreshLists]);
+
+  const wasOfflineRef = useRef(isOffline);
+  useEffect(() => {
+    if (wasOfflineRef.current && !isOffline) {
+      void refreshLists().catch(() => undefined);
+    }
+    wasOfflineRef.current = isOffline;
+  }, [isOffline, refreshLists]);
+
   const formatDate = (date: Date) => {
     const age = Math.floor((Date.now() - date.getTime()) / 86400000);
     if (age === 0) return 'today';
@@ -472,21 +440,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <View className="flex-1 items-center justify-center px-6">
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
-    ) : error && !currentSnapshot ? (
-      <View className="flex-1 items-center justify-center px-6">
-        <Ionicons
-          name="alert-circle-outline"
-          size={48}
-          color={colors['ink-muted']}
-        />
-        <Text className="text-headline-small font-semibold text-ink dark:text-ink-dark mt-4 mb-1">
-          Something went wrong
-        </Text>
-        <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark text-center mb-6">
-          {error}
-        </Text>
-        <Button title="Try again" onPress={() => void fetchLists()} />
-      </View>
     ) : (
       <FlatList
         key={columns}
@@ -525,17 +478,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 accessibilityLabel="Create new list"
               />
             </View>
-            {error ? (
-              <View className="flex-row items-center justify-between gap-3 rounded-xl border border-danger-text p-3">
-                <Text
-                  accessibilityLiveRegion="polite"
-                  className="flex-1 text-body-medium text-danger-text dark:text-danger-text-dark"
-                >
-                  {error}
-                </Text>
-                <Button title="Try again" onPress={() => void fetchLists()} />
-              </View>
-            ) : null}
           </View>
         }
         ListEmptyComponent={
@@ -627,11 +569,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             else if (modalStep === 'addItem') {
               if (workspace.mode === 'ranking') {
                 const list = pendingList;
-                if (workspace.pauseRanking() && list)
-                  navigation.navigate('ListDetail', {
-                    listId: list.listId,
-                    listTitle: list.title,
-                  });
+                void workspace.pauseRanking().then((paused) => {
+                  if (paused && list)
+                    navigation.navigate('ListDetail', {
+                      listId: list.listId,
+                      listTitle: list.title,
+                    });
+                });
               } else void workspace.requestClose().catch(() => false);
             }
           }}
@@ -648,42 +592,35 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           )}
           {modalStep === 'addItem' &&
             pendingList &&
-            (workspace.mode === 'ranking' && workspace.session ? (
+            (workspace.mode === 'ranking' && workspace.view ? (
               <RankingContent
                 listTitle={pendingList.title}
-                session={workspace.session}
+                item={workspace.view.item}
+                view={workspace.view}
                 presentation="modal"
                 isBusy={workspace.isBusy}
-                error={workspace.error}
-                recoveryRequired={workspace.recoveryRequired}
-                onAnswer={(result) => void workspace.answer(result)}
+                onAnswer={(answer) => void workspace.answer(answer)}
                 onUndo={() => void workspace.undo()}
-                onRetryCommit={() => void workspace.retryCommit()}
-                onCancel={() =>
-                  void workspace.requestClose().catch(() => false)
-                }
+                onCancel={() => void workspace.cancelRanking()}
                 onPause={() => {
                   const list = pendingList;
-                  if (workspace.pauseRanking() && list) {
-                    navigation.navigate('ListDetail', {
-                      listId: list.listId,
-                      listTitle: list.title,
-                    });
-                  }
+                  void workspace.pauseRanking().then((paused) => {
+                    if (paused && list) {
+                      navigation.navigate('ListDetail', {
+                        listId: list.listId,
+                        listTitle: list.title,
+                      });
+                    }
+                  });
                 }}
-                onRestart={() => void workspace.restart()}
-                onReload={workspace.reloadSession}
-                onRetryRefresh={workspace.retryRefresh}
               />
             ) : workspace.mode === 'add' || workspace.mode === 'edit' ? (
               <AddItemContent
                 mode={workspace.mode}
                 form={workspace.form}
                 onFormChange={workspace.setForm}
-                onRetryRefresh={workspace.retryRefresh}
                 fieldErrors={workspace.fieldErrors}
                 isBusy={workspace.isBusy}
-                error={workspace.error}
                 onSubmit={() => void workspace.submitMetadata()}
                 onClose={() => void workspace.requestClose().catch(() => false)}
                 presentation="modal"

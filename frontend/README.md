@@ -16,6 +16,8 @@ List covers can use the built-in landscape, a searchable Unsplash photo, or a ph
 
 Unsplash photos are served by Unsplash with photographer and Unsplash credits. Device photos are uploaded to private storage and retrieved through the authenticated API. Search and uploads require backend configuration and a matching database schema; see [Configure list cover photos](../fastapi/README.md#configure-list-cover-photos). The app does not include image generation or camera capture.
 
+Uploaded covers on a phone are cached on the device after they load once, so they still show offline, and a cover that failed to load retries by itself when the connection returns. On the web the browser's own caching rules apply.
+
 On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. On larger screens, dialogs stay centered and item details open in a 400px side pane only when you select an item or start a workspace action.
 
 The default appearance is **System**, which follows the device's appearance. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads; existing explicit choices are preserved. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on wide screens.
@@ -55,9 +57,9 @@ If device names are ambiguous, list devices and use an identifier:
 xcrun devicectl list devices --timeout 10
 ```
 
-Reuse does not include source or configuration changes. Run `make ios` to build them.
+Reuse does not include source or configuration changes. Run `make ios` to build them. Reuse still deploys the backend when its inputs changed, which is the quick way to test a backend-only change against the installed app.
 
-The build uses the hosted development API by default, or the API selected by `EXPO_PUBLIC_API_URL`. It does not migrate or deploy the backend. Upgrade the matching database and deploy the matching backend before building the updated app; see the backend instructions for [ranking mode](../fastapi/README.md#upgrade-the-list-ranking-mode-schema) and [list cover photos](../fastapi/README.md#configure-list-cover-photos).
+The build uses the hosted development API by default, or the API selected by `EXPO_PUBLIC_API_URL`. Before building, `make ios` deploys that hosted development API when the backend inputs changed since the last deploy, and skips the deploy otherwise, so the app under test is not local JavaScript against stale backend code. `SKIP_DEPLOY=1` builds without deploying; pointing `EXPO_PUBLIC_API_URL` at another API skips the deploy too. The deploy does not migrate the database. Upgrade the matching database and deploy the matching backend before building the updated app; see the backend instructions for [ranking mode](../fastapi/README.md#upgrade-the-list-ranking-mode-schema) and [list cover photos](../fastapi/README.md#configure-list-cover-photos).
 
 For standalone acceptance, close Xcode and Metro, force-quit the installed app, and relaunch it from the home screen. Check Google sign-in and a saved list against the configured API. Network-backed behavior requires connectivity. This is separate from TestFlight acceptance.
 

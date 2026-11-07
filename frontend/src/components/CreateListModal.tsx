@@ -15,10 +15,20 @@ import {
   palette,
 } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
+import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
-import { ApiError, getApiErrorMessage } from '../services/apiError';
+import { getApiErrorMessage } from '../services/apiError';
+import { coverSelectionFromDraft } from '../services/coverDraft';
 import type { CoverDraft } from '../services/listCoversService';
-import { type ListRankingMode, listsService } from '../services/listsService';
+import {
+  COVER_NEEDS_CONNECTION,
+  type ListCreatePayload,
+  type ListRankingMode,
+  type ListSimple,
+  listsService,
+} from '../services/listsService';
+import { localLibrary } from '../services/localLibrary';
+import { newId } from '../utils/id';
 import {
   LIST_ICON_LABELS,
   ListColorPicker,
@@ -39,7 +49,7 @@ export interface CreateListContentHandle {
 
 interface CreateListContentProps {
   onClose: () => void;
-  onSuccess: (list: CreatedList) => void;
+  onSuccess: (list: ListSimple) => void;
 }
 
 const MAX_TITLE_LENGTH = 100;
@@ -52,7 +62,9 @@ export const CreateListContent = forwardRef<
   CreateListContentHandle,
   CreateListContentProps
 >(function CreateListContent({ onClose, onSuccess }, ref) {
-  const { token } = useAuth();
+  const { user, token } = useAuth();
+  const { mutate, isOffline } = useSync();
+  const notify = useNotifyWhenOnline();
   const { scheme } = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -64,7 +76,6 @@ export const CreateListContent = forwardRef<
   const [isLoading, setIsLoading] = useState(false);
   const [coverBusy, setCoverBusy] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<TextInputInstance>(null);
   const hasVisitedOptionalFieldRef = useRef(false);
   const loadingRef = useRef(false);
@@ -115,7 +126,6 @@ export const CreateListContent = forwardRef<
     setRankingMode('score');
     setView('overview');
     setFieldError(null);
-    setError(null);
   }, [changeCoverDraft, handleCoverBusyChange]);
 
   const requestClose = useCallback(async () => {
@@ -148,45 +158,91 @@ export const CreateListContent = forwardRef<
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       setFieldError('Title is required');
-      setError(null);
       return;
     }
     if (Array.from(trimmedTitle).length > MAX_TITLE_LENGTH) {
       setFieldError('Title must be 100 characters or less');
-      setError(null);
       return;
     }
-    if (!token) {
-      setError('Authentication required');
+    if (!token || !user) {
+      notify('Authentication required');
+      return;
+    }
+    if (isOffline && coverDraftRef.current.kind === 'local') {
+      setFieldError(COVER_NEEDS_CONNECTION);
       return;
     }
 
     loadingRef.current = true;
     setIsLoading(true);
     setFieldError(null);
-    setError(null);
+    const listId = newId();
+    const now = new Date().toISOString();
+    const payload: ListCreatePayload = {
+      list_id: listId,
+      title: trimmedTitle,
+      description: description.trim(),
+      color,
+      icon,
+      ranking_mode: rankingMode,
+      ...coverSelectionFromDraft(coverDraftRef.current),
+    };
+    const localList: ListSimple = {
+      ...payload,
+      cover_photo: null,
+      created_at: now,
+      updated_at: now,
+      item_count: 0,
+    };
     try {
-      const createdList = await listsService.createList(
-        trimmedTitle,
-        description.trim(),
-        color,
-        rankingMode,
-        token,
-        icon,
-        coverDraftRef.current
-      );
-      clearForm();
-      onSuccess({ listId: createdList.list_id, title: createdList.title });
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
-        setFieldError(
-          getApiErrorMessage(error, 'A list with this title already exists')
+      if (coverDraftRef.current.kind === 'local') {
+        const saved = await listsService.createList(
+          payload,
+          token,
+          coverDraftRef.current
         );
-      } else {
-        setError(
-          getApiErrorMessage(error, 'Failed to create list. Please try again.')
-        );
+        await localLibrary.applyLocalListCreate(user.id, {
+          ...localList,
+          cover: saved.cover,
+          cover_photo: saved.cover_photo,
+        });
+        clearForm();
+        onSuccess({
+          ...localList,
+          cover: saved.cover,
+          cover_photo: saved.cover_photo,
+        });
+        return;
       }
+      const outcome = await mutate(
+        {
+          id: newId(),
+          createdAt: now,
+          kind: 'list.create',
+          listId,
+          list: payload,
+        },
+        {
+          applyLocal: () =>
+            localLibrary.applyLocalListCreate(user.id, localList),
+          rollbackLocal: () =>
+            localLibrary.applyLocalListDelete(user.id, listId),
+        }
+      );
+      if (outcome.status === 'rejected') {
+        if (outcome.message.toLowerCase().includes('title')) {
+          setFieldError(outcome.message);
+        } else {
+          notify(outcome.message);
+        }
+        return;
+      }
+      clearForm();
+      onSuccess(localList);
+    } catch (error) {
+      notify(
+        getApiErrorMessage(error, 'Failed to create list. Please try again.')
+      );
     } finally {
       loadingRef.current = false;
       setIsLoading(false);
@@ -204,7 +260,6 @@ export const CreateListContent = forwardRef<
               ? 'List appearance'
               : 'Ranking mode'
       }
-      error={error}
       isLoading={isLoading || coverBusy}
       submitText={view === 'overview' ? 'Create' : 'Done'}
       closeText={view === 'overview' ? 'Cancel' : 'Back'}
@@ -227,7 +282,6 @@ export const CreateListContent = forwardRef<
             onChangeText={(value) => {
               setTitle(value);
               setFieldError(null);
-              setError(null);
             }}
             error={fieldError ?? undefined}
             maxLength={MAX_TITLE_LENGTH}

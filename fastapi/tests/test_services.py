@@ -4,21 +4,13 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Item as ItemModel
-from app.services.comparison_service import (
-    LIST_CHANGED,
-    ComparisonConflict,
-    build_comparison_session_response,
-    finalize_comparison,
-    process_comparison_result,
-    start_comparison,
-    undo_comparison,
-)
+from app.db.models import Item as ItemModel, List as ListModel
 from app.services.list_service import get_items_best_first
 from app.services.ranking import (
     assign_scores,
     filter_ranked_items,
     score_for_rank,
+    set_item_ranking,
     sort_items_by_position,
 )
 
@@ -41,94 +33,6 @@ def create_item(
         created_at=now,
         updated_at=now,
     )
-
-
-async def test_without_peers_starts_ready_with_valid_preview(
-    test_db: AsyncSession, item_factory
-) -> None:
-    candidate = item_factory(name="New", position=None)
-    test_db.add(candidate)
-    await test_db.commit()
-
-    session = await start_comparison(test_db, candidate, discard_on_cancel=True)
-    response = await build_comparison_session_response(test_db, session)
-
-    assert response.status == "ready_to_commit"
-    assert response.comparisons_answered == 0
-    assert response.comparison_limit == 0
-    assert response.preview is not None
-    assert response.preview.score == 10.0
-    assert response.preview.rank == 1
-    assert response.preview.ranked_count == 1
-    assert response.item.position is None
-    assert response.item.rating is None
-    assert response.discard_on_cancel is True
-
-
-async def test_answer_undo_and_commit_preserve_draft_until_commit(
-    test_db: AsyncSession, test_item: ItemModel, item_factory
-) -> None:
-    assign_scores([test_item])
-    candidate = item_factory(name="Candidate", position=None)
-    test_db.add(candidate)
-    await test_db.commit()
-
-    session = await start_comparison(test_db, candidate)
-    await process_comparison_result(test_db, session, "better", revision=0)
-    response = await build_comparison_session_response(test_db, session)
-
-    assert response.status == "ready_to_commit"
-    assert response.preview is not None
-    assert response.preview.score == 10.0
-    assert response.preview.rank == 1
-    assert response.preview.ranked_count == 2
-    assert candidate.position is None
-    assert candidate.rating is None
-    assert test_item.position == "a0"
-    assert test_item.rating == 10.0
-
-    await undo_comparison(test_db, session, revision=1)
-    assert session.status == "active"
-    assert session.revision == 2
-    assert candidate.position is None
-    assert candidate.rating is None
-
-    await process_comparison_result(test_db, session, "worse", revision=2)
-    response = await build_comparison_session_response(test_db, session)
-    assert response.preview is not None
-    assert response.preview.score == 0.0
-    assert response.preview.rank == 2
-    assert candidate.position is None
-    assert candidate.rating is None
-    await finalize_comparison(test_db, session, revision=3)
-    assert session.status == "completed"
-    assert session.revision == 4
-    assert candidate.position < test_item.position
-    assert candidate.rating == 0.0
-    assert test_item.rating == 10.0
-
-    await finalize_comparison(test_db, session, revision=0)
-    assert session.revision == 4
-
-
-async def test_changed_peer_makes_draft_stale_without_mutation(
-    test_db: AsyncSession, test_item: ItemModel, item_factory
-) -> None:
-    candidate = item_factory(name="Candidate", position=None)
-    test_db.add(candidate)
-    await test_db.commit()
-    session = await start_comparison(test_db, candidate)
-
-    test_item.position = "z0"
-    await test_db.commit()
-    response = await build_comparison_session_response(test_db, session)
-    assert response.is_stale is True
-    assert response.current_comparison is None
-
-    with pytest.raises(ComparisonConflict, match=LIST_CHANGED):
-        await process_comparison_result(test_db, session, "better", revision=0)
-    assert candidate.position is None
-    assert candidate.rating is None
 
 
 class TestRankingService:
@@ -172,3 +76,88 @@ class TestRankingService:
             create_item(name="First", position="a0"),
         ]
         assert sort_items_by_position(items) == [items[1], items[0]]
+
+
+class TestSetItemRanking:
+    async def test_inserts_between_peers_and_rescores(
+        self,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        item_factory,
+    ) -> None:
+        peers = [
+            item_factory(name="Worst", position="a0", rating=0.0),
+            item_factory(name="Third", position="a1", rating=5.0),
+            item_factory(name="Best", position="a2", rating=10.0),
+        ]
+        mover = item_factory(name="Mover", position=None)
+        test_db.add_all([*peers, mover])
+        await test_db.commit()
+
+        items = await set_item_ranking(test_db, test_list, mover, 2)
+
+        assert [item.name for item in items] == [
+            "Best",
+            "Mover",
+            "Third",
+            "Worst",
+        ]
+        assert peers[0].position < peers[1].position < peers[2].position
+        assert peers[1].position < mover.position < peers[2].position
+        assert [item.rating for item in items] == [10.0, 6.7, 3.3, 0.0]
+
+    async def test_gap_is_clamped_to_the_peer_range(
+        self,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        item_factory,
+    ) -> None:
+        peers = [
+            item_factory(name="Worst", position="a0", rating=0.0),
+            item_factory(name="Best", position="a1", rating=10.0),
+        ]
+        mover = item_factory(name="Mover", position=None)
+        test_db.add_all([*peers, mover])
+        await test_db.commit()
+
+        too_high = await set_item_ranking(test_db, test_list, mover, 99)
+        assert too_high[0].item_id == mover.item_id
+        assert too_high[0].rating == 10.0
+
+        too_low = await set_item_ranking(test_db, test_list, mover, -3)
+        assert too_low[-1].item_id == mover.item_id
+        assert too_low[-1].rating == 0.0
+
+    async def test_updates_list_and_item_timestamps(
+        self,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        item_factory,
+    ) -> None:
+        stale = datetime(2020, 1, 1)
+        test_list.updated_at = stale
+        mover = item_factory(name="Mover", position=None)
+        mover.updated_at = stale
+        test_db.add(mover)
+        await test_db.commit()
+
+        await set_item_ranking(test_db, test_list, mover, 0)
+
+        assert test_list.updated_at.replace(tzinfo=None) > datetime(2020, 1, 2)
+        assert mover.updated_at.replace(tzinfo=None) > datetime(2020, 1, 2)
+
+    async def test_first_item_becomes_the_only_ranked_entry(
+        self,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        item_factory,
+    ) -> None:
+        mover = item_factory(name="Only", position=None)
+        test_db.add(mover)
+        await test_db.commit()
+
+        items = await set_item_ranking(test_db, test_list, mover, 0)
+
+        assert items == [mover]
+        assert mover.position == "a0"
+        assert mover.rating == 10.0

@@ -1,14 +1,10 @@
 import uuid
 from typing import Any
 
-from sqlalchemy import delete as sql_delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import (
-    ComparisonSession as ComparisonSessionModel,
-    Item as ItemModel,
-    List as ListModel,
-)
+from app.db.models import Item as ItemModel, List as ListModel
 
 
 async def get_by_id(
@@ -95,15 +91,6 @@ async def update(
 
 
 async def delete(db: AsyncSession, list_obj: ListModel) -> None:
-    """Delete a list, its items, and every comparison session that references it.
-
-    Items cascade via the relationship, but comparison_sessions holds
-    non-cascading FKs to lists, so those rows go first.
-    """
-    await db.execute(
-        sql_delete(ComparisonSessionModel).where(
-            ComparisonSessionModel.list_id == list_obj.list_id
-        )
-    )
+    """Delete a list and its items."""
     await db.delete(list_obj)
     await db.commit()

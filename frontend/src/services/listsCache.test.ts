@@ -24,6 +24,7 @@ import {
   isLifecycleReadable,
   listItemsCacheKey,
   listsCacheKey,
+  mergePendingItems,
   parseCachedListItems,
   parseCachedLists,
   sortListsByRecency,
@@ -636,4 +637,49 @@ test('mutation refresh invalidates cache version and clears live accepted flags'
   assert.notEqual(nextVersion, initialVersion);
   assert.equal(isCacheCurrent(lifecycle, initialVersion), false);
   assert.equal(isCacheCurrent(lifecycle, nextVersion), true);
+});
+
+test('a pending create lands where its score places it, not at the end', () => {
+  const ratings = [10, 8.9, 7.8, 6.7, 5.6, 4.4, 3.3, 2.2, 1.1, 0];
+  const server = ratings.map((rating, index) =>
+    item({ item_id: `server-${index}`, rating, position: `a${index}` })
+  );
+  const pending = item({
+    item_id: 'pending-1',
+    rating: 4,
+    position: 'pending',
+  });
+
+  const merged = mergePendingItems(server, [pending]);
+
+  assert.deepEqual(
+    merged.map((entry) => entry.item_id),
+    [
+      'server-0',
+      'server-1',
+      'server-2',
+      'server-3',
+      'server-4',
+      'server-5',
+      'pending-1',
+      'server-6',
+      'server-7',
+      'server-8',
+      'server-9',
+    ]
+  );
+});
+
+test('pending creates that are unranked or unknown stay at the end', () => {
+  const server = [item({ item_id: 'server-0', rating: 10 })];
+  const merged = mergePendingItems(server, [
+    item({ item_id: 'pending-ranked', rating: 4 }),
+    item({ item_id: 'pending-unranked', rating: null, position: null }),
+    item({ item_id: 'server-0', rating: 1 }),
+  ]);
+
+  assert.deepEqual(
+    merged.map((entry) => entry.item_id),
+    ['server-0', 'pending-ranked', 'pending-unranked']
+  );
 });

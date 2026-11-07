@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ApiError, getApiErrorMessage } from './apiError.ts';
+import { ApiError, getApiErrorMessage, NetworkError } from './apiError.ts';
 
 const fallback = 'Could not save.';
 
@@ -27,7 +27,40 @@ test('joins only string validation messages', () => {
       }),
       fallback
     ),
-    'Name is required, Description is too long'
+    'Name is required; Description is too long'
+  );
+});
+
+test('names the field each validation message is about', () => {
+  assert.equal(
+    getApiErrorMessage(
+      new ApiError(422, 'Unprocessable', {
+        detail: [
+          {
+            type: 'missing',
+            loc: ['query', 'list_title'],
+            msg: 'Field required',
+          },
+        ],
+      }),
+      fallback
+    ),
+    'list_title: Field required'
+  );
+  assert.equal(
+    getApiErrorMessage(
+      new ApiError(422, 'Unprocessable', {
+        detail: [
+          {
+            loc: ['body', 'name'],
+            msg: 'String should have at least 1 character',
+          },
+          { loc: ['body', 'items', 0, 'name'], msg: 'Field required' },
+        ],
+      }),
+      fallback
+    ),
+    'name: String should have at least 1 character; items.0.name: Field required'
   );
 });
 
@@ -61,4 +94,11 @@ test('explains network TypeErrors and falls back for other exceptions', () => {
     'Unable to reach the server. Check your connection and try again.'
   );
   assert.equal(getApiErrorMessage(new Error('unexpected'), fallback), fallback);
+});
+
+test('passes the network error message through', () => {
+  assert.equal(
+    getApiErrorMessage(new NetworkError(), fallback),
+    'Unable to reach the server. Check your connection and try again.'
+  );
 });
