@@ -117,7 +117,9 @@ export function ItemDetailContent({
         )}
         {rankingMode === 'score' ? (
           <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-            Scores are based on the order of items in this list.
+            {item.position !== null && item.manual_rating !== null
+              ? 'Manual score · unpinned items adjust around it.'
+              : 'Scores are based on list order and any manual scores.'}
           </Text>
         ) : null}
         {item.description ? (

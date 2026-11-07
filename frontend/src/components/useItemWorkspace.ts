@@ -11,13 +11,17 @@ import {
 import {
   applyAnswer,
   comparisonLimit,
+  computeScores,
   createRankingSession,
   gap,
   insertIndexBestFirst,
   isDecided,
   isDraftCurrent,
+  manualRatingBoundsError,
+  parseManualRatingInput,
   type RankingAnswer,
   type RankingSession,
+  scoreForRank,
   targetPeerId,
   undoAnswer,
 } from '../services/rankingEngine';
@@ -30,7 +34,11 @@ import type {
   UseItemWorkspaceOptions,
 } from './itemWorkspaceTypes';
 
-const EMPTY_FORM: ItemFormDraft = { name: '', description: '' };
+const EMPTY_FORM: ItemFormDraft = {
+  name: '',
+  description: '',
+  manualRating: '',
+};
 const EMPTY_WORKSPACE: ItemWorkspaceState = {
   mode: 'closed',
   item: null,
@@ -124,7 +132,12 @@ export function useItemWorkspace({
   const openEdit = useCallback(
     (item: Item) => {
       if (busyRef.current) return;
-      const form = { name: item.name, description: item.description ?? '' };
+      const form = {
+        name: item.name,
+        description: item.description ?? '',
+        manualRating:
+          item.manual_rating !== null ? item.manual_rating.toFixed(1) : '',
+      };
       initialFormRef.current = form;
       replaceWorkspace({ ...EMPTY_WORKSPACE, mode: 'edit', item, form });
     },
@@ -137,6 +150,7 @@ export function useItemWorkspace({
       const current = workspaceRef.current;
       const fieldErrors = { ...current.fieldErrors };
       if ('name' in patch) delete fieldErrors.name;
+      if ('manualRating' in patch) delete fieldErrors.manualRating;
       updateWorkspace({
         form: { ...current.form, ...patch },
         fieldErrors,
@@ -298,10 +312,51 @@ export function useItemWorkspace({
     try {
       if (current.mode === 'edit' && current.item) {
         const original = current.item;
+        let nextManualRating = original.manual_rating;
+        let nextRating = original.rating;
+        let manualChanged = false;
+        if (original.position !== null) {
+          const parsed = parseManualRatingInput(current.form.manualRating);
+          if ('error' in parsed) {
+            updateWorkspace({ fieldErrors: { manualRating: parsed.error } });
+            return;
+          }
+          const rankedItems = optionsRef.current.items.filter(
+            (entry) => entry.position !== null
+          );
+          if (parsed.value !== null) {
+            const boundsError = manualRatingBoundsError(
+              rankedItems,
+              original.item_id,
+              parsed.value
+            );
+            if (boundsError) {
+              updateWorkspace({ fieldErrors: { manualRating: boundsError } });
+              return;
+            }
+          }
+          nextManualRating = parsed.value;
+          manualChanged = nextManualRating !== original.manual_rating;
+          if (manualChanged) {
+            const targetIdx = rankedItems.findIndex(
+              (entry) => entry.item_id === original.item_id
+            );
+            if (targetIdx !== -1) {
+              const scores = computeScores(
+                rankedItems.map((entry, idx) =>
+                  idx === targetIdx ? nextManualRating : entry.manual_rating
+                )
+              );
+              nextRating = scores[targetIdx] ?? original.rating;
+            }
+          }
+        }
         const updated: Item = {
           ...original,
           name,
           description: current.form.description,
+          rating: nextRating,
+          manual_rating: nextManualRating,
           updated_at: now,
         };
         const outcome = await mutate(
@@ -313,6 +368,7 @@ export function useItemWorkspace({
             itemId: original.item_id,
             name,
             description: current.form.description,
+            ...(manualChanged ? { manualRating: nextManualRating } : {}),
           },
           {
             applyLocal: () =>
@@ -331,10 +387,17 @@ export function useItemWorkspace({
         );
         if (outcome.status === 'rejected') {
           const duplicate = outcome.message.includes('already exists');
+          const scoreError =
+            outcome.message.includes('Score') ||
+            outcome.message.includes('Rank this item');
           updateWorkspace({
-            fieldErrors: duplicate ? { name: outcome.message } : {},
+            fieldErrors: duplicate
+              ? { name: outcome.message }
+              : scoreError
+                ? { manualRating: outcome.message }
+                : {},
           });
-          if (!duplicate) notify(outcome.message);
+          if (!duplicate && !scoreError) notify(outcome.message);
           return;
         }
         updateWorkspace({ item: updated, fieldErrors: {} });
@@ -351,6 +414,7 @@ export function useItemWorkspace({
         description: current.form.description,
         image_url: null,
         rating: null,
+        manual_rating: null,
         position: null,
         created_at: now,
         updated_at: now,
@@ -392,7 +456,12 @@ export function useItemWorkspace({
       const peers = rankedPeerIds(itemId);
       let next = localItem;
       if (peers.length === 0) {
-        const firstRanked = { ...localItem, position: 'pending', rating: 10 };
+        const firstRanked = {
+          ...localItem,
+          position: 'pending',
+          rating: scoreForRank(1, 1),
+          manual_rating: null,
+        };
         await localLibrary.applyLocalRanking(
           activeUserId,
           activeListId,
@@ -526,7 +595,9 @@ export function useItemWorkspace({
     }
     const dirty =
       current.form.name !== initialFormRef.current.name ||
-      current.form.description !== initialFormRef.current.description;
+      current.form.description !== initialFormRef.current.description ||
+      current.form.manualRating.trim() !==
+        initialFormRef.current.manualRating.trim();
     if (dirty) {
       if (!beginBusy()) return false;
       const confirmed = await confirmDestructive(

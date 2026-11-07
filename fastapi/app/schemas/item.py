@@ -1,3 +1,4 @@
+import math
 import uuid
 from datetime import datetime
 
@@ -23,6 +24,7 @@ class ItemUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = None
     image_url: HttpUrl | None = None
+    manual_rating: float | None = None
 
     @field_validator("name", mode="before")
     @classmethod
@@ -31,12 +33,34 @@ class ItemUpdate(BaseModel):
             raise ValueError("name may not be null")
         return value.strip() if isinstance(value, str) else value
 
+    @field_validator("manual_rating", mode="before")
+    @classmethod
+    def validate_manual_rating(cls, value: object) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError("Score must be between 0.0 and 10.0")
+        num = float(value)
+        if not math.isfinite(num) or num < 0.0 or num > 10.0:
+            raise ValueError("Score must be between 0.0 and 10.0")
+        scaled = num * 10
+        floor = math.floor(scaled)
+        diff = scaled - floor
+        if diff > 0.5:
+            rounded = floor + 1
+        elif diff < 0.5 or floor % 2 == 0:
+            rounded = floor
+        else:
+            rounded = floor + 1
+        return rounded / 10
+
 
 class Item(ItemBase):
     item_id: uuid.UUID
     list_id: uuid.UUID
     position: str | None = None
     rating: float | None = None
+    manual_rating: float | None = None
     created_at: datetime
     updated_at: datetime
 

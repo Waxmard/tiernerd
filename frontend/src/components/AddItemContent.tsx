@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
+import type { ManualRatingBounds } from '../services/rankingEngine';
 import type { ItemFormDraft } from './itemWorkspaceTypes';
 
 export interface AddItemFieldErrors {
   name?: string;
+  manualRating?: string;
 }
 
 export interface AddItemContentProps {
@@ -19,6 +21,9 @@ export interface AddItemContentProps {
   onClose: () => void;
   presentation: 'modal' | 'panel';
   introText?: string;
+  canEditScore?: boolean;
+  autoScore?: number | null;
+  scoreBounds?: ManualRatingBounds;
 }
 
 const MAX_NAME_LENGTH = 100;
@@ -37,8 +42,12 @@ export function AddItemContent({
   onClose,
   presentation,
   introText,
+  canEditScore = false,
+  autoScore = null,
+  scoreBounds,
 }: AddItemContentProps) {
   const nameRef = useRef<TextInputInstance>(null);
+  const scoreRef = useRef<TextInputInstance>(null);
   const [view, setView] = useState<AddItemView>('overview');
   const hasVisitedDescriptionRef = useRef(false);
   const previousModeRef = useRef(mode);
@@ -47,7 +56,8 @@ export function AddItemContent({
 
   useEffect(() => {
     if (fieldErrors.name) nameRef.current?.focus();
-  }, [fieldErrors.name]);
+    else if (fieldErrors.manualRating) scoreRef.current?.focus();
+  }, [fieldErrors.name, fieldErrors.manualRating]);
   useEffect(() => {
     if (previousModeRef.current !== mode) {
       previousModeRef.current = mode;
@@ -102,6 +112,50 @@ export function AddItemContent({
               />
             }
           />
+          {isEdit && canEditScore ? (
+            <>
+              <Input
+                ref={scoreRef}
+                label="Score (optional)"
+                value={form.manualRating}
+                onChangeText={(manualRating) => onFormChange({ manualRating })}
+                placeholder={
+                  autoScore !== null && autoScore !== undefined
+                    ? `Automatic (${autoScore.toFixed(1)})`
+                    : 'Automatic'
+                }
+                error={fieldErrors.manualRating}
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+                maxLength={4}
+                editable={!isBusy}
+                inputClassName="text-[16px] font-semibold min-h-12 min-w-0"
+              />
+              <View className="-mt-2 mb-4 flex-row items-center justify-between gap-2">
+                <Text className="flex-1 text-body-small text-ink-muted dark:text-ink-muted-dark">
+                  {scoreBounds?.upper && scoreBounds?.lower
+                    ? `Between ${scoreBounds.lower.rating.toFixed(1)} and ${scoreBounds.upper.rating.toFixed(1)} · based on pinned items`
+                    : scoreBounds?.upper
+                      ? `Max ${scoreBounds.upper.rating.toFixed(1)} (${scoreBounds.upper.name} pinned above)`
+                      : scoreBounds?.lower
+                        ? `Min ${scoreBounds.lower.rating.toFixed(1)} (${scoreBounds.lower.name} pinned below)`
+                        : '0.0–10.0 · Leave blank for automatic'}
+                </Text>
+                {form.manualRating.trim() !== '' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Reset score to automatic"
+                    disabled={isBusy}
+                    onPress={() => onFormChange({ manualRating: '' })}
+                  >
+                    <Text className="text-body-small text-accent-text dark:text-accent-text-dark font-semibold">
+                      Reset to automatic
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Description (optional): ${form.description.trim() || 'Not set'}`}

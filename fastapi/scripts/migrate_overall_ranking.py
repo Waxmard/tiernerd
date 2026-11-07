@@ -28,7 +28,14 @@ _legacy = importlib.import_module("scripts.migrate_ui_ranking")
 generate_key_between = importlib.import_module(
     "app.core.fractional_index"
 ).generate_key_between
-score_for_rank = importlib.import_module("app.services.ranking").score_for_rank
+
+
+def score_for_rank(rank: int, ranked_count: int) -> float:
+    if ranked_count == 1:
+        return 10.0
+    return round(10 * (ranked_count - rank) / (ranked_count - 1), 1)
+
+
 MigrationError = _legacy.MigrationError
 require_postgresql = _legacy.require_postgresql
 

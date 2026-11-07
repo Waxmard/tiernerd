@@ -45,7 +45,8 @@ const listSummary = (overrides: Partial<ListSimple> = {}): ListSimple => ({
 const item = (
   itemId: string,
   position: string | null,
-  rating: number | null
+  rating: number | null,
+  manualRating: number | null = null
 ): Item => ({
   item_id: itemId,
   list_id: LIST,
@@ -54,6 +55,7 @@ const item = (
   image_url: null,
   position,
   rating,
+  manual_rating: manualRating,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
 });
@@ -150,7 +152,7 @@ test('deleting a ranked item rescores the survivors', async () => {
 
   assert.deepEqual(
     (await readItems(storage)).map((entry) => entry.rating),
-    [10, 7.5, 5, 2.5, 0]
+    [8.5, 7.5, 6.5, 5.3, 3.8]
   );
   assert.deepEqual(
     (await readItems(storage)).map((entry) => entry.item_id),
@@ -193,7 +195,7 @@ test('ranking inserts at the index and rescores every ranked item', async () => 
   );
   assert.deepEqual(
     items.map((entry) => entry.rating),
-    [10, 8.3, 6.7, 5, 3.3, 1.7, 0]
+    [8.8, 8.0, 7.3, 6.5, 5.6, 4.6, 3.2]
   );
   assert.equal(items[2]?.position, 'pending');
 });
@@ -212,5 +214,49 @@ test('unranked items stay last after a ranking', async () => {
   assert.deepEqual(
     (await readItems(storage)).map((entry) => entry.item_id),
     ['a', 'mover', 'b', 'loose']
+  );
+});
+
+test('updating manual_rating rescales neighbors and re-ranking clears moved item pin', async () => {
+  const storage = memoryStorage();
+  const library = createLocalLibrary(storage);
+  await seed(storage, [
+    item('a', 'a4', 8.5),
+    item('b', 'a3', 7.5),
+    item('c', 'a2', 6.5),
+    item('d', 'a1', 5.3),
+    item('e', 'a0', 3.8),
+  ]);
+
+  await library.applyLocalItemUpdate(USER, LIST, item('e', 'a0', 7.2, 7.2));
+  assert.deepEqual(
+    (await readItems(storage)).map((entry) => [
+      entry.item_id,
+      entry.rating,
+      entry.manual_rating,
+    ]),
+    [
+      ['a', 9.1, null],
+      ['b', 8.6, null],
+      ['c', 8.1, null],
+      ['d', 7.7, null],
+      ['e', 7.2, 7.2],
+    ]
+  );
+
+  await library.applyLocalRanking(USER, LIST, item('e', 'a0', 7.2, 7.2), 0);
+  assert.deepEqual(
+    (await readItems(storage)).map((entry) => [
+      entry.item_id,
+      entry.rating,
+      entry.manual_rating,
+    ]),
+    [
+      ['e', 8.5, null],
+      ['a', 7.5, null],
+      ['b', 6.5, null],
+      ['c', 5.3, null],
+      ['d', 3.8, null],
+    ]
   );
 });

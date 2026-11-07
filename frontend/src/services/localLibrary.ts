@@ -9,7 +9,7 @@ import {
   sortListsByRecency,
 } from './listsCache.ts';
 import type { ListSimple, ListSummaryPatch } from './listsService.ts';
-import { scoreForRank } from './rankingEngine.ts';
+import { computeScores } from './rankingEngine.ts';
 
 export interface LocalCacheStorage {
   getItem(key: string): Promise<string | null>;
@@ -68,11 +68,11 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
   const rescore = (items: Item[], nowIso: string): Item[] => {
     const ranked = items.filter((item) => item.position !== null);
     const unranked = items.filter((item) => item.position === null);
-    const rankedCount = ranked.length;
+    const scores = computeScores(ranked.map((item) => item.manual_rating));
     return [
       ...ranked.map((item, index) => ({
         ...item,
-        rating: scoreForRank(index + 1, rankedCount),
+        rating: scores[index] ?? null,
         updated_at: nowIso,
       })),
       ...unranked,
@@ -157,9 +157,15 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
       listId: string,
       item: Item
     ): Promise<void> => {
-      const items = (await readItems(userId, listId)).map((entry) =>
+      const existing = await readItems(userId, listId);
+      const previous = existing.find((entry) => entry.item_id === item.item_id);
+      const next = existing.map((entry) =>
         entry.item_id === item.item_id ? item : entry
       );
+      const items =
+        item.position !== null && previous?.manual_rating !== item.manual_rating
+          ? rescore(next, item.updated_at)
+          : next;
       await writeItems(userId, listId, items);
       await patchSummary(userId, listId, { updated_at: item.updated_at });
     },
@@ -200,7 +206,12 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
       const next = rescore(
         [
           ...ranked.slice(0, index),
-          { ...item, position: 'pending', updated_at: nowIso },
+          {
+            ...item,
+            position: 'pending',
+            manual_rating: null,
+            updated_at: nowIso,
+          },
           ...ranked.slice(index),
           ...unranked,
         ],

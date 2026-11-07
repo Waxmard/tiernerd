@@ -77,6 +77,7 @@ const withPendingCreates = async (
         description: op.description,
         image_url: null,
         rating: null,
+        manual_rating: null,
         position: null,
         created_at: op.createdAt,
         updated_at: op.createdAt,

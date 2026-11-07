@@ -3,6 +3,10 @@ import { ActivityIndicator, Modal, View } from 'react-native';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
+import {
+  autoScoreWithoutPin,
+  manualRatingBounds,
+} from '../services/rankingEngine';
 import { AddItemContent } from './AddItemContent';
 import { ItemDetailContent } from './ItemDetailContent';
 import type { ItemWorkspace } from './itemWorkspaceTypes';
@@ -16,6 +20,7 @@ interface ListDetailWorkspaceHostProps {
   dismissedDetailsItemId: string | null;
   selectedItem: Item | null;
   selectedRank: number | null;
+  items: Item[];
   rankedCount: number;
   rankingMode: ListRankingMode;
   isLoadingItems: boolean;
@@ -40,6 +45,7 @@ export const ListDetailWorkspaceHost: React.FC<
   dismissedDetailsItemId,
   selectedItem,
   selectedRank,
+  items,
   rankedCount,
   rankingMode,
   isLoadingItems,
@@ -74,6 +80,15 @@ export const ListDetailWorkspaceHost: React.FC<
     }
 
     if (workspace.mode === 'add' || workspace.mode === 'edit') {
+      const canEditScore =
+        workspace.mode === 'edit' &&
+        rankingMode === 'score' &&
+        workspace.item?.position !== null &&
+        workspace.item?.position !== undefined;
+      const rankedItems = canEditScore
+        ? items.filter((entry) => entry.position !== null)
+        : [];
+      const editItemId = workspace.item?.item_id ?? '';
       return (
         <AddItemContent
           mode={workspace.mode}
@@ -84,6 +99,15 @@ export const ListDetailWorkspaceHost: React.FC<
           onSubmit={workspace.submitMetadata}
           onClose={() => void workspace.requestClose()}
           presentation={presentation}
+          canEditScore={canEditScore}
+          autoScore={
+            canEditScore ? autoScoreWithoutPin(rankedItems, editItemId) : null
+          }
+          scoreBounds={
+            canEditScore
+              ? manualRatingBounds(rankedItems, editItemId)
+              : undefined
+          }
         />
       );
     }

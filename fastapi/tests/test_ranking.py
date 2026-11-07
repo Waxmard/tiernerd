@@ -67,12 +67,12 @@ class TestSetRanking:
         assert response.status_code == 200
         rows = response.json()
         assert ordered(rows) == [
-            ("Best", 10.0),
-            ("Second", 8.0),
-            ("Third", 6.0),
-            ("Fourth", 4.0),
-            ("Worst", 2.0),
-            ("Mover", 0.0),
+            ("Best", 8.7),
+            ("Second", 7.8),
+            ("Third", 6.9),
+            ("Fourth", 6.0),
+            ("Worst", 4.9),
+            ("Mover", 3.5),
         ]
         positions = [row["position"] for row in rows]
         assert len(set(positions)) == len(positions)
@@ -97,8 +97,8 @@ class TestSetRanking:
         assert response.status_code == 200
         rows = response.json()
         assert rows[0]["name"] == "Mover"
-        assert rows[0]["rating"] == 10.0
-        assert [row["rating"] for row in rows[1:]] == [8.0, 6.0, 4.0, 2.0, 0.0]
+        assert rows[0]["rating"] == 8.7
+        assert [row["rating"] for row in rows[1:]] == [7.8, 6.9, 6.0, 4.9, 3.5]
 
     async def test_gap_between_peers_reorders(
         self,
@@ -136,7 +136,7 @@ class TestSetRanking:
             "Worst",
             "Fourth",
         ]
-        assert [row["rating"] for row in rows] == [10.0, 7.5, 5.0, 2.5, 0.0]
+        assert [row["rating"] for row in rows] == [8.5, 7.5, 6.5, 5.3, 3.8]
 
     async def test_out_of_range_gap_is_clamped(
         self,
@@ -256,3 +256,28 @@ class TestSetRanking:
         positions = list(rows.scalars())
         assert len(set(positions)) == len(positions)
         assert None not in positions
+
+    async def test_reranking_clears_moved_item_manual_rating_and_preserves_other_pins(
+        self,
+        client: AsyncClient,
+        ranked_list: list[ItemModel],
+        test_list: ListModel,
+        auth_headers: dict,
+        test_db: AsyncSession,
+    ) -> None:
+        ranked_list[0].manual_rating = 4.0
+        ranked_list[3].manual_rating = 8.0
+        await test_db.commit()
+
+        response = await client.put(
+            f"/api/lists/{test_list.list_id}/ranking",
+            json={"item_id": str(ranked_list[0].item_id), "gap": 4},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        rows = response.json()
+        by_name = {row["name"]: row for row in rows}
+        assert rows[0]["name"] == "Worst"
+        assert by_name["Worst"]["manual_rating"] is None
+        assert by_name["Second"]["manual_rating"] == 8.0
+        assert by_name["Second"]["rating"] == 8.0

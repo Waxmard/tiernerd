@@ -579,6 +579,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               dismissedDetailsItemId={dismissedDetailsItemId}
               selectedItem={selectedItem}
               selectedRank={selectedRank}
+              items={items}
               rankedCount={rankedCount}
               rankingMode={rankingMode}
               isLoadingItems={isLoadingItems}

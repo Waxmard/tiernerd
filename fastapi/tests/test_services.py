@@ -51,10 +51,10 @@ class TestRankingService:
         "best_first_scores",
         [
             [],
-            [10.0],
-            [10.0, 0.0],
-            [10.0, 5.0, 0.0],
-            [10.0, 6.7, 3.3, 0.0],
+            [6.5],
+            [7.5, 5.3],
+            [8.0, 6.5, 4.6],
+            [8.3, 7.1, 5.8, 4.1],
         ],
     )
     def test_assign_scores(self, best_first_scores: list[float]) -> None:
@@ -104,7 +104,7 @@ class TestSetItemRanking:
         ]
         assert peers[0].position < peers[1].position < peers[2].position
         assert peers[1].position < mover.position < peers[2].position
-        assert [item.rating for item in items] == [10.0, 6.7, 3.3, 0.0]
+        assert [item.rating for item in items] == [8.3, 7.1, 5.8, 4.1]
 
     async def test_gap_is_clamped_to_the_peer_range(
         self,
@@ -122,11 +122,11 @@ class TestSetItemRanking:
 
         too_high = await set_item_ranking(test_db, test_list, mover, 99)
         assert too_high[0].item_id == mover.item_id
-        assert too_high[0].rating == 10.0
+        assert too_high[0].rating == 8.0
 
         too_low = await set_item_ranking(test_db, test_list, mover, -3)
         assert too_low[-1].item_id == mover.item_id
-        assert too_low[-1].rating == 0.0
+        assert too_low[-1].rating == 4.6
 
     async def test_updates_list_and_item_timestamps(
         self,
@@ -160,4 +160,4 @@ class TestSetItemRanking:
 
         assert items == [mover]
         assert mover.position == "a0"
-        assert mover.rating == 10.0
+        assert mover.rating == 6.5

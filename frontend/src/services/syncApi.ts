@@ -44,7 +44,11 @@ export async function applyOpToApi(op: SyncOp, token: string): Promise<void> {
     case 'item.update':
       await itemsService.updateItem(
         op.itemId,
-        { name: op.name, description: op.description },
+        {
+          name: op.name,
+          description: op.description,
+          manual_rating: op.manualRating,
+        },
         token
       );
       return;

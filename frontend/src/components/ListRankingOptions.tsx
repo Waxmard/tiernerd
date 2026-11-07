@@ -37,7 +37,7 @@ const choices: {
   {
     value: 'score',
     title: 'Scores out of 10',
-    description: '10.0 to 0.0, based on list order.',
+    description: 'Based on list order, with optional manual scores.',
   },
 ];
 

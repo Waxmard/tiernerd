@@ -358,3 +358,55 @@ test('pendingItemCreates returns creates for one list', async () => {
   );
   assert.deepEqual(await pendingItemCreates(USER, 'list-3', storage), []);
 });
+
+test('compacts manualRating across item.create, ranking.set, and item.update', async () => {
+  const seen: SyncOp[] = [];
+  const { queue } = makeQueue(async (op) => {
+    seen.push(op);
+  });
+
+  await queue.enqueue(itemCreate('1', 'a', 'Alpha'));
+  await queue.enqueue(rankingSet('2', 'a', 0));
+  await queue.enqueue({
+    id: '3',
+    createdAt: NOW,
+    kind: 'item.update',
+    listId: 'list-1',
+    itemId: 'a',
+    name: 'Alpha Renamed',
+    manualRating: 7.5,
+  });
+  await queue.flush();
+  assert.deepEqual(
+    seen.map((op) =>
+      op.kind === 'item.create'
+        ? [op.kind, op.name]
+        : op.kind === 'ranking.set'
+          ? [op.kind, op.gap]
+          : op.kind === 'item.update'
+            ? [op.kind, op.name, op.manualRating]
+            : [op.kind]
+    ),
+    [
+      ['item.create', 'Alpha Renamed'],
+      ['ranking.set', 0],
+      ['item.update', undefined, 7.5],
+    ]
+  );
+
+  seen.length = 0;
+  await queue.enqueue({
+    id: '4',
+    createdAt: NOW,
+    kind: 'item.update',
+    listId: 'list-1',
+    itemId: 'a',
+    manualRating: 8.2,
+  });
+  await queue.enqueue(rankingSet('5', 'a', 2));
+  await queue.flush();
+  assert.deepEqual(
+    seen.map((op) => op.kind),
+    ['ranking.set']
+  );
+});
