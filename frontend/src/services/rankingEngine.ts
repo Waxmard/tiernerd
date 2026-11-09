@@ -70,10 +70,10 @@ export function insertIndexBestFirst(session: RankingSession): number {
   return session.peersWorstFirst.length - gap(session);
 }
 
-export const CURVE_ALPHA = 0.7;
-export const CURVE_BETA = 0.54;
-export const AUTO_MIN_SCORE = 0.1;
-export const AUTO_MAX_SCORE = 9.9;
+const CURVE_ALPHA = 0.7;
+const CURVE_BETA = 0.54;
+const AUTO_MIN_SCORE = 0.1;
+const AUTO_MAX_SCORE = 9.9;
 
 export interface PinnedNeighbor {
   name: string;
@@ -120,14 +120,14 @@ export function splitScoreParts(value: number): {
   };
 }
 
-export function scoreFromU(u: number): number {
+function scoreFromU(u: number): number {
   if (u <= 0) return 0;
   if (u >= 1) return 10;
   const uPow = u ** CURVE_ALPHA;
   return (10 * uPow) / (uPow + CURVE_BETA * (1 - u) ** CURVE_ALPHA);
 }
 
-export function uFromScore(score: number): number {
+function uFromScore(score: number): number {
   if (score <= 0) return 0;
   if (score >= 10) return 1;
   return 1 / (1 + ((10 - score) / (CURVE_BETA * score)) ** (1 / CURVE_ALPHA));

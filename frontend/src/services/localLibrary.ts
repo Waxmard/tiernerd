@@ -28,7 +28,7 @@ type SummaryPatch = ListSummaryPatch & {
   item_count?: number;
 };
 
-export function rescoreItems(items: Item[], nowIso: string): Item[] {
+function rescoreItems(items: Item[], nowIso: string): Item[] {
   const ranked = items.filter((item) => item.position !== null);
   const unranked = items.filter((item) => item.position === null);
   const scores = computeScores(ranked.map((item) => item.manual_rating));
@@ -105,9 +105,7 @@ export function reconcileListItems(
         entry.item_id === op.itemId ? updated : entry
       );
       items =
-        updated.position !== null &&
-        (op.manualRating !== undefined ||
-          previous.manual_rating !== updated.manual_rating)
+        updated.position !== null && op.manualRating !== undefined
           ? rescoreItems(next, op.createdAt)
           : next;
       continue;

@@ -10,6 +10,7 @@ import {
 } from '../services/rankingDraftStore';
 import {
   applyAnswer,
+  autoScoreWithoutPin,
   comparisonLimit,
   computeScores,
   createRankingSession,
@@ -18,6 +19,7 @@ import {
   insertIndexBestFirst,
   isDecided,
   isDraftCurrent,
+  manualRatingBounds,
   manualRatingBoundsError,
   parseManualRatingInput,
   type RankingAnswer,
@@ -461,7 +463,6 @@ export function useItemWorkspace({
           ...localItem,
           position: 'pending',
           rating: scoreForRank(1, 1),
-          manual_rating: null,
         };
         await localLibrary.applyLocalRanking(
           activeUserId,
@@ -637,10 +638,20 @@ export function useItemWorkspace({
       canUndo: ranking.answers.length > 0,
     };
   }
+  const scoreItemId = currentItem?.item_id ?? '';
+  const scoreItems =
+    workspace.mode === 'edit' && currentItem?.position != null
+      ? items.filter((entry) => entry.position !== null)
+      : null;
+  const scoreEdit = scoreItems && {
+    autoScore: autoScoreWithoutPin(scoreItems, scoreItemId),
+    bounds: manualRatingBounds(scoreItems, scoreItemId),
+  };
 
   return {
     ...workspace,
     view,
+    scoreEdit,
     openAdd,
     openEdit,
     resumeRanking,

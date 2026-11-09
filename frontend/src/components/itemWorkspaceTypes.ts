@@ -1,5 +1,9 @@
 import type { Item } from '../services/itemsService';
-import type { RankingAnswer, RankingSession } from '../services/rankingEngine';
+import type {
+  ManualRatingBounds,
+  RankingAnswer,
+  RankingSession,
+} from '../services/rankingEngine';
 
 export interface ItemFormDraft {
   name: string;
@@ -35,6 +39,7 @@ export interface RankingView {
 
 export interface ItemWorkspace extends ItemWorkspaceState {
   view: RankingView | null;
+  scoreEdit: { autoScore: number | null; bounds: ManualRatingBounds } | null;
   openAdd: () => void;
   openEdit: (item: Item) => void;
   resumeRanking: (session: RankingSession) => void;
