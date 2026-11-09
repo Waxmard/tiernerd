@@ -98,6 +98,17 @@ def test_apply_adds_column_rescores_and_is_idempotent(legacy_items_database) -> 
     assert "0 row(s) need score updates" in out
 
     assert main(["--apply"]) == 0
+    with engine.connect() as connection:
+        again = (
+            connection.execute(
+                text(
+                    "SELECT item_id, rating, manual_rating FROM items ORDER BY item_id"
+                )
+            )
+            .mappings()
+            .all()
+        )
+    assert [dict(r) for r in again] == [dict(r) for r in rows]
     engine.dispose()
 
 

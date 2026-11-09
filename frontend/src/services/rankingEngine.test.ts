@@ -167,7 +167,6 @@ test('manualRatingBounds and manualRatingBoundsError enforce neighbor pins', () 
 
 test('formatScore drops a trailing .0 and keeps one decimal otherwise', () => {
   assert.equal(formatScore(8), '8');
-  assert.equal(formatScore(8.0), '8');
   assert.equal(formatScore(10), '10');
   assert.equal(formatScore(0), '0');
   assert.equal(formatScore(8.5), '8.5');

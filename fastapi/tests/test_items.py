@@ -15,6 +15,40 @@ from app.crud import item as item_crud
 from app.db.models import Item as ItemModel, List as ListModel, User
 
 
+async def _create_ranked_spots(
+    client: AsyncClient, test_list: ListModel, auth_headers: dict
+) -> list[dict]:
+    spots = []
+    for index, name in enumerate(["Spot A", "Spot B", "Spot C", "Spot D", "Spot E"]):
+        res = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json={"name": name},
+            headers=auth_headers,
+        )
+        assert res.status_code == 200
+        item = res.json()
+        if index > 0:
+            rank_res = await client.put(
+                f"/api/lists/{test_list.list_id}/ranking",
+                json={"item_id": item["item_id"], "gap": 0},
+                headers=auth_headers,
+            )
+            assert rank_res.status_code == 200
+        spots.append(item)
+    return spots
+
+
+async def _put_manual_rating(
+    client: AsyncClient, auth_headers: dict, item: dict, manual_rating: float | None
+):
+    return await client.put(
+        f"/api/items/items/{item['item_id']}",
+        json={"manual_rating": manual_rating},
+        headers=auth_headers,
+    )
+
+
 class TestCreateItem:
     """Tests for creating items endpoint."""
 
@@ -369,73 +403,25 @@ class TestUpdateItem:
         assert ordered.status_code == 200
         assert [row["list_id"] for row in ordered.json()] == [old_id, new_id]
 
-    async def test_manual_rating_rescales_neighbors_resets_and_validates_bounds(
+    async def test_manual_pin_rescales_neighbors(
         self,
         client: AsyncClient,
         test_list: ListModel,
         auth_headers: dict,
     ) -> None:
-        created = []
-        names = ["Spot A", "Spot B", "Spot C", "Spot D", "Spot E"]
-        for index, name in enumerate(names):
-            res = await client.post(
-                "/api/items/",
-                params={"list_id": str(test_list.list_id)},
-                json={"name": name},
-                headers=auth_headers,
-            )
-            assert res.status_code == 200
-            item = res.json()
-            if index > 0:
-                rank_res = await client.put(
-                    f"/api/lists/{test_list.list_id}/ranking",
-                    json={"item_id": item["item_id"], "gap": 0},
-                    headers=auth_headers,
-                )
-                assert rank_res.status_code == 200
-            created.append(item)
+        spots = await _create_ranked_spots(client, test_list, auth_headers)
 
-        unranked_res = await client.post(
-            "/api/items/",
-            params={"list_id": str(test_list.list_id)},
-            json={"name": "Unranked Spot"},
-            headers=auth_headers,
-        )
-        assert unranked_res.status_code == 200
-        unranked_id = unranked_res.json()["item_id"]
-
-        unranked_pin = await client.put(
-            f"/api/items/items/{unranked_id}",
-            json={"manual_rating": 7.0},
-            headers=auth_headers,
-        )
-        assert unranked_pin.status_code == 422
-        assert (
-            unranked_pin.json()["detail"]
-            == "Rank this item before setting a manual score."
-        )
-
-        unranked_noop = await client.put(
-            f"/api/items/items/{unranked_id}",
-            json={"manual_rating": None},
-            headers=auth_headers,
-        )
-        assert unranked_noop.status_code == 200
-
-        pin_e = await client.put(
-            f"/api/items/items/{created[4]['item_id']}",
-            json={"manual_rating": 7.2},
-            headers=auth_headers,
-        )
+        pin_e = await _put_manual_rating(client, auth_headers, spots[4], 7.2)
         assert pin_e.status_code == 200
         list_items = (
             await client.get(
                 f"/api/lists/{test_list.list_id}/items", headers=auth_headers
             )
         ).json()
-        ranked_rows = [row for row in list_items if row["position"] is not None]
         assert [
-            (row["name"], row["rating"], row["manual_rating"]) for row in ranked_rows
+            (row["name"], row["rating"], row["manual_rating"])
+            for row in list_items
+            if row["position"] is not None
         ] == [
             ("Spot A", 9.1, None),
             ("Spot B", 8.6, None),
@@ -444,69 +430,85 @@ class TestUpdateItem:
             ("Spot E", 7.2, 7.2),
         ]
 
-        low_err = await client.put(
-            f"/api/items/items/{created[3]['item_id']}",
-            json={"manual_rating": 6.0},
+    async def test_manual_pin_rejects_scores_outside_neighbor_bounds(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+    ) -> None:
+        spots = await _create_ranked_spots(client, test_list, auth_headers)
+        unranked_res = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json={"name": "Unranked Spot"},
             headers=auth_headers,
         )
+        assert unranked_res.status_code == 200
+        unranked = unranked_res.json()
+
+        unranked_pin = await _put_manual_rating(client, auth_headers, unranked, 7.0)
+        assert unranked_pin.status_code == 422
+        assert (
+            unranked_pin.json()["detail"]
+            == "Rank this item before setting a manual score."
+        )
+        unranked_noop = await _put_manual_rating(client, auth_headers, unranked, None)
+        assert unranked_noop.status_code == 200
+
+        assert (
+            await _put_manual_rating(client, auth_headers, spots[4], 7.2)
+        ).status_code == 200
+
+        low_err = await _put_manual_rating(client, auth_headers, spots[3], 6.0)
         assert low_err.status_code == 422
         assert low_err.json()["detail"] == (
             "Score must be 7.2 or higher "
             "(Spot E is pinned below it), or re-rank this item."
         )
 
-        pin_b = await client.put(
-            f"/api/items/items/{created[1]['item_id']}",
-            json={"manual_rating": 8.0},
-            headers=auth_headers,
-        )
-        assert pin_b.status_code == 200
+        assert (
+            await _put_manual_rating(client, auth_headers, spots[1], 8.0)
+        ).status_code == 200
 
-        high_err = await client.put(
-            f"/api/items/items/{created[0]['item_id']}",
-            json={"manual_rating": 7.5},
-            headers=auth_headers,
-        )
+        high_err = await _put_manual_rating(client, auth_headers, spots[0], 7.5)
         assert high_err.status_code == 422
         assert high_err.json()["detail"] == (
             "Score must be 8 or higher "
             "(Spot B is pinned below it), or re-rank this item."
         )
 
-        both_err = await client.put(
-            f"/api/items/items/{created[3]['item_id']}",
-            json={"manual_rating": 8.5},
-            headers=auth_headers,
-        )
+        both_err = await _put_manual_rating(client, auth_headers, spots[3], 8.5)
         assert both_err.status_code == 422
         assert both_err.json()["detail"] == (
             "Score must be between 7.2 (Spot E) and 8 (Spot B), or re-rank this item."
         )
 
-        reset_e = await client.put(
-            f"/api/items/items/{created[4]['item_id']}",
-            json={"manual_rating": None},
-            headers=auth_headers,
-        )
-        assert reset_e.status_code == 200
+        assert (
+            await _put_manual_rating(client, auth_headers, spots[4], None)
+        ).status_code == 200
 
-        upper_only_err = await client.put(
-            f"/api/items/items/{created[3]['item_id']}",
-            json={"manual_rating": 8.5},
-            headers=auth_headers,
-        )
+        upper_only_err = await _put_manual_rating(client, auth_headers, spots[3], 8.5)
         assert upper_only_err.status_code == 422
         assert upper_only_err.json()["detail"] == (
             "Score must be 8 or lower "
             "(Spot B is pinned above it), or re-rank this item."
         )
 
-        reset_b = await client.put(
-            f"/api/items/items/{created[1]['item_id']}",
-            json={"manual_rating": None},
-            headers=auth_headers,
-        )
-        assert reset_b.status_code == 200
+    async def test_clearing_manual_pins_restores_automatic_scores(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+    ) -> None:
+        spots = await _create_ranked_spots(client, test_list, auth_headers)
+        for spot, rating in ((spots[4], 7.2), (spots[1], 8.0)):
+            pin = await _put_manual_rating(client, auth_headers, spot, rating)
+            assert pin.status_code == 200
+
+        for spot in (spots[4], spots[1]):
+            reset = await _put_manual_rating(client, auth_headers, spot, None)
+            assert reset.status_code == 200
+
         restored = (
             await client.get(
                 f"/api/lists/{test_list.list_id}/items", headers=auth_headers
