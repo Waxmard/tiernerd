@@ -1,7 +1,9 @@
 import pytest
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.db import database as db_module
 from app.settings import get_settings
 from scripts.migrate_manual_ratings import _arguments, main
 
@@ -97,6 +99,39 @@ def test_apply_adds_column_rescores_and_is_idempotent(legacy_items_database) -> 
 
     assert main(["--apply"]) == 0
     engine.dispose()
+
+
+async def test_create_tables_adds_column_and_rescores_legacy_items(
+    legacy_items_database, monkeypatch
+) -> None:
+    path, _capsys = legacy_items_database
+    engine = create_async_engine(f"sqlite+aiosqlite:///{path}")
+    monkeypatch.setattr(db_module, "engine", engine)
+    monkeypatch.setattr(get_settings(), "APP_ENV", "production")
+    try:
+        await db_module.create_tables()
+    finally:
+        await engine.dispose()
+
+    sync_engine = _sqlite_engine(path)
+    try:
+        assert _has_column(sync_engine, "items", "manual_rating")
+        with sync_engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    text("SELECT item_id, rating FROM items ORDER BY item_id")
+                )
+                .mappings()
+                .all()
+            )
+    finally:
+        sync_engine.dispose()
+    assert [dict(row) for row in rows] == [
+        {"item_id": "i1", "rating": 8.0},
+        {"item_id": "i2", "rating": 6.5},
+        {"item_id": "i3", "rating": 4.6},
+        {"item_id": "i4", "rating": None},
+    ]
 
 
 def test_apply_preserves_existing_manual_rating_pins(legacy_items_database) -> None:

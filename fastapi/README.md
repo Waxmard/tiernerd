@@ -105,6 +105,24 @@ uv run python scripts/cleanup_list_cover_uploads.py --apply
 
 Do not configure a bucket-wide expiration policy: it would also remove attached photos.
 
+## Upgrade manual ratings and automatic startup migrations
+
+Application startup now applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table, adds any missing additive columns (`users.photo_url`, `lists.color`, `lists.icon`, `lists.cover`, `lists.cover_photo`, `lists.ranking_mode`, `items.manual_rating`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
+
+The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Back up the intended database and stop the application before applying it. From `fastapi/`, inspect the schema and count incorrect ratings without changing data:
+
+```bash
+uv run python scripts/migrate_manual_ratings.py --check
+```
+
+After the backup exists and the application is stopped, apply it:
+
+```bash
+uv run python scripts/migrate_manual_ratings.py --apply
+```
+
+`--check` reports whether `items.manual_rating` exists and how many rows need score updates. `--apply` adds the column if missing, rescales scores in a locked transaction, verifies the result, and rolls back on failure. Reapplying it is a no-op.
+
 ## Upgrade the list-ranking mode schema
 
 This PostgreSQL-only migration adds list display modes and repairs inconsistent stored scores without changing item positions. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from your environment's secret store; never put credentials in commands or tracked files. Confirm the API URL embedded in the iOS build before choosing a database. Fresh databases use the current model schema; `create_all` does not upgrade existing tables.
@@ -172,7 +190,7 @@ The migration trims display names, backfills normalized identity keys, and adds 
 
 ## Drop the comparison-session schema
 
-Once every client ranks locally, `comparison_sessions` is unused. Run the UI-ranking upgrade first if the database is older, then drop the table. Back up the database and stop the application before applying it.
+Once every client ranks locally, `comparison_sessions` is unused. Application startup already drops it via `create_tables` (`DROP TABLE IF EXISTS comparison_sessions`); the script below remains available for an offline drop or a preflight row check. Run the UI-ranking upgrade first if the database is older. Back up the database and stop the application before applying it.
 
 From `fastapi/`:
 

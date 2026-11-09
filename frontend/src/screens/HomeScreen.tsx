@@ -157,7 +157,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   () => null
                 )
               ) ?? [],
-              await pendingOps(userId).catch(() => [])
+              await pendingOps(userId)
             )
           : sortListsByRecency(fetched);
         if (!isCurrent()) return;

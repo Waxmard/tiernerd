@@ -520,6 +520,47 @@ class TestUpdateItem:
             3.8,
         ]
 
+    async def test_manual_rating_rounds_half_to_even_and_rejects_out_of_range(
+        self, client: AsyncClient, test_list: ListModel, auth_headers: dict
+    ) -> None:
+        created = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json={"name": "Only Spot"},
+            headers=auth_headers,
+        )
+        assert created.status_code == 200
+        item = created.json()
+        rank = await client.put(
+            f"/api/lists/{test_list.list_id}/ranking",
+            json={"item_id": item["item_id"], "gap": 0},
+            headers=auth_headers,
+        )
+        assert rank.status_code == 200
+        url = f"/api/items/items/{item['item_id']}"
+
+        lowered = await client.put(
+            url, json={"manual_rating": 7.25}, headers=auth_headers
+        )
+        assert lowered.status_code == 200
+        assert lowered.json()["manual_rating"] == 7.2
+
+        raised = await client.put(
+            url, json={"manual_rating": 7.35}, headers=auth_headers
+        )
+        assert raised.status_code == 200
+        assert raised.json()["manual_rating"] == 7.4
+
+        too_high = await client.put(
+            url, json={"manual_rating": 10.5}, headers=auth_headers
+        )
+        assert too_high.status_code == 422
+
+        too_low = await client.put(
+            url, json={"manual_rating": -0.1}, headers=auth_headers
+        )
+        assert too_low.status_code == 422
+
 
 class TestDeleteItem:
     """Tests for deleting items endpoint."""

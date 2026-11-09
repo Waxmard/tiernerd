@@ -112,6 +112,29 @@ def _plan_score_updates(
     return updates
 
 
+async def apply_connection(connection: AsyncConnection) -> int:
+    if connection.dialect.name == "postgresql":
+        await connection.execute(text("LOCK TABLE items IN ACCESS EXCLUSIVE MODE"))
+    has_column = await connection.run_sync(_has_manual_rating)
+    if not has_column:
+        await connection.execute(
+            text("ALTER TABLE items ADD COLUMN manual_rating DOUBLE PRECISION")
+        )
+        has_column = True
+    items = await _fetch_items(connection, has_column)
+    updates = _plan_score_updates(items, has_column)
+    for item_id, rating in updates.items():
+        await connection.execute(
+            text("UPDATE items SET rating = :rating WHERE item_id = :item_id"),
+            {"rating": rating, "item_id": item_id},
+        )
+    verified_items = await _fetch_items(connection, has_column)
+    remaining = _plan_score_updates(verified_items, has_column)
+    if remaining:
+        raise MigrationError("Score verification failed after migration.")
+    return len(updates)
+
+
 async def _run(apply: bool) -> int:
     engine = create_async_engine(_database_url(), echo=False)
     try:
@@ -128,28 +151,8 @@ async def _run(apply: bool) -> int:
             return 0
 
         async with engine.begin() as connection:
-            if connection.dialect.name == "postgresql":
-                await connection.execute(
-                    text("LOCK TABLE items IN ACCESS EXCLUSIVE MODE")
-                )
-            has_column = await connection.run_sync(_has_manual_rating)
-            if not has_column:
-                await connection.execute(
-                    text("ALTER TABLE items ADD COLUMN manual_rating DOUBLE PRECISION")
-                )
-                has_column = True
-            items = await _fetch_items(connection, has_column)
-            updates = _plan_score_updates(items, has_column)
-            for item_id, rating in updates.items():
-                await connection.execute(
-                    text("UPDATE items SET rating = :rating WHERE item_id = :item_id"),
-                    {"rating": rating, "item_id": item_id},
-                )
-            verified_items = await _fetch_items(connection, has_column)
-            remaining = _plan_score_updates(verified_items, has_column)
-            if remaining:
-                raise MigrationError("Score verification failed after migration.")
-        print(f"Migrated items.manual_rating and updated {len(updates)} row(s).")
+            count = await apply_connection(connection)
+        print(f"Migrated items.manual_rating and updated {count} row(s).")
         return 0
     finally:
         await engine.dispose()

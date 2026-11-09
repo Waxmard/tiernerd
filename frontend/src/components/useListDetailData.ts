@@ -57,7 +57,7 @@ const reconcileFetchedItems = async (
 ): Promise<Item[]> => {
   if (!lifecycle.userId) return serverItems;
   const [ops, cachedRaw] = await Promise.all([
-    pendingOps(lifecycle.userId).catch(() => []),
+    pendingOps(lifecycle.userId),
     AsyncStorage.getItem(
       listItemsCacheKey(lifecycle.userId, lifecycle.listId)
     ).catch(() => null),
@@ -77,7 +77,7 @@ const reconcileFetchedMetadata = async (
 ): Promise<ListMetadata> => {
   if (!lifecycle.userId) return serverList;
   const [ops, cachedRaw] = await Promise.all([
-    pendingOps(lifecycle.userId).catch(() => []),
+    pendingOps(lifecycle.userId),
     AsyncStorage.getItem(listsCacheKey(lifecycle.userId)).catch(() => null),
   ]);
   if (ops.length === 0) return serverList;

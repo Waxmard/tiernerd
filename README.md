@@ -64,7 +64,7 @@ Scores are relative to the order of ranked items in each list, not independent q
 
 The API stores scores in `rating`. Score lists display one decimal place, dropping a trailing `.0` (for example `8.5`, `8`, `0`); position lists display whole-number ranks. An item without a position has a null score and is shown as **Not ranked yet**. Adding, deleting or re-ranking items can change all scores in the list. Lists use position, not rounded scores, to order ranked items best first; unranked items appear last.
 
-Existing PostgreSQL databases require schema upgrades before running the updated application, including dropping the retired `comparison_sessions` table. See [Upgrade the list-ranking mode schema](fastapi/README.md#upgrade-the-list-ranking-mode-schema) for prerequisites and safe cutover. Fresh databases use the current model schema.
+Existing PostgreSQL databases upgrade automatically at application startup: `create_tables` drops the retired `comparison_sessions` table, adds missing additive columns (`users.photo_url`, `lists.color`, `lists.icon`, `lists.cover`, `lists.cover_photo`, `lists.ranking_mode`, `items.manual_rating`), and recalculates `items.rating` to the current score curve. The scripts in [the backend README](fastapi/README.md) remain available for preflight checks or offline upgrades of older schemas.
 
 
 ## Contributing

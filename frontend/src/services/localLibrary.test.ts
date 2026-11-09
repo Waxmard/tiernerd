@@ -411,3 +411,183 @@ test('reconcileListItems, reconcileLists, and reconcileListMetadata apply pendin
   assert.equal(reconciledMeta.ranking_mode, 'rank');
   assert.equal(reconciledMeta.updated_at, '2026-01-04T00:00:00.000Z');
 });
+
+test('reconcileListItems and reconcileLists apply pending create and delete ops', () => {
+  const serverItems: Item[] = [item('a', 'a1', 8.5), item('b', 'a0', 3.8)];
+  const pendingCreate: SyncOp = {
+    id: 'op-create-c',
+    createdAt: '2026-01-05T00:00:00.000Z',
+    kind: 'item.create',
+    listId: LIST,
+    itemId: 'c',
+    name: 'Charlie',
+    description: null,
+  };
+
+  const fromCache = reconcileListItems(
+    LIST,
+    serverItems,
+    [item('c', null, null)],
+    [pendingCreate]
+  );
+  assert.deepEqual(
+    fromCache.map((entry) => [entry.item_id, entry.name, entry.rating]),
+    [
+      ['a', 'a', 8.5],
+      ['b', 'b', 3.8],
+      ['c', 'c', null],
+    ]
+  );
+
+  const fromFallback = reconcileListItems(
+    LIST,
+    serverItems,
+    [],
+    [pendingCreate]
+  );
+  assert.deepEqual(
+    fromFallback.map((entry) => [
+      entry.item_id,
+      entry.name,
+      entry.list_id,
+      entry.created_at,
+    ]),
+    [
+      ['a', 'a', LIST, '2026-01-01T00:00:00.000Z'],
+      ['b', 'b', LIST, '2026-01-01T00:00:00.000Z'],
+      ['c', 'Charlie', LIST, '2026-01-05T00:00:00.000Z'],
+    ]
+  );
+
+  const dedupedById = reconcileListItems(
+    LIST,
+    [...serverItems, item('c', null, null)],
+    [item('c', null, null)],
+    [pendingCreate]
+  );
+  assert.deepEqual(
+    dedupedById.map((entry) => entry.item_id),
+    ['a', 'b', 'c']
+  );
+
+  const dedupedByName = reconcileListItems(
+    LIST,
+    [...serverItems, { ...item('server-c', 'a2', 10), name: 'CHARLIE' }],
+    [item('c', null, null)],
+    [{ ...pendingCreate, itemId: 'other-c', name: '  charlie ' }]
+  );
+  assert.deepEqual(
+    dedupedByName.map((entry) => entry.item_id),
+    ['a', 'b', 'server-c']
+  );
+
+  const serverLists: ListSimple[] = [
+    listSummary({
+      list_id: LIST,
+      item_count: 2,
+      updated_at: '2026-01-01T00:00:00.000Z',
+    }),
+    listSummary({
+      list_id: 'list-deleted',
+      title: 'Deleted locally',
+      updated_at: '2026-01-06T00:00:00.000Z',
+    }),
+  ];
+  const pendingList: ListSimple = listSummary({
+    list_id: 'list-pending',
+    title: 'Pending list',
+    item_count: 1,
+    updated_at: '2026-01-02T00:00:00.000Z',
+  });
+  const createListOp: SyncOp = {
+    id: 'op-list-create',
+    createdAt: '2026-01-07T00:00:00.000Z',
+    kind: 'list.create',
+    listId: 'list-pending',
+    list: {
+      list_id: 'list-pending',
+      title: 'Pending list',
+      description: null,
+      color: null,
+      icon: null,
+      cover: null,
+      cover_photo: null,
+      ranking_mode: 'score',
+    },
+  };
+  const createdListOp: SyncOp = {
+    id: 'op-list-create-fallback',
+    createdAt: '2026-01-07T00:00:00.000Z',
+    kind: 'list.create',
+    listId: 'list-fallback',
+    list: {
+      list_id: 'list-fallback',
+      title: 'Fallback list',
+      description: null,
+      color: null,
+      icon: null,
+      cover: null,
+      cover_photo: null,
+      ranking_mode: 'rank',
+    },
+  };
+  const deleteListOp: SyncOp = {
+    id: 'op-list-delete',
+    createdAt: '2026-01-08T00:00:00.000Z',
+    kind: 'list.delete',
+    listId: 'list-deleted',
+  };
+
+  const fromCachedLists = reconcileLists(
+    serverLists,
+    [pendingList],
+    [createListOp, deleteListOp]
+  );
+  assert.deepEqual(
+    fromCachedLists.map((entry) => [
+      entry.list_id,
+      entry.title,
+      entry.item_count,
+    ]),
+    [
+      ['list-pending', 'Pending list', 1],
+      [LIST, 'Ranked', 2],
+    ]
+  );
+
+  const fromListFallback = reconcileLists(serverLists, [], [createdListOp]);
+  assert.deepEqual(
+    fromListFallback.map((entry) => [
+      entry.list_id,
+      entry.title,
+      entry.ranking_mode,
+      entry.item_count,
+      entry.created_at,
+    ]),
+    [
+      ['list-fallback', 'Fallback list', 'rank', 0, '2026-01-07T00:00:00.000Z'],
+      [
+        'list-deleted',
+        'Deleted locally',
+        'score',
+        0,
+        '2026-01-01T00:00:00.000Z',
+      ],
+      [LIST, 'Ranked', 'score', 2, '2026-01-01T00:00:00.000Z'],
+    ]
+  );
+
+  const withItemCreate = reconcileLists(
+    serverLists.slice(0, 1),
+    [listSummary({ list_id: LIST, item_count: 3 })],
+    [pendingCreate]
+  );
+  assert.deepEqual(
+    withItemCreate.map((entry) => [
+      entry.list_id,
+      entry.item_count,
+      entry.updated_at,
+    ]),
+    [[LIST, 3, '2026-01-05T00:00:00.000Z']]
+  );
+});
