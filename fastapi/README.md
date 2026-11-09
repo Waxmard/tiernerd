@@ -55,7 +55,7 @@ Module layout, layering and the tach boundary rule: see [AGENTS.md](../AGENTS.md
 
 ## Ranking Algorithm
 
-The client runs the binary search over a list's other ranked items and sends the resulting gap; the server owns storage. `PUT /api/lists/{list_id}/ranking` with `{"item_id": "...", "gap": n}` places the item so that `n` worse-ranked peers sit below it (`0` is worst, the ranked item count is best). The server clamps the gap to the current peers, generates a fractional position key between the neighbours, and recalculates scores across the list (see [Ranking lists](../README.md#ranking-lists) for the score formula). Replaying the same request against an unchanged list keeps the same order. Unranked items have null positions and ratings.
+The client runs the binary search over a list's other ranked items and sends the resulting gap; the server owns storage. `PUT /api/lists/{list_id}/ranking` with `{"item_id": "...", "gap": n}` places the item so that `n` worse-ranked peers sit below it (`0` is worst, the ranked item count is best). The server clamps the gap to the current peers, generates a fractional position key between the neighbours, and recalculates scores across the list (see [Ranking lists](../README.md#ranking-lists) for how scores work). Replaying the same request against an unchanged list keeps the same order. Unranked items have null positions and ratings.
 
 Creates accept client-generated ids so a retried request is safe: `POST /api/lists/` reads an optional `list_id` from the list metadata, and `POST /api/items/?list_id=` reads an optional `item_id` in the body. A request that reuses the caller's own id returns the stored row instead of creating a duplicate; an id owned by someone else returns 409. This is what lets the mobile client queue mutations offline and replay them later.
 
@@ -146,7 +146,7 @@ uv run python scripts/migrate_list_ranking_mode.py --apply
 
 The migration preserves existing valid mode choices, item order, metadata and sessions. It recalculates incorrect ratings in a locked transaction and rolls back if verification fails.
 
-Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its top saved score is 10.0. Then run a fresh `make ios` from the repository root and confirm the device displays 10. `make ios` deploys the backend itself when its inputs changed, but no build or deploy migrates the database.
+Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its scores follow the current curve: four items without manual scores show 8.3, 7.1, 5.8 and 4.1. Then run a fresh `make ios` from the repository root and confirm the device shows the same scores. `make ios` deploys the backend itself when its inputs changed, but no build or deploy migrates the database.
 
 ## Upgrade the overall-ranking schema
 
