@@ -19,6 +19,7 @@ import {
   insertIndexBestFirst,
   isDecided,
   isDraftCurrent,
+  landingRange,
   manualRatingBounds,
   manualRatingBoundsError,
   parseManualRatingInput,
@@ -630,9 +631,14 @@ export function useItemWorkspace({
     const target = peerId
       ? (items.find((item) => item.item_id === peerId) ?? null)
       : null;
+    const ranked = items.filter((entry) => entry.position !== null);
+    const targetIndex = ranked.findIndex((entry) => entry.item_id === peerId);
     view = {
       item: rankingItem,
       target,
+      targetRank: targetIndex === -1 ? null : targetIndex + 1,
+      rankedCount: ranked.length,
+      range: landingRange(ranking),
       answered: ranking.answers.length,
       limit: comparisonLimit(ranking.peersWorstFirst.length),
       canUndo: ranking.answers.length > 0,

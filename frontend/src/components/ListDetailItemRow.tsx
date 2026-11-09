@@ -8,7 +8,7 @@ import type { ListRankingMode } from '../services/listsService';
 import { formatScore, splitScoreParts } from '../services/rankingEngine';
 import { CHIP_CLASS } from './ImmersiveBoard';
 
-const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
+export const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
 
 export interface ItemRankBadgeProps {
   rankingMode: ListRankingMode;

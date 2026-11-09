@@ -32,6 +32,9 @@ export interface UseItemWorkspaceOptions {
 export interface RankingView {
   item: Item;
   target: Item | null;
+  targetRank: number | null;
+  rankedCount: number;
+  range: { best: number; worst: number; total: number };
   answered: number;
   limit: number;
   canUndo: boolean;

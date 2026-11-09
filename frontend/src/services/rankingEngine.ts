@@ -70,6 +70,16 @@ export function insertIndexBestFirst(session: RankingSession): number {
   return session.peersWorstFirst.length - gap(session);
 }
 
+export function landingRange(session: RankingSession): {
+  best: number;
+  worst: number;
+  total: number;
+} {
+  const { low, high } = bounds(session);
+  const total = session.peersWorstFirst.length + 1;
+  return { best: total - high, worst: total - low, total };
+}
+
 const CURVE_ALPHA = 0.7;
 const CURVE_BETA = 0.54;
 const AUTO_MIN_SCORE = 0.1;

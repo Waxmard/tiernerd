@@ -13,6 +13,7 @@ import {
   insertIndexBestFirst,
   isDecided,
   isDraftCurrent,
+  landingRange,
   manualRatingBounds,
   manualRatingBoundsError,
   parseManualRatingInput,
@@ -56,6 +57,20 @@ test('the binary search narrows one question at a time', () => {
   const afterWorse = applyAnswer(afterBetter, 'worse');
   assert.equal(isDecided(afterWorse), true);
   assert.equal(gap(afterWorse), 3);
+});
+
+test('the landing range narrows with each answer', () => {
+  assert.deepEqual(landingRange(decide()), { best: 1, worst: 5, total: 5 });
+  assert.deepEqual(landingRange(decide('better')), {
+    best: 1,
+    worst: 2,
+    total: 5,
+  });
+  assert.deepEqual(landingRange(decide('worse')), {
+    best: 3,
+    worst: 5,
+    total: 5,
+  });
 });
 
 test('undo restores the previous question', () => {
