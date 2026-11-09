@@ -1,8 +1,9 @@
 name: Deploy TestFlight
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
+    paths: ['version.txt']
   workflow_dispatch: {}
 
 permissions:
@@ -19,8 +20,6 @@ jobs:
     environment: preview
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
       - uses: jdx/mise-action@v5
       - name: Install frontend dependencies
         working-directory: frontend

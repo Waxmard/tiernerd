@@ -1,7 +1,9 @@
 import pytest
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.db import database as db_module
 from app.settings import get_settings
 from scripts.migrate_drop_comparison_sessions import (
     _arguments,
@@ -82,3 +84,23 @@ def test_apply_refuses_without_a_database_url(monkeypatch, capsys) -> None:
         assert "DATABASE_URL" in capsys.readouterr().err
     finally:
         get_settings.cache_clear()
+
+
+async def test_create_tables_drops_legacy_comparison_sessions(
+    test_db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bind = test_db.bind
+    assert isinstance(bind, AsyncEngine)
+    async with bind.begin() as conn:
+        await conn.execute(
+            text("CREATE TABLE comparison_sessions (session_id VARCHAR(36))")
+        )
+
+    monkeypatch.setattr(db_module, "engine", bind)
+    await db_module.create_tables()
+
+    async with bind.connect() as conn:
+        has_sessions = await conn.run_sync(
+            lambda sync_conn: inspect(sync_conn).has_table("comparison_sessions")
+        )
+    assert not has_sessions

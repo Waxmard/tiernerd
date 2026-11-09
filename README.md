@@ -6,13 +6,11 @@ TierNerd is a cross-platform mobile app for ranking items through 1v1 comparison
 your items ──1v1 comparisons──▶ TierNerd ──▶ ranked list, with positions or scores
 ```
 
-## Key Features
+## Key features
 
 - Create custom lists on any topic
 - Add items with descriptions and images
-- Rank items through simple better/worse comparisons
-- Eliminate arbitrary rating bias
-- View ranked items best first with numbered positions or scores out of 10
+- Rank items by choosing the better of two
 
 ## Screenshots
 
@@ -27,7 +25,7 @@ your items ──1v1 comparisons──▶ TierNerd ──▶ ranked list, with p
 - **Database:** PostgreSQL (async via asyncpg)
 - **Auth:** Google sign-in and JWT sessions
 
-## Getting Started
+## Getting started
 
 ### Frontend
 
@@ -48,24 +46,21 @@ See [frontend/README.md](frontend/README.md) and [fastapi/README.md](fastapi/REA
 
 ## Ranking lists
 
-Choose **Ranked positions** or **Scores out of 10** when creating a list. Scores are the default. Change the choice later in **List options**; switching modes does not change the saved order or start new comparisons.
+Choose **Ranked positions** or **Scores out of 10** when creating a list; scores are the default. Switch in **List options** at any time without changing the order.
 
-Add an item and choose the better item in each comparison. Comparisons use neutral surfaces without scores. **Undo last answer** reverses the latest choice and is available until the last comparison decides. The rank saves and the panel closes as soon as the comparisons finish; the first item in an empty list saves immediately.
+To rank an item, choose the better item in each comparison. **Undo last answer** takes back your last choice. The rank saves when the comparisons finish; the first item in an empty list saves immediately.
 
-Select a row to view its description, image and overall rank. Score lists also show the score. **Edit** changes its metadata; **Re-rank** starts comparisons without changing the saved rank until they finish. **Delete Item** is separate from editing and requires confirmation.
+Select an item to see its description, image, rank and, in score lists, its score. **Edit** changes its details. **Re-rank** runs the comparisons again and keeps the old rank until they finish. **Delete Item** removes it after confirmation.
 
-Interrupted ranking drafts persist on the device. Reopening the list resumes the saved draft at the same question, or choose **Resume ranking** on the item. Cancelling a ranking keeps the item unranked. Unranked items without a draft offer **Rank now**.
+An unfinished ranking stays on the device. Reopen the list or choose **Resume ranking** to continue. Cancelling leaves the item marked **Not ranked yet**; choose **Rank now** to start again.
 
-The app works without a connection. Lists, items and rankings are read from and written to the device first. Changes replay in order once the connection returns, and creates carry client-generated ids so a retry never duplicates a list or item. A change the server refuses as invalid stays on the device and keeps showing in its list; a notification names the field the server complained about, and the change syncs by itself once the server accepts it. A duplicate name resolves to the item already in the list, and an edit to something deleted on another device is discarded with a notification. Uploaded photo covers and photo search need a connection.
+Scores come from each item's place in the list, not a separate rating. They run from 0.1 to 9.9, and adding, removing or re-ranking an item can change every score. To set a score yourself, edit a ranked item and enter 0 to 10; the items around it adjust. A manual score must fit between the manual scores above and below it.
 
-Item names are unique within a list, ignoring surrounding whitespace and Unicode case. Different lists can use the same name.
+Item names must be unique within a list, ignoring case and surrounding spaces.
 
-Scores are relative to the order of ranked items in each list, not independent quality ratings. The best item scores 10.0 and the worst scores 0.0; a single ranked item scores 10.0. For best-first rank `r` among `n` ranked items, the score is `round(10 * (n - r) / (n - 1), 1)` when `n > 1`. For example, four items score 10.0, 6.7, 3.3 and 0.0.
+The app works offline. Changes save on the device first and sync in order when the connection returns. If the server rejects a change, the change stays on the device, a notification names the problem field, and it syncs once the server accepts it. Adding a duplicate name uses the existing item. Edits to items deleted on another device are discarded with a notification. Photo uploads and photo search need a connection.
 
-The API stores scores in `rating`. Score lists display them to one decimal place without a suffix; position lists display whole-number ranks. An item without a position has a null score and is shown as **Not ranked yet**. Adding, deleting or re-ranking items can change all scores in the list. Lists use position, not rounded scores, to order ranked items best first; unranked items appear last.
-
-Existing PostgreSQL databases require schema upgrades before running the updated application, including dropping the retired `comparison_sessions` table. See [Upgrade the list-ranking mode schema](fastapi/README.md#upgrade-the-list-ranking-mode-schema) for prerequisites and safe cutover. Fresh databases use the current model schema.
-
+Existing databases upgrade themselves when the backend starts. The [backend README](fastapi/README.md) covers the manual upgrade scripts.
 
 ## Contributing
 

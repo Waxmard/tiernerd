@@ -51,6 +51,8 @@ import {
   sortListsByRecency,
 } from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
+import { reconcileLists } from '../services/localLibrary';
+import { pendingOps } from '../services/syncQueue';
 
 type ModalStep = 'create' | 'addItem' | null;
 interface TierList {
@@ -78,8 +80,10 @@ const toTierList = (list: ListSimple): TierList => ({
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
-  const { isOffline, lastSyncedAt } = useSync();
+  const { flush, isOffline, lastSyncedAt } = useSync();
   const notify = useNotifyWhenOnline();
+  const isOfflineRef = useRef(isOffline);
+  isOfflineRef.current = isOffline;
   const userId = user?.id ?? null;
   const colors = useThemeColors();
   const safeAreaInsets = useSafeAreaInsets();
@@ -141,7 +145,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         isIdentityCurrent(userId, token);
       if (showLoading) setIsLoading(true);
       try {
-        const result = sortListsByRecency(await listsService.getLists(token));
+        if (!isOfflineRef.current) {
+          await flush().catch(() => undefined);
+        }
+        const fetched = await listsService.getLists(token);
+        const result = userId
+          ? reconcileLists(
+              fetched,
+              parseCachedLists(
+                await AsyncStorage.getItem(listsCacheKey(userId)).catch(
+                  () => null
+                )
+              ) ?? [],
+              await pendingOps(userId)
+            )
+          : sortListsByRecency(fetched);
         if (!isCurrent()) return;
         liveResponseRef.current += 1;
         setLists(result.map(toTierList));
@@ -182,7 +200,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         if (isCurrent()) setIsLoading(false);
       }
     },
-    [isIdentityCurrent, notify, token, userId]
+    [flush, isIdentityCurrent, notify, token, userId]
   );
   const fetchLists = useCallback(async () => {
     try {

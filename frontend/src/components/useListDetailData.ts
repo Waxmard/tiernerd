@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { getApiErrorMessage } from '../services/apiError';
-import { normalizeItemName } from '../services/itemNames';
 import type { Item } from '../services/itemsService';
 import {
   applyCachedItemsState,
@@ -30,7 +29,6 @@ import {
   type ListDetailLifecycle,
   listItemsCacheKey,
   listsCacheKey,
-  mergePendingItems,
   parseCachedListItems,
   parseCachedLists,
   sortListsByRecency,
@@ -43,47 +41,51 @@ import {
   listOptionsPayload,
   listsService,
 } from '../services/listsService';
-import { localLibrary } from '../services/localLibrary';
-import { pendingItemCreates } from '../services/syncQueue';
+import {
+  localLibrary,
+  reconcileListItems,
+  reconcileListMetadata,
+} from '../services/localLibrary';
+import { pendingOps } from '../services/syncQueue';
 import { newId } from '../utils/id';
 
 const ITEMS_ERROR = 'Unable to refresh items.';
 
-const withPendingCreates = async (
+const reconcileFetchedItems = async (
   lifecycle: ListDetailLifecycle,
-  items: Item[]
+  serverItems: Item[]
 ): Promise<Item[]> => {
-  if (!lifecycle.userId) return items;
-  const [pending, cachedRaw] = await Promise.all([
-    pendingItemCreates(lifecycle.userId, lifecycle.listId).catch(() => []),
+  if (!lifecycle.userId) return serverItems;
+  const [ops, cachedRaw] = await Promise.all([
+    pendingOps(lifecycle.userId),
     AsyncStorage.getItem(
       listItemsCacheKey(lifecycle.userId, lifecycle.listId)
     ).catch(() => null),
   ]);
-  if (pending.length === 0) return items;
-  const cached = parseCachedListItems(cachedRaw, lifecycle.listId) ?? [];
-  const ids = new Set(items.map((item) => item.item_id));
-  const names = new Set(items.map((item) => normalizeItemName(item.name)));
-  const local: Item[] = [];
-  for (const op of pending) {
-    if (ids.has(op.itemId) || names.has(normalizeItemName(op.name))) continue;
-    ids.add(op.itemId);
-    names.add(normalizeItemName(op.name));
-    local.push(
-      cached.find((item) => item.item_id === op.itemId) ?? {
-        item_id: op.itemId,
-        list_id: lifecycle.listId,
-        name: op.name,
-        description: op.description,
-        image_url: null,
-        rating: null,
-        position: null,
-        created_at: op.createdAt,
-        updated_at: op.createdAt,
-      }
-    );
-  }
-  return local.length ? mergePendingItems(items, local) : items;
+  if (ops.length === 0) return serverItems;
+  return reconcileListItems(
+    lifecycle.listId,
+    serverItems,
+    parseCachedListItems(cachedRaw, lifecycle.listId) ?? [],
+    ops
+  );
+};
+
+const reconcileFetchedMetadata = async (
+  lifecycle: ListDetailLifecycle,
+  serverList: ListMetadata
+): Promise<ListMetadata> => {
+  if (!lifecycle.userId) return serverList;
+  const [ops, cachedRaw] = await Promise.all([
+    pendingOps(lifecycle.userId),
+    AsyncStorage.getItem(listsCacheKey(lifecycle.userId)).catch(() => null),
+  ]);
+  if (ops.length === 0) return serverList;
+  return reconcileListMetadata(
+    serverList,
+    parseCachedLists(cachedRaw) ?? [],
+    ops
+  );
 };
 
 interface UseListDetailDataOptions {
@@ -292,7 +294,7 @@ export function useListDetailData({
           lifecycle.listId,
           lifecycle.token
         );
-        const nextItems = await withPendingCreates(lifecycle, serverItems);
+        const nextItems = await reconcileFetchedItems(lifecycle, serverItems);
         if (!canAcceptItemsResponse(lifecycle, requestId, lifecycleRef.current))
           throw new Error(ITEMS_ERROR);
         lifecycle.itemsAcceptedLive = true;
@@ -389,10 +391,11 @@ export function useListDetailData({
         (previous) => ({ ...previous, metadataError: false })
       );
       try {
-        const list = await listsService.getList(
+        const serverList = await listsService.getList(
           lifecycle.listId,
           lifecycle.token
         );
+        const list = await reconcileFetchedMetadata(lifecycle, serverList);
         if (
           !canAcceptMetadataResponse(lifecycle, requestId, lifecycleRef.current)
         )
@@ -497,7 +500,11 @@ export function useListDetailData({
   const refreshAfterMutation = useCallback(async (): Promise<Item[]> => {
     await reloadFromCache();
     const lifecycle = lifecycleRef.current;
-    if (!lifecycle || !isLifecycleReadable(lifecycle, lifecycleRef.current))
+    if (
+      !lifecycle ||
+      !isLifecycleReadable(lifecycle, lifecycleRef.current) ||
+      isOfflineRef.current
+    )
       return itemsRef.current;
     const version = bumpLifecycleMutation(lifecycle);
     lifecycle.metadataAcceptedLive = false;

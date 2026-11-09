@@ -66,6 +66,7 @@ const item = (overrides: Partial<Item> = {}): Item => ({
   description: null,
   image_url: null,
   rating: 8.5,
+  manual_rating: null,
   position: '1',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
@@ -101,6 +102,33 @@ test('round-trips ordered ranked and unranked items unchanged', () => {
   assert.deepEqual(
     parseCachedListItems(JSON.stringify(items), 'list-1'),
     items
+  );
+});
+
+test('normalizes legacy cached items missing manual_rating and rejects invalid manual_rating', () => {
+  const { manual_rating: _omitted, ...legacyRanked } = item({
+    item_id: 'legacy-1',
+    position: 'a0',
+    rating: 6.5,
+  });
+  const parsed = parseCachedListItems(JSON.stringify([legacyRanked]), 'list-1');
+  assert.equal(parsed?.[0]?.manual_rating, null);
+
+  assert.equal(
+    parseCachedListItems(
+      JSON.stringify([
+        item({ position: null, rating: null, manual_rating: 7.0 }),
+      ]),
+      'list-1'
+    ),
+    null
+  );
+  assert.equal(
+    parseCachedListItems(
+      JSON.stringify([item({ manual_rating: 10.5 })]),
+      'list-1'
+    ),
+    null
   );
 });
 

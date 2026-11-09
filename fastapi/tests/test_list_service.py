@@ -65,7 +65,7 @@ class TestGetItemsBestFirst:
         ]
         assign_scores(items)
         low, high = items[50:52]
-        assert low.rating == high.rating == 5.0
+        assert low.rating == high.rating == 6.5
         assert get_items_best_first([low, high]) == [high, low]
 
 

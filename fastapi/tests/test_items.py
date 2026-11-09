@@ -15,6 +15,40 @@ from app.crud import item as item_crud
 from app.db.models import Item as ItemModel, List as ListModel, User
 
 
+async def _create_ranked_spots(
+    client: AsyncClient, test_list: ListModel, auth_headers: dict
+) -> list[dict]:
+    spots = []
+    for index, name in enumerate(["Spot A", "Spot B", "Spot C", "Spot D", "Spot E"]):
+        res = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json={"name": name},
+            headers=auth_headers,
+        )
+        assert res.status_code == 200
+        item = res.json()
+        if index > 0:
+            rank_res = await client.put(
+                f"/api/lists/{test_list.list_id}/ranking",
+                json={"item_id": item["item_id"], "gap": 0},
+                headers=auth_headers,
+            )
+            assert rank_res.status_code == 200
+        spots.append(item)
+    return spots
+
+
+async def _put_manual_rating(
+    client: AsyncClient, auth_headers: dict, item: dict, manual_rating: float | None
+):
+    return await client.put(
+        f"/api/items/items/{item['item_id']}",
+        json={"manual_rating": manual_rating},
+        headers=auth_headers,
+    )
+
+
 class TestCreateItem:
     """Tests for creating items endpoint."""
 
@@ -42,7 +76,8 @@ class TestCreateItem:
         assert data["description"] == "The first item"
         assert "item_id" in data
         assert data["position"] is not None
-        assert data["rating"] == 10.0
+        assert data["rating"] == 6.5
+        assert data["manual_rating"] is None
 
         result = await test_db.execute(
             select(ItemModel).where(ItemModel.list_id == test_list.list_id)
@@ -54,7 +89,8 @@ class TestCreateItem:
         assert db_items[0].list_id == test_list.list_id
         assert str(db_items[0].item_id) == data["item_id"]
         assert db_items[0].position == data["position"]
-        assert db_items[0].rating == 10.0
+        assert db_items[0].rating == 6.5
+        assert db_items[0].manual_rating is None
 
     async def test_create_second_item_is_unranked(
         self,
@@ -71,7 +107,7 @@ class TestCreateItem:
             headers=auth_headers,
         )
         assert first.status_code == 200
-        assert first.json()["rating"] == 10.0
+        assert first.json()["rating"] == 6.5
 
         response = await client.post(
             "/api/items/",
@@ -367,6 +403,166 @@ class TestUpdateItem:
         assert ordered.status_code == 200
         assert [row["list_id"] for row in ordered.json()] == [old_id, new_id]
 
+    async def test_manual_pin_rescales_neighbors(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+    ) -> None:
+        spots = await _create_ranked_spots(client, test_list, auth_headers)
+
+        pin_e = await _put_manual_rating(client, auth_headers, spots[4], 7.2)
+        assert pin_e.status_code == 200
+        list_items = (
+            await client.get(
+                f"/api/lists/{test_list.list_id}/items", headers=auth_headers
+            )
+        ).json()
+        assert [
+            (row["name"], row["rating"], row["manual_rating"])
+            for row in list_items
+            if row["position"] is not None
+        ] == [
+            ("Spot A", 9.1, None),
+            ("Spot B", 8.6, None),
+            ("Spot C", 8.1, None),
+            ("Spot D", 7.7, None),
+            ("Spot E", 7.2, 7.2),
+        ]
+
+    async def test_manual_pin_rejects_scores_outside_neighbor_bounds(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+    ) -> None:
+        spots = await _create_ranked_spots(client, test_list, auth_headers)
+        unranked_res = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json={"name": "Unranked Spot"},
+            headers=auth_headers,
+        )
+        assert unranked_res.status_code == 200
+        unranked = unranked_res.json()
+
+        unranked_pin = await _put_manual_rating(client, auth_headers, unranked, 7.0)
+        assert unranked_pin.status_code == 422
+        assert (
+            unranked_pin.json()["detail"]
+            == "Rank this item before setting a manual score."
+        )
+        unranked_noop = await _put_manual_rating(client, auth_headers, unranked, None)
+        assert unranked_noop.status_code == 200
+
+        assert (
+            await _put_manual_rating(client, auth_headers, spots[4], 7.2)
+        ).status_code == 200
+
+        low_err = await _put_manual_rating(client, auth_headers, spots[3], 6.0)
+        assert low_err.status_code == 422
+        assert low_err.json()["detail"] == (
+            "Score must be 7.2 or higher "
+            "(Spot E has a manual score below it), or re-rank this item."
+        )
+
+        assert (
+            await _put_manual_rating(client, auth_headers, spots[1], 8.0)
+        ).status_code == 200
+
+        high_err = await _put_manual_rating(client, auth_headers, spots[0], 7.5)
+        assert high_err.status_code == 422
+        assert high_err.json()["detail"] == (
+            "Score must be 8 or higher "
+            "(Spot B has a manual score below it), or re-rank this item."
+        )
+
+        both_err = await _put_manual_rating(client, auth_headers, spots[3], 8.5)
+        assert both_err.status_code == 422
+        assert both_err.json()["detail"] == (
+            "Score must be between 7.2 (Spot E) and 8 (Spot B), or re-rank this item."
+        )
+
+        assert (
+            await _put_manual_rating(client, auth_headers, spots[4], None)
+        ).status_code == 200
+
+        upper_only_err = await _put_manual_rating(client, auth_headers, spots[3], 8.5)
+        assert upper_only_err.status_code == 422
+        assert upper_only_err.json()["detail"] == (
+            "Score must be 8 or lower "
+            "(Spot B has a manual score above it), or re-rank this item."
+        )
+
+    async def test_clearing_manual_pins_restores_automatic_scores(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+    ) -> None:
+        spots = await _create_ranked_spots(client, test_list, auth_headers)
+        for spot, rating in ((spots[4], 7.2), (spots[1], 8.0)):
+            pin = await _put_manual_rating(client, auth_headers, spot, rating)
+            assert pin.status_code == 200
+
+        for spot in (spots[4], spots[1]):
+            reset = await _put_manual_rating(client, auth_headers, spot, None)
+            assert reset.status_code == 200
+
+        restored = (
+            await client.get(
+                f"/api/lists/{test_list.list_id}/items", headers=auth_headers
+            )
+        ).json()
+        assert [row["rating"] for row in restored if row["position"] is not None] == [
+            8.5,
+            7.5,
+            6.5,
+            5.3,
+            3.8,
+        ]
+
+    async def test_manual_rating_rounds_half_to_even_and_rejects_out_of_range(
+        self, client: AsyncClient, test_list: ListModel, auth_headers: dict
+    ) -> None:
+        created = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json={"name": "Only Spot"},
+            headers=auth_headers,
+        )
+        assert created.status_code == 200
+        item = created.json()
+        rank = await client.put(
+            f"/api/lists/{test_list.list_id}/ranking",
+            json={"item_id": item["item_id"], "gap": 0},
+            headers=auth_headers,
+        )
+        assert rank.status_code == 200
+        url = f"/api/items/items/{item['item_id']}"
+
+        lowered = await client.put(
+            url, json={"manual_rating": 7.25}, headers=auth_headers
+        )
+        assert lowered.status_code == 200
+        assert lowered.json()["manual_rating"] == 7.2
+
+        raised = await client.put(
+            url, json={"manual_rating": 7.35}, headers=auth_headers
+        )
+        assert raised.status_code == 200
+        assert raised.json()["manual_rating"] == 7.4
+
+        too_high = await client.put(
+            url, json={"manual_rating": 10.5}, headers=auth_headers
+        )
+        assert too_high.status_code == 422
+
+        too_low = await client.put(
+            url, json={"manual_rating": -0.1}, headers=auth_headers
+        )
+        assert too_low.status_code == 422
+
 
 class TestDeleteItem:
     """Tests for deleting items endpoint."""
@@ -432,10 +628,10 @@ class TestDeleteItem:
             .order_by(ItemModel.position)
         )
         assert list(result.all()) == [
-            (multiple_items[0].item_id, "a0", 0.0),
-            (multiple_items[1].item_id, "a1", 3.3),
-            (multiple_items[3].item_id, "a3", 6.7),
-            (multiple_items[4].item_id, "a4", 10.0),
+            (multiple_items[0].item_id, "a0", 4.1),
+            (multiple_items[1].item_id, "a1", 5.8),
+            (multiple_items[3].item_id, "a3", 7.1),
+            (multiple_items[4].item_id, "a4", 8.3),
         ]
         await test_db.refresh(unranked)
         assert unranked.rating is None
@@ -449,7 +645,7 @@ class TestDeleteItem:
         await test_db.refresh(multiple_items[0])
         await test_db.refresh(unranked)
         assert multiple_items[0].position == "a0"
-        assert multiple_items[0].rating == 10.0
+        assert multiple_items[0].rating == 6.5
         assert unranked.position is None
         assert unranked.rating is None
 

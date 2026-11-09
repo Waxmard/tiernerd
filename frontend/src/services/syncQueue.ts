@@ -35,6 +35,7 @@ export type SyncOp =
       itemId: string;
       name?: string;
       description?: string | null;
+      manualRating?: number | null;
     }
   | {
       id: string;
@@ -88,6 +89,7 @@ export function compact(ops: SyncOp[]): SyncOp[] {
   const result: SyncOp[] = [];
   for (const op of ops) {
     if (op.kind === 'item.update') {
+      let currentOp: Extract<SyncOp, { kind: 'item.update' }> = op;
       const createIndex = result.findIndex(
         (entry) => entry.kind === 'item.create' && entry.itemId === op.itemId
       );
@@ -99,22 +101,47 @@ export function compact(ops: SyncOp[]): SyncOp[] {
           description:
             op.description === undefined ? create.description : op.description,
         };
-        continue;
+        if (op.manualRating === undefined) {
+          continue;
+        }
+        currentOp = {
+          ...op,
+          name: undefined,
+          description: undefined,
+        };
       }
       const updateIndex = result.findIndex(
-        (entry) => entry.kind === 'item.update' && entry.itemId === op.itemId
+        (entry) =>
+          entry.kind === 'item.update' && entry.itemId === currentOp.itemId
       );
       const update = result[updateIndex];
       if (update && update.kind === 'item.update') {
-        result[updateIndex] = {
+        const merged: Extract<SyncOp, { kind: 'item.update' }> = {
           ...update,
-          name: op.name ?? update.name,
+          name: currentOp.name ?? update.name,
           description:
-            op.description === undefined ? update.description : op.description,
+            currentOp.description === undefined
+              ? update.description
+              : currentOp.description,
+          ...(currentOp.manualRating === undefined &&
+          update.manualRating === undefined
+            ? {}
+            : {
+                manualRating:
+                  currentOp.manualRating === undefined
+                    ? update.manualRating
+                    : currentOp.manualRating,
+              }),
         };
+        if (currentOp.manualRating !== undefined) {
+          result.splice(updateIndex, 1);
+          result.push(merged);
+        } else {
+          result[updateIndex] = merged;
+        }
         continue;
       }
-      result.push(op);
+      result.push(currentOp);
       continue;
     }
 
@@ -146,6 +173,22 @@ export function compact(ops: SyncOp[]): SyncOp[] {
     }
 
     if (op.kind === 'ranking.set') {
+      const updateIndex = result.findIndex(
+        (entry) => entry.kind === 'item.update' && entry.itemId === op.itemId
+      );
+      const update = result[updateIndex];
+      if (
+        update &&
+        update.kind === 'item.update' &&
+        update.manualRating !== undefined
+      ) {
+        const { manualRating: _removed, ...rest } = update;
+        if (rest.name === undefined && rest.description === undefined) {
+          result.splice(updateIndex, 1);
+        } else {
+          result[updateIndex] = rest;
+        }
+      }
       const rankingIndex = result.findIndex(
         (entry) => entry.kind === 'ranking.set' && entry.itemId === op.itemId
       );
@@ -167,7 +210,8 @@ export function compact(ops: SyncOp[]): SyncOp[] {
           !(
             (entry.kind === 'item.update' ||
               entry.kind === 'ranking.set' ||
-              entry.kind === 'item.create') &&
+              entry.kind === 'item.create' ||
+              entry.kind === 'item.delete') &&
             entry.itemId === op.itemId
           )
       );
@@ -360,13 +404,20 @@ export function createSyncQueue(options: {
   };
 }
 
+export async function pendingOps(
+  userId: string,
+  storage: SyncStorage = asyncStorageSyncBackend
+): Promise<SyncOp[]> {
+  const raw = await storage.get(outboxKey(userId)).catch(() => null);
+  return parseOps(raw);
+}
+
 export async function pendingItemCreates(
   userId: string,
   listId: string,
   storage: SyncStorage = asyncStorageSyncBackend
 ): Promise<Extract<SyncOp, { kind: 'item.create' }>[]> {
-  const raw = await storage.get(outboxKey(userId)).catch(() => null);
-  return parseOps(raw).filter(
+  return (await pendingOps(userId, storage)).filter(
     (op): op is Extract<SyncOp, { kind: 'item.create' }> =>
       op.kind === 'item.create' && op.listId === listId
   );

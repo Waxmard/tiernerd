@@ -159,7 +159,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       const identity = screenIdentity;
       const refreshedItems = await refreshAfterMutation();
       if (identityRef.current !== identity) return;
-      if (!item) return;
+      if (!item) {
+        view.clearRestoredSelection();
+        setSelectedItemId(null);
+        setDismissedDetailsItemId(null);
+        return;
+      }
       if (!refreshedItems.some((entry) => entry.item_id === item.item_id))
         return;
       view.clearRestoredSelection();
@@ -251,12 +256,24 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     : null;
 
   useEffect(() => {
-    if (!selectedItemId || !itemsLoaded) return;
+    if (
+      !selectedItemId ||
+      (!itemsLoaded && !hasItemsSnapshot) ||
+      isLoadingItems
+    )
+      return;
     if (items.some((item) => item.item_id === selectedItemId)) return;
     if (workspace.isBusy) return;
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
-  }, [items, itemsLoaded, selectedItemId, workspace.isBusy]);
+  }, [
+    hasItemsSnapshot,
+    isLoadingItems,
+    items,
+    itemsLoaded,
+    selectedItemId,
+    workspace.isBusy,
+  ]);
 
   useEffect(() => {
     if (!completedItemId) {
@@ -482,6 +499,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       selected={selectedItemId === item.item_id}
       rank={rankByItemId.get(item.item_id) ?? null}
       rankingMode={rankingMode}
+      color={listColor}
       disabled={isDeletingList || workspace.isBusy}
       onPress={(selected) => void handleItemPress(selected)}
     />
@@ -575,6 +593,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               isDesktop={isDesktop}
               isScreenBusy={isDeletingList}
               listTitle={detailsTitle}
+              listColor={listColor}
               selectedItemId={selectedItemId}
               dismissedDetailsItemId={dismissedDetailsItemId}
               selectedItem={selectedItem}

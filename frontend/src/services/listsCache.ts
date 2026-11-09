@@ -36,9 +36,13 @@ export function enqueueListCacheWrite(
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === 'string';
 
-const isItem = (value: unknown, listId: string): value is Item => {
+type CachedItem = Omit<Item, 'manual_rating'> & {
+  manual_rating?: number | null;
+};
+
+const isItem = (value: unknown, listId: string): value is CachedItem => {
   if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Item;
+  const candidate = value as CachedItem;
   return (
     typeof candidate.item_id === 'string' &&
     candidate.list_id === listId &&
@@ -49,6 +53,14 @@ const isItem = (value: unknown, listId: string): value is Item => {
       (typeof candidate.rating === 'number' &&
         Number.isFinite(candidate.rating))) &&
     isNullableString(candidate.position) &&
+    (!('manual_rating' in candidate) ||
+      candidate.manual_rating === undefined ||
+      candidate.manual_rating === null ||
+      (candidate.position !== null &&
+        typeof candidate.manual_rating === 'number' &&
+        Number.isFinite(candidate.manual_rating) &&
+        candidate.manual_rating >= 0 &&
+        candidate.manual_rating <= 10)) &&
     typeof candidate.created_at === 'string' &&
     typeof candidate.updated_at === 'string'
   );
@@ -66,7 +78,12 @@ export function parseCachedListItems(
     return null;
   }
   if (!Array.isArray(parsed)) return null;
-  return parsed.every((item) => isItem(item, listId)) ? parsed : null;
+  return parsed.every((item) => isItem(item, listId))
+    ? parsed.map((item) => ({
+        ...item,
+        manual_rating: item.manual_rating ?? null,
+      }))
+    : null;
 }
 
 export function mergePendingItems(items: Item[], pending: Item[]): Item[] {

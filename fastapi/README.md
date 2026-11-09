@@ -55,7 +55,7 @@ Module layout, layering and the tach boundary rule: see [AGENTS.md](../AGENTS.md
 
 ## Ranking Algorithm
 
-The client runs the binary search over a list's other ranked items and sends the resulting gap; the server owns storage. `PUT /api/lists/{list_id}/ranking` with `{"item_id": "...", "gap": n}` places the item so that `n` worse-ranked peers sit below it (`0` is worst, the ranked item count is best). The server clamps the gap to the current peers, generates a fractional position key between the neighbours, and recalculates scores across the list (see [Ranking lists](../README.md#ranking-lists) for the score formula). Replaying the same request against an unchanged list keeps the same order. Unranked items have null positions and ratings.
+The client runs the binary search over a list's other ranked items and sends the resulting gap; the server owns storage. `PUT /api/lists/{list_id}/ranking` with `{"item_id": "...", "gap": n}` places the item so that `n` worse-ranked peers sit below it (`0` is worst, the ranked item count is best). The server clamps the gap to the current peers, generates a fractional position key between the neighbours, and recalculates scores across the list (see [Ranking lists](../README.md#ranking-lists) for how scores work). Replaying the same request against an unchanged list keeps the same order. Unranked items have null positions and ratings.
 
 Creates accept client-generated ids so a retried request is safe: `POST /api/lists/` reads an optional `list_id` from the list metadata, and `POST /api/items/?list_id=` reads an optional `item_id` in the body. A request that reuses the caller's own id returns the stored row instead of creating a duplicate; an id owned by someone else returns 409. This is what lets the mobile client queue mutations offline and replay them later.
 
@@ -105,6 +105,24 @@ uv run python scripts/cleanup_list_cover_uploads.py --apply
 
 Do not configure a bucket-wide expiration policy: it would also remove attached photos.
 
+## Upgrade manual ratings and automatic startup migrations
+
+Application startup now applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table, adds any missing additive columns (`users.photo_url`, `lists.color`, `lists.icon`, `lists.cover`, `lists.cover_photo`, `lists.ranking_mode`, `items.manual_rating`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
+
+The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Back up the intended database and stop the application before applying it. From `fastapi/`, inspect the schema and count incorrect ratings without changing data:
+
+```bash
+uv run python scripts/migrate_manual_ratings.py --check
+```
+
+After the backup exists and the application is stopped, apply it:
+
+```bash
+uv run python scripts/migrate_manual_ratings.py --apply
+```
+
+`--check` reports whether `items.manual_rating` exists and how many rows need score updates. `--apply` adds the column if missing, rescales scores in a locked transaction, verifies the result, and rolls back on failure. Reapplying it is a no-op.
+
 ## Upgrade the list-ranking mode schema
 
 This PostgreSQL-only migration adds list display modes and repairs inconsistent stored scores without changing item positions. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from your environment's secret store; never put credentials in commands or tracked files. Confirm the API URL embedded in the iOS build before choosing a database. Fresh databases use the current model schema; `create_all` does not upgrade existing tables.
@@ -128,7 +146,7 @@ uv run python scripts/migrate_list_ranking_mode.py --apply
 
 The migration preserves existing valid mode choices, item order, metadata and sessions. It recalculates incorrect ratings in a locked transaction and rolls back if verification fails.
 
-Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its top saved score is 10.0. Then run a fresh `make ios` from the repository root and confirm the device displays 10.0 without a suffix. `make ios` deploys the backend itself when its inputs changed, but no build or deploy migrates the database.
+Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its scores follow the current curve: four items without manual scores show 8.3, 7.1, 5.8 and 4.1. Then run a fresh `make ios` from the repository root and confirm the device shows the same scores. `make ios` deploys the backend itself when its inputs changed, but no build or deploy migrates the database.
 
 ## Upgrade the overall-ranking schema
 
@@ -172,7 +190,7 @@ The migration trims display names, backfills normalized identity keys, and adds 
 
 ## Drop the comparison-session schema
 
-Once every client ranks locally, `comparison_sessions` is unused. Run the UI-ranking upgrade first if the database is older, then drop the table. Back up the database and stop the application before applying it.
+Once every client ranks locally, `comparison_sessions` is unused. Application startup already drops it via `create_tables` (`DROP TABLE IF EXISTS comparison_sessions`); the script below remains available for an offline drop or a preflight row check. Run the UI-ranking upgrade first if the database is older. Back up the database and stop the application before applying it.
 
 From `fastapi/`:
 
