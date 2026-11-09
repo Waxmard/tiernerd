@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.0](https://github.com/Waxmard/tiernerd/compare/v0.11.0...v0.12.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* let users set manual item scores and rescore lists automatically ([#130](https://github.com/Waxmard/tiernerd/issues/130))
+
+### Features
+
+* let users set manual item scores and rescore lists automatically ([#130](https://github.com/Waxmard/tiernerd/issues/130)) ([48e3ae4](https://github.com/Waxmard/tiernerd/commit/48e3ae4256f43f18364590951af03d605a88ed01))
+
 ## [0.11.0](https://github.com/Waxmard/tiernerd/compare/v0.10.0...v0.11.0) (2026-11-07)
 
 
