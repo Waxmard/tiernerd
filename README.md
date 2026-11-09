@@ -62,7 +62,7 @@ Item names are unique within a list, ignoring surrounding whitespace and Unicode
 
 Scores are relative to the order of ranked items in each list, not independent quality ratings. The best item scores 10.0 and the worst scores 0.0; a single ranked item scores 10.0. For best-first rank `r` among `n` ranked items, the score is `round(10 * (n - r) / (n - 1), 1)` when `n > 1`. For example, four items score 10.0, 6.7, 3.3 and 0.0.
 
-The API stores scores in `rating`. Score lists display them to one decimal place without a suffix; position lists display whole-number ranks. An item without a position has a null score and is shown as **Not ranked yet**. Adding, deleting or re-ranking items can change all scores in the list. Lists use position, not rounded scores, to order ranked items best first; unranked items appear last.
+The API stores scores in `rating`. Score lists display one decimal place, dropping a trailing `.0` (for example `8.5`, `8`, `0`); position lists display whole-number ranks. An item without a position has a null score and is shown as **Not ranked yet**. Adding, deleting or re-ranking items can change all scores in the list. Lists use position, not rounded scores, to order ranked items best first; unranked items appear last.
 
 Existing PostgreSQL databases require schema upgrades before running the updated application, including dropping the retired `comparison_sessions` table. See [Upgrade the list-ranking mode schema](fastapi/README.md#upgrade-the-list-ranking-mode-schema) for prerequisites and safe cutover. Fresh databases use the current model schema.
 

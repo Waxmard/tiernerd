@@ -3,7 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
 import { BaseModalContent, Input } from '../design-system/components';
 import { useThemeColors } from '../providers/ThemeProvider';
-import type { ManualRatingBounds } from '../services/rankingEngine';
+import {
+  formatScore,
+  type ManualRatingBounds,
+} from '../services/rankingEngine';
 import type { ItemFormDraft } from './itemWorkspaceTypes';
 
 export interface AddItemFieldErrors {
@@ -121,7 +124,7 @@ export function AddItemContent({
                 onChangeText={(manualRating) => onFormChange({ manualRating })}
                 placeholder={
                   autoScore !== null && autoScore !== undefined
-                    ? `Automatic (${autoScore.toFixed(1)})`
+                    ? `Automatic (${formatScore(autoScore)})`
                     : 'Automatic'
                 }
                 error={fieldErrors.manualRating}
@@ -134,11 +137,11 @@ export function AddItemContent({
               <View className="-mt-2 mb-4 flex-row items-center justify-between gap-2">
                 <Text className="flex-1 text-body-small text-ink-muted dark:text-ink-muted-dark">
                   {scoreBounds?.upper && scoreBounds?.lower
-                    ? `Between ${scoreBounds.lower.rating.toFixed(1)} and ${scoreBounds.upper.rating.toFixed(1)} · based on pinned items`
+                    ? `Between ${formatScore(scoreBounds.lower.rating)} and ${formatScore(scoreBounds.upper.rating)} · based on pinned items`
                     : scoreBounds?.upper
-                      ? `Max ${scoreBounds.upper.rating.toFixed(1)} (${scoreBounds.upper.name} pinned above)`
+                      ? `Max ${formatScore(scoreBounds.upper.rating)} (${scoreBounds.upper.name} pinned above)`
                       : scoreBounds?.lower
-                        ? `Min ${scoreBounds.lower.rating.toFixed(1)} (${scoreBounds.lower.name} pinned below)`
+                        ? `Min ${formatScore(scoreBounds.lower.rating)} (${scoreBounds.lower.name} pinned below)`
                         : '0.0–10.0 · Leave blank for automatic'}
                 </Text>
                 {form.manualRating.trim() !== '' ? (

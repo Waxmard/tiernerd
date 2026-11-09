@@ -128,7 +128,7 @@ uv run python scripts/migrate_list_ranking_mode.py --apply
 
 The migration preserves existing valid mode choices, item order, metadata and sessions. It recalculates incorrect ratings in a locked transaction and rolls back if verification fails.
 
-Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its top saved score is 10.0. Then run a fresh `make ios` from the repository root and confirm the device displays 10.0 without a suffix. `make ios` deploys the backend itself when its inputs changed, but no build or deploy migrates the database.
+Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its top saved score is 10.0. Then run a fresh `make ios` from the repository root and confirm the device displays 10. `make ios` deploys the backend itself when its inputs changed, but no build or deploy migrates the database.
 
 ## Upgrade the overall-ranking schema
 

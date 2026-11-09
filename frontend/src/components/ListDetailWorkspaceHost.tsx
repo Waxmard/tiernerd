@@ -1,5 +1,6 @@
 import type React from 'react';
 import { ActivityIndicator, Modal, View } from 'react-native';
+import type { ListColor } from '../design-system/tokens/colors';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
@@ -16,6 +17,7 @@ interface ListDetailWorkspaceHostProps {
   isDesktop: boolean;
   isScreenBusy: boolean;
   listTitle: string;
+  listColor?: ListColor | null;
   selectedItemId: string | null;
   dismissedDetailsItemId: string | null;
   selectedItem: Item | null;
@@ -41,6 +43,7 @@ export const ListDetailWorkspaceHost: React.FC<
   isDesktop,
   isScreenBusy,
   listTitle,
+  listColor = null,
   selectedItemId,
   dismissedDetailsItemId,
   selectedItem,
@@ -130,6 +133,7 @@ export const ListDetailWorkspaceHost: React.FC<
         rank={selectedRank}
         rankedCount={rankedCount}
         rankingMode={rankingMode}
+        color={listColor}
         presentation={presentation}
         hasDraft={workspace.ranking !== null}
         isBusy={isBusy}

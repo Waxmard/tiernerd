@@ -482,6 +482,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       selected={selectedItemId === item.item_id}
       rank={rankByItemId.get(item.item_id) ?? null}
       rankingMode={rankingMode}
+      color={listColor}
       disabled={isDeletingList || workspace.isBusy}
       onPress={(selected) => void handleItemPress(selected)}
     />
@@ -575,6 +576,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               isDesktop={isDesktop}
               isScreenBusy={isDeletingList}
               listTitle={detailsTitle}
+              listColor={listColor}
               selectedItemId={selectedItemId}
               dismissedDetailsItemId={dismissedDetailsItemId}
               selectedItem={selectedItem}

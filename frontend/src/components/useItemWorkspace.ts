@@ -13,6 +13,7 @@ import {
   comparisonLimit,
   computeScores,
   createRankingSession,
+  formatScore,
   gap,
   insertIndexBestFirst,
   isDecided,
@@ -136,7 +137,7 @@ export function useItemWorkspace({
         name: item.name,
         description: item.description ?? '',
         manualRating:
-          item.manual_rating !== null ? item.manual_rating.toFixed(1) : '',
+          item.manual_rating !== null ? formatScore(item.manual_rating) : '',
       };
       initialFormRef.current = form;
       replaceWorkspace({ ...EMPTY_WORKSPACE, mode: 'edit', item, form });

@@ -1,14 +1,115 @@
 import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { useThemeColors } from '../providers/ThemeProvider';
+import { type ListColor, palette } from '../design-system/tokens/colors';
+import { useTheme, useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
+import { formatScore, splitScoreParts } from '../services/rankingEngine';
+import { CHIP_CLASS } from './ImmersiveBoard';
+
+const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
+
+export interface ItemRankBadgeProps {
+  rankingMode: ListRankingMode;
+  rating: number | null;
+  rank: number | null;
+  color?: ListColor | null;
+  size?: 'md' | 'lg';
+  className?: string;
+}
+
+export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
+  rankingMode,
+  rating,
+  rank,
+  color = null,
+  size = 'md',
+  className,
+}) => {
+  const { scheme, colors } = useTheme();
+  if (rankingMode === 'score' ? rating === null : rank === null) {
+    return null;
+  }
+
+  const tintClass = color
+    ? CHIP_CLASS[color]
+    : 'bg-accent-tint dark:bg-accent-tint-dark';
+  const borderColor = color
+    ? palette.list[color][scheme].solid
+    : colors['accent-line'];
+  const primaryColor = color
+    ? palette.list[color][scheme]['on-tint']
+    : colors['accent-text'];
+  const secondaryColor = colors['ink-muted'];
+  const sizeClass =
+    size === 'lg'
+      ? 'min-w-[64px] h-12 px-3.5 rounded-2xl'
+      : 'min-w-[52px] h-10 px-2.5 rounded-xl';
+  const primaryTextClass =
+    size === 'lg'
+      ? 'text-[22px] leading-7 font-bold'
+      : 'text-[18px] leading-6 font-bold';
+  const secondaryTextClass =
+    size === 'lg'
+      ? 'text-[15px] leading-5 font-semibold'
+      : 'text-[13px] leading-4 font-semibold';
+
+  const scoreParts =
+    rankingMode === 'score' && rating !== null ? splitScoreParts(rating) : null;
+
+  return (
+    <View
+      style={{ borderColor }}
+      className={[
+        sizeClass,
+        'border-[1.5px] items-center justify-center shrink-0',
+        tintClass,
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {scoreParts ? (
+        <Text
+          numberOfLines={1}
+          style={[TABULAR_NUMS, { color: primaryColor }]}
+          className={primaryTextClass}
+        >
+          {scoreParts.whole}
+          {scoreParts.decimal ? (
+            <Text
+              style={[TABULAR_NUMS, { color: secondaryColor }]}
+              className={secondaryTextClass}
+            >
+              {scoreParts.decimal}
+            </Text>
+          ) : null}
+        </Text>
+      ) : (
+        <Text
+          numberOfLines={1}
+          style={[TABULAR_NUMS, { color: primaryColor }]}
+          className={primaryTextClass}
+        >
+          <Text
+            style={[TABULAR_NUMS, { color: secondaryColor }]}
+            className={secondaryTextClass}
+          >
+            #
+          </Text>
+          {rank}
+        </Text>
+      )}
+    </View>
+  );
+};
 
 interface ListDetailItemRowProps {
   item: Item;
   rank: number | null;
   rankingMode: ListRankingMode;
+  color?: ListColor | null;
   selected: boolean;
   disabled: boolean;
   onPress: (item: Item) => void;
@@ -21,12 +122,14 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
   rank,
   rankingMode,
+  color = null,
   selected,
   disabled,
   onPress,
 }) => {
   const ranked = item.position !== null;
-  const score = ranked && item.rating !== null ? item.rating.toFixed(1) : null;
+  const score =
+    ranked && item.rating !== null ? formatScore(item.rating) : null;
   const accessibleDescription = [
     item.name,
     rank !== null ? `rank ${rank}` : null,
@@ -76,13 +179,14 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             </Text>
           ) : null}
         </View>
-        {ranked && (rankingMode === 'rank' ? rank !== null : score !== null) ? (
-          <Text
-            style={{ fontVariant: ['tabular-nums'] }}
-            className="ml-3 shrink-0 text-body-medium font-semibold text-ink dark:text-ink-dark"
-          >
-            {rankingMode === 'rank' ? rank : score}
-          </Text>
+        {ranked ? (
+          <ItemRankBadge
+            rankingMode={rankingMode}
+            rating={item.rating}
+            rank={rank}
+            color={color}
+            className="ml-3"
+          />
         ) : null}
       </View>
     </TouchableOpacity>

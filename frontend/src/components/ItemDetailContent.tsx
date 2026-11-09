@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import { BaseModalContent, Button } from '../design-system/components';
+import type { ListColor } from '../design-system/tokens/colors';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
+import { ItemRankBadge } from './ListDetailItemRow';
 
 export interface ItemDetailContentProps {
   item: Item;
   rank: number | null;
   rankedCount: number;
   rankingMode: ListRankingMode;
+  color?: ListColor | null;
   canMutate: boolean;
   hasDraft: boolean;
   isBusy: boolean;
@@ -29,6 +32,7 @@ export function ItemDetailContent({
   rank,
   rankedCount,
   rankingMode,
+  color = null,
   canMutate,
   hasDraft,
   isBusy,
@@ -95,22 +99,22 @@ export function ItemDetailContent({
             Not ranked yet
           </Text>
         ) : (
-          <View className="flex-row items-baseline flex-wrap gap-3">
-            {rankingMode === 'score' && item.rating !== null ? (
-              <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
-                {item.rating.toFixed(1)}
-              </Text>
-            ) : null}
+          <View className="flex-row items-center flex-wrap gap-3">
+            <ItemRankBadge
+              rankingMode={rankingMode}
+              rating={item.rating}
+              rank={rank}
+              color={color}
+              size="lg"
+            />
             {rank !== null ? (
               <Text
                 style={TABULAR_NUMS}
-                className={
-                  rankingMode === 'rank'
-                    ? SCORE_CLASS
-                    : 'text-body-medium text-ink dark:text-ink-dark'
-                }
+                className="text-body-medium text-ink dark:text-ink-dark"
               >
-                Rank #{rank} of {rankedCount}
+                {rankingMode === 'rank'
+                  ? `of ${rankedCount} ranked`
+                  : `Rank #${rank} of ${rankedCount}`}
               </Text>
             ) : null}
           </View>

@@ -124,6 +124,10 @@ def manual_rating_bounds(
     return {"upper": upper, "lower": lower}
 
 
+def _format_score(value: float) -> str:
+    return f"{value:.1f}".removesuffix(".0")
+
+
 def manual_rating_bounds_error(
     best_first_items: Sequence[ItemModel], target_item_id: uuid.UUID, value: float
 ) -> str | None:
@@ -137,17 +141,18 @@ def manual_rating_bounds_error(
         return None
     if upper is not None and lower is not None:
         return (
-            f"Score must be between {lower['rating']:.1f} ({lower['name']}) and "
-            f"{upper['rating']:.1f} ({upper['name']}), or re-rank this item."
+            f"Score must be between {_format_score(lower['rating'])} "
+            f"({lower['name']}) and {_format_score(upper['rating'])} "
+            f"({upper['name']}), or re-rank this item."
         )
     if upper is not None:
         return (
-            f"Score must be {upper['rating']:.1f} or lower "
+            f"Score must be {_format_score(upper['rating'])} or lower "
             f"({upper['name']} is pinned above it), or re-rank this item."
         )
     if lower is not None:
         return (
-            f"Score must be {lower['rating']:.1f} or higher "
+            f"Score must be {_format_score(lower['rating'])} or higher "
             f"({lower['name']} is pinned below it), or re-rank this item."
         )
     return None

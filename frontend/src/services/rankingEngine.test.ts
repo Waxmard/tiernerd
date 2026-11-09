@@ -7,6 +7,7 @@ import {
   comparisonLimit,
   computeScores,
   createRankingSession,
+  formatScore,
   gap,
   halfEven1,
   insertIndexBestFirst,
@@ -16,6 +17,7 @@ import {
   manualRatingBoundsError,
   parseManualRatingInput,
   scoreForRank,
+  splitScoreParts,
   targetPeerId,
   undoAnswer,
 } from './rankingEngine.ts';
@@ -147,11 +149,11 @@ test('manualRatingBounds and manualRatingBoundsError enforce neighbor pins', () 
   assert.equal(manualRatingBoundsError(items, 'c', 7.6), null);
   assert.equal(
     manualRatingBoundsError(items, 'c', 8.5),
-    'Score must be between 7.2 (Spot E) and 8.0 (Spot B), or re-rank this item.'
+    'Score must be between 7.2 (Spot E) and 8 (Spot B), or re-rank this item.'
   );
   assert.equal(
     manualRatingBoundsError(items, 'a', 7.5),
-    'Score must be 8.0 or higher (Spot B is pinned below it), or re-rank this item.'
+    'Score must be 8 or higher (Spot B is pinned below it), or re-rank this item.'
   );
   const onlyUpper = [
     { item_id: 'b', name: 'Spot B', manual_rating: 8.0 },
@@ -159,8 +161,22 @@ test('manualRatingBounds and manualRatingBoundsError enforce neighbor pins', () 
   ];
   assert.equal(
     manualRatingBoundsError(onlyUpper, 'c', 8.5),
-    'Score must be 8.0 or lower (Spot B is pinned above it), or re-rank this item.'
+    'Score must be 8 or lower (Spot B is pinned above it), or re-rank this item.'
   );
+});
+
+test('formatScore drops a trailing .0 and keeps one decimal otherwise', () => {
+  assert.equal(formatScore(8), '8');
+  assert.equal(formatScore(8.0), '8');
+  assert.equal(formatScore(10), '10');
+  assert.equal(formatScore(0), '0');
+  assert.equal(formatScore(8.5), '8.5');
+  assert.equal(formatScore(9.9), '9.9');
+  assert.deepEqual(splitScoreParts(10), { whole: '10', decimal: null });
+  assert.deepEqual(splitScoreParts(8.0), { whole: '8', decimal: null });
+  assert.deepEqual(splitScoreParts(0), { whole: '0', decimal: null });
+  assert.deepEqual(splitScoreParts(8.5), { whole: '8', decimal: '.5' });
+  assert.deepEqual(splitScoreParts(9.9), { whole: '9', decimal: '.9' });
 });
 
 test('parseManualRatingInput validates blank, decimal precision, and range', () => {

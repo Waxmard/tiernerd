@@ -100,6 +100,26 @@ export function halfEven1(value: number): number {
   return rounded / 10;
 }
 
+export function formatScore(value: number): string {
+  const fixed = value.toFixed(1);
+  return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
+}
+
+export function splitScoreParts(value: number): {
+  whole: string;
+  decimal: string | null;
+} {
+  const formatted = formatScore(value);
+  const dotIndex = formatted.indexOf('.');
+  if (dotIndex === -1) {
+    return { whole: formatted, decimal: null };
+  }
+  return {
+    whole: formatted.slice(0, dotIndex),
+    decimal: formatted.slice(dotIndex),
+  };
+}
+
 export function scoreFromU(u: number): number {
   if (u <= 0) return 0;
   if (u >= 1) return 10;
@@ -220,13 +240,13 @@ export function manualRatingBoundsError(
     return null;
   }
   if (upper !== null && lower !== null) {
-    return `Score must be between ${lower.rating.toFixed(1)} (${lower.name}) and ${upper.rating.toFixed(1)} (${upper.name}), or re-rank this item.`;
+    return `Score must be between ${formatScore(lower.rating)} (${lower.name}) and ${formatScore(upper.rating)} (${upper.name}), or re-rank this item.`;
   }
   if (upper !== null) {
-    return `Score must be ${upper.rating.toFixed(1)} or lower (${upper.name} is pinned above it), or re-rank this item.`;
+    return `Score must be ${formatScore(upper.rating)} or lower (${upper.name} is pinned above it), or re-rank this item.`;
   }
   if (lower !== null) {
-    return `Score must be ${lower.rating.toFixed(1)} or higher (${lower.name} is pinned below it), or re-rank this item.`;
+    return `Score must be ${formatScore(lower.rating)} or higher (${lower.name} is pinned below it), or re-rank this item.`;
   }
   return null;
 }

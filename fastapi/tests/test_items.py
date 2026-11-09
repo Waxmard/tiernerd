@@ -469,7 +469,7 @@ class TestUpdateItem:
         )
         assert high_err.status_code == 422
         assert high_err.json()["detail"] == (
-            "Score must be 8.0 or higher "
+            "Score must be 8 or higher "
             "(Spot B is pinned below it), or re-rank this item."
         )
 
@@ -480,7 +480,7 @@ class TestUpdateItem:
         )
         assert both_err.status_code == 422
         assert both_err.json()["detail"] == (
-            "Score must be between 7.2 (Spot E) and 8.0 (Spot B), or re-rank this item."
+            "Score must be between 7.2 (Spot E) and 8 (Spot B), or re-rank this item."
         )
 
         reset_e = await client.put(
@@ -497,7 +497,7 @@ class TestUpdateItem:
         )
         assert upper_only_err.status_code == 422
         assert upper_only_err.json()["detail"] == (
-            "Score must be 8.0 or lower "
+            "Score must be 8 or lower "
             "(Spot B is pinned above it), or re-rank this item."
         )
 
