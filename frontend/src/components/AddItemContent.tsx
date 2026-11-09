@@ -64,7 +64,7 @@ export function AddItemContent({
   return (
     <BaseModalContent
       title={isEdit ? 'Edit item' : 'Add item'}
-      emoji={isEdit ? '✏️' : '➕'}
+      emoji={isEdit ? '✏️' : '🌱'}
       color={color}
       isLoading={isBusy}
       submitText={isEdit ? 'Save' : 'Add item'}

@@ -93,11 +93,16 @@ export function ListIdentityBadge({
   cover?: ListCover | null;
   photo?: ListPhoto | null;
   listId?: string;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
 }) {
   const resolvedIcon: ListIcon = icon ?? 'layers';
-  const boxClass = size === 'sm' ? 'w-7 h-7 rounded-lg' : 'w-9 h-9 rounded-xl';
-  const iconSize = size === 'sm' ? 16 : 20;
+  const boxClass =
+    size === 'sm'
+      ? 'w-7 h-7 rounded-lg'
+      : size === 'lg'
+        ? 'w-12 h-12 rounded-2xl'
+        : 'w-9 h-9 rounded-xl';
+  const iconSize = size === 'sm' ? 16 : size === 'lg' ? 28 : 20;
 
   return (
     <View className="flex-row items-center gap-2 shrink-0">

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { useNotify } from '../providers/NotificationProvider';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { duplicateItemName } from '../services/itemNames';
 import type { Item } from '../services/itemsService';
@@ -66,6 +67,7 @@ export function useItemWorkspace({
 }: UseItemWorkspaceOptions): ItemWorkspace {
   const { mutate } = useSync();
   const notify = useNotifyWhenOnline();
+  const celebrate = useNotify();
   const [workspace, setWorkspace] =
     useState<ItemWorkspaceState>(EMPTY_WORKSPACE);
   const workspaceRef = useRef(workspace);
@@ -204,13 +206,17 @@ export function useItemWorkspace({
           return false;
         }
         await optionsRef.current.onItemsChanged(item);
+        celebrate(
+          `Ranked #${insertIndexBestFirst(session) + 1} of ${session.peersWorstFirst.length + 1}`,
+          '🎉'
+        );
         closeWorkspace();
         return true;
       } finally {
         setBusy(false);
       }
     },
-    [beginBusy, closeWorkspace, mutate, notify, setBusy]
+    [beginBusy, celebrate, closeWorkspace, mutate, notify, setBusy]
   );
 
   const resumeRanking = useCallback(

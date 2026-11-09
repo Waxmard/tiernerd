@@ -110,6 +110,12 @@ export function halfEven1(value: number): number {
   return rounded / 10;
 }
 
+const RANK_MEDALS = ['🥇', '🥈', '🥉'];
+
+export function rankMedal(rank: number | null): string | null {
+  return rank === null ? null : (RANK_MEDALS[rank - 1] ?? null);
+}
+
 export function formatScore(value: number): string {
   const fixed = value.toFixed(1);
   return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;

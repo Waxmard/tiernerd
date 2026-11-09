@@ -163,7 +163,16 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           variant="text"
           size="small"
           className="shrink"
-          icon={addLoading ? undefined : <Emoji symbol="➕" size={18} />}
+          icon={
+            addLoading ? undefined : (
+              <Ionicons
+                name="add"
+                size={20}
+                color={colors['accent-text']}
+                accessible={false}
+              />
+            )
+          }
         />
       </View>
     </View>

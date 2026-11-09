@@ -5,6 +5,7 @@ import type { ListColor } from '../design-system/tokens/colors';
 import { useListHue } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
+import { rankMedal } from '../services/rankingEngine';
 import { ItemRankBadge, TABULAR_NUMS } from './ListDetailItemRow';
 
 export interface ItemDetailContentProps {
@@ -51,6 +52,7 @@ export function ItemDetailContent({
     : item.position === null
       ? 'Rank now'
       : 'Re-rank';
+  const medal = item.position === null ? null : rankMedal(rank);
 
   return (
     <BaseModalContent
@@ -105,6 +107,7 @@ export function ItemDetailContent({
             </Text>
           ) : (
             <View className="flex-row items-center flex-wrap gap-3">
+              {medal ? <Emoji symbol={medal} size={30} /> : null}
               <ItemRankBadge
                 rankingMode={rankingMode}
                 rating={item.rating}

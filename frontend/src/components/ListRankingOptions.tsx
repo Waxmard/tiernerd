@@ -34,16 +34,19 @@ const choices: {
   value: ListRankingMode;
   title: string;
   description: string;
+  emoji: string;
 }[] = [
   {
     value: 'rank',
     title: 'Ranked positions',
     description: '1, 2, 3 — best first.',
+    emoji: '🏆',
   },
   {
     value: 'score',
     title: 'Scores out of 10',
     description: 'Based on list order, with optional manual scores.',
+    emoji: '🎯',
   },
 ];
 
@@ -101,6 +104,7 @@ export function RankingModeSelector({
               }
               accessible={false}
             />
+            <Emoji symbol={choice.emoji} size={20} dimmed={disabled} />
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
                 {choice.title}

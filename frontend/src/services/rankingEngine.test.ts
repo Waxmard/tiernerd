@@ -17,11 +17,22 @@ import {
   manualRatingBounds,
   manualRatingBoundsError,
   parseManualRatingInput,
+  rankMedal,
   scoreForRank,
   splitScoreParts,
   targetPeerId,
   undoAnswer,
 } from './rankingEngine.ts';
+
+test('only the top three ranks get a medal', () => {
+  assert.deepEqual([1, 2, 3, 4, null].map(rankMedal), [
+    '🥇',
+    '🥈',
+    '🥉',
+    null,
+    null,
+  ]);
+});
 
 const peers = ['best', 'second', 'third', 'worst'];
 

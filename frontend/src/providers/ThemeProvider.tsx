@@ -115,8 +115,11 @@ export function useTheme(): ThemeContextValue {
   return context;
 }
 
-export function useListHue(color: ListColor | null) {
-  const { scheme, colors } = useTheme();
+export function listHue(
+  color: ListColor | null,
+  scheme: ColorSchemeName,
+  colors: ThemeColors
+) {
   const hue = color
     ? palette.list[color][scheme]
     : {
@@ -139,6 +142,11 @@ export function useListHue(color: ListColor | null) {
       backgroundImage: `linear-gradient(180deg, ${hue.tint} 0%, ${colors.surface} 100%)`,
     },
   };
+}
+
+export function useListHue(color: ListColor | null) {
+  const { scheme, colors } = useTheme();
+  return listHue(color, scheme, colors);
 }
 
 export const useThemeColors = (): ThemeColors => useTheme().colors;
