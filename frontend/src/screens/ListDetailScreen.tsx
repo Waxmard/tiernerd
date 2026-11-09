@@ -159,7 +159,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       const identity = screenIdentity;
       const refreshedItems = await refreshAfterMutation();
       if (identityRef.current !== identity) return;
-      if (!item) return;
+      if (!item) {
+        view.clearRestoredSelection();
+        setSelectedItemId(null);
+        setDismissedDetailsItemId(null);
+        return;
+      }
       if (!refreshedItems.some((entry) => entry.item_id === item.item_id))
         return;
       view.clearRestoredSelection();
@@ -251,12 +256,24 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     : null;
 
   useEffect(() => {
-    if (!selectedItemId || !itemsLoaded) return;
+    if (
+      !selectedItemId ||
+      (!itemsLoaded && !hasItemsSnapshot) ||
+      isLoadingItems
+    )
+      return;
     if (items.some((item) => item.item_id === selectedItemId)) return;
     if (workspace.isBusy) return;
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
-  }, [items, itemsLoaded, selectedItemId, workspace.isBusy]);
+  }, [
+    hasItemsSnapshot,
+    isLoadingItems,
+    items,
+    itemsLoaded,
+    selectedItemId,
+    workspace.isBusy,
+  ]);
 
   useEffect(() => {
     if (!completedItemId) {

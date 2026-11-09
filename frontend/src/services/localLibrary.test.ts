@@ -8,7 +8,14 @@ import {
   parseCachedLists,
 } from './listsCache.ts';
 import type { ListSimple } from './listsService.ts';
-import { createLocalLibrary, type LocalCacheStorage } from './localLibrary.ts';
+import {
+  createLocalLibrary,
+  type LocalCacheStorage,
+  reconcileListItems,
+  reconcileListMetadata,
+  reconcileLists,
+} from './localLibrary.ts';
+import type { SyncOp } from './syncQueue.ts';
 
 const USER = 'user-1';
 const LIST = 'list-1';
@@ -259,4 +266,148 @@ test('updating manual_rating rescales neighbors and re-ranking clears moved item
       ['d', 3.8, null],
     ]
   );
+});
+
+test('reconcileListItems and reconcileLists preserve pending item.delete and recency order', () => {
+  const serverItems: Item[] = [
+    item('a', 'a2', 10),
+    item('b', 'a1', 5),
+    item('c', 'a0', 0),
+  ];
+  const cachedItems: Item[] = [item('a', 'a2', 7.5), item('c', 'a0', 5.3)];
+  const deleteOp: SyncOp = {
+    id: 'op-del-b',
+    createdAt: '2026-01-03T00:00:00.000Z',
+    kind: 'item.delete',
+    listId: LIST,
+    itemId: 'b',
+  };
+
+  const reconciledItems = reconcileListItems(LIST, serverItems, cachedItems, [
+    deleteOp,
+  ]);
+  assert.deepEqual(
+    reconciledItems.map((entry) => [entry.item_id, entry.rating]),
+    [
+      ['a', 7.5],
+      ['c', 5.3],
+    ]
+  );
+
+  const serverLists: ListSimple[] = [
+    listSummary({
+      list_id: 'list-newer',
+      title: 'Newer on server',
+      updated_at: '2026-01-02T00:00:00.000Z',
+      item_count: 4,
+    }),
+    listSummary({
+      list_id: LIST,
+      title: 'Edited locally',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      item_count: 3,
+    }),
+  ];
+  const cachedLists: ListSimple[] = [
+    listSummary({
+      list_id: LIST,
+      title: 'Edited locally',
+      updated_at: '2026-01-03T00:00:00.000Z',
+      item_count: 2,
+    }),
+  ];
+
+  const reconciledLists = reconcileLists(serverLists, cachedLists, [deleteOp]);
+  assert.deepEqual(
+    reconciledLists.map((entry) => [
+      entry.list_id,
+      entry.item_count,
+      entry.updated_at,
+    ]),
+    [
+      [LIST, 2, '2026-01-03T00:00:00.000Z'],
+      ['list-newer', 4, '2026-01-02T00:00:00.000Z'],
+    ]
+  );
+});
+
+test('reconcileListItems, reconcileLists, and reconcileListMetadata apply pending update and ranking ops', () => {
+  const serverItems: Item[] = [
+    item('a', 'a1', 8.5),
+    item('b', 'a0', 3.8),
+    item('c', null, null),
+  ];
+  const ops: SyncOp[] = [
+    {
+      id: 'op-rank-c',
+      createdAt: '2026-01-02T00:00:00.000Z',
+      kind: 'ranking.set',
+      listId: LIST,
+      itemId: 'c',
+      gap: 2,
+    },
+    {
+      id: 'op-upd-b',
+      createdAt: '2026-01-03T00:00:00.000Z',
+      kind: 'item.update',
+      listId: LIST,
+      itemId: 'b',
+      name: 'Beta Renamed',
+      manualRating: 7.0,
+    },
+    {
+      id: 'op-list-upd',
+      createdAt: '2026-01-04T00:00:00.000Z',
+      kind: 'list.update',
+      listId: LIST,
+      metadata: { title: 'Renamed List', ranking_mode: 'rank' },
+    },
+  ];
+
+  const reconciledItems = reconcileListItems(LIST, serverItems, [], ops);
+  assert.deepEqual(
+    reconciledItems.map((entry) => [
+      entry.item_id,
+      entry.name,
+      entry.rating,
+      entry.manual_rating,
+    ]),
+    [
+      ['c', 'c', 8.7, null],
+      ['a', 'a', 7.8, null],
+      ['b', 'Beta Renamed', 7.0, 7.0],
+    ]
+  );
+
+  const serverList = listSummary({
+    list_id: LIST,
+    title: 'Original List',
+    ranking_mode: 'score',
+    updated_at: '2026-01-01T00:00:00.000Z',
+  });
+  const otherList = listSummary({
+    list_id: 'list-other',
+    title: 'Other List',
+    updated_at: '2026-01-03T12:00:00.000Z',
+  });
+
+  const reconciledLists = reconcileLists([otherList, serverList], [], ops);
+  assert.deepEqual(
+    reconciledLists.map((entry) => [
+      entry.list_id,
+      entry.title,
+      entry.ranking_mode,
+      entry.updated_at,
+    ]),
+    [
+      [LIST, 'Renamed List', 'rank', '2026-01-04T00:00:00.000Z'],
+      ['list-other', 'Other List', 'score', '2026-01-03T12:00:00.000Z'],
+    ]
+  );
+
+  const { item_count: _ignored, ...serverMetadata } = serverList;
+  const reconciledMeta = reconcileListMetadata(serverMetadata, [], ops);
+  assert.equal(reconciledMeta.title, 'Renamed List');
+  assert.equal(reconciledMeta.ranking_mode, 'rank');
+  assert.equal(reconciledMeta.updated_at, '2026-01-04T00:00:00.000Z');
 });

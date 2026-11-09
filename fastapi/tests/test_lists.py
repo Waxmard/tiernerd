@@ -550,6 +550,43 @@ class TestUpdateList:
         assert test_list.title != original_title
         assert test_list.description != original_description
 
+    async def test_update_list_bumps_updated_at_and_reorders_by_recency(
+        self,
+        client: AsyncClient,
+        test_user: User,
+        auth_headers: dict,
+        test_db: AsyncSession,
+    ):
+        older = ListModel(
+            user_id=test_user.user_id,
+            title="Older List",
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+            updated_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        newer = ListModel(
+            user_id=test_user.user_id,
+            title="Newer List",
+            created_at=datetime(2026, 1, 2, 0, 0, 0),
+            updated_at=datetime(2026, 1, 2, 0, 0, 0),
+        )
+        test_db.add_all([older, newer])
+        await test_db.commit()
+
+        before = await client.get("/api/lists/", headers=auth_headers)
+        assert before.status_code == 200
+        assert [row["title"] for row in before.json()] == ["Newer List", "Older List"]
+
+        update_resp = await client.put(
+            f"/api/lists/{older.list_id}",
+            files=metadata_files({"title": "Older Edited"}),
+            headers=auth_headers,
+        )
+        assert update_resp.status_code == 200
+
+        after = await client.get("/api/lists/", headers=auth_headers)
+        assert after.status_code == 200
+        assert [row["title"] for row in after.json()] == ["Older Edited", "Newer List"]
+
     async def test_update_list_partial(
         self, client: AsyncClient, test_list: ListModel, auth_headers: dict
     ):

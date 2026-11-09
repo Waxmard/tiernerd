@@ -561,12 +561,15 @@ export function useItemWorkspace({
           notify(outcome.message);
           return;
         }
-        await optionsRef.current.onItemsChanged(item);
+        if (workspaceRef.current.item?.item_id === item.item_id) {
+          closeWorkspace();
+        }
+        await optionsRef.current.onItemsChanged();
       } finally {
         setBusy(false);
       }
     },
-    [beginBusy, mutate, notify, setBusy]
+    [beginBusy, closeWorkspace, mutate, notify, setBusy]
   );
 
   const pauseRanking = useCallback(async () => {

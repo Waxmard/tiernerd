@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -83,6 +84,8 @@ async def update(
 ) -> ListModel:
     for field, value in update_data.items():
         setattr(list_obj, field, value)
+    if update_data:
+        list_obj.updated_at = datetime.now(UTC)
     db.add(list_obj)
     await db.flush()
     await db.refresh(list_obj)

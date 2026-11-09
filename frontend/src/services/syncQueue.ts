@@ -210,7 +210,8 @@ export function compact(ops: SyncOp[]): SyncOp[] {
           !(
             (entry.kind === 'item.update' ||
               entry.kind === 'ranking.set' ||
-              entry.kind === 'item.create') &&
+              entry.kind === 'item.create' ||
+              entry.kind === 'item.delete') &&
             entry.itemId === op.itemId
           )
       );
@@ -403,13 +404,20 @@ export function createSyncQueue(options: {
   };
 }
 
+export async function pendingOps(
+  userId: string,
+  storage: SyncStorage = asyncStorageSyncBackend
+): Promise<SyncOp[]> {
+  const raw = await storage.get(outboxKey(userId)).catch(() => null);
+  return parseOps(raw);
+}
+
 export async function pendingItemCreates(
   userId: string,
   listId: string,
   storage: SyncStorage = asyncStorageSyncBackend
 ): Promise<Extract<SyncOp, { kind: 'item.create' }>[]> {
-  const raw = await storage.get(outboxKey(userId)).catch(() => null);
-  return parseOps(raw).filter(
+  return (await pendingOps(userId, storage)).filter(
     (op): op is Extract<SyncOp, { kind: 'item.create' }> =>
       op.kind === 'item.create' && op.listId === listId
   );

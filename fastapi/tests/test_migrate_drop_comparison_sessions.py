@@ -1,7 +1,11 @@
 import pytest
+from httpx import AsyncClient
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.db import database as db_module
+from app.db.models import Item as ItemModel, List as ListModel
 from app.settings import get_settings
 from scripts.migrate_drop_comparison_sessions import (
     _arguments,
@@ -82,3 +86,67 @@ def test_apply_refuses_without_a_database_url(monkeypatch, capsys) -> None:
         assert "DATABASE_URL" in capsys.readouterr().err
     finally:
         get_settings.cache_clear()
+
+
+async def test_create_tables_drops_legacy_fk_table_unblocking_deletes(
+    client: AsyncClient,
+    test_db: AsyncSession,
+    test_list: ListModel,
+    auth_headers: dict,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    second_list = ListModel(user_id=test_list.user_id, title="Second List")
+    test_db.add(second_list)
+    await test_db.flush()
+    item_one = ItemModel(list_id=test_list.list_id, name="Item One")
+    item_two = ItemModel(list_id=second_list.list_id, name="Item Two")
+    test_db.add_all([item_one, item_two])
+    await test_db.commit()
+    await test_db.refresh(second_list)
+    await test_db.refresh(item_one)
+    await test_db.refresh(item_two)
+
+    bind = test_db.bind
+    assert isinstance(bind, AsyncEngine)
+    async with bind.begin() as conn:
+        await conn.execute(text("PRAGMA foreign_keys = ON"))
+        await conn.execute(
+            text(
+                "CREATE TABLE comparison_sessions ("
+                "session_id VARCHAR(36) PRIMARY KEY, "
+                "list_id CHAR(32) NOT NULL REFERENCES lists(list_id), "
+                "new_item_id CHAR(32) NOT NULL REFERENCES items(item_id), "
+                "target_item_id CHAR(32) REFERENCES items(item_id))"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO comparison_sessions "
+                "(session_id, list_id, new_item_id, target_item_id) "
+                "VALUES ('s1', :list_id, :new_item_id, :target_item_id)"
+            ),
+            {
+                "list_id": second_list.list_id.hex,
+                "new_item_id": item_one.item_id.hex,
+                "target_item_id": item_two.item_id.hex,
+            },
+        )
+
+    monkeypatch.setattr(db_module, "engine", bind)
+    await db_module.create_tables()
+
+    async with bind.connect() as conn:
+        has_sessions = await conn.run_sync(
+            lambda sync_conn: inspect(sync_conn).has_table("comparison_sessions")
+        )
+    assert not has_sessions
+
+    delete_item_resp = await client.delete(
+        f"/api/items/items/{item_one.item_id}", headers=auth_headers
+    )
+    assert delete_item_resp.status_code == 204
+
+    delete_list_resp = await client.delete(
+        f"/api/lists/{second_list.list_id}", headers=auth_headers
+    )
+    assert delete_list_resp.status_code == 204

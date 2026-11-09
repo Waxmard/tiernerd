@@ -4,6 +4,7 @@ import { ApiError, NetworkError } from './apiError.ts';
 import {
   createSyncQueue,
   pendingItemCreates,
+  pendingOps,
   type SyncOp,
   type SyncStorage,
 } from './syncQueue.ts';
@@ -408,5 +409,22 @@ test('compacts manualRating across item.create, ranking.set, and item.update', a
   assert.deepEqual(
     seen.map((op) => op.kind),
     ['ranking.set']
+  );
+});
+
+test('duplicate item.delete ops compact to one entry and pendingOps returns all ops', async () => {
+  const { queue, storage } = makeQueue(async () => undefined);
+
+  await queue.enqueue(itemDelete('1', 'a'));
+  await queue.enqueue(itemDelete('2', 'a'));
+  await queue.enqueue(itemDelete('3', 'b'));
+
+  const ops = await pendingOps(USER, storage);
+  assert.deepEqual(
+    ops.map((op) => (op.kind === 'item.delete' ? [op.id, op.itemId] : [op.id])),
+    [
+      ['2', 'a'],
+      ['3', 'b'],
+    ]
   );
 });
