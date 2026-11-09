@@ -6,7 +6,7 @@ import { useTheme, useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
 import { formatScore, splitScoreParts } from '../services/rankingEngine';
-import { CHIP_CLASS } from './ImmersiveBoard';
+import { CHIP_CLASS, SWATCH_CLASS } from './ImmersiveBoard';
 
 const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
 
@@ -28,7 +28,59 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
   className,
 }) => {
   const { scheme, colors } = useTheme();
-  if (rankingMode === 'score' ? rating === null : rank === null) {
+  const primaryTextClass =
+    size === 'lg'
+      ? 'text-[22px] leading-7 font-bold'
+      : 'text-[18px] leading-6 font-bold';
+  const secondaryTextClass =
+    size === 'lg'
+      ? 'text-[15px] leading-5 font-semibold'
+      : 'text-[13px] leading-4 font-semibold';
+
+  if (rankingMode === 'rank') {
+    if (rank === null) {
+      return null;
+    }
+    const solidClass = color
+      ? SWATCH_CLASS[color]
+      : 'bg-accent dark:bg-accent-dark';
+    const onSolidColor = color
+      ? palette.list[color][scheme]['on-solid']
+      : colors['on-accent'];
+    const pillSizeClass =
+      size === 'lg'
+        ? 'min-w-12 h-12 px-3.5 rounded-full'
+        : 'min-w-10 h-10 px-3 rounded-full';
+
+    return (
+      <View
+        className={[
+          pillSizeClass,
+          'items-center justify-center shrink-0',
+          solidClass,
+          className,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <Text
+          numberOfLines={1}
+          style={[TABULAR_NUMS, { color: onSolidColor }]}
+          className={primaryTextClass}
+        >
+          <Text
+            style={[TABULAR_NUMS, { color: onSolidColor }]}
+            className={`${secondaryTextClass} opacity-75`}
+          >
+            #
+          </Text>
+          {rank}
+        </Text>
+      </View>
+    );
+  }
+
+  if (rating === null) {
     return null;
   }
 
@@ -42,27 +94,17 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
     ? palette.list[color][scheme]['on-tint']
     : colors['accent-text'];
   const secondaryColor = colors['ink-muted'];
-  const sizeClass =
+  const tileSizeClass =
     size === 'lg'
       ? 'min-w-[64px] h-12 px-3.5 rounded-2xl'
       : 'min-w-[52px] h-10 px-2.5 rounded-xl';
-  const primaryTextClass =
-    size === 'lg'
-      ? 'text-[22px] leading-7 font-bold'
-      : 'text-[18px] leading-6 font-bold';
-  const secondaryTextClass =
-    size === 'lg'
-      ? 'text-[15px] leading-5 font-semibold'
-      : 'text-[13px] leading-4 font-semibold';
-
-  const scoreParts =
-    rankingMode === 'score' && rating !== null ? splitScoreParts(rating) : null;
+  const scoreParts = splitScoreParts(rating);
 
   return (
     <View
       style={{ borderColor }}
       className={[
-        sizeClass,
+        tileSizeClass,
         'border-[1.5px] items-center justify-center shrink-0',
         tintClass,
         className,
@@ -70,37 +112,21 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
         .filter(Boolean)
         .join(' ')}
     >
-      {scoreParts ? (
-        <Text
-          numberOfLines={1}
-          style={[TABULAR_NUMS, { color: primaryColor }]}
-          className={primaryTextClass}
-        >
-          {scoreParts.whole}
-          {scoreParts.decimal ? (
-            <Text
-              style={[TABULAR_NUMS, { color: secondaryColor }]}
-              className={secondaryTextClass}
-            >
-              {scoreParts.decimal}
-            </Text>
-          ) : null}
-        </Text>
-      ) : (
-        <Text
-          numberOfLines={1}
-          style={[TABULAR_NUMS, { color: primaryColor }]}
-          className={primaryTextClass}
-        >
+      <Text
+        numberOfLines={1}
+        style={[TABULAR_NUMS, { color: primaryColor }]}
+        className={primaryTextClass}
+      >
+        {scoreParts.whole}
+        {scoreParts.decimal ? (
           <Text
             style={[TABULAR_NUMS, { color: secondaryColor }]}
             className={secondaryTextClass}
           >
-            #
+            {scoreParts.decimal}
           </Text>
-          {rank}
-        </Text>
-      )}
+        ) : null}
+      </Text>
     </View>
   );
 };
@@ -161,6 +187,15 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             : 'border-transparent',
         ].join(' ')}
       >
+        {ranked && rankingMode === 'rank' ? (
+          <ItemRankBadge
+            rankingMode="rank"
+            rating={item.rating}
+            rank={rank}
+            color={color}
+            className="mr-3"
+          />
+        ) : null}
         <View className="flex-1 min-w-0">
           <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
             {item.name}
@@ -179,9 +214,9 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             </Text>
           ) : null}
         </View>
-        {ranked ? (
+        {ranked && rankingMode === 'score' ? (
           <ItemRankBadge
-            rankingMode={rankingMode}
+            rankingMode="score"
             rating={item.rating}
             rank={rank}
             color={color}
