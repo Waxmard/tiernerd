@@ -122,7 +122,7 @@ export function ItemDetailContent({
         {rankingMode === 'score' ? (
           <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
             {item.position !== null && item.manual_rating !== null
-              ? 'Manual score · unpinned items adjust around it.'
+              ? 'Manual score · items without one adjust around it.'
               : 'Scores are based on list order and any manual scores.'}
           </Text>
         ) : null}

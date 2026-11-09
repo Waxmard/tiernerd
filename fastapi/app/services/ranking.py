@@ -148,12 +148,12 @@ def manual_rating_bounds_error(
     if upper is not None:
         return (
             f"Score must be {_format_score(upper['rating'])} or lower "
-            f"({upper['name']} is pinned above it), or re-rank this item."
+            f"({upper['name']} has a manual score above it), or re-rank this item."
         )
     if lower is not None:
         return (
             f"Score must be {_format_score(lower['rating'])} or higher "
-            f"({lower['name']} is pinned below it), or re-rank this item."
+            f"({lower['name']} has a manual score below it), or re-rank this item."
         )
     return None
 

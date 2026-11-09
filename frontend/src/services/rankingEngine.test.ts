@@ -153,7 +153,7 @@ test('manualRatingBounds and manualRatingBoundsError enforce neighbor pins', () 
   );
   assert.equal(
     manualRatingBoundsError(items, 'a', 7.5),
-    'Score must be 8 or higher (Spot B is pinned below it), or re-rank this item.'
+    'Score must be 8 or higher (Spot B has a manual score below it), or re-rank this item.'
   );
   const onlyUpper = [
     { item_id: 'b', name: 'Spot B', manual_rating: 8.0 },
@@ -161,7 +161,7 @@ test('manualRatingBounds and manualRatingBoundsError enforce neighbor pins', () 
   ];
   assert.equal(
     manualRatingBoundsError(onlyUpper, 'c', 8.5),
-    'Score must be 8 or lower (Spot B is pinned above it), or re-rank this item.'
+    'Score must be 8 or lower (Spot B has a manual score above it), or re-rank this item.'
   );
 });
 

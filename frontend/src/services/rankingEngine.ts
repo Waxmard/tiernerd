@@ -243,10 +243,10 @@ export function manualRatingBoundsError(
     return `Score must be between ${formatScore(lower.rating)} (${lower.name}) and ${formatScore(upper.rating)} (${upper.name}), or re-rank this item.`;
   }
   if (upper !== null) {
-    return `Score must be ${formatScore(upper.rating)} or lower (${upper.name} is pinned above it), or re-rank this item.`;
+    return `Score must be ${formatScore(upper.rating)} or lower (${upper.name} has a manual score above it), or re-rank this item.`;
   }
   if (lower !== null) {
-    return `Score must be ${formatScore(lower.rating)} or higher (${lower.name} is pinned below it), or re-rank this item.`;
+    return `Score must be ${formatScore(lower.rating)} or higher (${lower.name} has a manual score below it), or re-rank this item.`;
   }
   return null;
 }

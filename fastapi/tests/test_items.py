@@ -463,7 +463,7 @@ class TestUpdateItem:
         assert low_err.status_code == 422
         assert low_err.json()["detail"] == (
             "Score must be 7.2 or higher "
-            "(Spot E is pinned below it), or re-rank this item."
+            "(Spot E has a manual score below it), or re-rank this item."
         )
 
         assert (
@@ -474,7 +474,7 @@ class TestUpdateItem:
         assert high_err.status_code == 422
         assert high_err.json()["detail"] == (
             "Score must be 8 or higher "
-            "(Spot B is pinned below it), or re-rank this item."
+            "(Spot B has a manual score below it), or re-rank this item."
         )
 
         both_err = await _put_manual_rating(client, auth_headers, spots[3], 8.5)
@@ -491,7 +491,7 @@ class TestUpdateItem:
         assert upper_only_err.status_code == 422
         assert upper_only_err.json()["detail"] == (
             "Score must be 8 or lower "
-            "(Spot B is pinned above it), or re-rank this item."
+            "(Spot B has a manual score above it), or re-rank this item."
         )
 
     async def test_clearing_manual_pins_restores_automatic_scores(

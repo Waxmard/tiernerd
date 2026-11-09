@@ -137,11 +137,11 @@ export function AddItemContent({
               <View className="-mt-2 mb-4 flex-row items-center justify-between gap-2">
                 <Text className="flex-1 text-body-small text-ink-muted dark:text-ink-muted-dark">
                   {scoreBounds?.upper && scoreBounds?.lower
-                    ? `Between ${formatScore(scoreBounds.lower.rating)} and ${formatScore(scoreBounds.upper.rating)} · based on pinned items`
+                    ? `Between ${formatScore(scoreBounds.lower.rating)} and ${formatScore(scoreBounds.upper.rating)} · from items with manual scores`
                     : scoreBounds?.upper
-                      ? `Max ${formatScore(scoreBounds.upper.rating)} (${scoreBounds.upper.name} pinned above)`
+                      ? `Max ${formatScore(scoreBounds.upper.rating)} (${scoreBounds.upper.name} has a manual score above it)`
                       : scoreBounds?.lower
-                        ? `Min ${formatScore(scoreBounds.lower.rating)} (${scoreBounds.lower.name} pinned below)`
+                        ? `Min ${formatScore(scoreBounds.lower.rating)} (${scoreBounds.lower.name} has a manual score below it)`
                         : '0.0–10.0 · Leave blank for automatic'}
                 </Text>
                 {form.manualRating.trim() !== '' ? (
@@ -149,6 +149,7 @@ export function AddItemContent({
                     accessibilityRole="button"
                     accessibilityLabel="Reset score to automatic"
                     disabled={isBusy}
+                    className="min-h-11 px-1 items-center justify-center"
                     onPress={() => onFormChange({ manualRating: '' })}
                   >
                     <Text className="text-body-small text-accent-text dark:text-accent-text-dark font-semibold">
