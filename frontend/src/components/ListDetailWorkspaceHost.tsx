@@ -93,6 +93,7 @@ export const ListDetailWorkspaceHost: React.FC<
           canEditScore={scoreEdit !== null}
           autoScore={scoreEdit?.autoScore ?? null}
           scoreBounds={scoreEdit?.bounds}
+          color={listColor}
         />
       );
     }

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { Emoji } from '../design-system/components';
 import {
   LIST_COLORS,
   LIST_ICONS,
@@ -31,17 +32,14 @@ export const CHIP_CLASS: Record<ListColor, string> = {
   coral: 'bg-list-coral-tint dark:bg-list-coral-tint-dark',
 };
 
-export const LIST_ICON_GLYPHS: Record<
-  ListIcon,
-  keyof typeof Ionicons.glyphMap
-> = {
-  layers: 'layers-outline',
-  coffee: 'cafe-outline',
-  film: 'film-outline',
-  mountain: 'trail-sign-outline',
-  star: 'star-outline',
-  heart: 'heart-outline',
-  books: 'book-outline',
+export const LIST_ICON_EMOJI: Record<ListIcon, string> = {
+  layers: '🗂️',
+  coffee: '☕',
+  film: '🎬',
+  mountain: '🏔️',
+  star: '⭐',
+  heart: '❤️',
+  books: '📚',
 };
 
 export const LIST_ICON_LABELS: Record<ListIcon, string> = {
@@ -97,12 +95,7 @@ export function ListIdentityBadge({
   listId?: string;
   size?: 'sm' | 'md';
 }) {
-  const { scheme, colors } = useTheme();
   const resolvedIcon: ListIcon = icon ?? 'layers';
-  const glyph = LIST_ICON_GLYPHS[resolvedIcon];
-  const chipIconColor = color
-    ? palette.list[color][scheme]['on-tint']
-    : colors['accent-text'];
   const boxClass = size === 'sm' ? 'w-7 h-7 rounded-lg' : 'w-9 h-9 rounded-xl';
   const iconSize = size === 'sm' ? 16 : 20;
 
@@ -130,12 +123,7 @@ export function ListIdentityBadge({
                 className="absolute inset-0 opacity-35"
               />
             ) : null}
-            <Ionicons
-              name={glyph}
-              size={iconSize}
-              color={chipIconColor}
-              accessible={false}
-            />
+            <Emoji symbol={LIST_ICON_EMOJI[resolvedIcon]} size={iconSize} />
           </>
         )}
       </View>
@@ -196,7 +184,6 @@ export function ListIconPicker({
   onChange: (next: ListIcon | null) => void;
   disabled?: boolean;
 }) {
-  const { colors } = useTheme();
   return (
     <View className="flex-row flex-wrap gap-2">
       {LIST_ICONS.map((iconKey) => {
@@ -216,19 +203,10 @@ export function ListIconPicker({
                 : 'border-control dark:border-control-dark bg-surface dark:bg-surface-dark',
             ].join(' ')}
           >
-            <Ionicons
-              name={LIST_ICON_GLYPHS[iconKey]}
+            <Emoji
+              symbol={LIST_ICON_EMOJI[iconKey]}
               size={18}
-              color={
-                colors[
-                  disabled
-                    ? 'ink-disabled'
-                    : selected
-                      ? 'accent-text'
-                      : 'ink-muted'
-                ]
-              }
-              accessible={false}
+              dimmed={disabled}
             />
             <Text className="text-body-small font-semibold text-ink dark:text-ink-dark">
               {LIST_ICON_LABELS[iconKey]}

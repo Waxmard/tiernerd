@@ -31,7 +31,7 @@ import {
 import { PhotoAttribution } from '../components/ListPhotoCover';
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
-import { Button } from '../design-system/components';
+import { Button, Emoji } from '../design-system/components';
 import type {
   ListColor,
   ListCover,
@@ -485,14 +485,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 title="New list"
                 onPress={() => setModalStep('create')}
                 size="small"
-                icon={
-                  <Ionicons
-                    name="add-circle-outline"
-                    size={20}
-                    color={colors['on-accent']}
-                    accessible={false}
-                  />
-                }
+                icon={<Emoji symbol="➕" size={18} />}
                 accessibilityLabel="Create new list"
               />
             </View>
@@ -506,12 +499,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             activeOpacity={0.7}
             className="w-full min-h-24 flex-row items-center gap-3 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-3 dark:border-control-dark dark:bg-surface-muted-dark"
           >
-            <Ionicons
-              name="add-circle-outline"
-              size={24}
-              color={colors['accent-text']}
-              accessible={false}
-            />
+            <Emoji symbol="🏆" size={28} />
             <View className="flex-1 min-w-0 gap-1">
               <Text className="text-title-small font-semibold text-ink dark:text-ink-dark">
                 Create a list
@@ -564,11 +552,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   />
                 ) : (
                   <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
-                    <Ionicons
-                      name="person"
-                      size={20}
-                      color={colors['accent-text']}
-                    />
+                    <Emoji symbol="👤" size={20} />
                   </View>
                 )}
               </TouchableOpacity>

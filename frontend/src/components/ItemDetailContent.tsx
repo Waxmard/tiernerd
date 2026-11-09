@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Image, Text, View } from 'react-native';
-import { BaseModalContent, Button } from '../design-system/components';
+import { BaseModalContent, Button, Emoji } from '../design-system/components';
 import type { ListColor } from '../design-system/tokens/colors';
+import { useListHue } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
-import { ItemRankBadge } from './ListDetailItemRow';
+import { ItemRankBadge, TABULAR_NUMS } from './ListDetailItemRow';
 
 export interface ItemDetailContentProps {
   item: Item;
@@ -21,8 +22,6 @@ export interface ItemDetailContentProps {
   onDelete: () => void;
   onClose: () => void;
 }
-
-const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
 
 const SCORE_CLASS =
   'text-[20px] leading-6 font-semibold text-accent-text dark:text-accent-text-dark';
@@ -42,6 +41,7 @@ export function ItemDetailContent({
   onDelete,
   onClose,
 }: ItemDetailContentProps) {
+  const hue = useListHue(color);
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const imageFailed =
     item.image_url !== null && failedImageUrl === item.image_url;
@@ -56,6 +56,7 @@ export function ItemDetailContent({
     <BaseModalContent
       title={item.name}
       presentation={presentation}
+      color={color}
       onClose={onClose}
       footer={
         <View className="gap-2">
@@ -65,6 +66,7 @@ export function ItemDetailContent({
             disabled={actionsBlocked}
             loading={isBusy}
             fullWidth
+            icon={<Emoji symbol="⚖️" size={18} />}
           />
           <View className="flex-row flex-wrap gap-2">
             <Button
@@ -73,6 +75,7 @@ export function ItemDetailContent({
               onPress={onEdit}
               disabled={actionsBlocked}
               className="flex-1 min-w-[120px]"
+              icon={<Emoji symbol="✏️" size={18} />}
             />
             <Button
               title="Delete Item"
@@ -80,6 +83,7 @@ export function ItemDetailContent({
               onPress={onDelete}
               disabled={actionsBlocked}
               textClassName="text-danger-text dark:text-danger-text-dark"
+              icon={<Emoji symbol="🗑️" size={18} />}
               className="flex-1 min-w-[120px]"
             />
           </View>
@@ -94,38 +98,40 @@ export function ItemDetailContent({
       }
     >
       <View className="gap-3 pb-4">
-        {item.position === null ? (
-          <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
-            Not ranked yet
-          </Text>
-        ) : (
-          <View className="flex-row items-center flex-wrap gap-3">
-            <ItemRankBadge
-              rankingMode={rankingMode}
-              rating={item.rating}
-              rank={rank}
-              color={color}
-              size="lg"
-            />
-            {rank !== null ? (
-              <Text
-                style={TABULAR_NUMS}
-                className="text-body-medium text-ink dark:text-ink-dark"
-              >
-                {rankingMode === 'rank'
-                  ? `of ${rankedCount} ranked`
-                  : `Rank #${rank} of ${rankedCount}`}
-              </Text>
-            ) : null}
-          </View>
-        )}
-        {rankingMode === 'score' ? (
-          <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-            {item.position !== null && item.manual_rating !== null
-              ? 'Manual score · items without one adjust around it.'
-              : 'Scores are based on list order and any manual scores.'}
-          </Text>
-        ) : null}
+        <View className="rounded-2xl border-2 p-4 gap-2" style={hue.cardStyle}>
+          {item.position === null ? (
+            <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
+              ⏳ Not ranked yet
+            </Text>
+          ) : (
+            <View className="flex-row items-center flex-wrap gap-3">
+              <ItemRankBadge
+                rankingMode={rankingMode}
+                rating={item.rating}
+                rank={rank}
+                color={color}
+                size="lg"
+              />
+              {rank !== null ? (
+                <Text
+                  style={TABULAR_NUMS}
+                  className="text-body-medium text-ink dark:text-ink-dark"
+                >
+                  {rankingMode === 'rank'
+                    ? `of ${rankedCount} ranked`
+                    : `Rank #${rank} of ${rankedCount}`}
+                </Text>
+              ) : null}
+            </View>
+          )}
+          {rankingMode === 'score' ? (
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+              {item.position !== null && item.manual_rating !== null
+                ? 'Manual score · items without one adjust around it.'
+                : 'Scores are based on list order and any manual scores.'}
+            </Text>
+          ) : null}
+        </View>
         {item.description ? (
           <Text className="text-body-large text-ink dark:text-ink-dark">
             {item.description}

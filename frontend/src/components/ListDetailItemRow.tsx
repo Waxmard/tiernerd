@@ -1,8 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { Emoji } from '../design-system/components';
 import { type ListColor, palette } from '../design-system/tokens/colors';
-import { useTheme, useThemeColors } from '../providers/ThemeProvider';
+import { useTheme } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
 import { formatScore, splitScoreParts } from '../services/rankingEngine';
@@ -173,7 +173,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
           ) : null}
           {!ranked ? (
             <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
-              Not ranked yet
+              ⏳ Not ranked yet
             </Text>
           ) : null}
         </View>
@@ -195,7 +195,6 @@ export const ListItemEmptyState: React.FC<{
   onAdd: () => void;
   disabled?: boolean;
 }> = ({ onAdd, disabled = false }) => {
-  const colors = useThemeColors();
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -205,12 +204,7 @@ export const ListItemEmptyState: React.FC<{
       activeOpacity={0.7}
       className="w-full min-h-24 flex-row items-center gap-3 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-3 dark:border-control-dark dark:bg-surface-muted-dark"
     >
-      <Ionicons
-        name="add-circle-outline"
-        size={24}
-        color={colors['accent-text']}
-        accessible={false}
-      />
+      <Emoji symbol="🥇" size={28} dimmed={disabled} />
       <View className="flex-1 min-w-0 gap-1">
         <Text className="text-title-small font-semibold text-ink dark:text-ink-dark">
           Add your first item

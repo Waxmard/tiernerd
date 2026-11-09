@@ -1,7 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import { BaseModalContent, Button, Input } from '../design-system/components';
+import {
+  BaseModalContent,
+  Button,
+  Emoji,
+  Input,
+  SectionLabel,
+} from '../design-system/components';
 import type {
   ListColor,
   ListCover,
@@ -133,7 +139,6 @@ export function ListRankingOptions({
   onSave: (options: ListOptionsInput) => Promise<void>;
   onVisibilityChange: (open: boolean) => void;
 }) {
-  const colors = useThemeColors();
   const notify = useNotifyWhenOnline();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(rankingMode);
@@ -238,12 +243,7 @@ export function ListRankingOptions({
         }
         className="w-11 h-11 items-center justify-center shrink-0"
       >
-        <Ionicons
-          name="options-outline"
-          size={24}
-          color={colors[disabled ? 'ink-disabled' : 'ink']}
-          accessible={false}
-        />
+        <Emoji symbol="⚙️" size={22} dimmed={disabled} />
       </Pressable>
       <Modal
         visible={open}
@@ -254,6 +254,8 @@ export function ListRankingOptions({
       >
         <BaseModalContent
           title="List options"
+          emoji="⚙️"
+          color={draftColor}
           onClose={close}
           footer={
             <View className="flex-row flex-wrap items-center justify-end gap-2">
@@ -277,6 +279,7 @@ export function ListRankingOptions({
         >
           <View className="gap-4">
             <Input
+              emoji="🏷️"
               label="Title"
               placeholder="Enter list title"
               value={draftTitle}
@@ -288,25 +291,19 @@ export function ListRankingOptions({
               maxLength={MAX_TITLE_LENGTH}
               editable={!saving}
             />
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              List icon
-            </Text>
+            <SectionLabel emoji="😀" label="List icon" className="" />
             <ListIconPicker
               value={draftIcon}
               onChange={setDraftIcon}
               disabled={saving}
             />
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              Accent color
-            </Text>
+            <SectionLabel emoji="🎨" label="Accent color" className="" />
             <ListColorPicker
               value={draftColor}
               onChange={setDraftColor}
               disabled={saving}
             />
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              Cover
-            </Text>
+            <SectionLabel emoji="🖼️" label="Cover" className="" />
             {open ? (
               <ListCoverPicker
                 key={coverSession}
@@ -328,9 +325,7 @@ export function ListRankingOptions({
                 }}
               />
             ) : null}
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              Ranking mode
-            </Text>
+            <SectionLabel emoji="🏆" label="Ranking mode" className="" />
             <RankingModeSelector
               value={draft}
               onChange={setDraft}

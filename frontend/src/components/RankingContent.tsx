@@ -1,12 +1,11 @@
 import type React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
-import { BaseModalContent, Button } from '../design-system/components';
-import { type ListColor, palette } from '../design-system/tokens/colors';
-import { useTheme } from '../providers/ThemeProvider';
+import { BaseModalContent, Button, Emoji } from '../design-system/components';
+import type { ListColor } from '../design-system/tokens/colors';
+import { useListHue, useTheme } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
 import type { RankingAnswer } from '../services/rankingEngine';
-import { CHIP_CLASS } from './ImmersiveBoard';
 import type { RankingView } from './itemWorkspaceTypes';
 import { ItemRankBadge, TABULAR_NUMS } from './ListDetailItemRow';
 
@@ -27,8 +26,7 @@ export interface RankingContentProps {
 interface ComparisonChoiceProps {
   item: Item;
   accessibilityLabel: string;
-  surfaceClassName: string;
-  borderColor?: string;
+  color: ListColor | null;
   isBusy: boolean;
   onPress: () => void;
   children: React.ReactNode;
@@ -42,13 +40,13 @@ const choiceTextClass = (isBusy: boolean): string =>
 function ComparisonChoice({
   item,
   accessibilityLabel,
-  surfaceClassName,
-  borderColor,
+  color,
   isBusy,
   onPress,
   children,
 }: ComparisonChoiceProps) {
   const { colors } = useTheme();
+  const hue = useListHue(color);
   return (
     <Pressable
       accessibilityRole="button"
@@ -57,12 +55,9 @@ function ComparisonChoice({
       accessibilityState={{ disabled: isBusy }}
       disabled={isBusy}
       onPress={onPress}
-      className={[
-        'flex-1 min-h-[120px] items-center justify-center gap-2 rounded-2xl border-2 px-4 py-4',
-        surfaceClassName,
-      ].join(' ')}
+      className="flex-1 min-h-[120px] items-center justify-center gap-2 rounded-2xl border-2 px-4 py-4"
       style={({ pressed }) => [
-        borderColor ? { borderColor } : null,
+        hue.cardStyle,
         pressed && !isBusy
           ? { transform: [{ scale: 0.97 }], borderColor: colors['accent-text'] }
           : null,
@@ -110,31 +105,22 @@ export function RankingContent({
   onCancel,
   onPause,
 }: RankingContentProps) {
-  const { scheme, colors } = useTheme();
+  const hue = useListHue(color);
   const target = view.target;
-  const tintClass = color
-    ? CHIP_CLASS[color]
-    : 'bg-accent-tint dark:bg-accent-tint-dark';
-  const hueSolid = color
-    ? palette.list[color][scheme].solid
-    : colors['accent-line'];
-  const hueOnTint = color
-    ? palette.list[color][scheme]['on-tint']
-    : colors['accent-text'];
-  const progressFill = color
-    ? palette.list[color][scheme].solid
-    : colors.accent;
   const caption = item.position === null ? 'New' : 'Re-ranking';
 
   return (
     <BaseModalContent
       title="Which is better?"
+      emoji="⚖️"
+      color={color}
       presentation={presentation}
       onClose={onPause}
       footer={
         <View className="gap-2">
           <View className="flex-row gap-2">
             <Button
+              icon={<Emoji symbol="↩️" size={18} />}
               title="Undo last answer"
               variant="secondary"
               onPress={onUndo}
@@ -142,6 +128,7 @@ export function RankingContent({
               className="flex-1"
             />
             <Button
+              icon={<Emoji symbol="🔖" size={18} />}
               title="Finish later"
               variant="secondary"
               onPress={onPause}
@@ -180,17 +167,20 @@ export function RankingContent({
                 className="h-full rounded-full"
                 style={{
                   width: `${(view.answered / view.limit) * 100}%`,
-                  backgroundColor: progressFill,
+                  backgroundColor: hue.solid,
                 }}
               />
             </View>
-            <Text
-              style={TABULAR_NUMS}
-              className="text-body-small text-ink-muted dark:text-ink-muted-dark"
-            >
-              Landing between #{view.range.best} and #{view.range.worst} of{' '}
-              {view.range.total}
-            </Text>
+            <View className="flex-row items-center gap-1">
+              <Emoji symbol="📍" size={12} />
+              <Text
+                style={TABULAR_NUMS}
+                className="text-body-small text-ink-muted dark:text-ink-muted-dark"
+              >
+                Landing between #{view.range.best} and #{view.range.worst} of{' '}
+                {view.range.total}
+              </Text>
+            </View>
           </>
         ) : null}
       </View>
@@ -199,14 +189,19 @@ export function RankingContent({
           <ComparisonChoice
             item={item}
             accessibilityLabel={`${item.name}. ${caption}.`}
-            surfaceClassName={tintClass}
-            borderColor={hueSolid}
+            color={color}
             isBusy={isBusy}
             onPress={() => onAnswer('better')}
           >
-            <Text className="text-label-large" style={{ color: hueOnTint }}>
-              {caption}
-            </Text>
+            <View
+              className="flex-row items-center gap-1 rounded-full px-3 py-1"
+              style={{ backgroundColor: hue.solid }}
+            >
+              <Emoji symbol={item.position === null ? '🌱' : '🔄'} size={14} />
+              <Text className="text-label-large" style={{ color: hue.onSolid }}>
+                {caption}
+              </Text>
+            </View>
           </ComparisonChoice>
           <Text className="text-label-large text-center text-ink-muted dark:text-ink-muted-dark">
             or
@@ -218,7 +213,7 @@ export function RankingContent({
                 ? `${target.name}. Ranked ${view.targetRank} of ${view.rankedCount}.`
                 : `${target.name}. Existing item.`
             }
-            surfaceClassName="bg-surface dark:bg-surface-dark border-line dark:border-line-dark"
+            color={color}
             isBusy={isBusy}
             onPress={() => onAnswer('worse')}
           >
