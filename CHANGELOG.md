@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/Waxmard/tiernerd/compare/v0.12.0...v0.13.0) (2026-11-10)
+
+
+### Features
+
+* redesign item ranking comparison with stacked halves and progress ([#132](https://github.com/Waxmard/tiernerd/issues/132)) ([cac1715](https://github.com/Waxmard/tiernerd/commit/cac1715b56cfff93d7c4fd314bae8df8edf75c2b))
+
 ## [0.12.0](https://github.com/Waxmard/tiernerd/compare/v0.11.0...v0.12.0) (2026-11-09)
 
 
