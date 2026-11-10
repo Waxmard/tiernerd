@@ -4,7 +4,26 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 device="${1:-Gengar Phone}"
 
-bash "$root/scripts/deploy-backend-if-needed.sh"
+deploy_log="$(mktemp "${TMPDIR:-/tmp}/tiernerd-deploy.XXXXXX")"
+bash "$root/scripts/deploy-backend-if-needed.sh" >"$deploy_log" 2>&1 </dev/null &
+deploy_pid=$!
+deploy_done=0
+finish_deploy() {
+  if [[ "$deploy_done" == 1 ]]; then return 0; fi
+  deploy_done=1
+  local status=0
+  if kill -0 "$deploy_pid" 2>/dev/null; then echo 'Waiting for the backend deploy to finish.'; fi
+  wait "$deploy_pid" || status=$?
+  if [[ "$status" != 0 ]]; then
+    cat "$deploy_log" >&2
+    echo 'Backend deploy failed; the app was not installed.' >&2
+  else
+    grep -E 'skipping deploy|Skipping the backend deploy|has been deployed' "$deploy_log" || true
+  fi
+  rm -f "$deploy_log"
+  return "$status"
+}
+trap 'finish_deploy || true' EXIT
 
 cd "$root/frontend"
 app="ios/DerivedData/Build/Products/Release-iphoneos/TierNerd.app"
@@ -32,9 +51,18 @@ else
     (cd ios && (pod install || { echo 'pod install failed; rebuilding generated ios/Pods' >&2; rm -rf Pods && pod install; }))
     echo "$fp" > ios/.native-fingerprint
   fi
-  xcrun xcodebuild -quiet -workspace ios/TierNerd.xcworkspace -scheme TierNerd -configuration Release \
-    -destination 'generic/platform=iOS' -derivedDataPath ios/DerivedData -allowProvisioningUpdates IPHONEOS_DEPLOYMENT_TARGET=17.0 build
+  build_log="ios/DerivedData/xcodebuild.log"
+  mkdir -p ios/DerivedData
+  echo "Building the iOS app (log: frontend/$build_log)"
+  if ! xcrun xcodebuild -quiet -workspace ios/TierNerd.xcworkspace -scheme TierNerd -configuration Release \
+    -destination 'generic/platform=iOS' -derivedDataPath ios/DerivedData -allowProvisioningUpdates \
+    IPHONEOS_DEPLOYMENT_TARGET=17.0 DEBUG_INFORMATION_FORMAT=dwarf build >"$build_log" 2>&1; then
+    { grep 'error: ' "$build_log" | grep -v 'exit code 0 but produced no further output' || true; tail -n 20 "$build_log"; } >&2
+    echo "iOS build failed. Full log: frontend/$build_log" >&2
+    exit 1
+  fi
 fi
+finish_deploy
 xcrun devicectl list devices --timeout 10
 xcrun devicectl device install app --device "$device" "$app" || {
   echo 'Install failed; retrying once in 5 seconds.' >&2
