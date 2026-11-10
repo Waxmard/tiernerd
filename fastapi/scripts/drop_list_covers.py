@@ -10,7 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-COVER_COLUMNS = ("cover", "cover_photo")
+COVER_COLUMNS = {
+    "cover": (
+        "SELECT COUNT(*) FROM lists WHERE cover IS NOT NULL",
+        "ALTER TABLE lists DROP COLUMN cover",
+    ),
+    "cover_photo": (
+        "SELECT COUNT(*) FROM lists WHERE cover_photo IS NOT NULL",
+        "ALTER TABLE lists DROP COLUMN cover_photo",
+    ),
+}
 
 
 class MigrationError(Exception):
@@ -43,15 +52,13 @@ async def _drop(connection: AsyncConnection, apply: bool) -> None:
         return
     prefix = "Apply" if apply else "Dry run"
     for column in present:
-        count = (
-            await connection.execute(
-                text(f"SELECT COUNT(*) FROM lists WHERE {column} IS NOT NULL")  # noqa: S608
-            )
-        ).scalar_one()
+        count_sql, _ = COVER_COLUMNS[column]
+        count = (await connection.execute(text(count_sql))).scalar_one()
         print(f"{prefix}: lists.{column} is set on {count} row(s).")
     if apply:
         for column in present:
-            await connection.execute(text(f"ALTER TABLE lists DROP COLUMN {column}"))
+            _, drop_sql = COVER_COLUMNS[column]
+            await connection.execute(text(drop_sql))
             print(f"Dropped lists.{column}.")
 
 
