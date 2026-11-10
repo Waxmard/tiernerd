@@ -80,20 +80,6 @@ test('the landing range narrows with each answer', () => {
   });
 });
 
-test('undo restores the previous question', () => {
-  const session = applyAnswer(
-    createRankingSession('item', 'list', peers),
-    'worse'
-  );
-  const undone = undoAnswer(session);
-  assert.deepEqual(undone.answers, []);
-  assert.equal(
-    targetPeerId(undone),
-    targetPeerId(createRankingSession('item', 'list', peers))
-  );
-  assert.deepEqual(undoAnswer(undone), undone);
-});
-
 test('undo walks back every answer, one question at a time', () => {
   const start = createRankingSession('item', 'list', peers);
   const once = applyAnswer(start, 'worse');

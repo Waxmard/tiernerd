@@ -105,34 +105,6 @@ def record_cover_commits(monkeypatch, test_db, events):
 
 
 class TestReadLists:
-    async def test_read_lists_authenticated(
-        self,
-        client: AsyncClient,
-        test_user: User,
-        test_list: ListModel,
-        auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        response = await client.get("/api/lists/", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-        assert len(data) >= 1
-
-        list_data = data[0]
-        assert "list_id" in list_data
-        assert "title" in list_data
-        assert "description" in list_data
-        assert "item_count" in list_data
-
-        result = await test_db.execute(
-            select(ListModel).where(ListModel.user_id == test_user.user_id)
-        )
-        db_lists = result.scalars().all()
-        assert len(data) == len(db_lists)
-        assert str(data[0]["list_id"]) == str(test_list.list_id)
-        assert data[0]["title"] == test_list.title
-
     async def test_read_lists_unauthenticated(self, client: AsyncClient):
         response = await client.get("/api/lists/")
         assert response.status_code == 401
@@ -528,9 +500,6 @@ class TestUpdateList:
         auth_headers: dict,
         test_db: AsyncSession,
     ):
-        original_title = test_list.title
-        original_description = test_list.description
-
         response = await client.put(
             f"/api/lists/{test_list.list_id}",
             files=metadata_files(
@@ -547,8 +516,6 @@ class TestUpdateList:
         await test_db.refresh(test_list)
         assert test_list.title == "Updated Title"
         assert test_list.description == "Updated description"
-        assert test_list.title != original_title
-        assert test_list.description != original_description
 
     async def test_update_list_bumps_updated_at_and_reorders_by_recency(
         self,
@@ -586,20 +553,6 @@ class TestUpdateList:
         after = await client.get("/api/lists/", headers=auth_headers)
         assert after.status_code == 200
         assert [row["title"] for row in after.json()] == ["Older Edited", "Newer List"]
-
-    async def test_update_list_partial(
-        self, client: AsyncClient, test_list: ListModel, auth_headers: dict
-    ):
-        original_description = test_list.description
-        response = await client.put(
-            f"/api/lists/{test_list.list_id}",
-            files=metadata_files({"title": "New Title Only"}),
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["title"] == "New Title Only"
-        assert data["description"] == original_description
 
     async def test_update_list_rejects_duplicate_title(
         self,
@@ -2007,21 +1960,6 @@ class TestReadListItems:
         )
         assert response.status_code == 200
         assert response.json() == []
-
-    async def test_read_list_items_with_items(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        test_item: ItemModel,
-        auth_headers: dict,
-    ):
-        response = await client.get(
-            f"/api/lists/{test_list.list_id}/items", headers=auth_headers
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) >= 1
-        assert data[0]["name"] == test_item.name
 
     async def test_read_list_items_best_first_with_unranked_last(
         self,

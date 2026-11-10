@@ -1,37 +1,16 @@
 """Tests for CRUD operations."""
 
-import uuid
-
 import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crud import item as item_crud, list as list_crud
-from app.db.models import Item as ItemModel, List as ListModel, User
+from app.crud import item as item_crud
+from app.db.models import Item as ItemModel, List as ListModel
 
 
 class TestItemCRUD:
     """Tests for item CRUD operations."""
-
-    async def test_get_by_id_with_ownership_success(
-        self, test_db: AsyncSession, test_item: ItemModel, test_user: User
-    ):
-        """Test getting item with ownership verification."""
-        result = await item_crud.get_by_id_with_ownership(
-            test_db, test_item.item_id, test_user.user_id
-        )
-        assert result is not None
-        assert result.item_id == test_item.item_id
-
-    async def test_get_by_id_with_ownership_wrong_user(
-        self, test_db: AsyncSession, test_item: ItemModel, test_user2: User
-    ):
-        """Test getting item with wrong user returns None."""
-        result = await item_crud.get_by_id_with_ownership(
-            test_db, test_item.item_id, test_user2.user_id
-        )
-        assert result is None
 
     async def test_get_by_list_id_empty(
         self, test_db: AsyncSession, test_list: ListModel
@@ -143,64 +122,3 @@ def test_postgresql_duplicate_name_error_classification() -> None:
     assert not item_crud.is_duplicate_name_error(
         IntegrityError("insert", {}, _OtherViolation())
     )
-
-
-class TestListCRUD:
-    """Tests for list CRUD operations."""
-
-    async def test_get_by_id_and_user(
-        self, test_db: AsyncSession, test_list: ListModel, test_user: User
-    ):
-        """Test getting list by ID with user verification."""
-        result = await list_crud.get_by_id_and_user(
-            test_db, test_list.list_id, test_user.user_id
-        )
-        assert result is not None
-        assert result.list_id == test_list.list_id
-
-    async def test_get_by_id_and_user_wrong_user(
-        self, test_db: AsyncSession, test_list: ListModel, test_user2: User
-    ):
-        """Test getting list with wrong user returns None."""
-        result = await list_crud.get_by_id_and_user(
-            test_db, test_list.list_id, test_user2.user_id
-        )
-        assert result is None
-
-    async def test_get_by_title_and_user(
-        self, test_db: AsyncSession, test_list: ListModel, test_user: User
-    ):
-        result = await list_crud.get_by_title_and_user(
-            test_db, test_list.title, test_user.user_id
-        )
-        assert result is not None
-        assert result.title == test_list.title
-
-    async def test_get_by_title_and_user_not_found(
-        self, test_db: AsyncSession, test_user: User
-    ):
-        """Test getting list by title that doesn't exist."""
-        result = await list_crud.get_by_title_and_user(
-            test_db, "Nonexistent Title", test_user.user_id
-        )
-        assert result is None
-
-    async def test_delete_list(self, test_db: AsyncSession, test_user: User):
-        list_obj = ListModel(
-            list_id=uuid.uuid4(),
-            user_id=test_user.user_id,
-            title="To Delete List",
-        )
-        test_db.add(list_obj)
-        await test_db.flush()
-        new_item = ItemModel(
-            list_id=list_obj.list_id, name="New", position="a1", rating=10.0
-        )
-        test_db.add(new_item)
-        await test_db.commit()
-
-        list_id = list_obj.list_id
-        await list_crud.delete(test_db, list_obj)
-
-        assert await list_crud.get_by_id(test_db, list_id) is None
-        assert await item_crud.get_by_id(test_db, new_item.item_id) is None

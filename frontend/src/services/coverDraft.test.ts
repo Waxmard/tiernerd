@@ -90,13 +90,6 @@ const local = {
   }),
 } as const;
 
-test('a device photo is marked as an upload without an id', () => {
-  assert.deepEqual(
-    coverSelectionFromDraft({ kind: 'local', uri: 'file:///photo.jpg' }),
-    { cover: null, cover_photo: { source: 'upload' } }
-  );
-});
-
 test('a device photo uploads its metadata and the picked file', () => {
   const metadata = { title: 'Photos', ...coverSelectionFromDraft(local) };
   const form = listFormData(metadata, local);

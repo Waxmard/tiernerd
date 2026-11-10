@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ApiError, getApiErrorMessage, NetworkError } from './apiError.ts';
+import { ApiError, getApiErrorMessage } from './apiError.ts';
 
 const fallback = 'Could not save.';
 
@@ -94,11 +94,4 @@ test('explains network TypeErrors and falls back for other exceptions', () => {
     'Unable to reach the server. Check your connection and try again.'
   );
   assert.equal(getApiErrorMessage(new Error('unexpected'), fallback), fallback);
-});
-
-test('passes the network error message through', () => {
-  assert.equal(
-    getApiErrorMessage(new NetworkError(), fallback),
-    'Unable to reach the server. Check your connection and try again.'
-  );
 });

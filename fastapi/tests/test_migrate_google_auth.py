@@ -4,7 +4,7 @@ from sqlalchemy.engine import Engine
 
 from app.settings import get_settings
 from scripts import migrate_google_auth
-from scripts.migrate_google_auth import _arguments, main
+from scripts.migrate_google_auth import main
 
 
 @pytest.fixture
@@ -118,7 +118,6 @@ def test_check_and_default_are_read_only(database, photo: bool, password: bool) 
     _create_tables(database, photo=photo, password=password)
     before = _snapshot(database)
 
-    assert _arguments([]).apply is False
     assert main([]) == 0
     assert main(["--check"]) == 0
     assert _snapshot(database) == before

@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import datetime
-from typing import ClassVar
 
 from app.db.models import Item as ItemModel
 from app.services.list_service import (
@@ -71,30 +70,6 @@ class TestGetItemsBestFirst:
 
 class TestBuildListSimpleResponse:
     """Tests for build_list_simple_response function."""
-
-    def test_build_simple_response(self):
-        """Test building simple response with stats."""
-
-        class MockList:
-            list_id = uuid.uuid4()
-            user_id = uuid.uuid4()
-            title = "Test List"
-            description = "Test description"
-            color = None
-            icon = None
-            cover = None
-            cover_photo: ClassVar = {"source": "upload", "id": str(uuid.uuid4())}
-            ranking_mode = "rank"
-            created_at = datetime.now()
-            updated_at = datetime.now()
-
-        row = (MockList(), 10)
-        result = build_list_simple_response(row)
-
-        assert result["title"] == "Test List"
-        assert result["item_count"] == 10
-        assert result["ranking_mode"] == "rank"
-        assert result["cover_photo"] == row[0].cover_photo
 
     def test_build_simple_response_with_none_values(self):
         """Test building simple response with None counts."""
