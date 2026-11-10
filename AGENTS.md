@@ -32,7 +32,7 @@ make help          # list all targets
 make lint          # backend + frontend lint
 make fix           # autofix both
 make typecheck     # mypy + tsc
-make test          # backend pytest w/ coverage
+make test          # backend pytest w/ coverage + frontend unit + scripts tests
 make ci            # lint + typecheck + boundaries + test + line-limit
 make backend-<X>   # delegates to fastapi/Makefile target X (e.g. backend-logs, backend-health, backend-lint)
 ```
@@ -86,9 +86,7 @@ make ios                          # build, install and launch on Gengar Phone
 make ios IOS_DEVICE="Other Phone" # choose another paired device
 ```
 
-The command uses development Google OAuth web and iOS client IDs by default. To use another iOS client for bundle ID `com.maxwellward.tiernerd`, set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` in the environment. To use another web client, set `EXPO_PUBLIC_GOOGLE_CLIENT_ID` to the same client ID as the backend's `GOOGLE_CLIENT_ID`.
-
-The Release app uses the hosted development API by default and embeds its JavaScript, so it needs no Metro server after installation. Set `EXPO_PUBLIC_API_URL` to another public HTTPS API if needed. The command ignores Expo dotenv files. Preserve unsynced data and the bundle/signing identity before replacement; local records are not guaranteed to survive. Never uninstall or clear storage to fix signing; stop if replacement fails. See the [standalone procedure and acceptance checks](frontend/README.md#option-1-standalone-ios-release-physical-iphone), which are separate from TestFlight acceptance. `npm run ios` remains the separate Expo development command.
+The command uses development Google OAuth client IDs by default. Override the iOS client with `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` (bundle ID `com.maxwellward.tiernerd`) and the web client with `EXPO_PUBLIC_GOOGLE_CLIENT_ID`, which must match the backend's `GOOGLE_CLIENT_ID`. Read the [standalone procedure](frontend/README.md#option-1-standalone-ios-release-physical-iphone) before replacing an installed app. `npm run ios` remains the separate Expo development command.
 
 For a local TestFlight upload, run `make testflight`; see [Deploys & Releases](CONTRIBUTING.md#deploys--releases) for the trigger, build numbering, and signing credentials.
 
@@ -146,14 +144,7 @@ psql -h localhost -p 55432 -U tiernerd tiernerd
 
 ### Git Hooks
 
-[Lefthook](https://lefthook.dev/) manages all pre-commit hooks via `lefthook.yml` at repo root. Hooks run in parallel and only on staged files matching each glob:
-
-- **biome** — `frontend/src/**/*.{ts,tsx,js,jsx,json}` → `biome check --write`
-- **ruff-lint** — `fastapi/**/*.py` → `ruff check --fix`
-- **ruff-format** — `fastapi/**/*.py` → `ruff format`
-- **tach** — `fastapi/app/**/*.py` or `fastapi/tach.toml` → `tach check` (module-boundary enforcement)
-
-Autofixed files are re-staged automatically (`stage_fixed: true`). Hooks install via the root `prepare` script when you run `npm install`.
+[Lefthook](https://lefthook.dev/) runs the pre-commit hooks in `lefthook.yml` in parallel on staged files: biome, ruff, tach and the line-limit check. Autofixed files are re-staged. Hooks install via the root `prepare` script when you run `npm install`.
 
 ## Architecture
 
@@ -192,15 +183,15 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 - PostgreSQL with async (asyncpg)
 - UUID primary keys throughout
-- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Existing databases need explicit schema upgrades; see the backend README. The Google auth migration permanently removes password hashes: back up the database, stop the old backend, check and apply the migration, then deploy the matching backend. Do not wipe application data.
+- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Startup (`create_tables`) also adds missing additive columns and applies the manual-rating migration. The Google auth migration stays manual (see the [backend README](fastapi/README.md#upgrade-the-google-authentication-schema)); it permanently removes password hashes, so back it up first and do not wipe application data.
 
 ## Development Notes for AI Agents
 
 - Google is the only sign-in method: the client obtains a Google ID token and exchanges it at `POST /api/users/google`.
-- Comparison sessions are persistent database drafts; answers do not change saved ranks until commit.
+- Ranking drafts live on the client; the server stores only the final ranking gap (`PUT /api/lists/{id}/ranking`).
 - API endpoints are prefixed with `/api/`.
 - Do **not** run `npm run ios` or `npx expo start` — the user runs these in a separate terminal.
-- `make ios` deploys the dev backend itself when the backend inputs changed, and skips it otherwise; `SKIP_DEPLOY=1` opts out. Do **not** run `make cloud-deploy` by hand unless asked — it always mutates shared cloud state.
+- Do **not** run `make cloud-deploy` by hand unless asked — it always mutates shared cloud state. See [Cloud Dev Loop](#cloud-dev-loop-cloud-run--neon) for when `make ios` deploys.
 - Run `make test` and `make typecheck` (or `make ci`) after changing frontend behavior.
 - Do **not** run `git commit`, `git add`, or `git push` — the user handles staging, committing, and pushing.
 

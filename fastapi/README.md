@@ -27,13 +27,13 @@ Development startup seeds accounts for fixture data, not password sign-in. Sign 
 
 - `/api/users` — User management and authentication
 - `/api/lists` — List creation and management
-- `/api/items` — Item management and ranking
+- `/api/items` — Item management
 
 List writes use multipart `metadata` and an optional image file. Older clients can create lists with `name` and `description` query parameters and optional `color` and `ranking_mode` parameters. They can update `title`, `description`, or `ranking_mode` with JSON.
 
 ### Backend commands
 
-Setup, quality targets and the Cloud Run dev loop: see [AGENTS.md](../AGENTS.md#backend-fastapi).
+Setup and quality targets: see [AGENTS.md](../AGENTS.md#backend-fastapi). Cloud Run dev loop: see [Cloud Dev Loop](../AGENTS.md#cloud-dev-loop-cloud-run--neon).
 
 ## Testing
 
@@ -95,17 +95,29 @@ uv run python scripts/cleanup_list_cover_uploads.py --apply
 
 Do not configure a bucket-wide expiration policy: it would also remove attached photos.
 
+## Before any migration
+
+Fresh databases use the model schema, and `create_all` does not upgrade existing tables. Before running a migration script against an existing database:
+
+- Back up the intended database.
+- Stop the application that uses it.
+- Load `DATABASE_URL` from the environment's existing secret store; do not put credentials in commands or tracked files.
+- Run `--check` first, then `--apply`. Both scripts are idempotent.
+- Do not wipe application data to fix a schema mismatch.
+
+Run the commands below from `fastapi/`.
+
 ## Upgrade manual ratings and automatic startup migrations
 
-Application startup now applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table, adds any missing additive columns (`users.photo_url`, `lists.color`, `lists.icon`, `lists.cover`, `lists.cover_photo`, `lists.ranking_mode`, `items.manual_rating`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
+Application startup applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table, adds any missing additive columns (`users.photo_url`, `lists.color`, `lists.icon`, `lists.cover`, `lists.cover_photo`, `lists.ranking_mode`, `items.manual_rating`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
 
-The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Back up the intended database and stop the application before applying it. From `fastapi/`, inspect the schema and count incorrect ratings without changing data:
+The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Inspect the schema and count incorrect ratings without changing data:
 
 ```bash
 uv run python scripts/migrate_manual_ratings.py --check
 ```
 
-After the backup exists and the application is stopped, apply it:
+Then apply it:
 
 ```bash
 uv run python scripts/migrate_manual_ratings.py --apply
@@ -115,15 +127,13 @@ uv run python scripts/migrate_manual_ratings.py --apply
 
 ## Upgrade the Google authentication schema
 
-Applying this migration permanently discards password hashes. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from the environment's existing secret store; do not put credentials in commands or tracked files. Fresh databases use the model schema; `create_all` does not upgrade existing tables.
-
-From `fastapi/`, inspect the existing schema without changing it:
+Startup does not run this migration, and applying it permanently discards password hashes. Inspect the existing schema without changing it:
 
 ```bash
 uv run python scripts/migrate_google_auth.py --check
 ```
 
-After the backup is complete and the old backend is stopped, apply the migration:
+Then apply the migration:
 
 ```bash
 uv run python scripts/migrate_google_auth.py --apply

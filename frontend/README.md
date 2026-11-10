@@ -59,7 +59,7 @@ xcrun devicectl list devices --timeout 10
 
 Reuse does not include source or configuration changes. Run `make ios` to build them. Reuse still deploys the backend when its inputs changed, which is the quick way to test a backend-only change against the installed app.
 
-The build uses the hosted development API by default, or the API selected by `EXPO_PUBLIC_API_URL`. Before building, `make ios` deploys that hosted development API when the backend inputs changed since the last deploy, and skips the deploy otherwise, so the app under test is not local JavaScript against stale backend code. `SKIP_DEPLOY=1` builds without deploying; pointing `EXPO_PUBLIC_API_URL` at another API skips the deploy too. The deploy does not migrate the database. Upgrade the matching database and deploy the matching backend before building the updated app; see the backend instructions for [ranking mode](../fastapi/README.md#upgrade-the-list-ranking-mode-schema) and [list cover photos](../fastapi/README.md#configure-list-cover-photos).
+The build uses the hosted development API by default, or the public HTTPS API selected by `EXPO_PUBLIC_API_URL`. It ignores Expo dotenv files and embeds its JavaScript, so it needs no Metro server after installation. `make ios` may deploy the dev backend first; see the [Cloud Dev Loop](../AGENTS.md#cloud-dev-loop-cloud-run--neon). The deploy does not migrate the database. Upgrade the matching database and deploy the matching backend before building the updated app; see [Before any migration](../fastapi/README.md#before-any-migration) and [list cover photos](../fastapi/README.md#configure-list-cover-photos).
 
 For standalone acceptance, close Xcode and Metro, force-quit the installed app, and relaunch it from the home screen. Check Google sign-in and a saved list against the configured API. Network-backed behavior requires connectivity. This is separate from TestFlight acceptance.
 
@@ -76,10 +76,6 @@ Expo Go cannot run Google Sign-In because the library requires native code. Inst
 ```bash
 npx expo run:ios --device
 ```
-
-### Frontend commands
-
-iOS Release configuration: see [AGENTS.md](../AGENTS.md#ios-release). TestFlight release details: see [CONTRIBUTING.md](../CONTRIBUTING.md#deploys--releases). Code-quality commands: see [AGENTS.md](../AGENTS.md#frontend-code-quality).
 
 ## Troubleshooting
 
@@ -120,7 +116,3 @@ make ios FORCE_PREBUILD=1
 ```
 
 Regeneration derives native files from Expo config and plugins. Do not routinely use `prebuild --clean`, delete `ios/`, or edit generated project files.
-
-## Project Structure
-
-Frontend source directories: see [Frontend Structure](../AGENTS.md#frontend-structure-frontendsrc).
