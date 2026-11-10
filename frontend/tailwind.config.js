@@ -34,6 +34,6 @@ module.exports = {
   content: ['./App.tsx', './index.ts', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
   darkMode: 'class',
-  theme: { extend: { colors, fontSize, screens: { desktop: '1024px' } } },
+  theme: { extend: { colors, fontSize } },
   plugins: [],
 };

@@ -1,17 +1,11 @@
 import { useState } from 'react';
-import {
-  FlatList,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, ScrollView, Text, View } from 'react-native';
 import {
   BaseModalContent,
   Button,
   Emoji,
   Input,
+  SheetModal,
 } from '../design-system/components';
 import {
   EMOJI_GROUPS,
@@ -44,7 +38,6 @@ function EmojiPickerContent({
       emoji="😀"
       onClose={onClose}
       scrollable={false}
-      contentClassName="desktop:h-[640px]"
     >
       <Input
         emoji="🔍"
@@ -189,10 +182,8 @@ export function EmojiPickerModal({
   onClose: () => void;
 }) {
   return (
-    <Modal
+    <SheetModal
       visible={visible}
-      transparent
-      animationType="none"
       accessibilityLabel="Choose emoji"
       onRequestClose={onClose}
     >
@@ -203,6 +194,6 @@ export function EmojiPickerModal({
           onClose={onClose}
         />
       ) : null}
-    </Modal>
+    </SheetModal>
   );
 }

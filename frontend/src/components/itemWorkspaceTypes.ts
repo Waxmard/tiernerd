@@ -16,14 +16,21 @@ export interface ItemFormDraft {
 
 export type ItemFormField = 'name' | 'manualRating' | 'description';
 
+export interface RankingResult {
+  rank: number;
+  total: number;
+  score: number;
+}
+
 export interface ItemWorkspaceState {
-  mode: 'closed' | 'add' | 'edit' | 'ranking';
+  mode: 'closed' | 'add' | 'edit' | 'ranking' | 'ranked';
   item: Item | null;
   form: ItemFormDraft;
   fieldErrors: { name?: string; manualRating?: string };
   ranking: RankingSession | null;
   isBusy: boolean;
   focusField: ItemFormField;
+  result: RankingResult | null;
 }
 
 export interface UseItemWorkspaceOptions {
@@ -63,4 +70,5 @@ export interface ItemWorkspace extends ItemWorkspaceState {
   deleteItem: (item: Item) => Promise<void>;
   requestClose: () => Promise<boolean>;
   pauseRanking: () => Promise<boolean>;
+  dismissResult: () => void;
 }

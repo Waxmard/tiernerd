@@ -2,11 +2,11 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  type FlatList,
   type ListRenderItemInfo,
-  useWindowDimensions,
   View,
 } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -31,6 +31,7 @@ import type { Item } from '../services/itemsService';
 import { confirmDestructive, notifyError } from '../utils/confirm';
 
 type ListDetailScreenProps = RootStackScreenProps<'ListDetail'>;
+const ROW_TRANSITION = LinearTransition.duration(250);
 
 export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   route,
@@ -40,7 +41,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const { flush, isOffline, lastSyncedAt } = useSync();
   const userId = user?.id ?? null;
   const colors = useThemeColors();
-  const { width: windowWidth } = useWindowDimensions();
   const safeAreaInsets = useSafeAreaInsets();
   const {
     listId,
@@ -48,7 +48,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     promptAddItem,
     completedItemId,
   } = route.params;
-  const isDesktop = windowWidth >= 1024;
   const screenIdentity = JSON.stringify([userId, token, listId]);
   const {
     items,
@@ -93,6 +92,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const [dismissedDetailsItemId, setDismissedDetailsItemId] = useState<
     string | null
   >(null);
+  const detailsOpen =
+    selectedItemId !== null && dismissedDetailsItemId !== selectedItemId;
   const listRef = useRef<FlatList<Item> | null>(null);
   const selectedItemIdRef = useRef<string | null>(null);
   const consumedCompletedItemIdRef = useRef<string | null>(null);
@@ -101,14 +102,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const closingForNavigationRef = useRef(false);
   const skipWorkspaceCloseFocusRef = useRef(false);
   const deletingListInFlightRef = useRef(false);
-  const previousDesktopRef = useRef(isDesktop);
-
-  useEffect(() => {
-    if (previousDesktopRef.current && !isDesktop) {
-      setDismissedDetailsItemId(null);
-    }
-    previousDesktopRef.current = isDesktop;
-  }, [isDesktop]);
 
   useEffect(() => {
     identityRef.current = screenIdentity;
@@ -152,13 +145,16 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     itemsLoaded,
     selectedItemId,
     dismissedDetailsItemId,
-    isDesktop,
     skipRestore: Boolean(promptAddItem || completedItemId),
     setSelectedItemId,
     listRef,
     scrollToOffset,
   });
 
+  const landItemIdRef = useRef<string | null>(null);
+  const [pulse, setPulse] = useState<{ itemId: string; at: number } | null>(
+    null
+  );
   const handleWorkspaceItemsChanged = useCallback(
     async (item?: Item) => {
       const identity = screenIdentity;
@@ -174,7 +170,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         return;
       view.clearRestoredSelection();
       view.clearRestoredOffset();
-      view.scrollToItem(item.item_id);
+      landItemIdRef.current = item.item_id;
       setSelectedItemId(item.item_id);
       setDismissedDetailsItemId(item.item_id);
     },
@@ -195,6 +191,14 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         pausedDraftItemIdRef.current = closingItemIdRef.current;
     },
   });
+  const sheetOpen = workspace.mode !== 'closed' || detailsOpen;
+  useEffect(() => {
+    const itemId = landItemIdRef.current;
+    if (sheetOpen || !itemId) return;
+    landItemIdRef.current = null;
+    view.scrollToItem(itemId, true);
+    setPulse({ itemId, at: Date.now() });
+  }, [sheetOpen, view]);
   closingItemIdRef.current =
     workspace.mode === 'ranking'
       ? (workspace.item?.item_id ?? workspace.ranking?.itemId ?? null)
@@ -459,11 +463,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           return;
         }
         if (workspace.mode === 'closed') {
-          if (
-            !isDesktop &&
-            selectedItemId !== null &&
-            dismissedDetailsItemId !== selectedItemId
-          ) {
+          if (detailsOpen) {
             event.preventDefault();
             handleWorkspaceContentClose();
           }
@@ -484,11 +484,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           });
       }),
     [
-      dismissedDetailsItemId,
+      detailsOpen,
       handleWorkspaceContentClose,
-      isDesktop,
       navigation,
-      selectedItemId,
       workspace.mode,
       requestCloseForSwitch,
     ]
@@ -516,6 +514,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       rankingMode={rankingMode}
       color={listColor}
       disabled={isDeletingList || workspace.isBusy}
+      pulseAt={pulse?.itemId === item.item_id ? pulse.at : 0}
       onPress={(selected) => void handleItemPress(selected)}
       onIconPress={
         canMutate && workspace.mode === 'closed'
@@ -549,9 +548,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       );
 
     return (
-      <FlatList
+      <Animated.FlatList
         ref={listRef}
-        className="flex-1 min-h-0"
+        style={{ flex: 1, minHeight: 0 }}
+        itemLayoutAnimation={ROW_TRANSITION}
         data={items}
         keyExtractor={(item) => item.item_id}
         contentContainerStyle={{
@@ -573,7 +573,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     <ImmersiveScreenShell>
       <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
-          <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
+          <View className="flex-1 min-h-0 mx-4">
             <ListDetailHeader
               title={detailsTitle}
               color={listColor}
@@ -583,13 +583,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               optionsKey={screenIdentity}
               rankingMode={rankingMode}
               optionsDisabled={
-                !canMutate ||
-                isDeletingList ||
-                workspace.isBusy ||
-                workspace.mode !== 'closed' ||
-                (!isDesktop &&
-                  selectedItemId !== null &&
-                  dismissedDetailsItemId !== selectedItemId)
+                !canMutate || isDeletingList || workspace.isBusy || detailsOpen
               }
               onSaveOptions={updateListOptions}
               onOptionsVisibilityChange={setOptionsOpen}
@@ -606,7 +600,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
             />
             <ListDetailWorkspaceHost
               canMutate={canMutate}
-              isDesktop={isDesktop}
               isScreenBusy={isDeletingList}
               listTitle={detailsTitle}
               listColor={listColor}

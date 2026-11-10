@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from 'react';
-import { useNotify } from '../providers/NotificationProvider';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { duplicateItemName } from '../services/itemNames';
 import type { Item } from '../services/itemsService';
@@ -54,6 +53,7 @@ const EMPTY_WORKSPACE: ItemWorkspaceState = {
   ranking: null,
   isBusy: false,
   focusField: 'name',
+  result: null,
 };
 const AUTH_ERROR = 'Authentication required';
 const RANKING_SAVE_ERROR = 'Unable to save this ranking.';
@@ -71,7 +71,6 @@ export function useItemWorkspace({
 }: UseItemWorkspaceOptions): ItemWorkspace {
   const { mutate } = useSync();
   const notify = useNotifyWhenOnline();
-  const celebrate = useNotify();
   const [workspace, setWorkspace] =
     useState<ItemWorkspaceState>(EMPTY_WORKSPACE);
   const workspaceRef = useRef(workspace);
@@ -230,19 +229,22 @@ export function useItemWorkspace({
           .reverse()
           .map((id) => manualById.get(id) ?? null);
         manualBestFirst.splice(insertIndex, 0, null);
-        celebrate(
-          optionsRef.current.rankingMode === 'score'
-            ? `Scored ${formatScore(computeScores(manualBestFirst)[insertIndex] ?? 0)}`
-            : `Ranked #${insertIndex + 1} of ${manualBestFirst.length}`,
-          '🎉'
-        );
-        closeWorkspace();
+        updateWorkspace({
+          mode: 'ranked',
+          item,
+          ranking: null,
+          result: {
+            rank: insertIndex + 1,
+            total: manualBestFirst.length,
+            score: computeScores(manualBestFirst)[insertIndex] ?? 0,
+          },
+        });
         return true;
       } finally {
         setBusy(false);
       }
     },
-    [beginBusy, celebrate, closeWorkspace, mutate, notify, setBusy]
+    [beginBusy, mutate, notify, setBusy, updateWorkspace]
   );
 
   const resumeRanking = useCallback(
@@ -674,9 +676,17 @@ export function useItemWorkspace({
     return true;
   }, [closeWorkspace, commit]);
 
+  const dismissResult = useCallback(() => {
+    if (workspaceRef.current.mode === 'ranked') closeWorkspace();
+  }, [closeWorkspace]);
+
   const requestClose = useCallback(async () => {
     if (busyRef.current) return false;
     const current = workspaceRef.current;
+    if (current.mode === 'ranked') {
+      closeWorkspace();
+      return true;
+    }
     if (current.mode === 'ranking' && current.ranking) {
       if (isDecided(current.ranking)) return await commit(current.ranking);
       return await cancelRanking();
@@ -757,6 +767,7 @@ export function useItemWorkspace({
     deleteItem,
     requestClose,
     pauseRanking,
+    dismissResult,
     saveIcon,
   };
 }

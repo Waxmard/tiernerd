@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type Ref, useImperativeHandle, useRef, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import {
   BaseModalContent,
   Button,
   Emoji,
   Input,
   SectionLabel,
+  SheetModal,
 } from '../design-system/components';
 import type { ListColor, ListIcon } from '../design-system/tokens/colors';
 import { useNotifyWhenOnline } from '../providers/SyncProvider';
@@ -252,10 +253,8 @@ export function ListRankingOptions({
       >
         <Emoji symbol="⚙️" size={22} dimmed={disabled} />
       </Pressable>
-      <Modal
+      <SheetModal
         visible={open}
-        transparent
-        animationType="none"
         accessibilityLabel="List options"
         onRequestClose={close}
       >
@@ -333,7 +332,7 @@ export function ListRankingOptions({
             />
           </View>
         </BaseModalContent>
-      </Modal>
+      </SheetModal>
       <EmojiPickerModal
         visible={pickingIcon}
         value={icon ? listIconEmoji(icon) : null}

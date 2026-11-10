@@ -43,6 +43,7 @@ interface PendingScroll {
   index: number;
   attempted: boolean;
   retried: boolean;
+  animated: boolean;
 }
 
 interface UseListViewRestoreParams {
@@ -53,7 +54,6 @@ interface UseListViewRestoreParams {
   itemsLoaded: boolean;
   selectedItemId: string | null;
   dismissedDetailsItemId: string | null;
-  isDesktop: boolean;
   skipRestore: boolean;
   setSelectedItemId: (id: string | null) => void;
   listRef: RefObject<FlatList<Item> | null>;
@@ -68,7 +68,6 @@ export function useListViewRestore({
   itemsLoaded,
   selectedItemId,
   dismissedDetailsItemId,
-  isDesktop,
   skipRestore,
   setSelectedItemId,
   listRef,
@@ -78,9 +77,7 @@ export function useListViewRestore({
   const pendingScrollRef = useRef<PendingScroll | null>(null);
   const stateRef = useRef<ViewRestoreState | null>(null);
   const persistedSelectedId =
-    !isDesktop &&
-    selectedItemId !== null &&
-    dismissedDetailsItemId === selectedItemId
+    selectedItemId !== null && dismissedDetailsItemId === selectedItemId
       ? null
       : selectedItemId;
   if (!stateRef.current || stateRef.current.identity !== identity) {
@@ -115,12 +112,13 @@ export function useListViewRestore({
     pendingScrollRef.current = null;
   }, [state]);
 
-  const scrollToItem = useCallback((itemId: string) => {
+  const scrollToItem = useCallback((itemId: string, animated = false) => {
     pendingScrollRef.current = {
       itemId,
       index: -1,
       attempted: false,
       retried: false,
+      animated,
     };
     setScrollTargetId(itemId);
   }, []);
@@ -143,7 +141,7 @@ export function useListViewRestore({
     pending.attempted = true;
     listRef.current.scrollToIndex({
       index,
-      animated: false,
+      animated: pending.animated,
       viewPosition: 0,
     });
     setScrollTargetId(null);

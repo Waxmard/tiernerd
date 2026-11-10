@@ -19,7 +19,6 @@ export interface ItemDetailContentProps {
   canMutate: boolean;
   hasDraft: boolean;
   isBusy: boolean;
-  presentation: 'modal' | 'panel';
   onRank: () => void;
   onEdit: (focus?: ItemFormField) => void;
   onIconChange: (icon: string) => void;
@@ -39,7 +38,6 @@ export function ItemDetailContent({
   canMutate,
   hasDraft,
   isBusy,
-  presentation,
   onRank,
   onEdit,
   onDelete,
@@ -64,7 +62,6 @@ export function ItemDetailContent({
     <BaseModalContent
       title={item.name}
       emoji={item.icon ?? undefined}
-      presentation={presentation}
       color={color}
       onTitlePress={actionsBlocked ? undefined : () => onEdit('name')}
       titleHint="Edit name"

@@ -1,5 +1,6 @@
 import type React from 'react';
-import { ActivityIndicator, Modal, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { SheetModal } from '../design-system/components';
 import type { ListColor } from '../design-system/tokens/colors';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
@@ -7,10 +8,9 @@ import type { ListRankingMode } from '../services/listsService';
 import { AddItemContent } from './AddItemContent';
 import { ItemDetailContent } from './ItemDetailContent';
 import type { ItemFormField, ItemWorkspace } from './itemWorkspaceTypes';
-import { RankingContent } from './RankingContent';
+import { RankingContent, RankingResultContent } from './RankingContent';
 
 interface ListDetailWorkspaceHostProps {
-  isDesktop: boolean;
   isScreenBusy: boolean;
   listTitle: string;
   listColor?: ListColor | null;
@@ -36,7 +36,6 @@ interface ListDetailWorkspaceHostProps {
 export const ListDetailWorkspaceHost: React.FC<
   ListDetailWorkspaceHostProps
 > = ({
-  isDesktop,
   isScreenBusy,
   listTitle,
   listColor = null,
@@ -61,14 +60,23 @@ export const ListDetailWorkspaceHost: React.FC<
   const colors = useThemeColors();
   const isBusy = workspace.isBusy || isScreenBusy;
 
-  const renderWorkspace = (presentation: 'modal' | 'panel') => {
+  const renderWorkspace = () => {
+    if (workspace.mode === 'ranked' && workspace.item && workspace.result)
+      return (
+        <RankingResultContent
+          item={workspace.item}
+          result={workspace.result}
+          rankingMode={rankingMode}
+          color={listColor}
+          onDone={workspace.dismissResult}
+        />
+      );
     if (workspace.mode === 'ranking' && workspace.view) {
       return (
         <RankingContent
           listTitle={listTitle}
           item={workspace.view.item}
           view={workspace.view}
-          presentation={presentation}
           isBusy={isBusy}
           rankingMode={rankingMode}
           color={listColor}
@@ -91,7 +99,6 @@ export const ListDetailWorkspaceHost: React.FC<
           isBusy={isBusy}
           onSubmit={workspace.submitMetadata}
           onClose={() => void workspace.requestClose()}
-          presentation={presentation}
           canEditScore={scoreEdit !== null}
           autoScore={scoreEdit?.autoScore ?? null}
           scoreBounds={scoreEdit?.bounds}
@@ -120,7 +127,6 @@ export const ListDetailWorkspaceHost: React.FC<
         rankedCount={rankedCount}
         rankingMode={rankingMode}
         color={listColor}
-        presentation={presentation}
         hasDraft={workspace.ranking !== null}
         isBusy={isBusy}
         onRank={onStartRanking}
@@ -134,44 +140,27 @@ export const ListDetailWorkspaceHost: React.FC<
 
   return (
     <>
-      <View className="flex-1 min-h-0 desktop:flex-row desktop:gap-4">
-        <View className="flex-1 min-h-0 min-w-0">{children}</View>
-        {isDesktop &&
-        (selectedItemId !== null || workspace.mode !== 'closed') ? (
-          <View className="w-[400px] shrink-0 min-h-0">
-            {workspace.mode === 'closed' ? (
-              <View className="flex-1 min-h-0 min-w-0">
-                {renderWorkspace('panel')}
-              </View>
-            ) : (
-              renderWorkspace('panel')
-            )}
-          </View>
-        ) : null}
-      </View>
-      {!isDesktop ? (
-        <Modal
-          visible={
-            workspace.mode !== 'closed' ||
-            (selectedItemId !== null &&
-              dismissedDetailsItemId !== selectedItemId)
-          }
-          transparent
-          animationType="none"
-          accessibilityLabel={
-            workspace.mode === 'ranking'
-              ? 'Which is better?'
+      <View className="flex-1 min-h-0">{children}</View>
+      <SheetModal
+        visible={
+          workspace.mode !== 'closed' ||
+          (selectedItemId !== null && dismissedDetailsItemId !== selectedItemId)
+        }
+        accessibilityLabel={
+          workspace.mode === 'ranking'
+            ? 'Which is better?'
+            : workspace.mode === 'ranked'
+              ? 'Ranking result'
               : workspace.mode === 'edit'
                 ? 'Edit item'
                 : workspace.mode === 'add'
                   ? 'Add item'
                   : (selectedItem?.name ?? 'Item details')
-          }
-          onRequestClose={onMobileClose}
-        >
-          {renderWorkspace('modal')}
-        </Modal>
-      ) : null}
+        }
+        onRequestClose={onMobileClose}
+      >
+        {renderWorkspace()}
+      </SheetModal>
     </>
   );
 };

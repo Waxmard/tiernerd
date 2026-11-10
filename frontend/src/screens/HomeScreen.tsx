@@ -8,7 +8,6 @@ import {
   FlatList,
   Image,
   type ListRenderItemInfo,
-  Modal,
   Pressable,
   Text,
   TouchableOpacity,
@@ -32,7 +31,7 @@ import {
 } from '../components/ImmersiveBoard';
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
-import { Button, Emoji } from '../design-system/components';
+import { Button, Emoji, SheetModal } from '../design-system/components';
 import type { ListColor, ListIcon } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
@@ -604,10 +603,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>
-        <Modal
+        <SheetModal
           visible={modalStep !== null}
-          transparent
-          animationType="none"
           accessibilityLabel={getModalTitle()}
           onRequestClose={() => {
             if (modalStep === 'create')
@@ -643,7 +640,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 listTitle={pendingList.title}
                 item={workspace.view.item}
                 view={workspace.view}
-                presentation="modal"
                 isBusy={workspace.isBusy}
                 onAnswer={(answer) => void workspace.answer(answer)}
                 onUndo={() => void workspace.undo()}
@@ -669,11 +665,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 isBusy={workspace.isBusy}
                 onSubmit={() => void workspace.submitMetadata()}
                 onClose={() => void workspace.requestClose().catch(() => false)}
-                presentation="modal"
                 introText={`“${pendingList.title}”`}
               />
             ) : null)}
-        </Modal>
+        </SheetModal>
         <EmojiPickerModal
           visible={iconListId !== null}
           value={iconListValue}

@@ -27,7 +27,6 @@ export interface AddItemContentProps {
   isBusy: boolean;
   onSubmit: () => void;
   onClose: () => void;
-  presentation: 'modal' | 'panel';
   introText?: string;
   canEditScore?: boolean;
   autoScore?: number | null;
@@ -50,7 +49,6 @@ export function AddItemContent({
   isBusy,
   onSubmit,
   onClose,
-  presentation,
   introText,
   canEditScore = false,
   autoScore = null,
@@ -75,7 +73,6 @@ export function AddItemContent({
       color={color}
       isLoading={isBusy}
       submitText={isEdit ? 'Save' : 'Add item'}
-      presentation={presentation}
       onClose={onClose}
       onSubmit={onSubmit}
     >

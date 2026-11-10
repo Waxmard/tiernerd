@@ -1,5 +1,13 @@
 import type React from 'react';
+import { useEffect } from 'react';
 import { Pressable, Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { Emoji } from '../design-system/components';
 import { type ListColor, palette } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
@@ -116,6 +124,7 @@ interface ListDetailItemRowProps {
   disabled: boolean;
   onPress: (item: Item) => void;
   onIconPress?: (item: Item) => void;
+  pulseAt: number;
 }
 
 const ROW_CLASS =
@@ -130,6 +139,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   disabled,
   onPress,
   onIconPress,
+  pulseAt,
 }) => {
   const ranked = item.position !== null;
   const medal = ranked ? rankMedal(rank) : null;
@@ -147,83 +157,100 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   ]
     .filter(Boolean)
     .join(', ');
+  const scale = useSharedValue(1);
+  useEffect(() => {
+    if (Date.now() - pulseAt > 2000) return;
+    scale.value = withDelay(
+      350,
+      withSequence(
+        withTiming(1.04, { duration: 160 }),
+        withTiming(1, { duration: 240 })
+      )
+    );
+  }, [pulseAt, scale]);
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityLabel={accessibleDescription}
-      accessibilityHint="Open item details"
-      accessibilityState={{ disabled, selected }}
-      accessibilityActions={
-        item.icon && onIconPress
-          ? [{ name: 'changeIcon', label: 'Change emoji' }]
-          : undefined
-      }
-      onAccessibilityAction={(event) => {
-        if (event.nativeEvent.actionName === 'changeIcon') onIconPress?.(item);
-      }}
-      disabled={disabled}
-      onPress={() => onPress(item)}
-      activeOpacity={0.7}
-    >
-      <View
-        className={[
-          ROW_CLASS,
-          selected
-            ? 'border-accent-text dark:border-accent-text-dark'
-            : 'border-transparent',
-        ].join(' ')}
+    <Animated.View style={pulseStyle}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={accessibleDescription}
+        accessibilityHint="Open item details"
+        accessibilityState={{ disabled, selected }}
+        accessibilityActions={
+          item.icon && onIconPress
+            ? [{ name: 'changeIcon', label: 'Change emoji' }]
+            : undefined
+        }
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'changeIcon')
+            onIconPress?.(item);
+        }}
+        disabled={disabled}
+        onPress={() => onPress(item)}
+        activeOpacity={0.7}
       >
-        {item.icon && onIconPress ? (
-          <Pressable
-            className="w-10 min-h-11 mr-3 items-center justify-center shrink-0"
-            accessibilityRole="button"
-            accessibilityLabel={`Change emoji for ${item.name}`}
-            accessibilityHint="Opens the emoji picker"
-            disabled={disabled}
-            onPress={() => onIconPress(item)}
-          >
-            <Emoji symbol={item.icon} size={28} />
-          </Pressable>
-        ) : item.icon ? (
-          <View className="w-10 mr-3 items-center shrink-0">
-            <Emoji symbol={item.icon} size={28} />
-          </View>
-        ) : null}
-        <View className="flex-1 min-w-0">
-          <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
-            {item.name}
-          </Text>
-          {item.description?.trim() ? (
-            <Text
-              numberOfLines={2}
-              className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+        <View
+          className={[
+            ROW_CLASS,
+            selected
+              ? 'border-accent-text dark:border-accent-text-dark'
+              : 'border-transparent',
+          ].join(' ')}
+        >
+          {item.icon && onIconPress ? (
+            <Pressable
+              className="w-10 min-h-11 mr-3 items-center justify-center shrink-0"
+              accessibilityRole="button"
+              accessibilityLabel={`Change emoji for ${item.name}`}
+              accessibilityHint="Opens the emoji picker"
+              disabled={disabled}
+              onPress={() => onIconPress(item)}
             >
-              {item.description}
-            </Text>
+              <Emoji symbol={item.icon} size={28} />
+            </Pressable>
+          ) : item.icon ? (
+            <View className="w-10 mr-3 items-center shrink-0">
+              <Emoji symbol={item.icon} size={28} />
+            </View>
           ) : null}
-          {!ranked ? (
-            <View className="flex-row items-center gap-1">
-              <Emoji symbol="⏳" size={14} />
-              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
-                Not ranked yet
+          <View className="flex-1 min-w-0">
+            <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
+              {item.name}
+            </Text>
+            {item.description?.trim() ? (
+              <Text
+                numberOfLines={2}
+                className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+              >
+                {item.description}
               </Text>
+            ) : null}
+            {!ranked ? (
+              <View className="flex-row items-center gap-1">
+                <Emoji symbol="⏳" size={14} />
+                <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
+                  Not ranked yet
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          {ranked ? (
+            <View className="ml-3 flex-row items-center gap-1 shrink-0">
+              {medal ? <Emoji symbol={medal} size={22} /> : null}
+              <ItemRankBadge
+                rankingMode={rankingMode}
+                rating={item.rating}
+                rank={rank}
+                color={color}
+              />
             </View>
           ) : null}
         </View>
-        {ranked ? (
-          <View className="ml-3 flex-row items-center gap-1 shrink-0">
-            {medal ? <Emoji symbol={medal} size={22} /> : null}
-            <ItemRankBadge
-              rankingMode={rankingMode}
-              rating={item.rating}
-              rank={rank}
-              color={color}
-            />
-          </View>
-        ) : null}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 

@@ -30,10 +30,8 @@ interface BaseModalContentProps {
   isLoading?: boolean;
   submitText?: string;
   closeText?: string;
-  presentation?: 'modal' | 'panel';
   onClose: () => void;
   onSubmit?: () => void;
-  contentClassName?: string;
   footer?: React.ReactNode;
   color?: ListColor | null;
   emoji?: string;
@@ -50,10 +48,8 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   isLoading = false,
   submitText = 'Submit',
   closeText = 'Cancel',
-  presentation = 'modal',
   onClose,
   onSubmit,
-  contentClassName,
   footer,
   color = null,
   emoji,
@@ -63,31 +59,18 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   onEmojiPress,
   emojiLabel,
 }) => {
-  const isPanel = presentation === 'panel';
   const safeAreaInsets = useSafeAreaInsets();
   const hue = useListHue(color);
   const content = (
     <View
-      className={[
-        'w-full flex-1 min-h-0 p-4 bg-surface dark:bg-surface-dark',
-        isPanel
-          ? 'rounded-2xl'
-          : 'shrink rounded-none desktop:flex-none desktop:max-h-[96%] desktop:max-w-[480px] desktop:rounded-2xl',
-        contentClassName ?? '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      style={isPanel ? undefined : CARD_SHADOW}
-      accessibilityLabel={isPanel ? title : undefined}
+      className="w-full flex-1 min-h-0 p-4 bg-surface dark:bg-surface-dark"
+      style={CARD_SHADOW}
     >
       <View
         accessible={false}
         pointerEvents="none"
         style={hue.washStyle}
-        className={[
-          'absolute top-0 left-0 right-0 h-40',
-          isPanel ? 'rounded-t-2xl' : 'desktop:rounded-t-2xl',
-        ].join(' ')}
+        className="absolute top-0 left-0 right-0 h-40"
       />
       <View className="flex-row items-center gap-2 shrink-0 mb-4">
         {emoji && onEmojiPress ? (
@@ -126,7 +109,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
       <NotificationToast variant="inline" />
       <View
         className="shrink-0 mt-4"
-        style={{ paddingBottom: isPanel ? 0 : safeAreaInsets.bottom }}
+        style={{ paddingBottom: safeAreaInsets.bottom }}
       >
         {footer !== undefined ? (
           footer
@@ -154,17 +137,15 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
     </View>
   );
 
-  if (isPanel) return content;
-
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View
-        className="flex-1 bg-black/50 desktop:px-4"
+        className="flex-1 bg-black/50"
         style={{ paddingTop: safeAreaInsets.top }}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          className="flex-1 w-full items-center justify-end desktop:justify-center"
+          className="flex-1 w-full items-center justify-end"
         >
           <TouchableWithoutFeedback>{content}</TouchableWithoutFeedback>
         </KeyboardAvoidingView>

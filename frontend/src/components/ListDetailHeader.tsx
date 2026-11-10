@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
 import { useRef } from 'react';
 import {
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -140,11 +139,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
       {description?.trim() ? (
         <ScrollView
           className="max-h-[72px]"
-          role={Platform.OS === 'web' ? 'region' : undefined}
-          accessibilityLabel={
-            Platform.OS === 'web' ? 'List description' : undefined
-          }
-          tabIndex={Platform.OS === 'web' ? 0 : undefined}
           nestedScrollEnabled
           showsVerticalScrollIndicator
         >
@@ -196,9 +190,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   );
   return (
     <ScrollView
-      role={Platform.OS === 'web' ? 'region' : undefined}
-      accessibilityLabel={Platform.OS === 'web' ? 'List details' : undefined}
-      tabIndex={Platform.OS === 'web' ? 0 : undefined}
       style={{ flexGrow: 0, minHeight: 0, maxHeight: '50%' }}
       alwaysBounceVertical={false}
       nestedScrollEnabled

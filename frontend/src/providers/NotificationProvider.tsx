@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import { Text, View } from 'react-native';
+import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Emoji } from '../design-system/components/Emoji';
 
@@ -76,16 +77,21 @@ export const NotificationToast: React.FC<{
   const inline = variant === 'inline';
 
   return (
-    <View
-      className={
-        inline
-          ? 'mb-3 items-center'
-          : 'absolute left-4 right-4 z-50 items-center'
-      }
+    <Animated.View
+      entering={FadeInUp.duration(200)}
+      exiting={FadeOutUp.duration(200)}
       style={
         inline
-          ? { pointerEvents: 'none' }
-          : { top: insets.top + 8, pointerEvents: 'none' }
+          ? { marginBottom: 12, alignItems: 'center', pointerEvents: 'none' }
+          : {
+              position: 'absolute',
+              left: 16,
+              right: 16,
+              zIndex: 50,
+              alignItems: 'center',
+              top: insets.top + 8,
+              pointerEvents: 'none',
+            }
       }
     >
       <View className="max-w-sm flex-row items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 dark:border-line-dark dark:bg-surface-dark">
@@ -100,6 +106,6 @@ export const NotificationToast: React.FC<{
           {notification.message}
         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 };
