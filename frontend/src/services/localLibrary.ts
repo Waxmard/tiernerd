@@ -78,6 +78,7 @@ export function reconcileListItems(
         name: op.name,
         description: op.description,
         image_url: null,
+        icon: op.icon ?? null,
         rating: null,
         manual_rating: null,
         position: null,
@@ -96,6 +97,7 @@ export function reconcileListItems(
         ...(op.description !== undefined
           ? { description: op.description }
           : {}),
+        ...(op.icon !== undefined ? { icon: op.icon } : {}),
         ...(op.manualRating !== undefined
           ? { manual_rating: op.manualRating }
           : {}),

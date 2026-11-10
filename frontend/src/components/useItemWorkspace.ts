@@ -43,6 +43,7 @@ const EMPTY_FORM: ItemFormDraft = {
   name: '',
   description: '',
   manualRating: '',
+  icon: null,
 };
 const EMPTY_WORKSPACE: ItemWorkspaceState = {
   mode: 'closed',
@@ -146,6 +147,7 @@ export function useItemWorkspace({
         description: item.description ?? '',
         manualRating:
           item.manual_rating !== null ? formatScore(item.manual_rating) : '',
+        icon: item.icon ?? null,
       };
       initialFormRef.current = form;
       replaceWorkspace({ ...EMPTY_WORKSPACE, mode: 'edit', item, form });
@@ -381,6 +383,7 @@ export function useItemWorkspace({
           ...original,
           name,
           description: current.form.description,
+          icon: current.form.icon,
           rating: nextRating,
           manual_rating: nextManualRating,
           updated_at: now,
@@ -395,6 +398,9 @@ export function useItemWorkspace({
             name,
             description: current.form.description,
             ...(manualChanged ? { manualRating: nextManualRating } : {}),
+            ...(current.form.icon !== (original.icon ?? null)
+              ? { icon: current.form.icon }
+              : {}),
           },
           {
             applyLocal: () =>
@@ -439,6 +445,7 @@ export function useItemWorkspace({
         name,
         description: current.form.description,
         image_url: null,
+        icon: current.form.icon,
         rating: null,
         manual_rating: null,
         position: null,
@@ -454,6 +461,7 @@ export function useItemWorkspace({
           itemId,
           name,
           description: current.form.description,
+          icon: current.form.icon,
         },
         {
           applyLocal: () =>
@@ -625,7 +633,8 @@ export function useItemWorkspace({
       current.form.name !== initialFormRef.current.name ||
       current.form.description !== initialFormRef.current.description ||
       current.form.manualRating.trim() !==
-        initialFormRef.current.manualRating.trim();
+        initialFormRef.current.manualRating.trim() ||
+      current.form.icon !== initialFormRef.current.icon;
     if (dirty) {
       if (!beginBusy()) return false;
       const confirmed = await confirmDestructive(

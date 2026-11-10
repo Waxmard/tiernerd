@@ -1,7 +1,6 @@
 import {
   LIST_COLORS,
   LIST_COVERS,
-  LIST_ICONS,
   type ListColor,
   type ListCover,
   type ListIcon,
@@ -36,8 +35,9 @@ export function enqueueListCacheWrite(
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === 'string';
 
-type CachedItem = Omit<Item, 'manual_rating'> & {
+type CachedItem = Omit<Item, 'manual_rating' | 'icon'> & {
   manual_rating?: number | null;
+  icon?: string | null;
 };
 
 const isItem = (value: unknown, listId: string): value is CachedItem => {
@@ -53,6 +53,7 @@ const isItem = (value: unknown, listId: string): value is CachedItem => {
       (typeof candidate.rating === 'number' &&
         Number.isFinite(candidate.rating))) &&
     isNullableString(candidate.position) &&
+    (candidate.icon === undefined || isNullableString(candidate.icon)) &&
     (!('manual_rating' in candidate) ||
       candidate.manual_rating === undefined ||
       candidate.manual_rating === null ||
@@ -82,6 +83,7 @@ export function parseCachedListItems(
     ? parsed.map((item) => ({
         ...item,
         manual_rating: item.manual_rating ?? null,
+        icon: item.icon ?? null,
       }))
     : null;
 }
@@ -176,7 +178,7 @@ const isListSimple = (value: unknown): value is CachedListSimple => {
       LIST_COLORS.includes(candidate.color as ListColor)) &&
     (!('icon' in candidate) ||
       candidate.icon === null ||
-      LIST_ICONS.includes(candidate.icon as ListIcon)) &&
+      typeof candidate.icon === 'string') &&
     (!('cover' in candidate) ||
       candidate.cover === null ||
       LIST_COVERS.includes(candidate.cover as ListCover)) &&

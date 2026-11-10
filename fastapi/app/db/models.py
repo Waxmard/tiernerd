@@ -97,6 +97,7 @@ class Item(Base):
     name_key: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(16), nullable=True)
     position: Mapped[str | None] = mapped_column(String(255), nullable=True)
     rating: Mapped[float | None] = mapped_column(nullable=True)
     manual_rating: Mapped[float | None] = mapped_column(nullable=True)

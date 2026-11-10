@@ -63,6 +63,7 @@ const item = (overrides: Partial<Item> = {}): Item => ({
   name: 'First',
   description: null,
   image_url: null,
+  icon: null,
   rating: 8.5,
   manual_rating: null,
   position: '1',
@@ -163,6 +164,7 @@ test('rejects malformed, foreign-list, missing, and invalid item fields', () => 
     { ...item(), updated_at: false },
     { ...item(), description: 1 },
     { ...item(), image_url: false },
+    { ...item(), icon: 1 },
     { ...item(), position: 1 },
     { ...item(), rating: '8.5' },
     { ...item(), rating: false },
@@ -449,7 +451,7 @@ test('drops payloads whose color is missing or not a known swatch', () => {
   ]);
 
   assert.equal(
-    parseCachedLists(JSON.stringify([{ ...listSimple, icon: 'rocket' }])),
+    parseCachedLists(JSON.stringify([{ ...listSimple, icon: 1 }])),
     null
   );
   assert.equal(

@@ -418,7 +418,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               listId={item.id}
             />
             <View className="flex-1 min-w-0 gap-1">
-              <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
+              <Text
+                className={`${
+                  Array.from(item.title).length <= 40
+                    ? 'text-title-medium'
+                    : Array.from(item.title).length <= 70
+                      ? 'text-title-small'
+                      : 'text-body-medium'
+                } font-semibold text-ink dark:text-ink-dark`}
+              >
                 {item.title}
               </Text>
               {item.description?.trim() ? (

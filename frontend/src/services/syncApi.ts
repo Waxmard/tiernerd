@@ -21,6 +21,7 @@ export async function applyOpToApi(op: SyncOp, token: string): Promise<void> {
         item_id: op.itemId,
         name: op.name,
         description: op.description ?? undefined,
+        icon: op.icon ?? undefined,
       };
       try {
         await itemsService.createItem(op.listId, payload, token);
@@ -47,6 +48,7 @@ export async function applyOpToApi(op: SyncOp, token: string): Promise<void> {
         {
           name: op.name,
           description: op.description,
+          icon: op.icon,
           manual_rating: op.manualRating,
         },
         token

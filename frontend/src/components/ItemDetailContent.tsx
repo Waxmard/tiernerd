@@ -57,6 +57,7 @@ export function ItemDetailContent({
   return (
     <BaseModalContent
       title={item.name}
+      emoji={item.icon ?? undefined}
       presentation={presentation}
       color={color}
       onClose={onClose}

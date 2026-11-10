@@ -11,6 +11,7 @@ export interface ItemFormDraft {
   name: string;
   description: string;
   manualRating: string;
+  icon: string | null;
 }
 
 export interface ItemWorkspaceState {

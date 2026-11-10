@@ -63,6 +63,7 @@ function ComparisonChoice({
           : null,
       ]}
     >
+      {item.icon ? <Emoji symbol={item.icon} size={40} /> : null}
       {item.image_url ? (
         <Image
           source={{ uri: item.image_url }}

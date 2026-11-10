@@ -36,6 +36,7 @@ interface BaseModalContentProps {
   footer?: React.ReactNode;
   color?: ListColor | null;
   emoji?: string;
+  scrollable?: boolean;
 }
 
 export const BaseModalContent: React.FC<BaseModalContentProps> = ({
@@ -51,6 +52,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   footer,
   color = null,
   emoji,
+  scrollable = true,
 }) => {
   const isPanel = presentation === 'panel';
   const safeAreaInsets = useSafeAreaInsets();
@@ -87,13 +89,17 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
           {title}
         </Text>
       </View>
-      <ScrollView
-        className="flex-1 min-h-0 -m-1"
-        contentContainerClassName="grow p-1"
-        keyboardShouldPersistTaps="handled"
-      >
-        {children}
-      </ScrollView>
+      {scrollable ? (
+        <ScrollView
+          className="flex-1 min-h-0 -m-1"
+          contentContainerClassName="grow p-1"
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        <View className="flex-1 min-h-0">{children}</View>
+      )}
       <NotificationToast variant="inline" />
       <View
         className="shrink-0 mt-4"

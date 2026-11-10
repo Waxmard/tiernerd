@@ -50,6 +50,7 @@ _STARTUP_COLUMNS: tuple[tuple[str, str, str], ...] = (
         "manual_rating",
         "ALTER TABLE items ADD COLUMN manual_rating DOUBLE PRECISION",
     ),
+    ("items", "icon", "ALTER TABLE items ADD COLUMN icon VARCHAR(16)"),
 )
 
 

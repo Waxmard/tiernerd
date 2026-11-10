@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 RankingMode = Literal["rank", "score"]
 ListColor = Literal["blue", "teal", "amber", "pink", "violet", "coral"]
-ListIcon = Literal["layers", "coffee", "film", "mountain", "star", "heart", "books"]
+ListIcon = Annotated[str, Field(min_length=1, max_length=16)]
 ListCover = Literal["landscape"]
 
 

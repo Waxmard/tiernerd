@@ -84,7 +84,13 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         <View className="flex-1 min-w-0 min-h-11 justify-center px-2">
           <Text
             accessibilityRole="header"
-            className="text-headline-small text-ink dark:text-ink-dark text-left"
+            className={`${
+              Array.from(title).length <= 28
+                ? 'text-headline-small'
+                : Array.from(title).length <= 56
+                  ? 'text-title-medium'
+                  : 'text-title-small'
+            } text-ink dark:text-ink-dark text-left`}
           >
             {title}
           </Text>

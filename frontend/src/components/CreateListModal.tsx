@@ -34,12 +34,8 @@ import {
 } from '../services/listsService';
 import { localLibrary } from '../services/localLibrary';
 import { newId } from '../utils/id';
-import {
-  LIST_ICON_LABELS,
-  ListColorPicker,
-  ListIconPicker,
-  SWATCH_CLASS,
-} from './ImmersiveBoard';
+import { EmojiPickerField } from './EmojiPicker';
+import { ListColorPicker, SWATCH_CLASS } from './ImmersiveBoard';
 import { ListCoverPicker, releaseCoverDraft } from './ListCoverPicker';
 import { RankingModeSelector } from './ListRankingOptions';
 
@@ -334,7 +330,7 @@ export const CreateListContent = forwardRef<
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Appearance (optional): ${color ?? 'No color'}, ${icon ? LIST_ICON_LABELS[icon] : 'default icon'}, ${coverDescription}`}
+            accessibilityLabel={`Appearance (optional): ${color ?? 'No color'}, ${icon ?? 'default icon'}, ${coverDescription}`}
             accessibilityHint="Choose list color, icon, and cover"
             accessibilityState={{ disabled: isLoading }}
             disabled={isLoading}
@@ -349,7 +345,7 @@ export const CreateListContent = forwardRef<
               <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
                 {[
                   color ?? 'No color',
-                  icon ? LIST_ICON_LABELS[icon] : 'Default icon',
+                  icon ?? 'Default icon',
                   coverDescription,
                 ].join(' · ')}
               </Text>
@@ -429,7 +425,8 @@ export const CreateListContent = forwardRef<
             disabled={isLoading || coverBusy}
           />
           <SectionLabel emoji="😀" label="Icon" />
-          <ListIconPicker
+          <EmojiPickerField
+            label="List icon"
             value={icon}
             onChange={setIcon}
             disabled={isLoading || coverBusy}

@@ -8,7 +8,6 @@ export type {
 export {
   LIST_COLORS,
   LIST_COVERS,
-  LIST_ICONS,
   palette,
   themeColors,
 } from './colors';

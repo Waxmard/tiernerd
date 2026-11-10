@@ -1,12 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
-import { BaseModalContent, Input } from '../design-system/components';
+import {
+  BaseModalContent,
+  Input,
+  SectionLabel,
+} from '../design-system/components';
 import type { ListColor } from '../design-system/tokens/colors';
 import { useListHue } from '../providers/ThemeProvider';
 import {
   formatScore,
   type ManualRatingBounds,
 } from '../services/rankingEngine';
+import { EmojiPickerField } from './EmojiPicker';
 import type { ItemFormDraft } from './itemWorkspaceTypes';
 
 export interface AddItemFieldErrors {
@@ -92,6 +97,15 @@ export function AddItemContent({
             autoFocus
             containerClassName=""
             inputClassName="text-[20px] font-semibold min-h-12 min-w-0"
+          />
+        </View>
+        <View className={`${PANEL_CLASS} gap-2`} style={hue.cardStyle}>
+          <SectionLabel emoji="😀" label="Emoji (optional)" />
+          <EmojiPickerField
+            label="Item emoji"
+            value={form.icon}
+            onChange={(icon) => onFormChange({ icon })}
+            disabled={isBusy}
           />
         </View>
         {isEdit && canEditScore ? (

@@ -164,6 +164,11 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             : 'border-transparent',
         ].join(' ')}
       >
+        {item.icon ? (
+          <View className="w-10 mr-3 items-center shrink-0">
+            <Emoji symbol={item.icon} size={28} />
+          </View>
+        ) : null}
         <View className="flex-1 min-w-0">
           <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
             {item.name}

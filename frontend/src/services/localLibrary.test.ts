@@ -60,6 +60,7 @@ const item = (
   name: itemId,
   description: null,
   image_url: null,
+  icon: null,
   position,
   rating,
   manual_rating: manualRating,

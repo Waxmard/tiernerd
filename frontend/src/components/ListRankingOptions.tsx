@@ -16,6 +16,7 @@ import type {
 import { useNotifyWhenOnline } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
 import { coverDraftMatchesSaved } from '../services/coverDraft';
+import { listIconEmoji } from '../services/emojiCatalog';
 import {
   type CoverDraft,
   coverDraftFromSaved,
@@ -25,7 +26,8 @@ import type {
   ListOptionsInput,
   ListRankingMode,
 } from '../services/listsService';
-import { ListColorPicker, ListIconPicker } from './ImmersiveBoard';
+import { EmojiPickerField } from './EmojiPicker';
+import { ListColorPicker } from './ImmersiveBoard';
 import { ListCoverPicker, releaseCoverDraft } from './ListCoverPicker';
 
 const MAX_TITLE_LENGTH = 100;
@@ -296,8 +298,9 @@ export function ListRankingOptions({
               editable={!saving}
             />
             <SectionLabel emoji="😀" label="List icon" />
-            <ListIconPicker
-              value={draftIcon}
+            <EmojiPickerField
+              label="List icon"
+              value={draftIcon ? listIconEmoji(draftIcon) : null}
               onChange={setDraftIcon}
               disabled={saving}
             />

@@ -274,7 +274,7 @@ class TestCreateList:
                     "title": "Immersive List",
                     "description": "With icon and cover",
                     "color": "violet",
-                    "icon": "coffee",
+                    "icon": "🚀",
                     "cover": "landscape",
                 }
             ),
@@ -283,7 +283,7 @@ class TestCreateList:
         assert styled.status_code == 200
         styled_data = styled.json()
         assert styled_data["color"] == "violet"
-        assert styled_data["icon"] == "coffee"
+        assert styled_data["icon"] == "🚀"
         assert styled_data["cover"] == "landscape"
 
         detail = await client.get(
@@ -291,7 +291,7 @@ class TestCreateList:
         )
         assert detail.status_code == 200
         assert detail.json()["color"] == "violet"
-        assert detail.json()["icon"] == "coffee"
+        assert detail.json()["icon"] == "🚀"
         assert detail.json()["cover"] == "landscape"
 
         summaries = await client.get("/api/lists/", headers=auth_headers)
@@ -300,11 +300,11 @@ class TestCreateList:
             row for row in summaries.json() if row["list_id"] == styled_data["list_id"]
         )
         assert summary["color"] == "violet"
-        assert summary["icon"] == "coffee"
+        assert summary["icon"] == "🚀"
         assert summary["cover"] == "landscape"
 
         for bad_metadata in (
-            {"title": "Bad Icon", "description": "", "icon": "rocket"},
+            {"title": "Bad Icon", "description": "", "icon": "x" * 17},
             {"title": "Bad Cover", "description": "", "cover": "photo"},
         ):
             bad_res = await client.post(
@@ -466,7 +466,7 @@ class TestUpdateList:
 
         for invalid_payload in (
             {"color": "chartreuse"},
-            {"icon": "rocket"},
+            {"icon": "x" * 17},
             {"cover": "photo"},
             {"title": None},
         ):

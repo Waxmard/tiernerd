@@ -26,6 +26,7 @@ export type SyncOp =
       itemId: string;
       name: string;
       description: string | null;
+      icon?: string | null;
     }
   | {
       id: string;
@@ -35,6 +36,7 @@ export type SyncOp =
       itemId: string;
       name?: string;
       description?: string | null;
+      icon?: string | null;
       manualRating?: number | null;
     }
   | {
@@ -100,6 +102,7 @@ export function compact(ops: SyncOp[]): SyncOp[] {
           name: op.name ?? create.name,
           description:
             op.description === undefined ? create.description : op.description,
+          icon: op.icon === undefined ? create.icon : op.icon,
         };
         if (op.manualRating === undefined) {
           continue;
@@ -108,6 +111,7 @@ export function compact(ops: SyncOp[]): SyncOp[] {
           ...op,
           name: undefined,
           description: undefined,
+          icon: undefined,
         };
       }
       const updateIndex = result.findIndex(
@@ -123,6 +127,7 @@ export function compact(ops: SyncOp[]): SyncOp[] {
             currentOp.description === undefined
               ? update.description
               : currentOp.description,
+          icon: currentOp.icon === undefined ? update.icon : currentOp.icon,
           ...(currentOp.manualRating === undefined &&
           update.manualRating === undefined
             ? {}
@@ -183,7 +188,11 @@ export function compact(ops: SyncOp[]): SyncOp[] {
         update.manualRating !== undefined
       ) {
         const { manualRating: _removed, ...rest } = update;
-        if (rest.name === undefined && rest.description === undefined) {
+        if (
+          rest.name === undefined &&
+          rest.description === undefined &&
+          rest.icon === undefined
+        ) {
           result.splice(updateIndex, 1);
         } else {
           result[updateIndex] = rest;

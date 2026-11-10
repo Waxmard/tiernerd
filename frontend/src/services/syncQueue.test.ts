@@ -391,6 +391,52 @@ test('compacts manualRating across item.create, ranking.set, and item.update', a
   );
 });
 
+test('an emoji change survives folding into a create and a later re-rank', async () => {
+  const folded: SyncOp[] = [];
+  const first = makeQueue(async (op) => {
+    folded.push(op);
+  });
+  await first.queue.enqueue(itemCreate('1', 'a'));
+  await first.queue.enqueue({
+    id: '2',
+    createdAt: NOW,
+    kind: 'item.update',
+    listId: 'list-1',
+    itemId: 'a',
+    icon: '🍕',
+  });
+  await first.queue.flush();
+  assert.equal(folded.length, 1);
+  assert.equal(folded[0]?.kind, 'item.create');
+  assert.equal(folded[0]?.kind === 'item.create' && folded[0].icon, '🍕');
+
+  const reranked: SyncOp[] = [];
+  const second = makeQueue(async (op) => {
+    reranked.push(op);
+  });
+  await second.queue.enqueue({
+    id: '1',
+    createdAt: NOW,
+    kind: 'item.update',
+    listId: 'list-1',
+    itemId: 'b',
+    icon: '🍕',
+    manualRating: 7,
+  });
+  await second.queue.enqueue(rankingSet('2', 'b', 0));
+  await second.queue.flush();
+  assert.deepEqual(
+    reranked.map((op) => op.kind),
+    ['item.update', 'ranking.set']
+  );
+  const update = reranked[0];
+  assert.equal(update?.kind === 'item.update' && update.icon, '🍕');
+  assert.equal(
+    update?.kind === 'item.update' && update.manualRating,
+    undefined
+  );
+});
+
 test('duplicate item.delete ops compact to one entry and pendingOps returns all ops', async () => {
   const { queue, storage } = makeQueue(async () => undefined);
 
