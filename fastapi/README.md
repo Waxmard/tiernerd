@@ -79,17 +79,7 @@ For uploads, set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket 
 
 To configure or change the hosted Unsplash key, pass its Secret Manager name to `make cloud-deploy UNSPLASH_SECRET=<secret-name>`. Later deployments preserve the configured mapping when you omit the option.
 
-Fresh databases use the current schema. For an existing database, back it up and stop the old backend before applying the photo schema migration. From `fastapi/`, inspect the schema:
-
-```bash
-uv run python scripts/migrate_list_photos.py --check
-```
-
-After the backup and application stop, apply the migration:
-
-```bash
-uv run python scripts/migrate_list_photos.py --apply
-```
+Fresh databases use the current schema, and application startup adds the photo column to existing databases.
 
 Interrupted saves or database writes with an uncertain outcome can leave unreferenced uploads. With the correct `DATABASE_URL`, `COVER_UPLOAD_BUCKET`, and Google Cloud credentials loaded, list objects older than 24 hours that are no longer referenced:
 
@@ -187,19 +177,6 @@ uv run python scripts/migrate_ui_ranking.py --apply
 ```
 
 The migration trims display names, backfills normalized identity keys, and adds uniqueness and draft-session constraints in one locked transaction. Legacy active sessions become cancelled without deleting items or changing ranks; historical completed sessions remain completed. Previously unranked items can start a fresh ranking. Unknown partial schemas are rejected. A verified upgraded schema is a no-op on rerun.
-
-## Drop the comparison-session schema
-
-Once every client ranks locally, `comparison_sessions` is unused. Application startup already drops it via `create_tables` (`DROP TABLE IF EXISTS comparison_sessions`); the script below remains available for an offline drop or a preflight row check. Run the UI-ranking upgrade first if the database is older. Back up the database and stop the application before applying it.
-
-From `fastapi/`:
-
-```bash
-uv run python scripts/migrate_drop_comparison_sessions.py --check
-uv run python scripts/migrate_drop_comparison_sessions.py --apply
-```
-
-`--check` reports whether the table exists and how many rows it holds; it never changes the database. `--apply` drops the table and prints the discarded row count. Reapplying is a no-op. Deploy the matching backend after the drop.
 
 ## Upgrade the Google authentication schema
 

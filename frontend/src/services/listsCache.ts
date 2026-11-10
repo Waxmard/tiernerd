@@ -337,24 +337,6 @@ export const canApplyHydration = (
   lifecycle.hydrationRequest === hydrationId &&
   lifecycle.cacheVersion === version;
 
-export const canApplyCachedItems = (
-  lifecycle: ListDetailLifecycle,
-  hydrationId: number,
-  version: number,
-  current?: ListDetailLifecycle | null
-): boolean =>
-  canApplyHydration(lifecycle, hydrationId, version, current) &&
-  !lifecycle.itemsAcceptedLive;
-
-export const canApplyCachedMetadata = (
-  lifecycle: ListDetailLifecycle,
-  hydrationId: number,
-  version: number,
-  current?: ListDetailLifecycle | null
-): boolean =>
-  canApplyHydration(lifecycle, hydrationId, version, current) &&
-  !lifecycle.metadataAcceptedLive;
-
 export const canWriteCachedItems = (
   lifecycle: ListDetailLifecycle,
   version: number,

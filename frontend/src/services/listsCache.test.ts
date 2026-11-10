@@ -7,8 +7,6 @@ import {
   bumpLifecycleMutation,
   canAcceptItemsResponse,
   canAcceptMetadataResponse,
-  canApplyCachedItems,
-  canApplyCachedMetadata,
   canApplyHydration,
   canWriteCachedItems,
   canWriteCachedSummary,
@@ -496,14 +494,6 @@ test('account switching drops in-flight reads and hydration for the previous acc
     canApplyHydration(lifecycleA, hydrationId, version, lifecycleB),
     false
   );
-  assert.equal(
-    canApplyCachedItems(lifecycleA, hydrationId, version, lifecycleB),
-    false
-  );
-  assert.equal(
-    canApplyCachedMetadata(lifecycleA, hydrationId, version, lifecycleB),
-    false
-  );
 });
 
 test('eviction drops in-flight reads and hydration so a deleted list cannot be repopulated', () => {
@@ -536,8 +526,6 @@ test('eviction drops in-flight reads and hydration so a deleted list cannot be r
     false
   );
   assert.equal(canApplyHydration(lifecycle, hydrationId, version), false);
-  assert.equal(canApplyCachedItems(lifecycle, hydrationId, version), false);
-  assert.equal(canApplyCachedMetadata(lifecycle, hydrationId, version), false);
 });
 
 test('definitive read error invalidation drops in-flight responses and hydration', () => {
@@ -559,27 +547,6 @@ test('definitive read error invalidation drops in-flight responses and hydration
   assert.equal(canWriteCachedItems(lifecycle, version, requestId), false);
   assert.equal(isCacheCurrent(lifecycle, version), false);
   assert.equal(isCacheCurrent(lifecycle, invalidatedVersion), true);
-});
-
-test('cached items cannot overwrite live data once live response is accepted', () => {
-  const lifecycle = createListDetailLifecycle({
-    identity: JSON.stringify(['user-1', 'token-1', 'list-1']),
-    userId: 'user-1',
-    token: 'token-1',
-    listId: 'list-1',
-    routeTitle: 'My List',
-  });
-  const hydrationId = ++lifecycle.hydrationRequest;
-  const version = lifecycle.cacheVersion;
-  assert.equal(canApplyCachedItems(lifecycle, hydrationId, version), true);
-  assert.equal(canApplyCachedMetadata(lifecycle, hydrationId, version), true);
-
-  lifecycle.itemsAcceptedLive = true;
-  assert.equal(canApplyCachedItems(lifecycle, hydrationId, version), false);
-  assert.equal(canApplyCachedMetadata(lifecycle, hydrationId, version), true);
-
-  lifecycle.metadataAcceptedLive = true;
-  assert.equal(canApplyCachedMetadata(lifecycle, hydrationId, version), false);
 });
 
 test('metadata accepted before an item retry can produce a guarded summary', () => {
