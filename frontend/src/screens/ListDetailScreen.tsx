@@ -59,8 +59,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     listDescription,
     listColor,
     listIcon,
-    listCover,
-    listCoverPhoto,
     rankingMode,
     metadataLoaded,
     hasMetadataSnapshot,
@@ -560,9 +558,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               title={detailsTitle}
               color={listColor}
               icon={listIcon}
-              cover={listCover}
-              coverPhoto={listCoverPhoto}
-              listId={listId}
               description={listDescription}
               addLoading={isLoadingList}
               optionsKey={screenIdentity}

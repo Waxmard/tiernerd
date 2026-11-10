@@ -339,6 +339,54 @@ test('a dependent edit waits for its refused create', async () => {
   assert.equal(await queue.count(), 2);
 });
 
+test('retired cover keys are stripped from persisted list ops', async () => {
+  const seen: SyncOp[] = [];
+  const { queue, storage } = makeQueue(async (op) => {
+    seen.push(op);
+  });
+  storage.map.set(
+    `outbox:v1:${USER}`,
+    JSON.stringify([
+      {
+        id: '1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        kind: 'list.create',
+        listId: 'l1',
+        list: {
+          list_id: 'l1',
+          title: 'Old',
+          cover: 'landscape',
+          cover_photo: null,
+        },
+      },
+      {
+        id: '2',
+        createdAt: '2026-01-01T00:00:01.000Z',
+        kind: 'list.update',
+        listId: 'l2',
+        metadata: {
+          title: 'Renamed',
+          cover: null,
+          cover_photo: { source: 'upload', id: 'x' },
+        },
+      },
+    ])
+  );
+
+  await queue.flush();
+
+  assert.deepEqual(
+    seen.map((op) =>
+      op.kind === 'list.create'
+        ? op.list
+        : op.kind === 'list.update'
+          ? op.metadata
+          : null
+    ),
+    [{ list_id: 'l1', title: 'Old' }, { title: 'Renamed' }]
+  );
+});
+
 test('compacts manualRating across item.create, ranking.set, and item.update', async () => {
   const seen: SyncOp[] = [];
   const { queue } = makeQueue(async (op) => {

@@ -37,8 +37,11 @@ _STARTUP_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("users", "photo_url", "ALTER TABLE users ADD COLUMN photo_url TEXT"),
     ("lists", "color", "ALTER TABLE lists ADD COLUMN color VARCHAR(16)"),
     ("lists", "icon", "ALTER TABLE lists ADD COLUMN icon VARCHAR(16)"),
-    ("lists", "cover", "ALTER TABLE lists ADD COLUMN cover VARCHAR(16)"),
-    ("lists", "cover_photo", "ALTER TABLE lists ADD COLUMN cover_photo JSON"),
+    (
+        "users",
+        "background_photo_id",
+        "ALTER TABLE users ADD COLUMN background_photo_id UUID",
+    ),
     (
         "lists",
         "ranking_mode",

@@ -252,11 +252,34 @@ function notFoundMessage(op: SyncOp): string | null {
   return null;
 }
 
+function withoutCoverKeys<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return value;
+  }
+  const {
+    cover: _cover,
+    cover_photo: _photo,
+    ...rest
+  } = value as Record<string, unknown>;
+  return rest as T;
+}
+
+function stripCovers(op: SyncOp): SyncOp {
+  if (!op || typeof op !== 'object') return op;
+  if (op.kind === 'list.create') {
+    return { ...op, list: withoutCoverKeys(op.list) };
+  }
+  if (op.kind === 'list.update') {
+    return { ...op, metadata: withoutCoverKeys(op.metadata) };
+  }
+  return op;
+}
+
 function parseOps(raw: string | null): SyncOp[] {
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as SyncOp[]) : [];
+    return Array.isArray(parsed) ? (parsed as SyncOp[]).map(stripCovers) : [];
   } catch {
     return [];
   }

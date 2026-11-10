@@ -6,6 +6,7 @@ export interface User {
   email: string;
   username?: string;
   photo_url?: string | null;
+  background_photo_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -72,5 +73,15 @@ export const authService = {
       const detail = error instanceof ApiError ? ` (HTTP ${error.status})` : '';
       return { success: false, error: `Could not reach the server${detail}` };
     }
+  },
+
+  setBackgroundPhoto(blob: Blob, token: string): Promise<User> {
+    const form = new FormData();
+    form.append('file', blob, 'background.jpg');
+    return api.put<User>('/api/users/me/background', form, token);
+  },
+
+  clearBackgroundPhoto(token: string): Promise<User> {
+    return api.delete<User>('/api/users/me/background', token);
   },
 };

@@ -3,7 +3,7 @@ import threading
 import zlib
 from io import BytesIO
 from types import SimpleNamespace
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException, UploadFile
@@ -104,9 +104,7 @@ def png_with_size(width, height):
 @pytest.mark.parametrize("image_format", ["JPEG", "PNG", "WEBP"])
 async def test_valid_formats_ignore_filename_and_mime(storage, image_format):
     user_id = uuid4()
-    photo = await covers.create_upload(upload(image_bytes(image_format)), user_id)
-    photo_id = UUID(photo["id"])
-    assert photo == {"source": "upload", "id": str(photo_id)}
+    photo_id = await covers.create_upload(upload(image_bytes(image_format)), user_id)
     assert photo_id.version == 4
     key = f"covers/{user_id}/{photo_id}.jpg"
     assert covers.object_key(user_id, photo_id) == key
@@ -140,8 +138,8 @@ async def test_orientation_resize_and_metadata_removal(storage):
         icc_profile=b"private profile",
     )
     user_id = uuid4()
-    photo = await covers.create_upload(upload(data.getvalue()), user_id)
-    saved = storage.objects[covers.object_key(user_id, UUID(photo["id"]))]
+    photo_id = await covers.create_upload(upload(data.getvalue()), user_id)
+    saved = storage.objects[covers.object_key(user_id, photo_id)]
     with Image.open(BytesIO(saved)) as result:
         assert result.format == "JPEG"
         assert result.mode == "RGB"
@@ -203,19 +201,9 @@ async def test_streaming_size_limit(storage, extra, expected):
 
 async def test_delete_missing_and_key_safety(storage):
     user_id, photo_id = uuid4(), uuid4()
-    photo = {"source": "upload", "id": str(photo_id)}
     assert await covers.read_upload(user_id, photo_id) is None
-    assert await covers.delete_upload(user_id, photo) is None
+    assert await covers.delete_upload(user_id, photo_id) is None
     assert storage.calls[-1][2] == {"timeout": 30, "retry": None}
-    calls = len(storage.calls)
-    for invalid in (
-        None,
-        {"source": "unsplash", "id": str(photo_id)},
-        {"source": "upload", "id": "../../other-user/secret"},
-        {"source": "upload", "id": None},
-    ):
-        await covers.delete_upload(user_id, invalid)
-    assert len(storage.calls) == calls
     for invalid_user, invalid_photo in (
         (user_id, "../../other-user/secret"),
         ("../../other-user", photo_id),
@@ -226,12 +214,11 @@ async def test_delete_missing_and_key_safety(storage):
 
 async def test_upload_is_private_to_owner(storage):
     owner, other = uuid4(), uuid4()
-    photo = await covers.create_upload(upload(image_bytes("PNG")), owner)
-    photo_id = UUID(photo["id"])
+    photo_id = await covers.create_upload(upload(image_bytes("PNG")), owner)
     assert await covers.read_upload(other, photo_id) is None
-    await covers.delete_upload(other, photo)
+    await covers.delete_upload(other, photo_id)
     assert await covers.read_upload(owner, photo_id) is not None
-    await covers.delete_upload(owner, photo)
+    await covers.delete_upload(owner, photo_id)
     assert await covers.read_upload(owner, photo_id) is None
 
 
@@ -245,9 +232,7 @@ async def test_storage_failures_are_sanitized_and_not_retried(storage, operation
         elif operation == "download":
             await covers.read_upload(user_id, photo_id)
         else:
-            await covers.delete_upload(
-                user_id, {"source": "upload", "id": str(photo_id)}
-            )
+            await covers.delete_upload(user_id, photo_id)
     assert error.value.status_code == 503
     assert "secret provider details" not in str(error.value.detail)
     assert error.value.__cause__ is None
@@ -277,10 +262,9 @@ async def test_image_and_storage_work_runs_off_event_loop(storage, monkeypatch):
 
     monkeypatch.setattr(covers.Image, "open", record_image_thread)
     user_id = uuid4()
-    photo = await covers.create_upload(upload(image_bytes("PNG")), user_id)
-    photo_id = UUID(photo["id"])
+    photo_id = await covers.create_upload(upload(image_bytes("PNG")), user_id)
     await covers.read_upload(user_id, photo_id)
-    await covers.delete_upload(user_id, photo)
+    await covers.delete_upload(user_id, photo_id)
     assert image_threads
     assert all(thread != event_loop_thread for thread in image_threads)
     assert all(call[4] != event_loop_thread for call in storage.calls)

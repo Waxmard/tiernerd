@@ -4,11 +4,11 @@ from unittest.mock import Mock, call
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import create_engine, insert
+from sqlalchemy import create_engine, insert, update
 
-from app.db.models import Base, List as ListModel, User
+from app.db.models import Base, User
 from app.services.cover_upload_service import object_key
-from scripts import cleanup_list_cover_uploads as cleanup
+from scripts import cleanup_photo_uploads as cleanup
 
 NOW = datetime(2026, 11, 4, 12, 0, tzinfo=UTC)
 OWNER = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
@@ -52,12 +52,12 @@ def cleanup_setup(tmp_path, monkeypatch):
     engine.dispose()
 
 
-def _add_list(engine, owner, metadata):
+def _set_background(engine, owner, photo_id):
     with engine.begin() as connection:
         connection.execute(
-            insert(ListModel).values(
-                list_id=uuid4(), user_id=owner, title="List", cover_photo=metadata
-            )
+            update(User)
+            .where(User.user_id == owner)
+            .values(background_photo_id=photo_id)
         )
 
 
@@ -71,24 +71,7 @@ def test_cleanup_uses_exact_owner_and_age_and_requires_apply(
 ):
     referenced_id = uuid4()
     orphan_id = uuid4()
-    _add_list(
-        cleanup_setup.engine,
-        OWNER,
-        {"source": "upload", "id": str(referenced_id)},
-    )
-    _add_list(
-        cleanup_setup.engine,
-        OWNER,
-        {
-            "source": "unsplash",
-            "id": str(orphan_id),
-            "url": "https://images.example/photo",
-            "photographer_name": "Photographer",
-            "photographer_url": "https://example.com/photographer",
-            "photo_url": "https://example.com/photo",
-        },
-    )
-    _add_list(cleanup_setup.engine, OWNER, None)
+    _set_background(cleanup_setup.engine, OWNER, referenced_id)
 
     oldest = NOW - timedelta(days=2)
     cutoff = NOW - timedelta(hours=24)
@@ -131,29 +114,6 @@ def test_cleanup_uses_exact_owner_and_age_and_requires_apply(
     ]
     deletions = cleanup_setup.bucket.delete_blob.call_args_list
     assert deletions == (expected if apply else [])
-
-
-@pytest.mark.parametrize(
-    "metadata",
-    [
-        {"source": "upload", "id": "not-a-uuid"},
-        {"source": "upload"},
-        {"source": "upload", "id": str(uuid4()), "extra": "unknown"},
-        {"source": "unsplash", "id": "incomplete"},
-        {"source": "unknown", "id": "anything"},
-        ["upload"],
-    ],
-)
-def test_malformed_metadata_stops_cleanup(cleanup_setup, capsys, metadata):
-    _add_list(cleanup_setup.engine, OWNER, metadata)
-    cleanup_setup.client.list_blobs.return_value = [
-        _blob(object_key(OWNER, uuid4()), NOW - timedelta(days=2))
-    ]
-
-    assert cleanup.main(["--apply"]) == 1
-    assert "Invalid list cover metadata" in capsys.readouterr().err
-    cleanup_setup.client_factory.assert_not_called()
-    cleanup_setup.bucket.delete_blob.assert_not_called()
 
 
 @pytest.mark.parametrize(

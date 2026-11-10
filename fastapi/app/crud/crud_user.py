@@ -49,3 +49,13 @@ async def update_user(db: AsyncSession, db_obj: User, obj_in: UserUpdate) -> Use
     await db.commit()
     await db.refresh(db_obj)
     return db_obj
+
+
+async def set_background_photo(
+    db: AsyncSession, db_obj: User, photo_id: uuid.UUID | None
+) -> User:
+    db_obj.background_photo_id = photo_id
+    db.add(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
+    return db_obj

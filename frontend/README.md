@@ -12,11 +12,9 @@ Previously opened lists show saved items, order, ranking mode, scores, and avail
 
 A saved list position is restored for up to 24 hours as items load. Dragging takes priority over the saved position.
 
-List covers can use the built-in landscape, a searchable Unsplash photo, or a photo chosen from the device. Photos created with Apple Intelligence can be imported after saving them to Photos. Choosing a photo previews it; saving the list applies it. Canceling leaves the saved cover unchanged.
+Lists show an emoji, not a cover photo. In **Profile**, **Workspace background** can be the built-in landscape, a solid canvas, or **My photo**, a photo chosen from the device. Your photo is uploaded to private storage on your account, so it follows you to other devices and the web; choosing another background removes it. Photos created with Apple Intelligence can be imported after saving them to Photos. The app does not include image generation or camera capture.
 
-Unsplash photos are served by Unsplash with photographer and Unsplash credits. Device photos are uploaded to private storage and retrieved through the authenticated API. Search and uploads require backend configuration and a matching database schema; see [Configure list cover photos](../fastapi/README.md#configure-list-cover-photos). The app does not include image generation or camera capture.
-
-Uploaded covers on a phone are cached on the device after they load once, so they still show offline, and a cover that failed to load retries by itself when the connection returns. On the web the browser's own caching rules apply.
+The background photo is cached on a phone after it loads once, so it still shows offline. If it cannot load, the app shows the device's own background setting and retries when the connection returns.
 
 On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. On larger screens, dialogs stay centered and item details open in a 400px side pane only when you select an item or start a workspace action.
 
@@ -59,7 +57,7 @@ xcrun devicectl list devices --timeout 10
 
 Reuse does not include source or configuration changes. Run `make ios` to build them. Reuse still deploys the backend when its inputs changed, which is the quick way to test a backend-only change against the installed app.
 
-The build uses the hosted development API by default, or the public HTTPS API selected by `EXPO_PUBLIC_API_URL`. It ignores Expo dotenv files and embeds its JavaScript, so it needs no Metro server after installation. `make ios` may deploy the dev backend first; see the [Cloud Dev Loop](../AGENTS.md#cloud-dev-loop-cloud-run--neon). The deploy does not migrate the database. Upgrade the matching database and deploy the matching backend before building the updated app; see [Before any migration](../fastapi/README.md#before-any-migration) and [list cover photos](../fastapi/README.md#configure-list-cover-photos).
+The build uses the hosted development API by default, or the public HTTPS API selected by `EXPO_PUBLIC_API_URL`. It ignores Expo dotenv files and embeds its JavaScript, so it needs no Metro server after installation. `make ios` may deploy the dev backend first; see the [Cloud Dev Loop](../AGENTS.md#cloud-dev-loop-cloud-run--neon). The deploy does not migrate the database. Upgrade the matching database and deploy the matching backend before building the updated app; see [Before any migration](../fastapi/README.md#before-any-migration) and [the background photo](../fastapi/README.md#configure-the-background-photo).
 
 For standalone acceptance, close Xcode and Metro, force-quit the installed app, and relaunch it from the home screen. Check Google sign-in and a saved list against the configured API. Network-backed behavior requires connectivity. This is separate from TestFlight acceptance.
 

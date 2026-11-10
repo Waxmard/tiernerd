@@ -1,9 +1,13 @@
 """Tests for user endpoints and CRUD operations."""
 
+import logging
+import uuid
 from datetime import UTC
 
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient
+from pytest import MonkeyPatch
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -150,6 +154,7 @@ class TestUpdateCurrentUser:
             ("password_hash", "forged-hash"),
             ("photo_url", "https://example.com/forged.png"),
             ("photo_url", None),
+            ("background_photo_id", str(uuid.uuid4())),
         ],
     )
     async def test_update_current_user_rejects_protected_fields(
@@ -429,3 +434,310 @@ class TestGoogleLogin:
 
         assert response.status_code == 503
         assert response.json()["detail"] == GOOGLE_AUTH_NOT_CONFIGURED_ERROR
+
+
+PHOTO = {"file": ("photo.jpg", b"jpeg", "image/jpeg")}
+
+
+@pytest.fixture
+def photo_storage(monkeypatch: MonkeyPatch):
+    from app.services import cover_upload_service
+
+    objects = {}
+    events = []
+
+    async def create_upload(file, user_id):
+        photo_id = uuid.uuid4()
+        objects[(str(user_id), str(photo_id))] = await file.read()
+        events.append(("create", str(user_id), photo_id))
+        return photo_id
+
+    async def read_upload(user_id, photo_id):
+        events.append(("read", str(user_id), photo_id))
+        return objects.get((str(user_id), str(photo_id)))
+
+    async def delete_upload(user_id, photo_id):
+        events.append(("delete", str(user_id), photo_id))
+        objects.pop((str(user_id), str(photo_id)), None)
+
+    monkeypatch.setattr(cover_upload_service, "create_upload", create_upload)
+    monkeypatch.setattr(cover_upload_service, "read_upload", read_upload)
+    monkeypatch.setattr(cover_upload_service, "delete_upload", delete_upload)
+    return objects, events
+
+
+class TestBackgroundPhoto:
+    async def test_upload_sets_id_and_serves_private_bytes(
+        self, client: AsyncClient, auth_headers: dict, photo_storage
+    ):
+        response = await client.put(
+            "/api/users/me/background", files=PHOTO, headers=auth_headers
+        )
+        assert response.status_code == 200
+        photo_id = response.json()["background_photo_id"]
+        assert photo_id is not None
+        me = await client.get("/api/users/me", headers=auth_headers)
+        assert me.json()["background_photo_id"] == photo_id
+
+        photo = await client.get(
+            f"/api/users/me/background/{photo_id}", headers=auth_headers
+        )
+        assert photo.status_code == 200
+        assert photo.content == b"jpeg"
+        assert photo.headers["content-type"] == "image/jpeg"
+        assert {"private", "no-store"} <= {
+            value.strip().lower() for value in photo.headers["cache-control"].split(",")
+        }
+
+    async def test_replace_deletes_previous_photo(
+        self, client: AsyncClient, auth_headers: dict, test_user: User, photo_storage
+    ):
+        objects, _ = photo_storage
+        user_id = str(test_user.user_id)
+        first = (
+            await client.put(
+                "/api/users/me/background", files=PHOTO, headers=auth_headers
+            )
+        ).json()["background_photo_id"]
+        second = (
+            await client.put(
+                "/api/users/me/background", files=PHOTO, headers=auth_headers
+            )
+        ).json()["background_photo_id"]
+        assert second != first
+        assert (user_id, first) not in objects
+        assert (user_id, second) in objects
+        stale = await client.get(
+            f"/api/users/me/background/{first}", headers=auth_headers
+        )
+        assert stale.status_code == 404
+
+    async def test_clear_is_idempotent(
+        self, client: AsyncClient, auth_headers: dict, test_user: User, photo_storage
+    ):
+        objects, events = photo_storage
+        await client.put("/api/users/me/background", files=PHOTO, headers=auth_headers)
+        cleared = await client.delete("/api/users/me/background", headers=auth_headers)
+        assert cleared.status_code == 200
+        assert cleared.json()["background_photo_id"] is None
+        assert objects == {}
+        events.clear()
+
+        again = await client.delete("/api/users/me/background", headers=auth_headers)
+        assert again.status_code == 200
+        assert again.json()["background_photo_id"] is None
+        assert events == []
+
+    async def test_read_is_limited_to_the_current_photo_of_its_owner(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        auth_headers_user2: dict,
+        test_user: User,
+        photo_storage,
+    ):
+        objects, _ = photo_storage
+        photo_id = (
+            await client.put(
+                "/api/users/me/background", files=PHOTO, headers=auth_headers
+            )
+        ).json()["background_photo_id"]
+        url = f"/api/users/me/background/{photo_id}"
+        assert (await client.get(url)).status_code == 401
+        assert (await client.get(url, headers=auth_headers_user2)).status_code == 404
+        random = f"/api/users/me/background/{uuid.uuid4()}"
+        assert (await client.get(random, headers=auth_headers)).status_code == 404
+        del objects[(str(test_user.user_id), photo_id)]
+        assert (await client.get(url, headers=auth_headers)).status_code == 404
+
+    async def test_failed_upload_keeps_previous_photo(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_user: User,
+        photo_storage,
+        monkeypatch: MonkeyPatch,
+    ):
+        from app.services import cover_upload_service
+
+        objects, _ = photo_storage
+        first = (
+            await client.put(
+                "/api/users/me/background", files=PHOTO, headers=auth_headers
+            )
+        ).json()["background_photo_id"]
+
+        async def fail_upload(file, user_id):
+            raise HTTPException(status_code=503, detail="Storage unavailable")
+
+        monkeypatch.setattr(cover_upload_service, "create_upload", fail_upload)
+        response = await client.put(
+            "/api/users/me/background", files=PHOTO, headers=auth_headers
+        )
+        assert response.status_code == 503
+        me = await client.get("/api/users/me", headers=auth_headers)
+        assert me.json()["background_photo_id"] == first
+        assert list(objects) == [(str(test_user.user_id), first)]
+
+    @pytest.mark.parametrize("action", ["replace", "clear"])
+    async def test_cleanup_failure_does_not_fail_request(
+        self,
+        action: str,
+        client: AsyncClient,
+        auth_headers: dict,
+        photo_storage,
+        monkeypatch: MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        from app.services import cover_upload_service
+
+        first = (
+            await client.put(
+                "/api/users/me/background", files=PHOTO, headers=auth_headers
+            )
+        ).json()["background_photo_id"]
+
+        async def fail_cleanup(user_id, photo_id):
+            raise HTTPException(status_code=503, detail="Storage unavailable")
+
+        monkeypatch.setattr(cover_upload_service, "delete_upload", fail_cleanup)
+        caplog.clear()
+        if action == "replace":
+            response = await client.put(
+                "/api/users/me/background", files=PHOTO, headers=auth_headers
+            )
+            assert response.json()["background_photo_id"] not in (None, first)
+        else:
+            response = await client.delete(
+                "/api/users/me/background", headers=auth_headers
+            )
+            assert response.json()["background_photo_id"] is None
+        assert response.status_code == 200
+        assert any(record.levelno >= logging.WARNING for record in caplog.records)
+
+    async def test_writes_require_authentication_and_a_file(
+        self, client: AsyncClient, auth_headers: dict, photo_storage
+    ):
+        assert (
+            await client.put("/api/users/me/background", files=PHOTO)
+        ).status_code == 401
+        assert (await client.delete("/api/users/me/background")).status_code == 401
+        missing = await client.put(
+            "/api/users/me/background",
+            files={"other": ("photo.jpg", b"jpeg", "image/jpeg")},
+            headers=auth_headers,
+        )
+        assert missing.status_code == 422
+
+    async def test_background_upload_bounds_multipart_stream(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        monkeypatch: MonkeyPatch,
+        photo_storage,
+    ):
+        from starlette import formparsers
+
+        boundary = "background-boundary"
+        prefix = (
+            b"--background-boundary\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="photo.jpg"\r\n'
+            b"Content-Type: image/jpeg\r\n\r\n"
+        )
+        suffix = b"\r\n--background-boundary--\r\n"
+        image = b"x" * 2048
+        body = prefix + image + suffix
+        monkeypatch.setattr(users_endpoint, "MAX_USER_WRITE_BYTES", len(body))
+        url = "/api/users/me/background"
+        content_type = {"Content-Type": f"multipart/form-data; boundary={boundary}"}
+        events = photo_storage[1]
+
+        unauthorized = await client.put(url, headers=content_type, content=body)
+        assert unauthorized.status_code == 401
+        assert events == []
+
+        headers = content_type | auth_headers
+        accepted = await client.put(url, headers=headers, content=body)
+        assert accepted.status_code == 200
+        assert accepted.json()["background_photo_id"] is not None
+        recorded = events.copy()
+
+        oversized = await client.put(
+            url, headers=headers, content=prefix + image + b"x" + suffix
+        )
+        assert oversized.status_code == 413
+        assert oversized.request.headers["content-length"] == str(len(body) + 1)
+        assert events == recorded
+
+        read_early = []
+
+        async def unexpected_read():
+            read_early.append(True)
+            yield body
+
+        rejected_early = await client.put(
+            url,
+            headers=headers | {"Content-Length": str(len(body) + 1)},
+            content=unexpected_read(),
+        )
+        assert rejected_early.status_code == 413
+        assert read_early == []
+
+        spooled = []
+        spool_factory = formparsers.SpooledTemporaryFile
+
+        def track_spool(*args, **kwargs):
+            file = spool_factory(*args, **kwargs)
+            spooled.append(file)
+            return file
+
+        monkeypatch.setattr(formparsers, "SpooledTemporaryFile", track_spool)
+        chunks = [prefix, b"x" * (len(body) - len(prefix) - 1), b"xx", suffix]
+        consumed = []
+
+        async def stream():
+            for chunk in chunks:
+                consumed.append(len(chunk))
+                yield chunk
+
+        oversized_stream = await client.put(url, headers=headers, content=stream())
+        assert oversized_stream.status_code == 413
+        assert oversized_stream.request.headers["transfer-encoding"] == "chunked"
+        assert "content-length" not in oversized_stream.request.headers
+        assert consumed == [len(chunk) for chunk in chunks[:3]]
+        assert len(spooled) == 1
+        assert spooled[0].closed
+        assert events == recorded
+
+    async def test_maximum_upload_is_accepted(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_user: User,
+        photo_storage,
+    ):
+        from app.services.cover_upload_service import MAX_UPLOAD_BYTES
+
+        response = await client.put(
+            "/api/users/me/background",
+            files={"file": ("photo.jpg", b"x" * MAX_UPLOAD_BYTES, "image/jpeg")},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        photo_id = response.json()["background_photo_id"]
+        assert len(photo_storage[0][(str(test_user.user_id), photo_id)]) == (
+            MAX_UPLOAD_BYTES
+        )
+
+    async def test_upload_over_image_limit_is_rejected(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        from app.services.cover_upload_service import MAX_UPLOAD_BYTES
+
+        response = await client.put(
+            "/api/users/me/background",
+            files={"file": ("photo.jpg", b"x" * (MAX_UPLOAD_BYTES + 1), "image/jpeg")},
+            headers=auth_headers,
+        )
+        assert response.status_code == 413
+        assert response.json()["detail"] == "Image exceeds 10 MiB"

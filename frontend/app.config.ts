@@ -14,7 +14,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       [
         'expo-image-picker',
         {
-          photosPermission: 'Choose a photo to use as a list cover.',
+          photosPermission: 'Choose a photo to use as your app background.',
           cameraPermission: false,
           microphonePermission: false,
         },

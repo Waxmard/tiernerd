@@ -24,6 +24,7 @@ interface User {
   email: string;
   displayName: string;
   photoUrl?: string;
+  backgroundPhotoId: string | null;
 }
 
 interface AuthContextType {
@@ -35,6 +36,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   googleAvailable: boolean;
   signOut: () => Promise<void>;
+  updateUser: (apiUser: ApiUser) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,6 +61,7 @@ const toLocalUser = (apiUser: ApiUser): User => ({
   email: apiUser.email,
   displayName: apiUser.username || apiUser.email.split('@')[0] || apiUser.email,
   photoUrl: apiUser.photo_url ?? undefined,
+  backgroundPhotoId: apiUser.background_photo_id ?? null,
 });
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -174,6 +177,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [saveAuthState]);
 
+  const updateUser = useCallback(async (apiUser: ApiUser): Promise<void> => {
+    const localUser = toLocalUser(apiUser);
+    setUser(localUser);
+    await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(localUser));
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -209,8 +218,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       signInWithGoogle,
       googleAvailable: Platform.OS === 'ios' && googleSignInAvailable,
       signOut,
+      updateUser,
     }),
-    [user, token, isLoading, isRestoring, error, signInWithGoogle, signOut]
+    [
+      user,
+      token,
+      isLoading,
+      isRestoring,
+      error,
+      signInWithGoogle,
+      signOut,
+      updateUser,
+    ]
   );
 
   return (

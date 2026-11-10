@@ -7,53 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field
 RankingMode = Literal["rank", "score"]
 ListColor = Literal["blue", "teal", "amber", "pink", "violet", "coral"]
 ListIcon = Annotated[str, Field(min_length=1, max_length=16)]
-ListCover = Literal["landscape"]
-
-
-class UploadCoverPhoto(BaseModel):
-    source: Literal["upload"]
-    id: UUID
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class UnsplashCoverPhoto(BaseModel):
-    source: Literal["unsplash"]
-    id: str
-    url: str
-    photographer_name: str
-    photographer_url: str
-    photo_url: str
-
-    model_config = ConfigDict(extra="forbid")
-
-
-CoverPhoto = Annotated[
-    UploadCoverPhoto | UnsplashCoverPhoto, Field(discriminator="source")
-]
-
-
-class UploadCoverSelection(BaseModel):
-    source: Literal["upload"]
-    id: UUID | None = None
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class UnsplashCoverSelection(BaseModel):
-    source: Literal["unsplash"]
-    id: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
-
-    model_config = ConfigDict(extra="forbid")
-
-
-CoverSelection = Annotated[
-    UploadCoverSelection | UnsplashCoverSelection, Field(discriminator="source")
-]
-
-
-class CoverSearchAvailability(BaseModel):
-    enabled: bool
 
 
 class ListCreate(BaseModel):
@@ -62,8 +15,6 @@ class ListCreate(BaseModel):
     description: str | None = None
     color: ListColor | None = None
     icon: ListIcon | None = None
-    cover: ListCover | None = None
-    cover_photo: CoverSelection | None = None
     ranking_mode: RankingMode = "score"
 
     model_config = ConfigDict(extra="forbid")
@@ -74,8 +25,6 @@ class ListBase(BaseModel):
     description: str | None = None
     color: ListColor | None = None
     icon: ListIcon | None = None
-    cover: ListCover | None = None
-    cover_photo: CoverPhoto | None = None
     ranking_mode: RankingMode = "score"
 
 
@@ -90,8 +39,6 @@ class ListUpdate(BaseModel):
     description: str | None = None
     color: ListColor | None = None
     icon: ListIcon | None = None
-    cover: ListCover | None = None
-    cover_photo: CoverSelection | None = None
     ranking_mode: RankingMode | None = None
 
     model_config = ConfigDict(extra="forbid")

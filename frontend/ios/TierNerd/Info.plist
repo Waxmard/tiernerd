@@ -66,7 +66,7 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Expo Dev Launcher uses the local network to discover and connect to development servers running on your computer.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Choose a photo to use as a list cover.</string>
+	<string>Choose a photo to use as your app background.</string>
 	<key>RCTMetroPort</key>
 	<string>$(RCT_METRO_PORT)</string>
 	<key>RCTNewArchEnabled</key>

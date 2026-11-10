@@ -8,28 +8,19 @@ import {
   View,
 } from 'react-native';
 import { Button, Emoji } from '../design-system/components';
-import type {
-  ListColor,
-  ListCover,
-  ListIcon,
-} from '../design-system/tokens/colors';
+import type { ListColor, ListIcon } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/emojiCatalog';
-import type { ListPhoto } from '../services/listCoversService';
 import type {
   ListOptionsInput,
   ListRankingMode,
 } from '../services/listsService';
-import { ListPhotoCover, PhotoAttribution } from './ListPhotoCover';
 import { ListRankingOptions } from './ListRankingOptions';
 
 interface ListDetailHeaderProps {
   title: string;
   color: ListColor | null;
   icon: ListIcon | null;
-  cover: ListCover | null;
-  coverPhoto?: ListPhoto | null;
-  listId: string;
   addDisabled: boolean;
   addLoading: boolean;
   onAdd: () => void;
@@ -47,10 +38,7 @@ interface ListDetailHeaderProps {
 export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   title,
   icon,
-  cover,
   color,
-  coverPhoto = null,
-  listId,
   addDisabled,
   addLoading,
   onAdd,
@@ -103,9 +91,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           rankingMode={rankingMode}
           color={color}
           icon={icon}
-          cover={cover}
-          coverPhoto={coverPhoto}
-          listId={listId}
           disabled={optionsDisabled}
           onSave={onSaveOptions}
           onVisibilityChange={onOptionsVisibilityChange}
@@ -122,22 +107,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           <Emoji symbol="🗑️" size={22} dimmed={deleteDisabled} />
         </TouchableOpacity>
       </View>
-      {cover === 'landscape' || coverPhoto ? (
-        <View className="h-28 desktop:h-40 rounded-xl overflow-hidden">
-          <ListPhotoCover
-            cover={cover}
-            photo={coverPhoto}
-            listId={listId}
-            color={color}
-            className="w-full h-full"
-          />
-        </View>
-      ) : null}
-      {coverPhoto?.source === 'unsplash' ? (
-        <View className="px-1 -mt-1">
-          <PhotoAttribution photo={coverPhoto} />
-        </View>
-      ) : null}
       {description?.trim() ? (
         <ScrollView
           className="max-h-[72px]"

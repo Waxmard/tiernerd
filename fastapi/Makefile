@@ -168,8 +168,6 @@ GCP_REGION ?= us-east1
 CLOUD_SERVICE ?= tiernerd-api-$(CLOUD_ENV)
 CLOUD_ENV_FILE := cloud/env.$(CLOUD_ENV).yaml
 CLOUD_SECRET_PREFIX ?= tiernerd-$(CLOUD_ENV)
-UNSPLASH_SECRET ?=
-comma := ,
 
 CLOUD_DEPLOY_INPUTS = $(shell find app scripts -type f -not -path '*/__pycache__/*' -not -path '*/.*' | sort)
 CLOUD_DEPLOY_FINGERPRINT = $(shell cat $(CLOUD_DEPLOY_INPUTS) pyproject.toml uv.lock Dockerfile cloudbuild.yaml $(CLOUD_ENV_FILE) 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
@@ -190,7 +188,7 @@ cloud-deploy:
 		--cpu 1 --memory 512Mi \
 		--min-instances 0 --max-instances 1 \
 		--env-vars-file $(CLOUD_ENV_FILE) \
-		--update-secrets SECRET_KEY=$(CLOUD_SECRET_PREFIX)-secret-key:latest,DATABASE_URL=$(CLOUD_SECRET_PREFIX)-database-url:latest$(if $(strip $(UNSPLASH_SECRET)),$(comma)UNSPLASH_ACCESS_KEY=$(UNSPLASH_SECRET):latest) && \
+		--update-secrets SECRET_KEY=$(CLOUD_SECRET_PREFIX)-secret-key:latest,DATABASE_URL=$(CLOUD_SECRET_PREFIX)-database-url:latest && \
 	$(GCLOUD) run services update-traffic $(CLOUD_SERVICE) \
 		--to-latest \
 		--project $(GCP_PROJECT) \

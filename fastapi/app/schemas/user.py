@@ -25,6 +25,7 @@ class User(UserBase):
     updated_at: datetime
     is_admin: bool
     photo_url: str | None = None
+    background_photo_id: UUID | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

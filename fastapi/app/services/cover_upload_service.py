@@ -2,7 +2,6 @@ import asyncio
 import struct
 import warnings
 from io import BytesIO
-from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, UploadFile, status
@@ -99,7 +98,7 @@ def _delete(user_id: UUID, photo_id: UUID) -> None:
     _blob(user_id, photo_id).delete(timeout=STORAGE_TIMEOUT, retry=None)
 
 
-async def create_upload(file: UploadFile, user_id: UUID) -> dict[str, str]:
+async def create_upload(file: UploadFile, user_id: UUID) -> UUID:
     data = BytesIO()
     while chunk := await file.read(READ_CHUNK_BYTES):
         if data.tell() + len(chunk) > MAX_UPLOAD_BYTES:
@@ -118,7 +117,7 @@ async def create_upload(file: UploadFile, user_id: UUID) -> dict[str, str]:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=UPLOAD_UNAVAILABLE,
         ) from None
-    return {"source": "upload", "id": str(photo_id)}
+    return photo_id
 
 
 async def read_upload(user_id: UUID, photo_id: UUID) -> bytes | None:
@@ -133,16 +132,9 @@ async def read_upload(user_id: UUID, photo_id: UUID) -> bytes | None:
         ) from None
 
 
-async def delete_upload(user_id: UUID, photo: dict[str, Any] | None) -> None:
-    if not photo or photo.get("source") != "upload":
-        return
-    photo_id = photo.get("id")
+async def delete_upload(user_id: UUID, photo_id: UUID) -> None:
     try:
-        upload_id = UUID(str(photo_id))
-    except ValueError:
-        return
-    try:
-        await asyncio.to_thread(_delete, user_id, upload_id)
+        await asyncio.to_thread(_delete, user_id, photo_id)
     except NotFound:
         return
     except Exception:

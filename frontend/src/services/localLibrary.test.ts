@@ -40,8 +40,6 @@ const listSummary = (overrides: Partial<ListSimple> = {}): ListSimple => ({
   description: null,
   color: null,
   icon: null,
-  cover: null,
-  cover_photo: null,
   ranking_mode: 'score',
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
@@ -511,8 +509,6 @@ test('reconcileListItems and reconcileLists apply pending create and delete ops'
       description: null,
       color: null,
       icon: null,
-      cover: null,
-      cover_photo: null,
       ranking_mode: 'score',
     },
   };
@@ -527,8 +523,6 @@ test('reconcileListItems and reconcileLists apply pending create and delete ops'
       description: null,
       color: null,
       icon: null,
-      cover: null,
-      cover_photo: null,
       ranking_mode: 'rank',
     },
   };

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Item } from './itemsService.ts';
-import type { ListPhoto } from './listCoversService.ts';
 import {
   applyCachedMetadataState,
   bumpLifecycleMutation,
@@ -35,26 +34,10 @@ const listSimple: ListSimple = {
   description: null,
   color: null,
   icon: null,
-  cover: null,
-  cover_photo: null,
   ranking_mode: 'score',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
   item_count: 2,
-};
-
-const uploadPhoto: ListPhoto = {
-  source: 'upload',
-  id: '25a83199-d68c-4583-900c-ea64d153a8ca',
-};
-
-const unsplashPhoto: ListPhoto = {
-  source: 'unsplash',
-  id: 'photo-id',
-  url: 'https://images.unsplash.com/photo-id?fit=crop&w=1200',
-  photographer_name: 'Photographer',
-  photographer_url: 'https://www.unsplash.com/@photographer',
-  photo_url: 'https://unsplash.com/photos/photo-id',
 };
 
 const item = (overrides: Partial<Item> = {}): Item => ({
@@ -235,66 +218,6 @@ test('keeps an empty cached list distinct from no cache', () => {
   assert.deepEqual(parseCachedLists('[]'), []);
 });
 
-test('normalizes legacy photos and preserves canonical cached photos', () => {
-  const legacy: Record<string, unknown> = { ...listSimple };
-  delete legacy.cover_photo;
-  const lists = [
-    listSimple,
-    { ...listSimple, list_id: 'list-2', cover_photo: uploadPhoto },
-    { ...listSimple, list_id: 'list-3', cover_photo: unsplashPhoto },
-  ];
-
-  assert.deepEqual(parseCachedLists(JSON.stringify([legacy])), [listSimple]);
-  assert.deepEqual(parseCachedLists(JSON.stringify(lists)), lists);
-});
-
-test('rejects malformed or noncanonical cached photos', () => {
-  const photos: unknown[] = [
-    '',
-    [],
-    {},
-    { source: 'local', uri: 'file:///private/photo.jpg' },
-    { kind: 'local', uri: 'data:image/jpeg;base64,AAAA' },
-    { ...uploadPhoto, id: 'not-a-uuid' },
-    { ...uploadPhoto, id: `${uploadPhoto.id}\n` },
-    { ...uploadPhoto, url: 'https://example.com/private.jpg' },
-    { ...uploadPhoto, uri: 'file:///private/photo.jpg' },
-    { source: 'unsplash', id: 'photo-id' },
-    { ...unsplashPhoto, id: '' },
-    { ...unsplashPhoto, id: 'a/b' },
-    { ...unsplashPhoto, id: 'photo-id\n' },
-    { ...unsplashPhoto, id: 'a'.repeat(101) },
-    { ...unsplashPhoto, photographer_name: '  ' },
-    { ...unsplashPhoto, photographer_name: null },
-    { ...unsplashPhoto, url: 'data:image/jpeg;base64,AAAA' },
-    { ...unsplashPhoto, url: 'http://images.unsplash.com/photo-id' },
-    { ...unsplashPhoto, url: 'https://images.unsplash.com.evil.test/photo-id' },
-    { ...unsplashPhoto, url: 'https://attacker@images.unsplash.com/photo-id' },
-    { ...unsplashPhoto, url: 'https://images.unsplash.com:443/photo-id' },
-    { ...unsplashPhoto, url: 'https://images.unsplash.com/photo id' },
-    { ...unsplashPhoto, url: 'https://images.unsplash.com/photo\nid' },
-    { ...unsplashPhoto, url: 'https://images.unsplash.com' },
-    { ...unsplashPhoto, photographer_url: 'https://example.com/person' },
-    { ...unsplashPhoto, photographer_url: 'https://unsplash.com.evil.test/p' },
-    { ...unsplashPhoto, photo_url: 'file:///private/photo.jpg' },
-    { ...unsplashPhoto, thumbnail_url: 'https://images.unsplash.com/photo-id' },
-  ];
-  for (const photo of photos) {
-    assert.equal(
-      parseCachedLists(JSON.stringify([{ ...listSimple, cover_photo: photo }])),
-      null
-    );
-  }
-  assert.equal(
-    parseCachedLists(
-      JSON.stringify([
-        { ...listSimple, cover: 'landscape', cover_photo: uploadPhoto },
-      ])
-    ),
-    null
-  );
-});
-
 test('defaults only missing legacy ranking modes to score', () => {
   const legacy: Record<string, unknown> = { ...listSimple };
   delete legacy.ranking_mode;
@@ -333,42 +256,14 @@ test('applies cached ranking mode and resets it when metadata is invalidated', (
     description: null,
     color: null,
     icon: 'coffee',
-    cover: 'landscape',
     rankingMode: 'rank',
   });
   assert.equal(restored.rankingMode, 'rank');
   assert.equal(restored.listIcon, 'coffee');
-  assert.equal(restored.listCover, 'landscape');
   assert.equal(restored.metadataLoaded, false);
   assert.equal(
     createInvalidatedReadState(restored, 'List', 'Read failed').rankingMode,
     'score'
-  );
-});
-
-test('restores and clears cached cover photo metadata', () => {
-  const initial = createListDetailState('identity', 'List');
-  assert.equal(initial.listCoverPhoto, null);
-
-  const metadata = {
-    title: 'Cached list',
-    description: null,
-    color: null,
-    rankingMode: 'score' as const,
-  };
-  const restored = applyCachedMetadataState(initial, {
-    ...metadata,
-    coverPhoto: unsplashPhoto,
-  });
-  assert.deepEqual(restored.listCoverPhoto, unsplashPhoto);
-  assert.equal(restored.metadataLoaded, false);
-  assert.equal(
-    applyCachedMetadataState(restored, metadata).listCoverPhoto,
-    null
-  );
-  assert.equal(
-    createInvalidatedReadState(restored, 'List', 'Read failed').listCoverPhoto,
-    null
   );
 });
 
@@ -429,7 +324,6 @@ test('drops payloads whose color is missing or not a known swatch', () => {
           ...listSimple,
           color: 'violet',
           icon: 'mountain',
-          cover: 'landscape',
         },
       ])
     ),
@@ -438,24 +332,18 @@ test('drops payloads whose color is missing or not a known swatch', () => {
         ...listSimple,
         color: 'violet',
         icon: 'mountain',
-        cover: 'landscape',
       },
     ]
   );
 
-  const legacyNoIconOrCover: Record<string, unknown> = { ...listSimple };
-  delete legacyNoIconOrCover.icon;
-  delete legacyNoIconOrCover.cover;
-  assert.deepEqual(parseCachedLists(JSON.stringify([legacyNoIconOrCover])), [
+  const legacyNoIcon: Record<string, unknown> = { ...listSimple };
+  delete legacyNoIcon.icon;
+  assert.deepEqual(parseCachedLists(JSON.stringify([legacyNoIcon])), [
     listSimple,
   ]);
 
   assert.equal(
     parseCachedLists(JSON.stringify([{ ...listSimple, icon: 1 }])),
-    null
-  );
-  assert.equal(
-    parseCachedLists(JSON.stringify([{ ...listSimple, cover: 'photo' }])),
     null
   );
 });

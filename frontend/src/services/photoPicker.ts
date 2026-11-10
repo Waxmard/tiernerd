@@ -5,43 +5,6 @@ import {
 } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
-import type { ListCover } from '../design-system/tokens/colors';
-import { api } from './api';
-
-export type ListPhoto =
-  | { source: 'upload'; id: string }
-  | {
-      source: 'unsplash';
-      id: string;
-      url: string;
-      photographer_name: string;
-      photographer_url: string;
-      photo_url: string;
-    };
-
-export interface CoverSearchResult {
-  id: string;
-  url: string;
-  thumbnail_url: string;
-  photographer_name: string;
-  photographer_url: string;
-  photo_url: string;
-}
-
-export type CoverDraft =
-  | { kind: 'none' }
-  | { kind: 'landscape' }
-  | { kind: 'persisted'; photo: ListPhoto }
-  | { kind: 'unsplash'; photo: CoverSearchResult }
-  | { kind: 'local'; uri: string; blob?: Blob };
-
-export function coverDraftFromSaved(
-  cover: ListCover | null,
-  photo: ListPhoto | null
-): CoverDraft {
-  if (photo) return { kind: 'persisted', photo };
-  return cover === 'landscape' ? { kind: 'landscape' } : { kind: 'none' };
-}
 
 const MAX_IMAGE_EDGE = 1600;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -140,10 +103,7 @@ async function convertNativeImage(
   return { uri: convertedUri, blob };
 }
 
-export async function pickLocalCover(): Promise<Extract<
-  CoverDraft,
-  { kind: 'local' }
-> | null> {
+export async function pickLocalPhoto(): Promise<Blob | null> {
   let assetUri: string;
   try {
     if (Platform.OS === 'web') {
@@ -187,30 +147,5 @@ export async function pickLocalCover(): Promise<Extract<
       'The photo is larger than 10 MiB after processing. Choose a smaller image.'
     );
   }
-  return {
-    kind: 'local',
-    uri: converted.uri ?? URL.createObjectURL(converted.blob),
-    blob: converted.blob,
-  };
-}
-
-export function searchCoverPhotos(
-  query: string,
-  page: number,
-  token: string
-): Promise<{ results: CoverSearchResult[]; has_more: boolean }> {
-  return api.get<{ results: CoverSearchResult[]; has_more: boolean }>(
-    `/api/lists/cover-search?query=${encodeURIComponent(query)}&page=${page}`,
-    token
-  );
-}
-
-export async function getCoverSearchAvailability(
-  token: string
-): Promise<boolean> {
-  const { enabled } = await api.get<{ enabled: boolean }>(
-    '/api/lists/cover-search/availability',
-    token
-  );
-  return enabled;
+  return converted.blob;
 }

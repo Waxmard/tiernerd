@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Emoji } from '../design-system/components';
 import {
@@ -8,9 +8,12 @@ import {
   type ListIcon,
   palette,
 } from '../design-system/tokens/colors';
+import { useAuth } from '../providers/AuthContext';
+import { useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/emojiCatalog';
 import { LandscapeBackdrop } from './LandscapeBackdrop';
+import { WorkspacePhotoBackdrop } from './WorkspacePhotoBackdrop';
 export const SWATCH_CLASS: Record<ListColor, string> = {
   blue: 'bg-list-blue-solid dark:bg-list-blue-solid-dark',
   teal: 'bg-list-teal-solid dark:bg-list-teal-solid-dark',
@@ -31,10 +34,24 @@ export const CHIP_CLASS: Record<ListColor, string> = {
 
 export function ImmersiveScreenShell({ children }: { children: ReactNode }) {
   const { workspaceAppearance } = useTheme();
+  const { user, token } = useAuth();
+  const { isOffline } = useSync();
+  const [failedPhotoId, setFailedPhotoId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isOffline) setFailedPhotoId(null);
+  }, [isOffline]);
+  const photoId = user?.backgroundPhotoId;
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      {workspaceAppearance.background === 'landscape' ? (
-        <LandscapeBackdrop variant="workspace" className="absolute inset-0" />
+      {token && photoId && photoId !== failedPhotoId ? (
+        <WorkspacePhotoBackdrop
+          key={photoId}
+          photoId={photoId}
+          token={token}
+          onError={setFailedPhotoId}
+        />
+      ) : workspaceAppearance.background === 'landscape' ? (
+        <LandscapeBackdrop className="absolute inset-0" />
       ) : null}
       {children}
     </View>
