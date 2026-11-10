@@ -126,11 +126,7 @@ make cloud-health          # curl the deployed /health
 make cloud-logs            # recent service logs
 ```
 
-`CLOUD_ENV` selects the service, env file and secrets (`cloud/env.<env>.yaml`, `tiernerd-<env>-*`). Deploying a second environment needs its own secrets and env file and nothing else:
-
-```bash
-make cloud-deploy CLOUD_ENV=prod GCP_PROJECT=<prod-project>
-```
+Dev is the only environment, and testers use it too. Its database holds real user data: never wipe or reset it.
 
 Config lives in `fastapi/cloud/env.dev.yaml` (non-secret) and Secret Manager (`SECRET_KEY`, `DATABASE_URL`). `APP_ENV=development` is what makes the container create its tables and seed the dev users on startup; setting it to `production` disables that seeding and switches the SQLAlchemy pool settings in `app/db/database.py`.
 

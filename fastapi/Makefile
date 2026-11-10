@@ -161,7 +161,7 @@ reset:
 GCLOUD_CONFIG ?= tiernerd
 GCLOUD := CLOUDSDK_ACTIVE_CONFIG_NAME=$(GCLOUD_CONFIG) gcloud
 
-# CLOUD_ENV=dev (default) or prod. Selects the service, env file and secrets.
+# CLOUD_ENV selects the service, env file and secrets. Only dev exists.
 CLOUD_ENV ?= dev
 GCP_PROJECT ?= tiernerd-dev
 GCP_REGION ?= us-east1
