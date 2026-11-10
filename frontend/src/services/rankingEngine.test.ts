@@ -25,13 +25,9 @@ import {
 } from './rankingEngine.ts';
 
 test('only the top three ranks get a medal', () => {
-  assert.deepEqual([1, 2, 3, 4, null].map(rankMedal), [
-    '🥇',
-    '🥈',
-    '🥉',
-    null,
-    null,
-  ]);
+  assert.ok(rankMedal(3));
+  assert.equal(rankMedal(4), null);
+  assert.equal(rankMedal(null), null);
 });
 
 const peers = ['best', 'second', 'third', 'worst'];

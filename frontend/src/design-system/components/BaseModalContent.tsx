@@ -49,12 +49,12 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   onSubmit,
   contentClassName,
   footer,
-  color,
+  color = null,
   emoji,
 }) => {
   const isPanel = presentation === 'panel';
   const safeAreaInsets = useSafeAreaInsets();
-  const hue = useListHue(color ?? null);
+  const hue = useListHue(color);
   const content = (
     <View
       className={[
@@ -69,17 +69,15 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
       style={isPanel ? undefined : CARD_SHADOW}
       accessibilityLabel={isPanel ? title : undefined}
     >
-      {color !== undefined ? (
-        <View
-          accessible={false}
-          pointerEvents="none"
-          style={hue.washStyle}
-          className={[
-            'absolute top-0 left-0 right-0 h-40',
-            isPanel ? 'rounded-t-2xl' : 'desktop:rounded-t-2xl',
-          ].join(' ')}
-        />
-      ) : null}
+      <View
+        accessible={false}
+        pointerEvents="none"
+        style={hue.washStyle}
+        className={[
+          'absolute top-0 left-0 right-0 h-40',
+          isPanel ? 'rounded-t-2xl' : 'desktop:rounded-t-2xl',
+        ].join(' ')}
+      />
       <View className="flex-row items-center gap-2 shrink-0 mb-4">
         {emoji ? <Emoji symbol={emoji} size={24} /> : null}
         <Text

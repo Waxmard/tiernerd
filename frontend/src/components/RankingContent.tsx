@@ -15,7 +15,7 @@ export interface RankingContentProps {
   view: RankingView;
   presentation: 'modal' | 'panel';
   isBusy: boolean;
-  rankingMode: ListRankingMode;
+  rankingMode?: ListRankingMode;
   color?: ListColor | null;
   onAnswer: (result: RankingAnswer) => void;
   onUndo: () => void;
@@ -98,7 +98,7 @@ export function RankingContent({
   view,
   presentation,
   isBusy,
-  rankingMode,
+  rankingMode = 'rank',
   color = null,
   onAnswer,
   onUndo,

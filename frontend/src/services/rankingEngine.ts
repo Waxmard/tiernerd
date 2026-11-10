@@ -70,11 +70,9 @@ export function insertIndexBestFirst(session: RankingSession): number {
   return session.peersWorstFirst.length - gap(session);
 }
 
-export function landingRange(session: RankingSession): {
-  best: number;
-  worst: number;
-  total: number;
-} {
+export type LandingRange = { best: number; worst: number; total: number };
+
+export function landingRange(session: RankingSession): LandingRange {
   const { low, high } = bounds(session);
   const total = session.peersWorstFirst.length + 1;
   return { best: total - high, worst: total - low, total };

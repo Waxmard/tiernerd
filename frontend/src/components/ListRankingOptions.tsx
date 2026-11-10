@@ -295,19 +295,19 @@ export function ListRankingOptions({
               maxLength={MAX_TITLE_LENGTH}
               editable={!saving}
             />
-            <SectionLabel emoji="😀" label="List icon" className="" />
+            <SectionLabel emoji="😀" label="List icon" />
             <ListIconPicker
               value={draftIcon}
               onChange={setDraftIcon}
               disabled={saving}
             />
-            <SectionLabel emoji="🎨" label="Accent color" className="" />
+            <SectionLabel emoji="🎨" label="Accent color" />
             <ListColorPicker
               value={draftColor}
               onChange={setDraftColor}
               disabled={saving}
             />
-            <SectionLabel emoji="🖼️" label="Cover" className="" />
+            <SectionLabel emoji="🖼️" label="Cover" />
             {open ? (
               <ListCoverPicker
                 key={coverSession}
@@ -329,7 +329,7 @@ export function ListRankingOptions({
                 }}
               />
             ) : null}
-            <SectionLabel emoji="🏆" label="Ranking mode" className="" />
+            <SectionLabel emoji="🏆" label="Ranking mode" />
             <RankingModeSelector
               value={draft}
               onChange={setDraft}

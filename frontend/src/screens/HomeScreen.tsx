@@ -613,7 +613,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 item={workspace.view.item}
                 view={workspace.view}
                 presentation="modal"
-                rankingMode="rank"
                 isBusy={workspace.isBusy}
                 onAnswer={(answer) => void workspace.answer(answer)}
                 onUndo={() => void workspace.undo()}

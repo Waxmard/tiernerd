@@ -114,7 +114,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             </View>
 
             <View className="mb-4">
-              <SectionLabel emoji="👤" label="Account" />
+              <SectionLabel emoji="👤" label="Account" className="mb-2" />
               <View className="bg-surface dark:bg-surface-dark border border-line dark:border-line-dark rounded-2xl p-4 gap-1">
                 <Text className="text-label-medium text-ink dark:text-ink-dark">
                   Email address
@@ -126,7 +126,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             </View>
 
             <View className="mb-4">
-              <SectionLabel emoji="🎨" label="Appearance" />
+              <SectionLabel emoji="🎨" label="Appearance" className="mb-2" />
               <View className="flex-row gap-2">
                 {THEME_OPTIONS.map((option) => {
                   const selected = preference === option.value;

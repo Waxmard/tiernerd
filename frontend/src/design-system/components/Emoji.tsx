@@ -33,7 +33,7 @@ export function SectionLabel({
   label,
   emoji,
   nativeID,
-  className = 'mb-2',
+  className = '',
 }: SectionLabelProps) {
   return (
     <View className={['flex-row items-center gap-1', className].join(' ')}>

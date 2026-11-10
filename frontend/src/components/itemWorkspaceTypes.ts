@@ -1,5 +1,6 @@
 import type { Item } from '../services/itemsService';
 import type {
+  LandingRange,
   ManualRatingBounds,
   RankingAnswer,
   RankingSession,
@@ -34,7 +35,7 @@ export interface RankingView {
   target: Item | null;
   targetRank: number | null;
   rankedCount: number;
-  range: { best: number; worst: number; total: number };
+  range: LandingRange;
   answered: number;
   limit: number;
   canUndo: boolean;

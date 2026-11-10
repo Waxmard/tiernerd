@@ -422,19 +422,19 @@ export const CreateListContent = forwardRef<
         />
       ) : (
         <View className="gap-4">
-          <SectionLabel emoji="🎨" label="Color" className="" />
+          <SectionLabel emoji="🎨" label="Color" />
           <ListColorPicker
             value={color}
             onChange={setColor}
             disabled={isLoading || coverBusy}
           />
-          <SectionLabel emoji="😀" label="Icon" className="" />
+          <SectionLabel emoji="😀" label="Icon" />
           <ListIconPicker
             value={icon}
             onChange={setIcon}
             disabled={isLoading || coverBusy}
           />
-          <SectionLabel emoji="🖼️" label="Cover" className="" />
+          <SectionLabel emoji="🖼️" label="Cover" />
           <ListCoverPicker
             key={coverSession}
             value={coverDraft}
