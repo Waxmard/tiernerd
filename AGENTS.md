@@ -179,7 +179,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 - PostgreSQL with async (asyncpg)
 - UUID primary keys throughout
-- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Startup (`create_tables`) also adds missing additive columns and applies the manual-rating migration. The Google auth migration stays manual (see the [backend README](fastapi/README.md#upgrade-the-google-authentication-schema)); it permanently removes password hashes, so back it up first and do not wipe application data.
+- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Startup (`create_tables`) also adds missing additive columns, drops the retired `lists.cover`/`lists.cover_photo` columns, and applies the manual-rating migration. The Google auth migration stays manual (see the [backend README](fastapi/README.md#upgrade-the-google-authentication-schema)); it permanently removes password hashes, so back it up first and do not wipe application data.
 
 ## Development Notes for AI Agents
 

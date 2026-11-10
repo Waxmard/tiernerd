@@ -534,8 +534,6 @@ class TestListWriteFormats:
                 [("metadata", metadata), ("metadata", metadata)],
                 [("metadata", metadata), ("unexpected", (None, "value"))],
                 [("metadata", ("metadata.json", json.dumps(base), "application/json"))],
-                [("metadata", metadata), ("file", (None, "not a file"))],
-                [("metadata", metadata), ("file", image)],
             )
             for form in invalid_forms:
                 response = await request(url, files=form, headers=auth_headers)

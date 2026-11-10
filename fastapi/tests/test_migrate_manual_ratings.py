@@ -144,6 +144,33 @@ async def test_create_tables_adds_column_and_rescores_legacy_items(
     ]
 
 
+async def test_create_tables_drops_retired_list_cover_columns(
+    legacy_items_database, monkeypatch
+) -> None:
+    path, _capsys = legacy_items_database
+    sync_engine = _sqlite_engine(path)
+    with sync_engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE lists (list_id VARCHAR(36) PRIMARY KEY, "
+                "cover VARCHAR(32), cover_photo VARCHAR(36))"
+            )
+        )
+    engine = create_async_engine(f"sqlite+aiosqlite:///{path}")
+    monkeypatch.setattr(db_module, "engine", engine)
+    monkeypatch.setattr(get_settings(), "APP_ENV", "production")
+    try:
+        await db_module.create_tables()
+    finally:
+        await engine.dispose()
+
+    try:
+        assert not _has_column(sync_engine, "lists", "cover")
+        assert not _has_column(sync_engine, "lists", "cover_photo")
+    finally:
+        sync_engine.dispose()
+
+
 def test_apply_preserves_existing_manual_rating_pins(legacy_items_database) -> None:
     path, _capsys = legacy_items_database
     engine = _sqlite_engine(path)

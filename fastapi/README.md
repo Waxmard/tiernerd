@@ -81,17 +81,6 @@ uv run python scripts/cleanup_photo_uploads.py --apply
 
 Do not configure a bucket-wide expiration policy: it would also remove attached photos.
 
-## Drop the retired list cover columns
-
-Lists no longer have covers. After the new backend is deployed and the database is backed up, drop the old `lists.cover` and `lists.cover_photo` columns once:
-
-```bash
-uv run python scripts/drop_list_covers.py
-uv run python scripts/drop_list_covers.py --apply
-```
-
-The first command is a dry run that reports how many rows still hold cover data. Run the photo cleanup script afterwards to remove the old cover objects.
-
 ## Before any migration
 
 Fresh databases use the model schema, and `create_all` does not upgrade existing tables. Before running a migration script against an existing database:

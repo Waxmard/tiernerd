@@ -410,6 +410,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
   const renderRow = ({ item }: ListRenderItemInfo<TierList>) => {
     const hue = listHue(item.color, scheme, colors);
+    const titleLength = Array.from(item.title).length;
     return (
       <View style={{ width: cardWidth }} className="shrink-0 gap-1">
         <TouchableOpacity
@@ -451,9 +452,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <View className="flex-1 min-w-0 gap-1">
               <Text
                 className={`${
-                  Array.from(item.title).length <= 40
+                  titleLength <= 40
                     ? 'text-title-medium'
-                    : Array.from(item.title).length <= 70
+                    : titleLength <= 70
                       ? 'text-title-small'
                       : 'text-body-medium'
                 } font-semibold text-ink dark:text-ink-dark`}
