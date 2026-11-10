@@ -14,6 +14,7 @@ import type {
   ListIcon,
 } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
+import { listIconEmoji } from '../services/emojiCatalog';
 import type { ListPhoto } from '../services/listCoversService';
 import type {
   ListOptionsInput,
@@ -84,6 +85,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         <View className="flex-1 min-w-0 min-h-11 justify-center px-2">
           <Text
             accessibilityRole="header"
+            accessibilityLabel={title}
             className={`${
               Array.from(title).length <= 28
                 ? 'text-headline-small'
@@ -92,7 +94,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
                   : 'text-title-small'
             } text-ink dark:text-ink-dark text-left`}
           >
-            {title}
+            {icon ? `${listIconEmoji(icon)} ${title}` : title}
           </Text>
         </View>
         <ListRankingOptions

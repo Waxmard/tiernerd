@@ -5,15 +5,12 @@ import { Emoji } from '../design-system/components';
 import {
   LIST_COLORS,
   type ListColor,
-  type ListCover,
   type ListIcon,
   palette,
 } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/emojiCatalog';
-import type { ListPhoto } from '../services/listCoversService';
 import { LandscapeBackdrop } from './LandscapeBackdrop';
-import { ListPhotoCover } from './ListPhotoCover';
 export const SWATCH_CLASS: Record<ListColor, string> = {
   blue: 'bg-list-blue-solid dark:bg-list-blue-solid-dark',
   teal: 'bg-list-teal-solid dark:bg-list-teal-solid-dark',
@@ -63,16 +60,10 @@ export function ListAccentBar({ color }: { color: ListColor | null }) {
 export function ListIdentityBadge({
   color,
   icon,
-  cover = null,
-  photo = null,
-  listId,
   size = 'md',
 }: {
   color: ListColor | null;
   icon?: ListIcon | null;
-  cover?: ListCover | null;
-  photo?: ListPhoto | null;
-  listId?: string;
   size?: 'sm' | 'md' | 'lg';
 }) {
   const boxClass =
@@ -93,23 +84,7 @@ export function ListIdentityBadge({
           color ? CHIP_CLASS[color] : 'bg-accent-tint dark:bg-accent-tint-dark',
         ].join(' ')}
       >
-        {photo ? (
-          <ListPhotoCover
-            photo={photo}
-            listId={listId}
-            className="w-full h-full"
-          />
-        ) : (
-          <>
-            {cover === 'landscape' ? (
-              <LandscapeBackdrop
-                variant={color}
-                className="absolute inset-0 opacity-35"
-              />
-            ) : null}
-            <Emoji symbol={listIconEmoji(icon)} size={iconSize} />
-          </>
-        )}
+        <Emoji symbol={listIconEmoji(icon)} size={iconSize} />
       </View>
     </View>
   );

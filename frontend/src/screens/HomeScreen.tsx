@@ -28,7 +28,7 @@ import {
   ImmersiveScreenShell,
   ListIdentityBadge,
 } from '../components/ImmersiveBoard';
-import { PhotoAttribution } from '../components/ListPhotoCover';
+import { ListPhotoCover, PhotoAttribution } from '../components/ListPhotoCover';
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button, Emoji } from '../design-system/components';
@@ -408,15 +408,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           className="w-full shrink-0 overflow-hidden rounded-2xl border-2"
           style={hue.cardStyle}
         >
+          {item.cover === 'landscape' || item.coverPhoto ? (
+            <View className="h-20 w-full">
+              <ListPhotoCover
+                cover={item.cover}
+                photo={item.coverPhoto}
+                listId={item.id}
+                color={item.color}
+                className="w-full h-full"
+              />
+            </View>
+          ) : null}
           <View className="flex-row items-center gap-3 p-4">
-            <ListIdentityBadge
-              size="lg"
-              color={item.color}
-              icon={item.icon}
-              cover={item.cover}
-              photo={item.coverPhoto}
-              listId={item.id}
-            />
+            <ListIdentityBadge size="lg" color={item.color} icon={item.icon} />
             <View className="flex-1 min-w-0 gap-1">
               <Text
                 className={`${
