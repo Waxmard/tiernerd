@@ -12,7 +12,7 @@ import {
 import type { ListColor, ListIcon } from '../design-system/tokens/colors';
 import { useNotifyWhenOnline } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
-import { listIconEmoji } from '../services/emojiCatalog';
+import { listIconEmoji } from '../services/listIcon';
 import type {
   ListOptionsInput,
   ListRankingMode,

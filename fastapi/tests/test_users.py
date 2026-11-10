@@ -366,7 +366,7 @@ PHOTO = {"file": ("photo.jpg", b"jpeg", "image/jpeg")}
 
 @pytest.fixture
 def photo_storage(monkeypatch: MonkeyPatch):
-    from app.services import cover_upload_service
+    from app.services import photo_upload_service
 
     objects = {}
     events = []
@@ -385,9 +385,9 @@ def photo_storage(monkeypatch: MonkeyPatch):
         events.append(("delete", str(user_id), photo_id))
         objects.pop((str(user_id), str(photo_id)), None)
 
-    monkeypatch.setattr(cover_upload_service, "create_upload", create_upload)
-    monkeypatch.setattr(cover_upload_service, "read_upload", read_upload)
-    monkeypatch.setattr(cover_upload_service, "delete_upload", delete_upload)
+    monkeypatch.setattr(photo_upload_service, "create_upload", create_upload)
+    monkeypatch.setattr(photo_upload_service, "read_upload", read_upload)
+    monkeypatch.setattr(photo_upload_service, "delete_upload", delete_upload)
     return objects, events
 
 
@@ -483,7 +483,7 @@ class TestBackgroundPhoto:
         photo_storage,
         monkeypatch: MonkeyPatch,
     ):
-        from app.services import cover_upload_service
+        from app.services import photo_upload_service
 
         objects, _ = photo_storage
         first = (
@@ -495,7 +495,7 @@ class TestBackgroundPhoto:
         async def fail_upload(file, user_id):
             raise HTTPException(status_code=503, detail="Storage unavailable")
 
-        monkeypatch.setattr(cover_upload_service, "create_upload", fail_upload)
+        monkeypatch.setattr(photo_upload_service, "create_upload", fail_upload)
         response = await client.put(
             "/api/users/me/background", files=PHOTO, headers=auth_headers
         )
@@ -514,7 +514,7 @@ class TestBackgroundPhoto:
         monkeypatch: MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
     ):
-        from app.services import cover_upload_service
+        from app.services import photo_upload_service
 
         first = (
             await client.put(
@@ -525,7 +525,7 @@ class TestBackgroundPhoto:
         async def fail_cleanup(user_id, photo_id):
             raise HTTPException(status_code=503, detail="Storage unavailable")
 
-        monkeypatch.setattr(cover_upload_service, "delete_upload", fail_cleanup)
+        monkeypatch.setattr(photo_upload_service, "delete_upload", fail_cleanup)
         caplog.clear()
         if action == "replace":
             response = await client.put(
@@ -641,7 +641,7 @@ class TestBackgroundPhoto:
         test_user: User,
         photo_storage,
     ):
-        from app.services.cover_upload_service import MAX_UPLOAD_BYTES
+        from app.services.photo_upload_service import MAX_UPLOAD_BYTES
 
         response = await client.put(
             "/api/users/me/background",
@@ -657,7 +657,7 @@ class TestBackgroundPhoto:
     async def test_upload_over_image_limit_is_rejected(
         self, client: AsyncClient, auth_headers: dict
     ):
-        from app.services.cover_upload_service import MAX_UPLOAD_BYTES
+        from app.services.photo_upload_service import MAX_UPLOAD_BYTES
 
         response = await client.put(
             "/api/users/me/background",

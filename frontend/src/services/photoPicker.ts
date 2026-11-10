@@ -62,16 +62,19 @@ export async function pickLocalPhoto(): Promise<Blob | null> {
     const asset = selection.assets[0];
     if (!asset) throw new Error('No photo was selected');
     assetUri = asset.uri;
-  } catch {
-    throw new Error('Could not open the photo picker. Please try again.');
+  } catch (error) {
+    throw new Error('Could not open the photo picker. Please try again.', {
+      cause: error,
+    });
   }
 
   let blob: Blob;
   try {
     blob = await convertNativeImage(assetUri);
-  } catch {
+  } catch (error) {
     throw new Error(
-      'Could not process this photo. Choose another image and try again.'
+      'Could not process this photo. Choose another image and try again.',
+      { cause: error }
     );
   }
 

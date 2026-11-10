@@ -208,6 +208,7 @@ class TestCreateList:
 
         for bad_metadata in (
             {"title": "Bad Icon", "description": "", "icon": "x" * 17},
+            {"title": "Empty Icon", "description": "", "icon": ""},
             {"title": "Retired Cover", "description": "", "cover": "landscape"},
             {"title": "Retired Photo", "description": "", "cover_photo": None},
         ):
@@ -367,6 +368,7 @@ class TestUpdateList:
         for invalid_payload in (
             {"color": "chartreuse"},
             {"icon": "x" * 17},
+            {"icon": ""},
             {"cover": "landscape"},
             {"cover_photo": None},
             {"title": None},

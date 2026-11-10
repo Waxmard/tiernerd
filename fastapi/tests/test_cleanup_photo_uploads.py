@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import create_engine, insert, update
 
 from app.db.models import Base, User
-from app.services.cover_upload_service import object_key
+from app.services.photo_upload_service import object_key
 from scripts import cleanup_photo_uploads as cleanup
 
 NOW = datetime(2026, 11, 4, 12, 0, tzinfo=UTC)

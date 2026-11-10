@@ -11,7 +11,7 @@ from google.api_core.exceptions import NotFound
 from PIL import Image, ImageDraw
 from starlette.datastructures import Headers
 
-from app.services import cover_upload_service as covers
+from app.services import photo_upload_service as covers
 
 
 class FakeBlob:

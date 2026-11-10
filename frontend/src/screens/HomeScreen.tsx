@@ -38,8 +38,8 @@ import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { listHue, useTheme } from '../providers/ThemeProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
-import { listIconEmoji } from '../services/emojiCatalog';
 import type { Item } from '../services/itemsService';
+import { listIconEmoji } from '../services/listIcon';
 import {
   enqueueListCacheWrite,
   listsCacheKey,
@@ -388,6 +388,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     if (lastSyncedAt === 0) return;
     void refreshLists().catch(() => undefined);
   }, [lastSyncedAt, refreshLists]);
+  const { mode: workspaceMode, dismissResult } = workspace;
+  useEffect(() => {
+    if (workspaceMode === 'ranked') dismissResult();
+  }, [workspaceMode, dismissResult]);
 
   const wasOfflineRef = useRef(isOffline);
   useEffect(() => {

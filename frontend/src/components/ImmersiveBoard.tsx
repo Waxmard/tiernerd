@@ -11,7 +11,7 @@ import {
 import { useAuth } from '../providers/AuthContext';
 import { useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
-import { listIconEmoji } from '../services/emojiCatalog';
+import { listIconEmoji } from '../services/listIcon';
 import { LandscapeBackdrop } from './LandscapeBackdrop';
 import { WorkspacePhotoBackdrop } from './WorkspacePhotoBackdrop';
 export const SWATCH_CLASS: Record<ListColor, string> = {

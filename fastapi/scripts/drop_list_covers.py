@@ -4,6 +4,7 @@ import importlib
 import sys
 from pathlib import Path
 
+from pydantic import ValidationError
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
@@ -29,8 +30,9 @@ class MigrationError(Exception):
 def _database_url() -> str:
     try:
         settings = importlib.import_module("app.settings").get_settings()
-    except Exception as exc:
-        raise MigrationError("DATABASE_URL is not set; nothing to migrate.") from exc
+    except ValidationError as exc:
+        fields = ", ".join(str(error["loc"][0]) for error in exc.errors())
+        raise MigrationError(f"Invalid or missing settings: {fields}.") from exc
     url = str(settings.DATABASE_URL)
     if not url.strip():
         raise MigrationError("DATABASE_URL is not set; nothing to migrate.")

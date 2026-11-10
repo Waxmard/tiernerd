@@ -11,7 +11,7 @@ import {
 import { Button, Emoji } from '../design-system/components';
 import type { ListColor, ListIcon } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
-import { listIconEmoji } from '../services/emojiCatalog';
+import { listIconEmoji } from '../services/listIcon';
 import type {
   ListOptionsInput,
   ListRankingMode,

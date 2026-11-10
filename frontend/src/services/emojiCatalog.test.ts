@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { EMOJI_GROUPS, listIconEmoji, searchEmoji } from './emojiCatalog.ts';
+import { EMOJI_GROUPS, searchEmoji } from './emojiCatalog.ts';
+import { listIconEmoji } from './listIcon.ts';
 
 test('search matches every term against emoji names', () => {
   assert.ok(searchEmoji('pizza').some((entry) => entry.emoji === '🍕'));

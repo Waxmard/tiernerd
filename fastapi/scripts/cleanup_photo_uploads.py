@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 get_settings = importlib.import_module("app.settings").get_settings
 User = importlib.import_module("app.db.models").User
-object_key = importlib.import_module("app.services.cover_upload_service").object_key
+object_key = importlib.import_module("app.services.photo_upload_service").object_key
 
 REQUEST_TIMEOUT = 30
 

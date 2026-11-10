@@ -66,7 +66,7 @@ export function ItemDetailContent({
       onTitlePress={actionsBlocked ? undefined : () => onEdit('name')}
       titleHint="Edit name"
       onEmojiPress={actionsBlocked ? undefined : () => setPickingIcon(true)}
-      emojiLabel={`Item emoji: ${item.icon}`}
+      emojiLabel={item.icon ? `Item emoji: ${item.icon}` : undefined}
       onClose={onClose}
       footer={
         <View className="gap-2">
@@ -156,6 +156,7 @@ export function ItemDetailContent({
         </Pressable>
         {item.description ? (
           <Text
+            accessibilityRole={actionsBlocked ? undefined : 'button'}
             accessibilityHint="Edit description"
             onPress={actionsBlocked ? undefined : () => onEdit('description')}
             className="text-body-large text-ink dark:text-ink-dark"

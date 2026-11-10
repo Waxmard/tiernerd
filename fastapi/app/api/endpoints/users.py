@@ -33,7 +33,7 @@ from app.schemas.user import (
     Token,
     User,
 )
-from app.services import cover_upload_service
+from app.services import photo_upload_service
 from app.services.auth import (
     create_access_token,
     get_current_user,
@@ -43,7 +43,7 @@ from app.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-MAX_USER_WRITE_BYTES = cover_upload_service.MAX_UPLOAD_BYTES + 64 * 1024
+MAX_USER_WRITE_BYTES = photo_upload_service.MAX_UPLOAD_BYTES + 64 * 1024
 
 router = APIRouter(
     route_class=bounded_write_route(
@@ -56,9 +56,14 @@ async def _discard_photo(user_id: uuid.UUID, photo_id: uuid.UUID | None) -> None
     if photo_id is None:
         return
     try:
-        await cover_upload_service.delete_upload(user_id, photo_id)
+        await photo_upload_service.delete_upload(user_id, photo_id)
     except Exception:
-        logger.warning("Failed to clean up a background photo upload")
+        logger.warning(
+            "Failed to clean up background photo %s for user %s",
+            photo_id,
+            user_id,
+            exc_info=True,
+        )
 
 
 @router.post("/google", response_model=Token)
@@ -142,7 +147,7 @@ async def set_background(
     Replace the current user's app background photo.
     """
     previous = current_user.background_photo_id
-    photo_id = await cover_upload_service.create_upload(file, current_user.user_id)
+    photo_id = await photo_upload_service.create_upload(file, current_user.user_id)
     user = await set_background_photo(db, current_user, photo_id)
     await _discard_photo(user.user_id, previous)
     return user
@@ -173,7 +178,7 @@ async def read_background(
     """
     content = None
     if current_user.background_photo_id == photo_id:
-        content = await cover_upload_service.read_upload(current_user.user_id, photo_id)
+        content = await photo_upload_service.read_upload(current_user.user_id, photo_id)
     if content is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
