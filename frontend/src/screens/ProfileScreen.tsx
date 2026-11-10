@@ -155,6 +155,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       >
                         {option.label}
                       </Text>
+                      {selected ? (
+                        <Text
+                          accessible={false}
+                          className="text-label-large text-accent-text dark:text-accent-text-dark"
+                        >
+                          ✓
+                        </Text>
+                      ) : null}
                     </Pressable>
                   );
                 })}
@@ -207,6 +215,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       >
                         {option.label}
                       </Text>
+                      {selected ? (
+                        <Text
+                          accessible={false}
+                          className="text-label-large text-accent-text dark:text-accent-text-dark"
+                        >
+                          ✓
+                        </Text>
+                      ) : null}
                     </Pressable>
                   );
                 })}

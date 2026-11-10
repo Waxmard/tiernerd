@@ -102,9 +102,12 @@ export function ItemDetailContent({
       <View className="gap-3 pb-4">
         <View className="rounded-2xl border-2 p-4 gap-2" style={hue.cardStyle}>
           {item.position === null ? (
-            <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
-              ⏳ Not ranked yet
-            </Text>
+            <View className="flex-row items-center gap-1">
+              <Emoji symbol="⏳" size={14} />
+              <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
+                Not ranked yet
+              </Text>
+            </View>
           ) : (
             <View className="flex-row items-center flex-wrap gap-3">
               {medal ? <Emoji symbol={medal} size={30} /> : null}

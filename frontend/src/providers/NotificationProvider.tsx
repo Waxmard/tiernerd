@@ -16,7 +16,7 @@ import { Emoji } from '../design-system/components/Emoji';
 const NOTIFICATION_MS = 6000;
 
 interface NotificationValue {
-  notification: { message: string; emoji: string } | null;
+  notification: { message: string; emoji?: string } | null;
   notify: (message: string, emoji?: string) => void;
 }
 
@@ -42,7 +42,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
     useState<NotificationValue['notification']>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const notify = useCallback((message: string, emoji = '⚠️') => {
+  const notify = useCallback((message: string, emoji?: string) => {
     const text = message.trim();
     if (!text) return;
     clearTimeout(timerRef.current);
@@ -89,7 +89,9 @@ export const NotificationToast: React.FC<{
       }
     >
       <View className="max-w-sm flex-row items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 dark:border-line-dark dark:bg-surface-dark">
-        <Emoji symbol={notification.emoji} size={16} />
+        {notification.emoji ? (
+          <Emoji symbol={notification.emoji} size={16} />
+        ) : null}
         <Text
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"

@@ -1,4 +1,5 @@
 import type { Item } from '../services/itemsService';
+import type { ListRankingMode } from '../services/listsService';
 import type {
   LandingRange,
   ManualRatingBounds,
@@ -25,6 +26,7 @@ export interface UseItemWorkspaceOptions {
   userId: string | null;
   listId: string;
   listTitle: string;
+  rankingMode?: ListRankingMode;
   items: Item[];
   onItemsChanged: (item?: Item) => Promise<void>;
   onClosed: () => void;

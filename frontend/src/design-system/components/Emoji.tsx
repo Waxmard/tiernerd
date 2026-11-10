@@ -10,7 +10,7 @@ export function Emoji({ symbol, size = 20, dimmed = false }: EmojiProps) {
   return (
     <Text
       accessible={false}
-      allowFontScaling={false}
+      maxFontSizeMultiplier={1.5}
       style={{
         fontSize: size,
         lineHeight: Math.round(size * 1.3),

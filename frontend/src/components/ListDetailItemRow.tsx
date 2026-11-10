@@ -177,9 +177,12 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             </Text>
           ) : null}
           {!ranked ? (
-            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
-              ⏳ Not ranked yet
-            </Text>
+            <View className="flex-row items-center gap-1">
+              <Emoji symbol="⏳" size={14} />
+              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
+                Not ranked yet
+              </Text>
+            </View>
           ) : null}
         </View>
         {ranked ? (

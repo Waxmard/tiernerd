@@ -182,6 +182,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     userId,
     listId,
     listTitle: detailsTitle,
+    rankingMode,
     items,
     onItemsChanged: handleWorkspaceItemsChanged,
     onClosed: () => {

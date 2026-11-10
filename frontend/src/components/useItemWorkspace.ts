@@ -61,6 +61,7 @@ export function useItemWorkspace({
   userId,
   listId,
   listTitle,
+  rankingMode = 'rank',
   items,
   onItemsChanged,
   onClosed,
@@ -77,6 +78,7 @@ export function useItemWorkspace({
     userId,
     listId,
     listTitle,
+    rankingMode,
     items,
     onItemsChanged,
     onClosed,
@@ -85,6 +87,7 @@ export function useItemWorkspace({
     userId,
     listId,
     listTitle,
+    rankingMode,
     items,
     onItemsChanged,
     onClosed,
@@ -206,8 +209,21 @@ export function useItemWorkspace({
           return false;
         }
         await optionsRef.current.onItemsChanged(item);
+        const insertIndex = insertIndexBestFirst(session);
+        const manualById = new Map(
+          optionsRef.current.items.map((entry) => [
+            entry.item_id,
+            entry.manual_rating,
+          ])
+        );
+        const manualBestFirst = [...session.peersWorstFirst]
+          .reverse()
+          .map((id) => manualById.get(id) ?? null);
+        manualBestFirst.splice(insertIndex, 0, null);
         celebrate(
-          `Ranked #${insertIndexBestFirst(session) + 1} of ${session.peersWorstFirst.length + 1}`,
+          optionsRef.current.rankingMode === 'score'
+            ? `Scored ${formatScore(computeScores(manualBestFirst)[insertIndex] ?? 0)}`
+            : `Ranked #${insertIndex + 1} of ${manualBestFirst.length}`,
           '🎉'
         );
         closeWorkspace();
