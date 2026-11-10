@@ -36,6 +36,7 @@ export type ListMetadataPatch = Partial<
 
 export interface ListOptionsInput {
   title: string;
+  description: string | null;
   ranking_mode: ListRankingMode;
   color: ListColor | null;
   icon: ListIcon | null;

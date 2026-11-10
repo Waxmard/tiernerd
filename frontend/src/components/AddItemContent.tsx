@@ -12,7 +12,7 @@ import {
   type ManualRatingBounds,
 } from '../services/rankingEngine';
 import { EmojiPickerField } from './EmojiPicker';
-import type { ItemFormDraft } from './itemWorkspaceTypes';
+import type { ItemFormDraft, ItemFormField } from './itemWorkspaceTypes';
 
 export interface AddItemFieldErrors {
   name?: string;
@@ -33,6 +33,7 @@ export interface AddItemContentProps {
   autoScore?: number | null;
   scoreBounds?: ManualRatingBounds;
   color?: ListColor | null;
+  focusField?: ItemFormField;
 }
 
 const MAX_NAME_LENGTH = 100;
@@ -55,6 +56,7 @@ export function AddItemContent({
   autoScore = null,
   scoreBounds,
   color = null,
+  focusField = 'name',
 }: AddItemContentProps) {
   const nameRef = useRef<TextInputInstance>(null);
   const scoreRef = useRef<TextInputInstance>(null);
@@ -94,7 +96,7 @@ export function AddItemContent({
             error={fieldErrors.name}
             maxLength={MAX_NAME_LENGTH}
             editable={!isBusy}
-            autoFocus
+            autoFocus={focusField === 'name'}
             containerClassName=""
             inputClassName="text-[20px] font-semibold min-h-12 min-w-0"
           />
@@ -126,6 +128,7 @@ export function AddItemContent({
               inputMode="decimal"
               maxLength={4}
               editable={!isBusy}
+              autoFocus={focusField === 'manualRating'}
               containerClassName=""
               inputClassName="text-[16px] font-semibold min-h-12 min-w-0"
             />
@@ -161,6 +164,7 @@ export function AddItemContent({
         >
           <Input
             emoji="📝"
+            autoFocus={focusField === 'description'}
             label="Description (optional)"
             placeholder="Add a description"
             value={form.description}

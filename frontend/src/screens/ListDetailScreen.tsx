@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { EmojiPickerModal } from '../components/EmojiPicker';
 import { ImmersiveScreenShell } from '../components/ImmersiveBoard';
 import { ListDetailHeader } from '../components/ListDetailHeader';
 import {
@@ -116,6 +117,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setIsListOptionsOpen(false);
     isListOptionsOpenRef.current = false;
   }, [screenIdentity]);
+  const setOptionsOpen = (open: boolean) => {
+    if (identityRef.current !== screenIdentity) return;
+    isListOptionsOpenRef.current = open;
+    setIsListOptionsOpen(open);
+  };
+  const [iconItem, setIconItem] = useState<Item | null>(null);
 
   useEffect(() => {
     if (lastSyncedAt === 0) return;
@@ -412,6 +419,11 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     workspace.isBusy,
     workspace.requestClose,
   ]);
+  const handleItemIcon = async (item: Item, icon: string) => {
+    if (!canMutateFor(screenIdentity)) return;
+    if (await workspace.saveIcon(item, icon))
+      await refreshAfterMutation().catch(() => undefined);
+  };
   const handleStartRanking = () => {
     if (!selectedItem || !canMutateFor(screenIdentity)) return;
     void workspace.startRanking(selectedItem);
@@ -505,6 +517,14 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       color={listColor}
       disabled={isDeletingList || workspace.isBusy}
       onPress={(selected) => void handleItemPress(selected)}
+      onIconPress={
+        canMutate && workspace.mode === 'closed'
+          ? (target) => {
+              setOptionsOpen(true);
+              setIconItem(target);
+            }
+          : undefined
+      }
     />
   );
   const renderListItems = () => {
@@ -572,11 +592,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
                   dismissedDetailsItemId !== selectedItemId)
               }
               onSaveOptions={updateListOptions}
-              onOptionsVisibilityChange={(open) => {
-                if (identityRef.current !== screenIdentity) return;
-                isListOptionsOpenRef.current = open;
-                setIsListOptionsOpen(open);
-              }}
+              onOptionsVisibilityChange={setOptionsOpen}
               addDisabled={
                 !canMutate ||
                 isDeletingList ||
@@ -603,9 +619,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               isLoadingItems={isLoadingItems}
               itemsLoaded={itemsLoaded}
               workspace={workspace}
-              onEdit={() => {
+              onEdit={(focus) => {
                 if (selectedItem && canMutateFor(screenIdentity))
-                  workspace.openEdit(selectedItem);
+                  workspace.openEdit(selectedItem, focus);
+              }}
+              onIconChange={(icon) => {
+                if (selectedItem) void handleItemIcon(selectedItem, icon);
               }}
               onDelete={() => {
                 if (selectedItem && canMutateFor(screenIdentity))
@@ -620,6 +639,20 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           </View>
         </View>
       </SafeAreaView>
+      <EmojiPickerModal
+        visible={iconItem !== null}
+        value={iconItem?.icon ?? null}
+        onSelect={(emoji) => {
+          const target = iconItem;
+          setOptionsOpen(false);
+          setIconItem(null);
+          if (target) void handleItemIcon(target, emoji);
+        }}
+        onClose={() => {
+          setOptionsOpen(false);
+          setIconItem(null);
+        }}
+      />
     </ImmersiveScreenShell>
   );
 };

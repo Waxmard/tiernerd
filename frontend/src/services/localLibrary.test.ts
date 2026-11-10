@@ -411,6 +411,35 @@ test('reconcileListItems, reconcileLists, and reconcileListMetadata apply pendin
   assert.equal(reconciledMeta.updated_at, '2026-01-04T00:00:00.000Z');
 });
 
+test('an icon-only list update keeps the other list fields', () => {
+  const op: SyncOp = {
+    id: 'op-icon',
+    createdAt: '2026-01-02T00:00:00.000Z',
+    kind: 'list.update',
+    listId: LIST,
+    metadata: { icon: '🎮' },
+  };
+  const [list, ...rest] = reconcileLists(
+    [
+      listSummary({
+        title: 'Games',
+        description: 'Best of',
+        color: 'coral',
+        icon: null,
+      }),
+    ],
+    [],
+    [op]
+  );
+  assert.equal(rest.length, 0);
+  assert.ok(list);
+  assert.equal(list.icon, '🎮');
+  assert.equal(list.title, 'Games');
+  assert.equal(list.description, 'Best of');
+  assert.equal(list.color, 'coral');
+  assert.equal(list.updated_at, op.createdAt);
+});
+
 test('reconcileListItems and reconcileLists apply pending create and delete ops', () => {
   const serverItems: Item[] = [item('a', 'a1', 8.5), item('b', 'a0', 3.8)];
   const pendingCreate: SyncOp = {

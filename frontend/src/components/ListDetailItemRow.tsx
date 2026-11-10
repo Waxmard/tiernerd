@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { Emoji } from '../design-system/components';
 import { type ListColor, palette } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
@@ -115,6 +115,7 @@ interface ListDetailItemRowProps {
   selected: boolean;
   disabled: boolean;
   onPress: (item: Item) => void;
+  onIconPress?: (item: Item) => void;
 }
 
 const ROW_CLASS =
@@ -128,6 +129,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   selected,
   disabled,
   onPress,
+  onIconPress,
 }) => {
   const ranked = item.position !== null;
   const medal = ranked ? rankMedal(rank) : null;
@@ -152,6 +154,14 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       accessibilityLabel={accessibleDescription}
       accessibilityHint="Open item details"
       accessibilityState={{ disabled, selected }}
+      accessibilityActions={
+        item.icon && onIconPress
+          ? [{ name: 'changeIcon', label: 'Change emoji' }]
+          : undefined
+      }
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'changeIcon') onIconPress?.(item);
+      }}
       disabled={disabled}
       onPress={() => onPress(item)}
       activeOpacity={0.7}
@@ -164,7 +174,18 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             : 'border-transparent',
         ].join(' ')}
       >
-        {item.icon ? (
+        {item.icon && onIconPress ? (
+          <Pressable
+            className="w-10 min-h-11 mr-3 items-center justify-center shrink-0"
+            accessibilityRole="button"
+            accessibilityLabel={`Change emoji for ${item.name}`}
+            accessibilityHint="Opens the emoji picker"
+            disabled={disabled}
+            onPress={() => onIconPress(item)}
+          >
+            <Emoji symbol={item.icon} size={28} />
+          </Pressable>
+        ) : item.icon ? (
           <View className="w-10 mr-3 items-center shrink-0">
             <Emoji symbol={item.icon} size={28} />
           </View>

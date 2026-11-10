@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import { type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import {
   BaseModalContent,
@@ -16,7 +16,7 @@ import type {
   ListOptionsInput,
   ListRankingMode,
 } from '../services/listsService';
-import { EmojiPickerField } from './EmojiPicker';
+import { EmojiPickerField, EmojiPickerModal } from './EmojiPicker';
 import { ListColorPicker } from './ImmersiveBoard';
 
 const MAX_TITLE_LENGTH = 100;
@@ -111,22 +111,30 @@ export function RankingModeSelector({
   );
 }
 
+export interface ListOptionsHandle {
+  open: (target?: 'title' | 'description' | 'icon') => void;
+}
+
 export function ListRankingOptions({
   title,
+  description,
   rankingMode,
   color,
   icon,
   disabled,
   onSave,
   onVisibilityChange,
+  ref,
 }: {
   title: string;
+  description: string | null;
   rankingMode: ListRankingMode;
   color: ListColor | null;
   icon: ListIcon | null;
   disabled: boolean;
   onSave: (options: ListOptionsInput) => Promise<void>;
   onVisibilityChange: (open: boolean) => void;
+  ref?: Ref<ListOptionsHandle>;
 }) {
   const notify = useNotifyWhenOnline();
   const [open, setOpen] = useState(false);
@@ -135,14 +143,37 @@ export function ListRankingOptions({
   const [titleError, setTitleError] = useState<string | null>(null);
   const [draftColor, setDraftColor] = useState(color);
   const [draftIcon, setDraftIcon] = useState(icon);
+  const [draftDescription, setDraftDescription] = useState(description ?? '');
+  const [focusField, setFocusField] = useState<'title' | 'description' | null>(
+    null
+  );
+  const [pickingIcon, setPickingIcon] = useState(false);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
   const changed =
     draftTitle.trim() !== title ||
+    draftDescription.trim() !== (description ?? '').trim() ||
     draft !== rankingMode ||
     draftColor !== color ||
     draftIcon !== icon;
+  const openOptions = (target?: 'title' | 'description' | 'icon') => {
+    if (disabled || savingRef.current) return;
+    onVisibilityChange(true);
+    if (target === 'icon') {
+      setPickingIcon(true);
+      return;
+    }
+    setDraft(rankingMode);
+    setDraftTitle(title);
+    setDraftDescription(description ?? '');
+    setTitleError(null);
+    setDraftColor(color);
+    setDraftIcon(icon);
+    setFocusField(target ?? null);
+    setOpen(true);
+  };
+  useImperativeHandle(ref, () => ({ open: openOptions }));
   const close = () => {
     if (savingRef.current) return;
     onVisibilityChange(false);
@@ -168,6 +199,7 @@ export function ListRankingOptions({
         ranking_mode: draft,
         color: draftColor,
         icon: draftIcon,
+        description: draftDescription.trim() || null,
       });
       onVisibilityChange(false);
       setOpen(false);
@@ -180,6 +212,31 @@ export function ListRankingOptions({
       setSaving(false);
     }
   };
+  const closePicker = () => {
+    setPickingIcon(false);
+    onVisibilityChange(false);
+  };
+  const pickIcon = async (emoji: string) => {
+    closePicker();
+    if (savingRef.current || emoji === (icon ? listIconEmoji(icon) : null))
+      return;
+    savingRef.current = true;
+    try {
+      await onSave({
+        title,
+        description,
+        ranking_mode: rankingMode,
+        color,
+        icon: emoji,
+      });
+    } catch (err) {
+      notify(
+        err instanceof Error ? err.message : 'Unable to save list options.'
+      );
+    } finally {
+      savingRef.current = false;
+    }
+  };
   return (
     <>
       <Pressable
@@ -187,16 +244,7 @@ export function ListRankingOptions({
         accessibilityLabel="List options"
         accessibilityState={{ disabled }}
         disabled={disabled}
-        onPress={() => {
-          if (disabled) return;
-          setDraft(rankingMode);
-          setDraftTitle(title);
-          setTitleError(null);
-          setDraftColor(color);
-          setDraftIcon(icon);
-          onVisibilityChange(true);
-          setOpen(true);
-        }}
+        onPress={() => openOptions()}
         style={({ pressed }) =>
           pressed && !disabled ? { opacity: 0.7 } : undefined
         }
@@ -249,6 +297,20 @@ export function ListRankingOptions({
               error={titleError ?? undefined}
               maxLength={MAX_TITLE_LENGTH}
               editable={!saving}
+              autoFocus={focusField === 'title'}
+            />
+            <Input
+              emoji="📝"
+              label="Description (optional)"
+              placeholder="Add a description"
+              value={draftDescription}
+              onChangeText={setDraftDescription}
+              multiline
+              numberOfLines={3}
+              editable={!saving}
+              autoFocus={focusField === 'description'}
+              inputClassName="!min-h-[96px] text-[16px]"
+              style={{ textAlignVertical: 'top' }}
             />
             <SectionLabel emoji="😀" label="List icon" />
             <EmojiPickerField
@@ -272,6 +334,12 @@ export function ListRankingOptions({
           </View>
         </BaseModalContent>
       </Modal>
+      <EmojiPickerModal
+        visible={pickingIcon}
+        value={icon ? listIconEmoji(icon) : null}
+        onSelect={(emoji) => void pickIcon(emoji)}
+        onClose={closePicker}
+      />
     </>
   );
 }

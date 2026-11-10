@@ -554,6 +554,7 @@ export function useListDetailData({
       const metadata = {
         title: options.title,
         ranking_mode: options.ranking_mode,
+        description: options.description,
         color: options.color,
         icon: options.icon,
       };
@@ -591,6 +592,7 @@ export function useListDetailData({
               ...base,
               title: options.title,
               color: options.color,
+              description: options.description,
               icon: options.icon,
               ranking_mode: options.ranking_mode,
               updated_at: now,
@@ -605,6 +607,7 @@ export function useListDetailData({
             ...previous,
             detailsTitle: saved?.title ?? options.title,
             listColor: saved?.color ?? options.color,
+            listDescription: saved?.description ?? options.description,
             listIcon: saved?.icon ?? options.icon,
             rankingMode: saved?.ranking_mode ?? options.ranking_mode,
             metadataError: false,

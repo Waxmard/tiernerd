@@ -34,6 +34,7 @@ import { confirmDestructive } from '../utils/confirm';
 import { newId } from '../utils/id';
 import type {
   ItemFormDraft,
+  ItemFormField,
   ItemWorkspace,
   ItemWorkspaceState,
   UseItemWorkspaceOptions,
@@ -52,6 +53,7 @@ const EMPTY_WORKSPACE: ItemWorkspaceState = {
   fieldErrors: {},
   ranking: null,
   isBusy: false,
+  focusField: 'name',
 };
 const AUTH_ERROR = 'Authentication required';
 const RANKING_SAVE_ERROR = 'Unable to save this ranking.';
@@ -140,7 +142,7 @@ export function useItemWorkspace({
   }, [replaceWorkspace]);
 
   const openEdit = useCallback(
-    (item: Item) => {
+    (item: Item, focusField: ItemFormField = 'name') => {
       if (busyRef.current) return;
       const form = {
         name: item.name,
@@ -150,7 +152,13 @@ export function useItemWorkspace({
         icon: item.icon ?? null,
       };
       initialFormRef.current = form;
-      replaceWorkspace({ ...EMPTY_WORKSPACE, mode: 'edit', item, form });
+      replaceWorkspace({
+        ...EMPTY_WORKSPACE,
+        mode: 'edit',
+        item,
+        form,
+        focusField,
+      });
     },
     [replaceWorkspace]
   );
@@ -525,6 +533,54 @@ export function useItemWorkspace({
     updateWorkspace,
   ]);
 
+  const saveIcon = useCallback(
+    async (item: Item, icon: string): Promise<boolean> => {
+      const { userId: activeUserId, listId: activeListId } = optionsRef.current;
+      if (workspaceRef.current.mode !== 'closed' || icon === item.icon)
+        return false;
+      if (!activeUserId) {
+        notify(AUTH_ERROR);
+        return false;
+      }
+      if (!beginBusy()) return false;
+      const now = new Date().toISOString();
+      try {
+        const outcome = await mutate(
+          {
+            id: newId(),
+            createdAt: now,
+            kind: 'item.update',
+            listId: activeListId,
+            itemId: item.item_id,
+            icon,
+          },
+          {
+            applyLocal: () =>
+              localLibrary.applyLocalItemUpdate(activeUserId, activeListId, {
+                ...item,
+                icon,
+                updated_at: now,
+              }),
+            rollbackLocal: () =>
+              localLibrary.applyLocalItemUpdate(
+                activeUserId,
+                activeListId,
+                item
+              ),
+          }
+        );
+        if (outcome.status === 'rejected') {
+          notify(outcome.message);
+          return false;
+        }
+        return true;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [beginBusy, mutate, notify, setBusy]
+  );
+
   const startRanking = useCallback(
     async (item: Item) => {
       if (busyRef.current || workspaceRef.current.mode !== 'closed') return;
@@ -701,5 +757,6 @@ export function useItemWorkspace({
     deleteItem,
     requestClose,
     pauseRanking,
+    saveIcon,
   };
 }

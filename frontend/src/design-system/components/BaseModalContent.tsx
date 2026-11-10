@@ -3,6 +3,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   TouchableWithoutFeedback,
@@ -37,6 +38,10 @@ interface BaseModalContentProps {
   color?: ListColor | null;
   emoji?: string;
   scrollable?: boolean;
+  onTitlePress?: () => void;
+  titleHint?: string;
+  onEmojiPress?: () => void;
+  emojiLabel?: string;
 }
 
 export const BaseModalContent: React.FC<BaseModalContentProps> = ({
@@ -53,6 +58,10 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   color = null,
   emoji,
   scrollable = true,
+  onTitlePress,
+  titleHint,
+  onEmojiPress,
+  emojiLabel,
 }) => {
   const isPanel = presentation === 'panel';
   const safeAreaInsets = useSafeAreaInsets();
@@ -81,9 +90,23 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
         ].join(' ')}
       />
       <View className="flex-row items-center gap-2 shrink-0 mb-4">
-        {emoji ? <Emoji symbol={emoji} size={24} /> : null}
+        {emoji && onEmojiPress ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={emojiLabel}
+            accessibilityHint="Opens the emoji picker"
+            hitSlop={10}
+            onPress={onEmojiPress}
+          >
+            <Emoji symbol={emoji} size={24} />
+          </Pressable>
+        ) : emoji ? (
+          <Emoji symbol={emoji} size={24} />
+        ) : null}
         <Text
           accessibilityRole="header"
+          accessibilityHint={onTitlePress ? titleHint : undefined}
+          onPress={onTitlePress}
           className="flex-1 text-title-large text-ink dark:text-ink-dark text-left"
         >
           {title}

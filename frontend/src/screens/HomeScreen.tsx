@@ -9,6 +9,7 @@ import {
   Image,
   type ListRenderItemInfo,
   Modal,
+  Pressable,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -24,6 +25,7 @@ import {
   CreateListContent,
   type CreateListContentHandle,
 } from '../components/CreateListModal';
+import { EmojiPickerModal } from '../components/EmojiPicker';
 import {
   ImmersiveScreenShell,
   ListIdentityBadge,
@@ -36,7 +38,8 @@ import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { listHue, useTheme } from '../providers/ThemeProvider';
-import { ApiError } from '../services/apiError';
+import { ApiError, getApiErrorMessage } from '../services/apiError';
+import { listIconEmoji } from '../services/emojiCatalog';
 import type { Item } from '../services/itemsService';
 import {
   enqueueListCacheWrite,
@@ -45,8 +48,9 @@ import {
   sortListsByRecency,
 } from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
-import { reconcileLists } from '../services/localLibrary';
+import { localLibrary, reconcileLists } from '../services/localLibrary';
 import { pendingOps } from '../services/syncQueue';
+import { newId } from '../utils/id';
 
 type ModalStep = 'create' | 'addItem' | null;
 interface TierList {
@@ -70,7 +74,7 @@ const toTierList = (list: ListSimple): TierList => ({
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
-  const { flush, isOffline, lastSyncedAt } = useSync();
+  const { flush, isOffline, lastSyncedAt, mutate } = useSync();
   const notify = useNotifyWhenOnline();
   const isOfflineRef = useRef(isOffline);
   isOfflineRef.current = isOffline;
@@ -102,6 +106,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [modalStep, setModalStep] = useState<ModalStep>(null);
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
+  const [iconListId, setIconListId] = useState<string | null>(null);
   const createListRef = useRef<CreateListContentHandle | null>(null);
   const bypassBeforeRemoveRef = useRef(false);
   const closingForNavigationRef = useRef(false);
@@ -274,6 +279,43 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     onItemsChanged: handleWorkspaceItemsChanged,
     onClosed: handleWorkspaceClosed,
   });
+  const showCachedLists = useCallback(
+    async (expectedUserId: string | null, expectedToken: string | null) => {
+      if (!expectedUserId) return;
+      const cached = parseCachedLists(
+        await AsyncStorage.getItem(listsCacheKey(expectedUserId)).catch(
+          () => null
+        )
+      );
+      if (!cached || !isIdentityCurrent(expectedUserId, expectedToken)) return;
+      setLists(cached.map(toTierList));
+      setSnapshotIdentity({ userId: expectedUserId, token: expectedToken });
+      setHasSnapshot(true);
+    },
+    [isIdentityCurrent]
+  );
+  const saveListIcon = async (listId: string, icon: string) => {
+    if (!userId) return;
+    const now = new Date().toISOString();
+    const metadata = { icon };
+    try {
+      const outcome = await mutate(
+        { id: newId(), createdAt: now, kind: 'list.update', listId, metadata },
+        {
+          applyLocal: () =>
+            localLibrary.applyLocalListUpdate(userId, listId, metadata, now),
+        }
+      );
+      if (outcome.status === 'rejected') notify(outcome.message);
+    } catch (err) {
+      notify(getApiErrorMessage(err, 'Unable to save the list icon.'));
+    }
+    await refreshLists().catch(() => showCachedLists(userId, token));
+  };
+  const iconListValue = (() => {
+    const icon = visibleLists.find((entry) => entry.id === iconListId)?.icon;
+    return icon ? listIconEmoji(icon) : null;
+  })();
   const handleListCreated = useCallback(
     (list: ListSimple) => {
       const expectedUserId = userId;
@@ -290,24 +332,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       setPendingList({ listId: list.list_id, title: list.title });
       workspace.openAdd();
       setModalStep('addItem');
-      void refreshLists().catch(async () => {
-        if (!expectedUserId) return;
-        const cached = parseCachedLists(
-          await AsyncStorage.getItem(listsCacheKey(expectedUserId)).catch(
-            () => null
-          )
-        );
-        if (!cached || !isIdentityCurrent(expectedUserId, expectedToken))
-          return;
-        setLists(cached.map(toTierList));
-        setSnapshotIdentity({
-          userId: expectedUserId,
-          token: expectedToken,
-        });
-        setHasSnapshot(true);
-      });
+      void refreshLists().catch(() =>
+        showCachedLists(expectedUserId, expectedToken)
+      );
     },
-    [isIdentityCurrent, refreshLists, token, userId, workspace.openAdd]
+    [refreshLists, showCachedLists, token, userId, workspace.openAdd]
   );
   const getModalTitle = () =>
     modalStep === 'create'
@@ -388,6 +417,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               : `${item.title}, ${item.itemCount} items`
           }
           accessibilityHint="Open tier list"
+          accessibilityActions={[{ name: 'changeIcon', label: 'Change icon' }]}
+          onAccessibilityAction={(event) => {
+            if (event.nativeEvent.actionName === 'changeIcon')
+              setIconListId(item.id);
+          }}
           onPress={() =>
             navigation.navigate('ListDetail', {
               listId: item.id,
@@ -399,7 +433,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           style={hue.cardStyle}
         >
           <View className="flex-row items-center gap-3 p-4">
-            <ListIdentityBadge size="lg" color={item.color} icon={item.icon} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Change icon for ${item.title}`}
+              accessibilityHint="Opens the emoji picker"
+              onPress={() => setIconListId(item.id)}
+            >
+              <ListIdentityBadge
+                size="lg"
+                color={item.color}
+                icon={item.icon}
+              />
+            </Pressable>
             <View className="flex-1 min-w-0 gap-1">
               <Text
                 className={`${
@@ -629,6 +674,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               />
             ) : null)}
         </Modal>
+        <EmojiPickerModal
+          visible={iconListId !== null}
+          value={iconListValue}
+          onSelect={(emoji) => {
+            const id = iconListId;
+            setIconListId(null);
+            if (id) void saveListIcon(id, emoji);
+          }}
+          onClose={() => setIconListId(null)}
+        />
       </SafeAreaView>
     </ImmersiveScreenShell>
   );

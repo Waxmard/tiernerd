@@ -6,7 +6,7 @@ import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
 import { AddItemContent } from './AddItemContent';
 import { ItemDetailContent } from './ItemDetailContent';
-import type { ItemWorkspace } from './itemWorkspaceTypes';
+import type { ItemFormField, ItemWorkspace } from './itemWorkspaceTypes';
 import { RankingContent } from './RankingContent';
 
 interface ListDetailWorkspaceHostProps {
@@ -24,7 +24,8 @@ interface ListDetailWorkspaceHostProps {
   itemsLoaded: boolean;
   canMutate: boolean;
   workspace: ItemWorkspace;
-  onEdit: () => void;
+  onEdit: (focus?: ItemFormField) => void;
+  onIconChange: (icon: string) => void;
   onDelete: () => void;
   onDetailsClose: () => void;
   onMobileClose: () => void;
@@ -54,6 +55,7 @@ export const ListDetailWorkspaceHost: React.FC<
   onDetailsClose,
   onMobileClose,
   onStartRanking,
+  onIconChange,
   children,
 }) => {
   const colors = useThemeColors();
@@ -94,6 +96,7 @@ export const ListDetailWorkspaceHost: React.FC<
           autoScore={scoreEdit?.autoScore ?? null}
           scoreBounds={scoreEdit?.bounds}
           color={listColor}
+          focusField={workspace.focusField}
         />
       );
     }
@@ -124,6 +127,7 @@ export const ListDetailWorkspaceHost: React.FC<
         onEdit={onEdit}
         onDelete={onDelete}
         onClose={onDetailsClose}
+        onIconChange={onIconChange}
       />
     );
   };

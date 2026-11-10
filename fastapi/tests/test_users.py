@@ -105,91 +105,16 @@ class TestReadCurrentUser:
         response = await client.get("/api/users/me", headers=auth_headers)
         assert response.status_code == 401
 
-
-class TestUpdateCurrentUser:
-    """Tests for updating current user endpoint."""
-
-    @pytest.mark.parametrize(
-        "payload",
-        [
-            {"email": "updated@example.com"},
-            {"email": "updated@example.com", "username": "changedusername"},
-        ],
-    )
-    async def test_update_current_user_rejects_email(
-        self,
-        client: AsyncClient,
-        test_db: AsyncSession,
-        test_user: User,
-        auth_headers: dict,
-        payload: dict[str, str],
-    ):
-        original_id = test_user.user_id
-        original_email = test_user.email
-        original_username = test_user.username
-        response = await client.put("/api/users/me", json=payload, headers=auth_headers)
-        assert response.status_code == 422
-        await test_db.refresh(test_user)
-        assert test_user.user_id == original_id
-        assert test_user.email == original_email
-        assert test_user.username == original_username
-
-    async def test_update_current_user_username(
+    async def test_update_current_user_is_not_allowed(
         self, client: AsyncClient, test_user: User, auth_headers: dict
     ):
-        response = await client.put(
-            "/api/users/me",
-            json={"username": "newusername"},
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["username"] == "newusername"
-
-    @pytest.mark.parametrize(
-        ("field", "value"),
-        [
-            ("password", "newpassword123"),
-            ("password", None),
-            ("password_hash", "forged-hash"),
-            ("photo_url", "https://example.com/forged.png"),
-            ("photo_url", None),
-            ("background_photo_id", str(uuid.uuid4())),
-        ],
-    )
-    async def test_update_current_user_rejects_protected_fields(
-        self,
-        client: AsyncClient,
-        test_db: AsyncSession,
-        test_user: User,
-        auth_headers: dict,
-        field: str,
-        value: str | None,
-    ):
-        picture = "https://example.com/original.png"
-        test_user.photo_url = picture
-        await test_db.commit()
-        original_email = test_user.email
         original_username = test_user.username
         response = await client.put(
-            "/api/users/me",
-            json={"username": "changedusername", field: value},
-            headers=auth_headers,
+            "/api/users/me", json={"username": "newusername"}, headers=auth_headers
         )
-        assert response.status_code == 422
+        assert response.status_code == 405
         me = await client.get("/api/users/me", headers=auth_headers)
-        assert me.status_code == 200
-        assert me.json()["email"] == original_email
         assert me.json()["username"] == original_username
-        assert me.json()["photo_url"] == picture
-
-    async def test_update_current_user_unauthenticated(self, client: AsyncClient):
-        """Test updating user without authentication fails."""
-        response = await client.put(
-            "/api/users/me",
-            json={"email": "hacker@example.com"},
-        )
-        assert response.status_code == 401
 
 
 class TestGoogleLogin:

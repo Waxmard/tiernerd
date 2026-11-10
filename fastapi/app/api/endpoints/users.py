@@ -25,7 +25,6 @@ from app.crud.crud_user import (
     create_user as crud_create_user,
     get_user_by_email,
     set_background_photo,
-    update_user as crud_update_user,
 )
 from app.db.database import get_db
 from app.db.models import User as UserModel
@@ -33,7 +32,6 @@ from app.schemas.user import (
     GoogleLogin,
     Token,
     User,
-    UserUpdate,
 )
 from app.services import cover_upload_service
 from app.services.auth import (
@@ -132,19 +130,6 @@ async def read_users_me(current_user: UserModel = Depends(get_current_user)) -> 
     Get current user.
     """
     return current_user
-
-
-@router.put("/me", response_model=User)
-async def update_current_user(
-    user_in: UserUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-) -> Any:
-    """
-    Update current user profile.
-    """
-    updated_user = await crud_update_user(db, current_user, user_in)
-    return updated_user
 
 
 @router.put("/me/background", response_model=User)

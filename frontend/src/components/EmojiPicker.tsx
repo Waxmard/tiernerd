@@ -164,24 +164,45 @@ export function EmojiPickerField({
           onPress={() => onChange(null)}
         />
       ) : null}
-      <Modal
+      <EmojiPickerModal
         visible={open}
-        transparent
-        animationType="none"
-        accessibilityLabel="Choose emoji"
-        onRequestClose={close}
-      >
-        {open ? (
-          <EmojiPickerContent
-            value={value}
-            onSelect={(emoji) => {
-              onChange(emoji);
-              close();
-            }}
-            onClose={close}
-          />
-        ) : null}
-      </Modal>
+        value={value}
+        onSelect={(emoji) => {
+          onChange(emoji);
+          close();
+        }}
+        onClose={close}
+      />
     </View>
+  );
+}
+
+export function EmojiPickerModal({
+  visible,
+  value,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  value: string | null;
+  onSelect: (emoji: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      accessibilityLabel="Choose emoji"
+      onRequestClose={onClose}
+    >
+      {visible ? (
+        <EmojiPickerContent
+          value={value}
+          onSelect={onSelect}
+          onClose={onClose}
+        />
+      ) : null}
+    </Modal>
   );
 }
