@@ -46,7 +46,7 @@ This is currently a solo-maintained repo, so there is no `.github/CODEOWNERS` an
 
 Two things ship on or alongside `main`:
 
-- **TestFlight (`deploy-testflight.yml`)** — A published GitHub Release builds its tag. A manual `workflow_dispatch` run builds the commit captured when the run starts, even if the branch advances. Ordinary pushes do not upload. Both paths build a signed iOS Release archive on `macos-26` against the development Cloud Run API and upload `TierNerd.ipa` using the `preview` environment secrets (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `APPLE_CERTIFICATE_P12_BASE64`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64`, `APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD`). Uploads do not wait for CI and do not prove that TestFlight processing or installation succeeded.
+- **TestFlight (`deploy-testflight.yml`)** — A published GitHub Release builds its tag. A manual `workflow_dispatch` run builds the commit captured when the run starts, even if the branch advances. Ordinary pushes do not upload. Both paths build a signed iOS Release archive on `macos-26` against the development Cloud Run API and upload `TierNerd.ipa` using the `preview` environment secrets, the same `ASC_*` and `APPLE_*` values listed in [Upload to TestFlight locally](#upload-to-testflight-locally). Uploads do not wait for CI and do not prove that TestFlight processing or installation succeeded.
 - **Backend** — deploy Cloud Run from `fastapi/` with `make cloud-deploy` (not triggered by a release).
 
 This is why commit hygiene matters: every commit on `main` is read by the release tooling.
@@ -88,7 +88,7 @@ unset ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPL
 
 The marketing version comes from `frontend/package.json`. The upload queries App Store Connect for the highest iOS build number for that version and increments its last component. A failed query stops the upload. To use a known-unused build number instead, run `make testflight IOS_BUILD_NUMBER=123`.
 
-A local upload deploys the dev backend first when its inputs changed, like `make ios`; the GitHub release workflow skips that step because it runs in CI.
+A local upload deploys the dev backend first when its inputs changed; see the [Cloud Dev Loop](AGENTS.md#cloud-dev-loop-cloud-run--neon).
 
 To use another app identity, set `IOS_BUNDLE_ID` for the TestFlight build. Configure matching Apple provisioning and `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` for that bundle ID.
 

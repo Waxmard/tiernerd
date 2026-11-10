@@ -411,14 +411,3 @@ export async function pendingOps(
   const raw = await storage.get(outboxKey(userId)).catch(() => null);
   return parseOps(raw);
 }
-
-export async function pendingItemCreates(
-  userId: string,
-  listId: string,
-  storage: SyncStorage = asyncStorageSyncBackend
-): Promise<Extract<SyncOp, { kind: 'item.create' }>[]> {
-  return (await pendingOps(userId, storage)).filter(
-    (op): op is Extract<SyncOp, { kind: 'item.create' }> =>
-      op.kind === 'item.create' && op.listId === listId
-  );
-}

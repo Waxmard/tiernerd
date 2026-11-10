@@ -1,4 +1,3 @@
-import type React from 'react';
 import { forwardRef, useId } from 'react';
 import {
   Text,
@@ -8,34 +7,50 @@ import {
   View,
 } from 'react-native';
 import { useThemeColors } from '../../providers/ThemeProvider';
+import { SectionLabel } from './Emoji';
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
-  leftIcon?: React.ReactNode;
   inputClassName?: string;
+  emoji?: string;
+  containerClassName?: string;
+  fill?: boolean;
 }
 
 export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
-  { label, error, leftIcon, inputClassName, ...textInputProps },
+  {
+    label,
+    error,
+    inputClassName,
+    emoji,
+    containerClassName,
+    fill,
+    ...textInputProps
+  },
   ref
 ) {
   const colors = useThemeColors();
   const labelId = useId();
 
   return (
-    <View className="mb-4">
+    <View
+      className={[containerClassName ?? 'mb-4', fill ? 'flex-1' : '']
+        .filter(Boolean)
+        .join(' ')}
+    >
       {label && (
-        <Text
+        <SectionLabel
+          label={label}
+          emoji={emoji}
           nativeID={labelId}
-          className="text-label-medium text-ink dark:text-ink-dark mb-1"
-        >
-          {label}
-        </Text>
+          className="mb-1"
+        />
       )}
       <View
         className={[
-          'flex-row items-center border rounded-[10px] px-3 min-h-[48px]',
+          'flex-row border rounded-[10px] px-3 min-h-[48px]',
+          fill ? 'flex-1 items-stretch' : 'items-center',
           'bg-surface dark:bg-surface-dark',
           error
             ? 'border-danger-text dark:border-danger-text-dark'
@@ -43,11 +58,6 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
         ].join(' ')}
         collapsable={false}
       >
-        {leftIcon && (
-          <View accessible={false} className="mr-2 h-6 justify-center">
-            {leftIcon}
-          </View>
-        )}
         <TextInput
           ref={ref}
           className={[

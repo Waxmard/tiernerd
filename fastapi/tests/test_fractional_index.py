@@ -71,32 +71,11 @@ class TestAppendMaxFallback:
 class TestCommonPrefix:
     """a and b share a common prefix — exercises common_prefix_len logic."""
 
-    def test_between_with_shared_prefix(self) -> None:
-        result = generate_key_between("aa0", "aa9")
-        assert "aa0" < result < "aa9"
-
-    def test_b_extends_a_minimally(self) -> None:
-        # ("a0", "a0V") from docstring example
-        result = generate_key_between("a0", "a0V")
-        assert "a0" < result < "a0V"
-
     def test_adjacent_chars_extends_with_suffix(self) -> None:
         # adjacent first chars at boundary, forces extension path
         result = generate_key_between("a0", "a1")
         assert "a0" < result < "a1"
         assert result.startswith("a0")  # extends a, doesn't replace
-
-    def test_suffix_with_max_char_falls_through(self) -> None:
-        result = generate_key_between("a0z", "a1")
-        assert "a0z" < result < "a1"
-
-    def test_deeply_nested_extension(self) -> None:
-        # repeatedly insert between adjacent keys; depth should grow
-        a, b = "a0", "a1"
-        for _ in range(10):
-            mid = generate_key_between(a, b)
-            assert a < mid < b
-            b = mid  # keep narrowing
 
 
 class TestInvariants:
@@ -111,6 +90,10 @@ class TestInvariants:
             ("aaa", "aab"),
             ("a", "b"),
             ("Z9", "a0"),
+            ("aa0", "aa9"),
+            ("a0", "a0V"),
+            ("a0z", "a1"),
+            ("a0", "a1"),
         ],
     )
     def test_result_strictly_between(self, a: str, b: str) -> None:

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Button } from '../design-system/components';
+import { Button, Emoji } from '../design-system/components';
 import type {
   ListColor,
   ListCover,
@@ -64,9 +64,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   onDelete,
 }) => {
   const { colors } = useTheme();
-  const deleteIconColor = deleteDisabled
-    ? colors['ink-disabled']
-    : colors['danger-text'];
   const header = (
     <View className="gap-2 p-3 mt-2 mb-2 rounded-2xl bg-surface dark:bg-surface-dark shrink-0">
       <View className="flex-row items-start">
@@ -114,12 +111,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           className="w-11 h-11 items-center justify-center shrink-0"
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="trash-outline"
-            size={24}
-            color={deleteIconColor}
-            accessible={false}
-          />
+          <Emoji symbol="🗑️" size={22} dimmed={deleteDisabled} />
         </TouchableOpacity>
       </View>
       {cover === 'landscape' || coverPhoto ? (
@@ -176,7 +168,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
               <Ionicons
                 name="add"
                 size={20}
-                color={colors[addDisabled ? 'ink-disabled' : 'accent-text']}
+                color={colors['accent-text']}
                 accessible={false}
               />
             )

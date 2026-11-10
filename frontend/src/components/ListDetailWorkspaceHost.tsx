@@ -68,6 +68,8 @@ export const ListDetailWorkspaceHost: React.FC<
           view={workspace.view}
           presentation={presentation}
           isBusy={isBusy}
+          rankingMode={rankingMode}
+          color={listColor}
           onAnswer={(answer) => void workspace.answer(answer)}
           onUndo={() => void workspace.undo()}
           onCancel={() => void workspace.cancelRanking()}
@@ -91,6 +93,7 @@ export const ListDetailWorkspaceHost: React.FC<
           canEditScore={scoreEdit !== null}
           autoScore={scoreEdit?.autoScore ?? null}
           scoreBounds={scoreEdit?.bounds}
+          color={listColor}
         />
       );
     }

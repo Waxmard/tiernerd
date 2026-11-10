@@ -10,7 +10,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NotificationToast } from '../../providers/NotificationProvider';
+import { useListHue } from '../../providers/ThemeProvider';
+import type { ListColor } from '../tokens/colors';
 import { Button } from './Button';
+import { Emoji } from './Emoji';
 
 const CARD_SHADOW = {
   shadowColor: 'black',
@@ -31,6 +34,8 @@ interface BaseModalContentProps {
   onSubmit?: () => void;
   contentClassName?: string;
   footer?: React.ReactNode;
+  color?: ListColor | null;
+  emoji?: string;
 }
 
 export const BaseModalContent: React.FC<BaseModalContentProps> = ({
@@ -44,9 +49,12 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   onSubmit,
   contentClassName,
   footer,
+  color = null,
+  emoji,
 }) => {
   const isPanel = presentation === 'panel';
   const safeAreaInsets = useSafeAreaInsets();
+  const hue = useListHue(color);
   const content = (
     <View
       className={[
@@ -61,12 +69,24 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
       style={isPanel ? undefined : CARD_SHADOW}
       accessibilityLabel={isPanel ? title : undefined}
     >
-      <Text
-        accessibilityRole="header"
-        className="text-title-large text-ink dark:text-ink-dark shrink-0 mb-4 text-left"
-      >
-        {title}
-      </Text>
+      <View
+        accessible={false}
+        pointerEvents="none"
+        style={hue.washStyle}
+        className={[
+          'absolute top-0 left-0 right-0 h-40',
+          isPanel ? 'rounded-t-2xl' : 'desktop:rounded-t-2xl',
+        ].join(' ')}
+      />
+      <View className="flex-row items-center gap-2 shrink-0 mb-4">
+        {emoji ? <Emoji symbol={emoji} size={24} /> : null}
+        <Text
+          accessibilityRole="header"
+          className="flex-1 text-title-large text-ink dark:text-ink-dark text-left"
+        >
+          {title}
+        </Text>
+      </View>
       <ScrollView
         className="flex-1 min-h-0 -m-1"
         contentContainerClassName="grow p-1"

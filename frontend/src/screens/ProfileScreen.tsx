@@ -15,6 +15,7 @@ import {
   ImmersiveScreenShell,
   ListColorPicker,
 } from '../components/ImmersiveBoard';
+import { Emoji, SectionLabel } from '../design-system/components';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useTheme, useThemeColors } from '../providers/ThemeProvider';
@@ -23,10 +24,14 @@ import type { ThemePreference } from '../services/themePreference';
 type ProfileScreenProps = RootStackScreenProps<'Profile'>;
 
 const THEME_OPTIONS = [
-  { label: 'System', value: 'system' },
-  { label: 'Light', value: 'light' },
-  { label: 'Dark', value: 'dark' },
-] as const satisfies ReadonlyArray<{ label: string; value: ThemePreference }>;
+  { label: 'System', value: 'system', emoji: '📱' },
+  { label: 'Light', value: 'light', emoji: '☀️' },
+  { label: 'Dark', value: 'dark', emoji: '🌙' },
+] as const satisfies ReadonlyArray<{
+  label: string;
+  value: ThemePreference;
+  emoji: string;
+}>;
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
@@ -95,12 +100,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 />
               ) : (
                 <View className="w-11 h-11 rounded-full bg-surface dark:bg-surface-dark items-center justify-center border border-line dark:border-line-dark">
-                  <Ionicons
-                    name="person"
-                    size={22}
-                    color={colors['ink-muted']}
-                    accessible={false}
-                  />
+                  <Emoji symbol="👤" size={22} />
                 </View>
               )}
               <View className="flex-1 min-w-0">
@@ -114,9 +114,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark uppercase mb-2">
-                Account
-              </Text>
+              <SectionLabel emoji="👤" label="Account" className="mb-2" />
               <View className="bg-surface dark:bg-surface-dark border border-line dark:border-line-dark rounded-2xl p-4 gap-1">
                 <Text className="text-label-medium text-ink dark:text-ink-dark">
                   Email address
@@ -128,9 +126,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark uppercase mb-2">
-                Appearance
-              </Text>
+              <SectionLabel emoji="🎨" label="Appearance" className="mb-2" />
               <View className="flex-row gap-2">
                 {THEME_OPTIONS.map((option) => {
                   const selected = preference === option.value;
@@ -148,14 +144,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                           : 'bg-surface dark:bg-surface-dark border-line dark:border-line-dark',
                       ].join(' ')}
                     >
-                      {selected ? (
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={16}
-                          color={colors['accent-text']}
-                          accessible={false}
-                        />
-                      ) : null}
+                      <Emoji symbol={option.emoji} size={16} />
                       <Text
                         className={[
                           'text-label-large',
@@ -166,18 +155,32 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       >
                         {option.label}
                       </Text>
+                      {selected ? (
+                        <Text
+                          accessible={false}
+                          className="text-label-large text-accent-text dark:text-accent-text-dark"
+                        >
+                          ✓
+                        </Text>
+                      ) : null}
                     </Pressable>
                   );
                 })}
               </View>
-              <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark uppercase mt-4 mb-2">
-                Workspace background
-              </Text>
+              <SectionLabel
+                emoji="🏞️"
+                label="Workspace background"
+                className="mt-4 mb-2"
+              />
               <View className="flex-row gap-2">
                 {(
                   [
-                    { label: 'Built-in landscape', value: 'landscape' },
-                    { label: 'Solid canvas', value: 'none' },
+                    {
+                      label: 'Built-in landscape',
+                      value: 'landscape',
+                      emoji: '🏞️',
+                    },
+                    { label: 'Solid canvas', value: 'none', emoji: '⬜' },
                   ] as const
                 ).map((option) => {
                   const selected =
@@ -195,12 +198,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         })
                       }
                       className={[
-                        'flex-1 min-h-[44px] items-center justify-center border rounded-[10px] px-3 py-2',
+                        'flex-1 min-h-[44px] flex-row items-center justify-center gap-1 border rounded-[10px] px-3 py-2',
                         selected
                           ? 'bg-accent-tint dark:bg-accent-tint-dark border-accent dark:border-accent-dark'
                           : 'bg-surface dark:bg-surface-dark border-line dark:border-line-dark',
                       ].join(' ')}
                     >
+                      <Emoji symbol={option.emoji} size={16} />
                       <Text
                         className={[
                           'text-label-large',
@@ -211,13 +215,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       >
                         {option.label}
                       </Text>
+                      {selected ? (
+                        <Text
+                          accessible={false}
+                          className="text-label-large text-accent-text dark:text-accent-text-dark"
+                        >
+                          ✓
+                        </Text>
+                      ) : null}
                     </Pressable>
                   );
                 })}
               </View>
-              <Text className="text-label-medium text-ink-muted dark:text-ink-muted-dark uppercase mt-4 mb-2">
-                Workspace accent
-              </Text>
+              <SectionLabel
+                emoji="🖌️"
+                label="Workspace accent"
+                className="mt-4 mb-2"
+              />
               <ListColorPicker
                 value={workspaceAppearance.accent}
                 allowNone={false}
@@ -235,12 +249,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               onPress={handleSignOut}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name="log-out-outline"
-                size={20}
-                color={colors.ink}
-                accessible={false}
-              />
+              <Emoji symbol="👋" size={20} />
               <Text className="text-label-large text-ink dark:text-ink-dark font-semibold flex-1 ml-4">
                 Sign Out
               </Text>

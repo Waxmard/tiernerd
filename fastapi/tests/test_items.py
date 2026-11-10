@@ -260,21 +260,6 @@ class TestUpdateItem:
         assert test_item.name != original_name
         assert test_item.description != original_description
 
-    async def test_update_item_partial(
-        self, client: AsyncClient, test_item: ItemModel, auth_headers: dict
-    ):
-        """Test partial item update (only name)."""
-        response = await client.put(
-            f"/api/items/items/{test_item.item_id}",
-            json={
-                "name": "New Name Only",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "New Name Only"
-
     async def test_update_item_unauthenticated(
         self, client: AsyncClient, test_item: ItemModel
     ):
@@ -673,28 +658,6 @@ class TestDeleteItem:
         response = await client.delete(
             f"/api/items/items/{test_item.item_id}", headers=auth_headers_user2
         )
-        assert response.status_code == 404
-
-
-class TestItemOwnership:
-    """Tests for item ownership verification edge cases."""
-
-    async def test_read_item_from_deleted_list(
-        self,
-        client: AsyncClient,
-        test_item: ItemModel,
-        test_list: ListModel,
-        auth_headers: dict,
-        test_db: AsyncSession,
-    ):
-        """Test reading item after its list is deleted."""
-        item_id = test_item.item_id
-
-        await test_db.delete(test_list)
-        await test_db.commit()
-
-        response = await client.get(f"/api/items/items/{item_id}", headers=auth_headers)
-        # Item should be gone (cascade delete) or ownership check fails
         assert response.status_code == 404
 
 

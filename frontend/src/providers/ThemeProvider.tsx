@@ -12,6 +12,8 @@ import {
 } from 'react';
 import {
   type ColorSchemeName,
+  type ListColor,
+  palette,
   type ThemeColors,
   themeColors,
 } from '../design-system/tokens/colors';
@@ -111,6 +113,40 @@ export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
   if (!context) throw new Error('useTheme must be used within a ThemeProvider');
   return context;
+}
+
+export function listHue(
+  color: ListColor | null,
+  scheme: ColorSchemeName,
+  colors: ThemeColors
+) {
+  const hue = color
+    ? palette.list[color][scheme]
+    : {
+        solid: colors['accent-line'],
+        'on-solid': colors['on-accent'],
+        tint: colors['accent-tint'],
+        'on-tint': colors['accent-text'],
+      };
+  return {
+    solid: hue.solid,
+    onSolid: hue['on-solid'],
+    tint: hue.tint,
+    onTint: hue['on-tint'],
+    cardStyle: {
+      backgroundColor: hue.tint,
+      backgroundImage: `linear-gradient(135deg, ${hue.tint} 0%, ${colors.surface} 100%)`,
+      borderColor: hue.solid,
+    },
+    washStyle: {
+      backgroundImage: `linear-gradient(180deg, ${hue.tint} 0%, ${colors.surface} 100%)`,
+    },
+  };
+}
+
+export function useListHue(color: ListColor | null) {
+  const { scheme, colors } = useTheme();
+  return listHue(color, scheme, colors);
 }
 
 export const useThemeColors = (): ThemeColors => useTheme().colors;

@@ -31,7 +31,7 @@ import {
 import { PhotoAttribution } from '../components/ListPhotoCover';
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
-import { Button } from '../design-system/components';
+import { Button, Emoji } from '../design-system/components';
 import type {
   ListColor,
   ListCover,
@@ -40,7 +40,7 @@ import type {
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
-import { useThemeColors } from '../providers/ThemeProvider';
+import { listHue, useTheme } from '../providers/ThemeProvider';
 import { ApiError } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import type { ListPhoto } from '../services/listCoversService';
@@ -85,7 +85,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const isOfflineRef = useRef(isOffline);
   isOfflineRef.current = isOffline;
   const userId = user?.id ?? null;
-  const colors = useThemeColors();
+  const { scheme, colors } = useTheme();
   const safeAreaInsets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const columns = windowWidth >= 1280 ? 3 : windowWidth >= 768 ? 2 : 1;
@@ -387,6 +387,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   };
   const renderRow = ({ item }: ListRenderItemInfo<TierList>) => {
+    const hue = listHue(item.color, scheme, colors);
     return (
       <View style={{ width: cardWidth }} className="shrink-0 gap-1">
         <TouchableOpacity
@@ -404,10 +405,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             })
           }
           activeOpacity={0.7}
-          className="w-full shrink-0 overflow-hidden rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark"
+          className="w-full shrink-0 overflow-hidden rounded-2xl border-2"
+          style={hue.cardStyle}
         >
           <View className="flex-row items-center gap-3 p-4">
             <ListIdentityBadge
+              size="lg"
               color={item.color}
               icon={item.icon}
               cover={item.cover}
@@ -428,7 +431,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               ) : null}
             </View>
           </View>
-          <View className="flex-row items-center justify-between gap-2 border-t border-line px-3 py-2 dark:border-line-dark">
+          <View
+            className="flex-row items-center justify-between gap-2 border-t px-3 py-2"
+            style={{ borderColor: hue.solid }}
+          >
             <View className="flex-1 min-w-0 flex-row flex-wrap items-center gap-3">
               <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
                 {item.itemCount} items
@@ -487,7 +493,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 size="small"
                 icon={
                   <Ionicons
-                    name="add-circle-outline"
+                    name="add"
                     size={20}
                     color={colors['on-accent']}
                     accessible={false}
@@ -504,19 +510,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             accessibilityLabel="Create a list. Start ranking what you love."
             onPress={() => setModalStep('create')}
             activeOpacity={0.7}
-            className="w-full min-h-24 flex-row items-center gap-3 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-3 dark:border-control-dark dark:bg-surface-muted-dark"
+            className="w-full items-center gap-2 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-8 dark:border-control-dark dark:bg-surface-muted-dark"
           >
-            <Ionicons
-              name="add-circle-outline"
-              size={24}
-              color={colors['accent-text']}
-              accessible={false}
-            />
-            <View className="flex-1 min-w-0 gap-1">
-              <Text className="text-title-small font-semibold text-ink dark:text-ink-dark">
+            <Emoji symbol="🏆" size={56} />
+            <View className="items-center gap-1">
+              <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
                 Create a list
               </Text>
-              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+              <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
                 Start ranking what you love.
               </Text>
             </View>
@@ -564,11 +565,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   />
                 ) : (
                   <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
-                    <Ionicons
-                      name="person"
-                      size={20}
-                      color={colors['accent-text']}
-                    />
+                    <Emoji symbol="👤" size={20} />
                   </View>
                 )}
               </TouchableOpacity>

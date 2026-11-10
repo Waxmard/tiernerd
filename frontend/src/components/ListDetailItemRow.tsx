@@ -1,14 +1,18 @@
-import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { Emoji } from '../design-system/components';
 import { type ListColor, palette } from '../design-system/tokens/colors';
-import { useTheme, useThemeColors } from '../providers/ThemeProvider';
+import { useTheme } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
-import { formatScore, splitScoreParts } from '../services/rankingEngine';
+import {
+  formatScore,
+  rankMedal,
+  splitScoreParts,
+} from '../services/rankingEngine';
 import { CHIP_CLASS } from './ImmersiveBoard';
 
-const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
+export const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
 
 export interface ItemRankBadgeProps {
   rankingMode: ListRankingMode;
@@ -126,6 +130,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   onPress,
 }) => {
   const ranked = item.position !== null;
+  const medal = ranked ? rankMedal(rank) : null;
   const score =
     ranked && item.rating !== null ? formatScore(item.rating) : null;
   const accessibleDescription = [
@@ -172,19 +177,24 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             </Text>
           ) : null}
           {!ranked ? (
-            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
-              Not ranked yet
-            </Text>
+            <View className="flex-row items-center gap-1">
+              <Emoji symbol="⏳" size={14} />
+              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
+                Not ranked yet
+              </Text>
+            </View>
           ) : null}
         </View>
         {ranked ? (
-          <ItemRankBadge
-            rankingMode={rankingMode}
-            rating={item.rating}
-            rank={rank}
-            color={color}
-            className="ml-3"
-          />
+          <View className="ml-3 flex-row items-center gap-1 shrink-0">
+            {medal ? <Emoji symbol={medal} size={22} /> : null}
+            <ItemRankBadge
+              rankingMode={rankingMode}
+              rating={item.rating}
+              rank={rank}
+              color={color}
+            />
+          </View>
         ) : null}
       </View>
     </TouchableOpacity>
@@ -195,7 +205,6 @@ export const ListItemEmptyState: React.FC<{
   onAdd: () => void;
   disabled?: boolean;
 }> = ({ onAdd, disabled = false }) => {
-  const colors = useThemeColors();
   return (
     <TouchableOpacity
       accessibilityRole="button"
@@ -203,19 +212,14 @@ export const ListItemEmptyState: React.FC<{
       disabled={disabled}
       onPress={onAdd}
       activeOpacity={0.7}
-      className="w-full min-h-24 flex-row items-center gap-3 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-3 dark:border-control-dark dark:bg-surface-muted-dark"
+      className="w-full items-center gap-2 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-8 dark:border-control-dark dark:bg-surface-muted-dark"
     >
-      <Ionicons
-        name="add-circle-outline"
-        size={24}
-        color={colors['accent-text']}
-        accessible={false}
-      />
-      <View className="flex-1 min-w-0 gap-1">
-        <Text className="text-title-small font-semibold text-ink dark:text-ink-dark">
+      <Emoji symbol="🥇" size={56} dimmed={disabled} />
+      <View className="items-center gap-1">
+        <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
           Add your first item
         </Text>
-        <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+        <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
           Add an item, then compare to rank it.
         </Text>
       </View>

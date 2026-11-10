@@ -27,13 +27,13 @@ Development startup seeds accounts for fixture data, not password sign-in. Sign 
 
 - `/api/users` — User management and authentication
 - `/api/lists` — List creation and management
-- `/api/items` — Item management and ranking
+- `/api/items` — Item management
 
 List writes use multipart `metadata` and an optional image file. Older clients can create lists with `name` and `description` query parameters and optional `color` and `ranking_mode` parameters. They can update `title`, `description`, or `ranking_mode` with JSON.
 
 ### Backend commands
 
-Setup, quality targets and the Cloud Run dev loop: see [AGENTS.md](../AGENTS.md#backend-fastapi).
+Setup and quality targets: see [AGENTS.md](../AGENTS.md#backend-fastapi). Cloud Run dev loop: see [Cloud Dev Loop](../AGENTS.md#cloud-dev-loop-cloud-run--neon).
 
 ## Testing
 
@@ -79,17 +79,7 @@ For uploads, set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket 
 
 To configure or change the hosted Unsplash key, pass its Secret Manager name to `make cloud-deploy UNSPLASH_SECRET=<secret-name>`. Later deployments preserve the configured mapping when you omit the option.
 
-Fresh databases use the current schema. For an existing database, back it up and stop the old backend before applying the photo schema migration. From `fastapi/`, inspect the schema:
-
-```bash
-uv run python scripts/migrate_list_photos.py --check
-```
-
-After the backup and application stop, apply the migration:
-
-```bash
-uv run python scripts/migrate_list_photos.py --apply
-```
+Fresh databases use the current schema, and application startup adds the photo column to existing databases.
 
 Interrupted saves or database writes with an uncertain outcome can leave unreferenced uploads. With the correct `DATABASE_URL`, `COVER_UPLOAD_BUCKET`, and Google Cloud credentials loaded, list objects older than 24 hours that are no longer referenced:
 
@@ -105,17 +95,29 @@ uv run python scripts/cleanup_list_cover_uploads.py --apply
 
 Do not configure a bucket-wide expiration policy: it would also remove attached photos.
 
+## Before any migration
+
+Fresh databases use the model schema, and `create_all` does not upgrade existing tables. Before running a migration script against an existing database:
+
+- Back up the intended database.
+- Stop the application that uses it.
+- Load `DATABASE_URL` from the environment's existing secret store; do not put credentials in commands or tracked files.
+- Run `--check` first, then `--apply`. Both scripts are idempotent.
+- Do not wipe application data to fix a schema mismatch.
+
+Run the commands below from `fastapi/`.
+
 ## Upgrade manual ratings and automatic startup migrations
 
-Application startup now applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table, adds any missing additive columns (`users.photo_url`, `lists.color`, `lists.icon`, `lists.cover`, `lists.cover_photo`, `lists.ranking_mode`, `items.manual_rating`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
+Application startup applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table, adds any missing additive columns (`users.photo_url`, `lists.color`, `lists.icon`, `lists.cover`, `lists.cover_photo`, `lists.ranking_mode`, `items.manual_rating`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
 
-The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Back up the intended database and stop the application before applying it. From `fastapi/`, inspect the schema and count incorrect ratings without changing data:
+The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Inspect the schema and count incorrect ratings without changing data:
 
 ```bash
 uv run python scripts/migrate_manual_ratings.py --check
 ```
 
-After the backup exists and the application is stopped, apply it:
+Then apply it:
 
 ```bash
 uv run python scripts/migrate_manual_ratings.py --apply
@@ -123,95 +125,15 @@ uv run python scripts/migrate_manual_ratings.py --apply
 
 `--check` reports whether `items.manual_rating` exists and how many rows need score updates. `--apply` adds the column if missing, rescales scores in a locked transaction, verifies the result, and rolls back on failure. Reapplying it is a no-op.
 
-## Upgrade the list-ranking mode schema
-
-This PostgreSQL-only migration adds list display modes and repairs inconsistent stored scores without changing item positions. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from your environment's secret store; never put credentials in commands or tracked files. Confirm the API URL embedded in the iOS build before choosing a database. Fresh databases use the current model schema; `create_all` does not upgrade existing tables.
-
-For an older database, first run the [UI-ranking migration](#upgrade-the-ui-ranking-schema) if needed, then the [overall-ranking migration](#upgrade-the-overall-ranking-schema) if category columns remain. Do not treat overlapping category positions as one list order. If the unified schema already has incorrect scores, use the migration below to repair them instead of the overall migration's no-op check.
-
-From `fastapi/`, inspect the schema and count incorrect ratings without changing data:
-
-```bash
-uv run python scripts/migrate_list_ranking_mode.py --check
-```
-
-The preflight rejects partial or incompatible schemas and ambiguous item order. Resolve any reported problem before continuing. The default mode is also read-only.
-
-After preflight succeeds, the backup exists, and the old backend is stopped, apply the migration and repeat it to verify a no-op:
-
-```bash
-uv run python scripts/migrate_list_ranking_mode.py --apply
-uv run python scripts/migrate_list_ranking_mode.py --apply
-```
-
-The migration preserves existing valid mode choices, item order, metadata and sessions. It recalculates incorrect ratings in a locked transaction and rolls back if verification fails.
-
-Deploy the matching backend after the migration. For the default development API, run `make cloud-deploy CLOUD_ENV=dev` from `fastapi/`; use a different target only if the app is configured for it. Refresh the affected list against that API and confirm its scores follow the current curve: four items without manual scores show 8.3, 7.1, 5.8 and 4.1. Then run a fresh `make ios` from the repository root and confirm the device shows the same scores. `make ios` deploys the backend itself when its inputs changed, but no build or deploy migrates the database.
-
-## Upgrade the overall-ranking schema
-
-This PostgreSQL-only migration changes stored positions and scores and cancels active ranking drafts. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from your platform secret store; never put credentials in commands or tracked files. The [UI-ranking migration](#upgrade-the-ui-ranking-schema) is a prerequisite for databases that have not already applied it. Fresh databases use the current model schema; `create_all` does not upgrade existing tables.
-
-From `fastapi/`, run the read-only preflight (the default mode is also read-only):
-
-```bash
-uv run python scripts/migrate_overall_ranking.py --check
-```
-
-Resolve any reported missing or unknown categories on ranked items, or duplicate positions within a category, before continuing. The migration rejects unsupported or partially upgraded schemas.
-
-After preflight succeeds, the backup exists, and the old backend is stopped, apply the migration:
-
-```bash
-uv run python scripts/migrate_overall_ranking.py --apply
-```
-
-The migration preserves items and their existing best-first order, recalculates scores across each list, and removes category columns. Active and ready-to-commit drafts are cancelled without deleting their candidate items. The migration verifies the result in a locked transaction; failure rolls it back. Reapplying it verifies the upgraded schema and is a no-op. Deploy the matching backend and client after the migration; do not restart the old backend against the upgraded schema.
-
-## Upgrade the UI-ranking schema
-
-This migration supports PostgreSQL only. Back up the database and stop the application before applying it. Load `DATABASE_URL` through your platform secret store; never put credentials in this command or a tracked file. `create_all` does not upgrade existing tables.
-
-Run the read-only preflight from `fastapi/` (the default mode is also read-only):
-
-```bash
-uv run python scripts/migrate_ui_ranking.py --check
-```
-
-Resolve any reported same-list duplicate names or blank/overlength names yourself. The migration stops without changing conflicting data; it does not rename or delete items.
-
-After preflight succeeds, the backup exists, and the application is stopped, apply the migration:
-
-```bash
-uv run python scripts/migrate_ui_ranking.py --apply
-```
-
-The migration trims display names, backfills normalized identity keys, and adds uniqueness and draft-session constraints in one locked transaction. Legacy active sessions become cancelled without deleting items or changing ranks; historical completed sessions remain completed. Previously unranked items can start a fresh ranking. Unknown partial schemas are rejected. A verified upgraded schema is a no-op on rerun.
-
-## Drop the comparison-session schema
-
-Once every client ranks locally, `comparison_sessions` is unused. Application startup already drops it via `create_tables` (`DROP TABLE IF EXISTS comparison_sessions`); the script below remains available for an offline drop or a preflight row check. Run the UI-ranking upgrade first if the database is older. Back up the database and stop the application before applying it.
-
-From `fastapi/`:
-
-```bash
-uv run python scripts/migrate_drop_comparison_sessions.py --check
-uv run python scripts/migrate_drop_comparison_sessions.py --apply
-```
-
-`--check` reports whether the table exists and how many rows it holds; it never changes the database. `--apply` drops the table and prints the discarded row count. Reapplying is a no-op. Deploy the matching backend after the drop.
-
 ## Upgrade the Google authentication schema
 
-Applying this migration permanently discards password hashes. Back up the intended database and stop the old backend before applying it. Load `DATABASE_URL` from the environment's existing secret store; do not put credentials in commands or tracked files. Fresh databases use the model schema; `create_all` does not upgrade existing tables.
-
-From `fastapi/`, inspect the existing schema without changing it:
+Startup does not run this migration, and applying it permanently discards password hashes. Inspect the existing schema without changing it:
 
 ```bash
 uv run python scripts/migrate_google_auth.py --check
 ```
 
-After the backup is complete and the old backend is stopped, apply the migration:
+Then apply the migration:
 
 ```bash
 uv run python scripts/migrate_google_auth.py --apply

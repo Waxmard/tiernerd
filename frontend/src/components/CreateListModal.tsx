@@ -8,7 +8,12 @@ import {
   useState,
 } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
-import { BaseModalContent, Input } from '../design-system/components';
+import {
+  BaseModalContent,
+  Emoji,
+  Input,
+  SectionLabel,
+} from '../design-system/components';
 import {
   type ListColor,
   type ListIcon,
@@ -251,6 +256,16 @@ export const CreateListContent = forwardRef<
 
   return (
     <BaseModalContent
+      color={color}
+      emoji={
+        view === 'overview'
+          ? '📋'
+          : view === 'description'
+            ? '📝'
+            : view === 'color'
+              ? '🎨'
+              : '🏆'
+      }
       title={
         view === 'overview'
           ? 'Create New List'
@@ -275,6 +290,7 @@ export const CreateListContent = forwardRef<
       {view === 'overview' ? (
         <>
           <Input
+            emoji="🏷️"
             ref={titleRef}
             label="Title"
             placeholder="Enter list title"
@@ -297,6 +313,7 @@ export const CreateListContent = forwardRef<
             onPress={openDescription}
             className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4"
           >
+            <Emoji symbol="📝" size={20} />
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
                 Description (optional)
@@ -324,6 +341,7 @@ export const CreateListContent = forwardRef<
             onPress={openColor}
             className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4"
           >
+            <Emoji symbol="🎨" size={20} />
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
                 Appearance (optional)
@@ -363,6 +381,7 @@ export const CreateListContent = forwardRef<
             }}
             className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4"
           >
+            <Emoji symbol={rankingMode === 'rank' ? '🏆' : '🎯'} size={20} />
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
                 Ranking mode
@@ -383,6 +402,7 @@ export const CreateListContent = forwardRef<
         </>
       ) : view === 'description' ? (
         <Input
+          emoji="📝"
           label="Description (optional)"
           placeholder="Add a description"
           value={description}
@@ -402,25 +422,19 @@ export const CreateListContent = forwardRef<
         />
       ) : (
         <View className="gap-4">
-          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-            Color
-          </Text>
+          <SectionLabel emoji="🎨" label="Color" />
           <ListColorPicker
             value={color}
             onChange={setColor}
             disabled={isLoading || coverBusy}
           />
-          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-            Icon
-          </Text>
+          <SectionLabel emoji="😀" label="Icon" />
           <ListIconPicker
             value={icon}
             onChange={setIcon}
             disabled={isLoading || coverBusy}
           />
-          <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-            Cover
-          </Text>
+          <SectionLabel emoji="🖼️" label="Cover" />
           <ListCoverPicker
             key={coverSession}
             value={coverDraft}

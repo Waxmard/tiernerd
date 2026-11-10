@@ -1,7 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
-import { BaseModalContent, Button, Input } from '../design-system/components';
+import {
+  BaseModalContent,
+  Button,
+  Emoji,
+  Input,
+  SectionLabel,
+} from '../design-system/components';
 import type {
   ListColor,
   ListCover,
@@ -28,16 +34,19 @@ const choices: {
   value: ListRankingMode;
   title: string;
   description: string;
+  emoji: string;
 }[] = [
   {
     value: 'rank',
     title: 'Ranked positions',
     description: '1, 2, 3 — best first.',
+    emoji: '🏆',
   },
   {
     value: 'score',
     title: 'Scores out of 10',
     description: 'Based on list order, with optional manual scores.',
+    emoji: '🎯',
   },
 ];
 
@@ -95,6 +104,7 @@ export function RankingModeSelector({
               }
               accessible={false}
             />
+            <Emoji symbol={choice.emoji} size={20} dimmed={disabled} />
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
                 {choice.title}
@@ -133,7 +143,6 @@ export function ListRankingOptions({
   onSave: (options: ListOptionsInput) => Promise<void>;
   onVisibilityChange: (open: boolean) => void;
 }) {
-  const colors = useThemeColors();
   const notify = useNotifyWhenOnline();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(rankingMode);
@@ -238,12 +247,7 @@ export function ListRankingOptions({
         }
         className="w-11 h-11 items-center justify-center shrink-0"
       >
-        <Ionicons
-          name="options-outline"
-          size={24}
-          color={colors[disabled ? 'ink-disabled' : 'ink']}
-          accessible={false}
-        />
+        <Emoji symbol="⚙️" size={22} dimmed={disabled} />
       </Pressable>
       <Modal
         visible={open}
@@ -254,6 +258,8 @@ export function ListRankingOptions({
       >
         <BaseModalContent
           title="List options"
+          emoji="⚙️"
+          color={draftColor}
           onClose={close}
           footer={
             <View className="flex-row flex-wrap items-center justify-end gap-2">
@@ -277,6 +283,7 @@ export function ListRankingOptions({
         >
           <View className="gap-4">
             <Input
+              emoji="🏷️"
               label="Title"
               placeholder="Enter list title"
               value={draftTitle}
@@ -288,25 +295,19 @@ export function ListRankingOptions({
               maxLength={MAX_TITLE_LENGTH}
               editable={!saving}
             />
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              List icon
-            </Text>
+            <SectionLabel emoji="😀" label="List icon" />
             <ListIconPicker
               value={draftIcon}
               onChange={setDraftIcon}
               disabled={saving}
             />
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              Accent color
-            </Text>
+            <SectionLabel emoji="🎨" label="Accent color" />
             <ListColorPicker
               value={draftColor}
               onChange={setDraftColor}
               disabled={saving}
             />
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              Cover
-            </Text>
+            <SectionLabel emoji="🖼️" label="Cover" />
             {open ? (
               <ListCoverPicker
                 key={coverSession}
@@ -328,9 +329,7 @@ export function ListRankingOptions({
                 }}
               />
             ) : null}
-            <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-              Ranking mode
-            </Text>
+            <SectionLabel emoji="🏆" label="Ranking mode" />
             <RankingModeSelector
               value={draft}
               onChange={setDraft}

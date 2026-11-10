@@ -3,7 +3,7 @@
 Database seed script for local development.
 
 Creates dev users for testing.
-Run with: make seed
+Run with: make reset
 """
 
 import asyncio

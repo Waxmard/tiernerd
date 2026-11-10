@@ -13,14 +13,22 @@ import {
   insertIndexBestFirst,
   isDecided,
   isDraftCurrent,
+  landingRange,
   manualRatingBounds,
   manualRatingBoundsError,
   parseManualRatingInput,
+  rankMedal,
   scoreForRank,
   splitScoreParts,
   targetPeerId,
   undoAnswer,
 } from './rankingEngine.ts';
+
+test('only the top three ranks get a medal', () => {
+  assert.ok(rankMedal(3));
+  assert.equal(rankMedal(4), null);
+  assert.equal(rankMedal(null), null);
+});
 
 const peers = ['best', 'second', 'third', 'worst'];
 
@@ -58,18 +66,18 @@ test('the binary search narrows one question at a time', () => {
   assert.equal(gap(afterWorse), 3);
 });
 
-test('undo restores the previous question', () => {
-  const session = applyAnswer(
-    createRankingSession('item', 'list', peers),
-    'worse'
-  );
-  const undone = undoAnswer(session);
-  assert.deepEqual(undone.answers, []);
-  assert.equal(
-    targetPeerId(undone),
-    targetPeerId(createRankingSession('item', 'list', peers))
-  );
-  assert.deepEqual(undoAnswer(undone), undone);
+test('the landing range narrows with each answer', () => {
+  assert.deepEqual(landingRange(decide()), { best: 1, worst: 5, total: 5 });
+  assert.deepEqual(landingRange(decide('better')), {
+    best: 1,
+    worst: 2,
+    total: 5,
+  });
+  assert.deepEqual(landingRange(decide('worse')), {
+    best: 3,
+    worst: 5,
+    total: 5,
+  });
 });
 
 test('undo walks back every answer, one question at a time', () => {

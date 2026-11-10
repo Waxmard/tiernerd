@@ -70,6 +70,14 @@ export function insertIndexBestFirst(session: RankingSession): number {
   return session.peersWorstFirst.length - gap(session);
 }
 
+export type LandingRange = { best: number; worst: number; total: number };
+
+export function landingRange(session: RankingSession): LandingRange {
+  const { low, high } = bounds(session);
+  const total = session.peersWorstFirst.length + 1;
+  return { best: total - high, worst: total - low, total };
+}
+
 const CURVE_ALPHA = 0.7;
 const CURVE_BETA = 0.54;
 const AUTO_MIN_SCORE = 0.1;
@@ -98,6 +106,12 @@ export function halfEven1(value: number): number {
           ? floor
           : floor + 1;
   return rounded / 10;
+}
+
+const RANK_MEDALS = ['🥇', '🥈', '🥉'];
+
+export function rankMedal(rank: number | null): string | null {
+  return rank === null ? null : (RANK_MEDALS[rank - 1] ?? null);
 }
 
 export function formatScore(value: number): string {

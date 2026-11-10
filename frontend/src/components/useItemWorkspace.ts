@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { useNotify } from '../providers/NotificationProvider';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { duplicateItemName } from '../services/itemNames';
 import type { Item } from '../services/itemsService';
@@ -19,6 +20,7 @@ import {
   insertIndexBestFirst,
   isDecided,
   isDraftCurrent,
+  landingRange,
   manualRatingBounds,
   manualRatingBoundsError,
   parseManualRatingInput,
@@ -59,12 +61,14 @@ export function useItemWorkspace({
   userId,
   listId,
   listTitle,
+  rankingMode = 'rank',
   items,
   onItemsChanged,
   onClosed,
 }: UseItemWorkspaceOptions): ItemWorkspace {
   const { mutate } = useSync();
   const notify = useNotifyWhenOnline();
+  const celebrate = useNotify();
   const [workspace, setWorkspace] =
     useState<ItemWorkspaceState>(EMPTY_WORKSPACE);
   const workspaceRef = useRef(workspace);
@@ -74,6 +78,7 @@ export function useItemWorkspace({
     userId,
     listId,
     listTitle,
+    rankingMode,
     items,
     onItemsChanged,
     onClosed,
@@ -82,6 +87,7 @@ export function useItemWorkspace({
     userId,
     listId,
     listTitle,
+    rankingMode,
     items,
     onItemsChanged,
     onClosed,
@@ -203,13 +209,30 @@ export function useItemWorkspace({
           return false;
         }
         await optionsRef.current.onItemsChanged(item);
+        const insertIndex = insertIndexBestFirst(session);
+        const manualById = new Map(
+          optionsRef.current.items.map((entry) => [
+            entry.item_id,
+            entry.manual_rating,
+          ])
+        );
+        const manualBestFirst = [...session.peersWorstFirst]
+          .reverse()
+          .map((id) => manualById.get(id) ?? null);
+        manualBestFirst.splice(insertIndex, 0, null);
+        celebrate(
+          optionsRef.current.rankingMode === 'score'
+            ? `Scored ${formatScore(computeScores(manualBestFirst)[insertIndex] ?? 0)}`
+            : `Ranked #${insertIndex + 1} of ${manualBestFirst.length}`,
+          '🎉'
+        );
         closeWorkspace();
         return true;
       } finally {
         setBusy(false);
       }
     },
-    [beginBusy, closeWorkspace, mutate, notify, setBusy]
+    [beginBusy, celebrate, closeWorkspace, mutate, notify, setBusy]
   );
 
   const resumeRanking = useCallback(
@@ -630,9 +653,14 @@ export function useItemWorkspace({
     const target = peerId
       ? (items.find((item) => item.item_id === peerId) ?? null)
       : null;
+    const ranked = items.filter((entry) => entry.position !== null);
+    const targetIndex = ranked.findIndex((entry) => entry.item_id === peerId);
     view = {
       item: rankingItem,
       target,
+      targetRank: targetIndex === -1 ? null : targetIndex + 1,
+      rankedCount: ranked.length,
+      range: landingRange(ranking),
       answered: ranking.answers.length,
       limit: comparisonLimit(ranking.peersWorstFirst.length),
       canUndo: ranking.answers.length > 0,

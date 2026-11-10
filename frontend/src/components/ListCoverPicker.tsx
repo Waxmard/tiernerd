@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Button, Input } from '../design-system/components';
+import { Button, Emoji, Input } from '../design-system/components';
 import type { ListColor } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
@@ -196,12 +196,14 @@ export function ListCoverPicker({
   const photoTabsDisabled = inactive || isOffline;
   const options: {
     label: string;
+    emoji: string;
     selected: boolean;
     disabled?: boolean;
     onPress: () => void;
   }[] = [
     {
       label: 'None',
+      emoji: '🚫',
       selected: value.kind === 'none',
       onPress: () => {
         onChange({ kind: 'none' });
@@ -209,6 +211,7 @@ export function ListCoverPicker({
     },
     {
       label: 'Landscape',
+      emoji: '🏞️',
       selected: value.kind === 'landscape',
       onPress: () => {
         onChange({ kind: 'landscape' });
@@ -218,6 +221,7 @@ export function ListCoverPicker({
       ? [
           {
             label: 'Search photos',
+            emoji: '🔍',
             selected: previewPhoto?.source === 'unsplash',
             disabled: photoTabsDisabled,
             onPress: () => {
@@ -228,6 +232,7 @@ export function ListCoverPicker({
       : []),
     {
       label: 'Choose from device',
+      emoji: '📷',
       selected: value.kind === 'local' || previewPhoto?.source === 'upload',
       disabled: photoTabsDisabled,
       onPress: () => void chooseLocal(),
@@ -241,6 +246,7 @@ export function ListCoverPicker({
       {searchView ? (
         <>
           <Input
+            emoji="🔍"
             label="Search photos"
             placeholder="Search by subject"
             maxLength={100}
@@ -353,12 +359,13 @@ export function ListCoverPicker({
                   disabled={blocked}
                   onPress={option.onPress}
                   className={[
-                    'min-w-[44%] flex-1 min-h-11 flex-row items-center justify-center rounded-[10px] border px-3 py-2',
+                    'min-w-[44%] flex-1 min-h-11 flex-row items-center justify-center gap-1 rounded-[10px] border px-3 py-2',
                     option.selected
                       ? 'border-accent dark:border-accent-dark bg-accent-tint dark:bg-accent-tint-dark'
                       : 'border-control dark:border-control-dark bg-surface dark:bg-surface-dark',
                   ].join(' ')}
                 >
+                  <Emoji symbol={option.emoji} size={16} dimmed={blocked} />
                   <Text
                     className={[
                       'text-body-small font-semibold text-center',

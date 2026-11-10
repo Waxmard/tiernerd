@@ -36,5 +36,9 @@ else
     -destination 'generic/platform=iOS' -derivedDataPath ios/DerivedData -allowProvisioningUpdates IPHONEOS_DEPLOYMENT_TARGET=17.0 build
 fi
 xcrun devicectl list devices --timeout 10
-xcrun devicectl device install app --device "$device" "$app"
+xcrun devicectl device install app --device "$device" "$app" || {
+  echo 'Install failed; retrying once in 5 seconds.' >&2
+  sleep 5
+  xcrun devicectl device install app --device "$device" "$app"
+}
 xcrun devicectl device process launch --device "$device" com.maxwellward.tiernerd

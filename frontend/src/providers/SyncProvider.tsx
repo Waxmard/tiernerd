@@ -58,7 +58,7 @@ export const useNotifyWhenOnline = (): ((message: string) => void) => {
   return useCallback(
     (message: string) => {
       if (offlineRef.current) return;
-      notify(message);
+      notify(message, '⚠️');
     },
     [notify]
   );
@@ -107,12 +107,12 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
       for (const id of outcome.applied) appliedOpsRef.current.add(id);
       for (const entry of outcome.dropped) {
         droppedOpsRef.current.set(entry.opId, entry.message);
-        notify(entry.message);
+        notify(entry.message, '⚠️');
       }
       for (const entry of outcome.refused) {
         if (notifiedRef.current.has(entry.opId)) continue;
         notifiedRef.current.add(entry.opId);
-        notify(`Saved on this device — sync failed: ${entry.message}`);
+        notify(`Saved on this device — sync failed: ${entry.message}`, '⚠️');
       }
     },
     [notify]
@@ -134,7 +134,7 @@ export const SyncProvider: React.FC<{ children: ReactNode }> = ({
         synced ||= outcome.applied.length > 0 || outcome.dropped.length > 0;
       }
       if (outcome.status === 'auth')
-        notify('Sign in again to save your pending changes.');
+        notify('Sign in again to save your pending changes.', '⚠️');
       if (synced) setLastSyncedAt(Date.now());
     })();
     flushRef.current = task;

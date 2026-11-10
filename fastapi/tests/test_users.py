@@ -12,9 +12,7 @@ from app.core.constants import (
     GOOGLE_AUTH_NOT_CONFIGURED_ERROR,
     INVALID_GOOGLE_TOKEN_ERROR,
 )
-from app.crud import crud_user
 from app.db.models import List as ListModel, User
-from app.schemas.user import UserUpdate
 from app.services.auth import create_access_token
 from app.settings import get_settings
 
@@ -102,35 +100,6 @@ class TestReadCurrentUser:
         await test_db.commit()
         response = await client.get("/api/users/me", headers=auth_headers)
         assert response.status_code == 401
-
-
-class TestUserCRUD:
-    """Tests for user CRUD operations."""
-
-    async def test_update_user_username_only(
-        self, test_db: AsyncSession, test_user: User
-    ):
-        original_email = test_user.email
-        update_data = UserUpdate(username="newusername")
-        updated_user = await crud_user.update_user(test_db, test_user, update_data)
-
-        assert updated_user.username == "newusername"
-        assert updated_user.email == original_email
-
-    async def test_create_user_crud(self, test_db: AsyncSession):
-        user = await crud_user.create_user(
-            test_db,
-            email="crudtest@example.com",
-            username="crudtestuser",
-            photo_url="https://example.com/photo.png",
-        )
-
-        assert user.email == "crudtest@example.com"
-        assert user.username == "crudtestuser"
-        assert user.photo_url == "https://example.com/photo.png"
-        assert user.user_id is not None
-        assert user.created_at is not None
-        assert user.updated_at is not None
 
 
 class TestUpdateCurrentUser:

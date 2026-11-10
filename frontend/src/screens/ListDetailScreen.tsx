@@ -182,6 +182,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     userId,
     listId,
     listTitle: detailsTitle,
+    rankingMode,
     items,
     onItemsChanged: handleWorkspaceItemsChanged,
     onClosed: () => {
@@ -318,7 +319,11 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         'Are you sure you want to delete this list? All items will be permanently deleted.',
         'Delete'
       );
-      if (!confirmed || workspaceBusyRef.current || !canMutateFor(identity))
+      if (
+        !confirmed ||
+        workspaceBusyRef.current ||
+        identityRef.current !== identity
+      )
         return;
       await evictDeletedList();
       if (identityRef.current !== identity) return;

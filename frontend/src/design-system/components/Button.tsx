@@ -96,7 +96,10 @@ export const Button: React.FC<ButtonProps> = ({
     >
       <View className="flex-row items-center shrink">
         {icon && (
-          <View accessible={false} className="mr-2">
+          <View
+            accessible={false}
+            className={isDisabled ? 'mr-2 opacity-40' : 'mr-2'}
+          >
             {icon}
           </View>
         )}

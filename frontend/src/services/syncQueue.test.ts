@@ -3,7 +3,6 @@ import { test } from 'node:test';
 import { ApiError, NetworkError } from './apiError.ts';
 import {
   createSyncQueue,
-  pendingItemCreates,
   pendingOps,
   type SyncOp,
   type SyncStorage,
@@ -338,26 +337,6 @@ test('a dependent edit waits for its refused create', async () => {
     ['1']
   );
   assert.equal(await queue.count(), 2);
-});
-
-test('pendingItemCreates returns creates for one list', async () => {
-  const storage = memoryStorage();
-  await storage.set(
-    `outbox:v1:${USER}`,
-    JSON.stringify([
-      itemCreate('1', 'a'),
-      { ...itemCreate('2', 'b'), listId: 'list-2' },
-      rankingSet('3', 'a', 1),
-    ])
-  );
-
-  const pending = await pendingItemCreates(USER, 'list-1', storage);
-
-  assert.deepEqual(
-    pending.map((op) => op.itemId),
-    ['a']
-  );
-  assert.deepEqual(await pendingItemCreates(USER, 'list-3', storage), []);
 });
 
 test('compacts manualRating across item.create, ranking.set, and item.update', async () => {

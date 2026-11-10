@@ -1,13 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { cssInterop } from 'nativewind';
 import { useEffect, useRef, useState } from 'react';
 import { Image, Linking, Platform, Text, View } from 'react-native';
 import { API_BASE_URL } from '../config/api';
+import { Emoji } from '../design-system/components';
 import type { ListColor, ListCover } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
 import { useSync } from '../providers/SyncProvider';
-import { useThemeColors } from '../providers/ThemeProvider';
 import type { ListPhoto } from '../services/listCoversService';
 import { LandscapeBackdrop } from './LandscapeBackdrop';
 
@@ -32,7 +31,6 @@ export function ListPhotoCover({
 }: ListPhotoCoverProps) {
   const { token } = useAuth();
   const { isOffline } = useSync();
-  const colors = useThemeColors();
   const [blobState, setBlobState] = useState<{
     identity: string;
     url: string;
@@ -142,12 +140,7 @@ export function ListPhotoCover({
           .filter(Boolean)
           .join(' ')}
       >
-        <Ionicons
-          name="image-outline"
-          size={20}
-          color={colors['ink-muted']}
-          accessible={false}
-        />
+        <Emoji symbol="🖼️" size={20} />
         <Text
           numberOfLines={1}
           className="text-label-small text-ink-muted dark:text-ink-muted-dark text-center"
@@ -194,12 +187,7 @@ export function ListPhotoCover({
               .filter(Boolean)
               .join(' ')}
           >
-            <Ionicons
-              name="image-outline"
-              size={20}
-              color={colors['ink-muted']}
-              accessible={false}
-            />
+            <Emoji symbol="🖼️" size={20} />
             <Text
               numberOfLines={1}
               className="text-label-small text-ink-muted dark:text-ink-muted-dark text-center"

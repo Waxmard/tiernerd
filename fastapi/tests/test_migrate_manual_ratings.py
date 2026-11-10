@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.db import database as db_module
 from app.settings import get_settings
-from scripts.migrate_manual_ratings import _arguments, main
+from scripts.migrate_manual_ratings import main
 
 
 def _sqlite_engine(path) -> Engine:
@@ -57,7 +57,6 @@ def test_check_reports_missing_column_and_mismatches_without_mutating(
     path, capsys = legacy_items_database
     engine = _sqlite_engine(path)
 
-    assert _arguments([]).apply is False
     assert main(["--check"]) == 0
     out = capsys.readouterr().out
     assert "missing" in out

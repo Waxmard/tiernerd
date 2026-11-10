@@ -11,12 +11,13 @@ import {
 } from 'react';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Emoji } from '../design-system/components/Emoji';
 
 const NOTIFICATION_MS = 6000;
 
 interface NotificationValue {
-  message: string | null;
-  notify: (message: string) => void;
+  notification: { message: string; emoji?: string } | null;
+  notify: (message: string, emoji?: string) => void;
 }
 
 const NotificationContext = createContext<NotificationValue | undefined>(
@@ -31,29 +32,33 @@ const useNotification = (): NotificationValue => {
   return context;
 };
 
-export const useNotify = (): ((message: string) => void) =>
+export const useNotify = (): NotificationValue['notify'] =>
   useNotification().notify;
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [message, setMessage] = useState<string | null>(null);
+  const [notification, setNotification] =
+    useState<NotificationValue['notification']>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const notify = useCallback((message: string) => {
+  const notify = useCallback((message: string, emoji?: string) => {
     const text = message.trim();
     if (!text) return;
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       timerRef.current = undefined;
-      setMessage(null);
+      setNotification(null);
     }, NOTIFICATION_MS);
-    setMessage(text);
+    setNotification({ message: text, emoji });
   }, []);
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
-  const value = useMemo(() => ({ message, notify }), [message, notify]);
+  const value = useMemo(
+    () => ({ notification, notify }),
+    [notification, notify]
+  );
 
   return (
     <NotificationContext.Provider value={value}>
@@ -65,9 +70,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
 export const NotificationToast: React.FC<{
   variant?: 'overlay' | 'inline';
 }> = ({ variant = 'overlay' }) => {
-  const { message } = useNotification();
+  const { notification } = useNotification();
   const insets = useSafeAreaInsets();
-  if (!message) return null;
+  if (!notification) return null;
   const inline = variant === 'inline';
 
   return (
@@ -83,13 +88,16 @@ export const NotificationToast: React.FC<{
           : { top: insets.top + 8, pointerEvents: 'none' }
       }
     >
-      <View className="max-w-sm rounded-xl border border-line bg-surface px-3 py-2 dark:border-line-dark dark:bg-surface-dark">
+      <View className="max-w-sm flex-row items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 dark:border-line-dark dark:bg-surface-dark">
+        {notification.emoji ? (
+          <Emoji symbol={notification.emoji} size={16} />
+        ) : null}
         <Text
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
-          className="text-body-small text-ink dark:text-ink-dark"
+          className="shrink text-body-small text-ink dark:text-ink-dark"
         >
-          {message}
+          {notification.message}
         </Text>
       </View>
     </View>
