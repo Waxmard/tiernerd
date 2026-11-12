@@ -12,13 +12,13 @@ Previously opened lists show saved items, order, ranking mode, scores, and avail
 
 A saved list position is restored for up to 24 hours as items load. Dragging takes priority over the saved position.
 
-Lists show an emoji, not a cover photo. In **Profile**, **Workspace background** can be the built-in landscape, a solid canvas, or **My photo**, a photo chosen from the device. Your photo is uploaded to private storage on your account, so it follows you to other devices and the web; choosing another background removes it. Photos created with Apple Intelligence can be imported after saving them to Photos. The app does not include image generation or camera capture.
+Lists show an emoji, not a cover photo. In **Profile**, **Workspace background** can be the built-in landscape, a solid canvas, or **My photo**, a photo chosen from the device. Your photo is uploaded to private storage on your account, so it follows you to your other devices; choosing another background removes it. Photos created with Apple Intelligence can be imported after saving them to Photos. The app does not include image generation or camera capture.
 
 The background photo is cached on a phone after it loads once, so it still shows offline. If it cannot load, the app shows the device's own background setting and retries when the connection returns.
 
-On phones, forms and item details fill the usable screen height with fixed headings and actions around independently scrolling content. On larger screens, dialogs stay centered and item details open in a 400px side pane only when you select an item or start a workspace action.
+Forms and item details open as bottom sheets that fill the usable screen height, with fixed headings and actions around independently scrolling content.
 
-The default appearance is **System**, which follows the device's appearance. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads; existing explicit choices are preserved. The sign-in screen uses a bounded card; account and appearance settings stay centered within 560px on wide screens.
+The default appearance is **System**, which follows the device's appearance. Choose **Light**, **Dark**, or **System** in **Profile** to save your preference across reloads; existing explicit choices are preserved.
 
 The native launch splash uses the device appearance, with its image and light and dark colors configured in `app.json`. Rebuild the app to apply splash changes; the saved in-app appearance preference applies after launch.
 

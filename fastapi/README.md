@@ -65,8 +65,6 @@ Each list has a `ranking_mode` of `score` (the default) or `rank`. Set it when c
 
 A user can upload one background photo with `PUT /api/users/me/background` (multipart part `file`); `DELETE /api/users/me/background` removes it and `GET /api/users/me/background/{photo_id}` serves it to its owner. Set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket with uniform access and public access prevention. Grant the runtime identity object read, write, and delete access only on that bucket. Without the setting, uploads return an unavailable response.
 
-Fresh databases use the current schema, and application startup adds the `users.background_photo_id` column to existing databases.
-
 Interrupted saves or database writes with an uncertain outcome can leave unreferenced uploads. With the correct `DATABASE_URL`, `COVER_UPLOAD_BUCKET`, and Google Cloud credentials loaded, list objects older than 24 hours that are no longer referenced:
 
 ```bash
@@ -95,7 +93,7 @@ Run the commands below from `fastapi/`.
 
 ## Upgrade manual ratings and automatic startup migrations
 
-Application startup applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table, adds any missing additive columns (`users.photo_url`, `users.background_photo_id`, `lists.color`, `lists.icon`, `lists.ranking_mode`, `items.manual_rating`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
+Application startup applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table and `lists.cover`/`lists.cover_photo` columns, adds any missing additive columns (`users.photo_url`, `users.background_photo_id`, `lists.color`, `lists.icon`, `lists.ranking_mode`, `items.manual_rating`, `items.icon`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
 
 The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Inspect the schema and count incorrect ratings without changing data:
 
