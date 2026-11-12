@@ -148,6 +148,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
       <View className="flex-1" style={{ paddingTop: safeAreaInsets.top }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={-safeAreaInsets.bottom}
           className="flex-1 w-full items-center justify-end"
         >
           <TouchableWithoutFeedback>{content}</TouchableWithoutFeedback>
