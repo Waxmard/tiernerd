@@ -25,7 +25,7 @@ interface ListDetailWorkspaceHostProps {
   canMutate: boolean;
   workspace: ItemWorkspace;
   onEdit: (focus?: ItemFormField) => void;
-  onIconChange: (icon: string) => void;
+  onIconChange: (icon: string | null) => void;
   onDelete: () => void;
   onDetailsClose: () => void;
   onMobileClose: () => void;

@@ -536,7 +536,7 @@ export function useItemWorkspace({
   ]);
 
   const saveIcon = useCallback(
-    async (item: Item, icon: string): Promise<boolean> => {
+    async (item: Item, icon: string | null): Promise<boolean> => {
       const { userId: activeUserId, listId: activeListId } = optionsRef.current;
       if (workspaceRef.current.mode !== 'closed' || icon === item.icon)
         return false;

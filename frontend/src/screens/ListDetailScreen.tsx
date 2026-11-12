@@ -423,10 +423,16 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     workspace.isBusy,
     workspace.requestClose,
   ]);
-  const handleItemIcon = async (item: Item, icon: string) => {
+  const handleItemIcon = async (item: Item, icon: string | null) => {
     if (!canMutateFor(screenIdentity)) return;
     if (await workspace.saveIcon(item, icon))
       await refreshAfterMutation().catch(() => undefined);
+  };
+  const pickItemIcon = (icon: string | null) => {
+    const target = iconItem;
+    setOptionsOpen(false);
+    setIconItem(null);
+    if (target) void handleItemIcon(target, icon);
   };
   const handleStartRanking = () => {
     if (!selectedItem || !canMutateFor(screenIdentity)) return;
@@ -635,12 +641,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       <EmojiPickerModal
         visible={iconItem !== null}
         value={iconItem?.icon ?? null}
-        onSelect={(emoji) => {
-          const target = iconItem;
-          setOptionsOpen(false);
-          setIconItem(null);
-          if (target) void handleItemIcon(target, emoji);
-        }}
+        onSelect={pickItemIcon}
+        onRemove={() => pickItemIcon(null)}
         onClose={() => {
           setOptionsOpen(false);
           setIconItem(null);

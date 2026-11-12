@@ -19,10 +19,12 @@ const CELL_STYLE = { width: `${100 / COLUMNS}%` } as const;
 function EmojiPickerContent({
   value,
   onSelect,
+  onRemove,
   onClose,
 }: {
   value: string | null;
   onSelect: (emoji: string) => void;
+  onRemove?: () => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -38,6 +40,14 @@ function EmojiPickerContent({
       emoji="😀"
       onClose={onClose}
       scrollable={false}
+      footer={
+        onRemove && value !== null ? (
+          <View className="flex-row flex-wrap items-center justify-between gap-2">
+            <Button title="Remove emoji" variant="text" onPress={onRemove} />
+            <Button title="Cancel" variant="text" onPress={onClose} />
+          </View>
+        ) : undefined
+      }
     >
       <Input
         emoji="🔍"
@@ -174,11 +184,13 @@ export function EmojiPickerModal({
   visible,
   value,
   onSelect,
+  onRemove,
   onClose,
 }: {
   visible: boolean;
   value: string | null;
   onSelect: (emoji: string) => void;
+  onRemove?: () => void;
   onClose: () => void;
 }) {
   return (
@@ -191,6 +203,7 @@ export function EmojiPickerModal({
         <EmojiPickerContent
           value={value}
           onSelect={onSelect}
+          onRemove={onRemove}
           onClose={onClose}
         />
       ) : null}

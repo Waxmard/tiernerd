@@ -21,7 +21,7 @@ export interface ItemDetailContentProps {
   isBusy: boolean;
   onRank: () => void;
   onEdit: (focus?: ItemFormField) => void;
-  onIconChange: (icon: string) => void;
+  onIconChange: (icon: string | null) => void;
   onDelete: () => void;
   onClose: () => void;
 }
@@ -56,6 +56,10 @@ export function ItemDetailContent({
       : 'Re-rank';
   const medal = item.position === null ? null : rankMedal(rank);
   const [pickingIcon, setPickingIcon] = useState(false);
+  const pickIcon = (icon: string | null) => {
+    setPickingIcon(false);
+    onIconChange(icon);
+  };
   const scoreEditable = rankingMode === 'score' && item.position !== null;
 
   return (
@@ -197,10 +201,8 @@ export function ItemDetailContent({
       <EmojiPickerModal
         visible={pickingIcon}
         value={item.icon ?? null}
-        onSelect={(emoji) => {
-          setPickingIcon(false);
-          onIconChange(emoji);
-        }}
+        onSelect={pickIcon}
+        onRemove={() => pickIcon(null)}
         onClose={() => setPickingIcon(false)}
       />
     </BaseModalContent>

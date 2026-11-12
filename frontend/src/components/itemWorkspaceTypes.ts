@@ -59,7 +59,7 @@ export interface ItemWorkspace extends ItemWorkspaceState {
   scoreEdit: { autoScore: number | null; bounds: ManualRatingBounds } | null;
   openAdd: () => void;
   openEdit: (item: Item, focusField?: ItemFormField) => void;
-  saveIcon: (item: Item, icon: string) => Promise<boolean>;
+  saveIcon: (item: Item, icon: string | null) => Promise<boolean>;
   resumeRanking: (session: RankingSession) => void;
   setForm: (patch: Partial<ItemFormDraft>) => void;
   submitMetadata: () => Promise<void>;
