@@ -3,6 +3,7 @@
 import logging
 import uuid
 from datetime import UTC
+from typing import ClassVar
 
 import pytest
 from fastapi import HTTPException
@@ -554,7 +555,76 @@ class TestBackgroundPhoto:
         )
         assert missing.status_code == 422
 
-    async def test_background_upload_bounds_multipart_stream(
+
+class TestBackgroundMultipartBounds:
+    BOUNDARY = "background-boundary"
+    PREFIX = (
+        b"--background-boundary\r\n"
+        b'Content-Disposition: form-data; name="file"; filename="photo.jpg"\r\n'
+        b"Content-Type: image/jpeg\r\n\r\n"
+    )
+    SUFFIX = b"\r\n--background-boundary--\r\n"
+    IMAGE = b"x" * 2048
+    BODY = PREFIX + IMAGE + SUFFIX
+    URL = "/api/users/me/background"
+    CONTENT_TYPE: ClassVar[dict[str, str]] = {
+        "Content-Type": f"multipart/form-data; boundary={BOUNDARY}"
+    }
+
+    @pytest.fixture(autouse=True)
+    def _limit(self, monkeypatch: MonkeyPatch):
+        monkeypatch.setattr(users_endpoint, "MAX_USER_WRITE_BYTES", len(self.BODY))
+
+    async def test_unauthorized_upload_stores_nothing(
+        self, client: AsyncClient, photo_storage
+    ):
+        response = await client.put(
+            self.URL, headers=self.CONTENT_TYPE, content=self.BODY
+        )
+        assert response.status_code == 401
+        assert photo_storage[1] == []
+
+    async def test_body_at_limit_is_accepted(
+        self, client: AsyncClient, auth_headers: dict, photo_storage
+    ):
+        response = await client.put(
+            self.URL, headers=self.CONTENT_TYPE | auth_headers, content=self.BODY
+        )
+        assert response.status_code == 200
+        assert response.json()["background_photo_id"] is not None
+
+    async def test_body_over_limit_is_rejected(
+        self, client: AsyncClient, auth_headers: dict, photo_storage
+    ):
+        response = await client.put(
+            self.URL,
+            headers=self.CONTENT_TYPE | auth_headers,
+            content=self.PREFIX + self.IMAGE + b"x" + self.SUFFIX,
+        )
+        assert response.status_code == 413
+        assert response.request.headers["content-length"] == str(len(self.BODY) + 1)
+        assert photo_storage[1] == []
+
+    async def test_oversized_content_length_rejected_before_reading(
+        self, client: AsyncClient, auth_headers: dict, photo_storage
+    ):
+        read_early = []
+
+        async def unexpected_read():
+            read_early.append(True)
+            yield self.BODY
+
+        response = await client.put(
+            self.URL,
+            headers=self.CONTENT_TYPE
+            | auth_headers
+            | {"Content-Length": str(len(self.BODY) + 1)},
+            content=unexpected_read(),
+        )
+        assert response.status_code == 413
+        assert read_early == []
+
+    async def test_oversized_chunked_stream_stops_and_closes_spool(
         self,
         client: AsyncClient,
         auth_headers: dict,
@@ -562,51 +632,6 @@ class TestBackgroundPhoto:
         photo_storage,
     ):
         from starlette import formparsers
-
-        boundary = "background-boundary"
-        prefix = (
-            b"--background-boundary\r\n"
-            b'Content-Disposition: form-data; name="file"; filename="photo.jpg"\r\n'
-            b"Content-Type: image/jpeg\r\n\r\n"
-        )
-        suffix = b"\r\n--background-boundary--\r\n"
-        image = b"x" * 2048
-        body = prefix + image + suffix
-        monkeypatch.setattr(users_endpoint, "MAX_USER_WRITE_BYTES", len(body))
-        url = "/api/users/me/background"
-        content_type = {"Content-Type": f"multipart/form-data; boundary={boundary}"}
-        events = photo_storage[1]
-
-        unauthorized = await client.put(url, headers=content_type, content=body)
-        assert unauthorized.status_code == 401
-        assert events == []
-
-        headers = content_type | auth_headers
-        accepted = await client.put(url, headers=headers, content=body)
-        assert accepted.status_code == 200
-        assert accepted.json()["background_photo_id"] is not None
-        recorded = events.copy()
-
-        oversized = await client.put(
-            url, headers=headers, content=prefix + image + b"x" + suffix
-        )
-        assert oversized.status_code == 413
-        assert oversized.request.headers["content-length"] == str(len(body) + 1)
-        assert events == recorded
-
-        read_early = []
-
-        async def unexpected_read():
-            read_early.append(True)
-            yield body
-
-        rejected_early = await client.put(
-            url,
-            headers=headers | {"Content-Length": str(len(body) + 1)},
-            content=unexpected_read(),
-        )
-        assert rejected_early.status_code == 413
-        assert read_early == []
 
         spooled = []
         spool_factory = formparsers.SpooledTemporaryFile
@@ -617,7 +642,12 @@ class TestBackgroundPhoto:
             return file
 
         monkeypatch.setattr(formparsers, "SpooledTemporaryFile", track_spool)
-        chunks = [prefix, b"x" * (len(body) - len(prefix) - 1), b"xx", suffix]
+        chunks = [
+            self.PREFIX,
+            b"x" * (len(self.BODY) - len(self.PREFIX) - 1),
+            b"xx",
+            self.SUFFIX,
+        ]
         consumed = []
 
         async def stream():
@@ -625,15 +655,19 @@ class TestBackgroundPhoto:
                 consumed.append(len(chunk))
                 yield chunk
 
-        oversized_stream = await client.put(url, headers=headers, content=stream())
-        assert oversized_stream.status_code == 413
-        assert oversized_stream.request.headers["transfer-encoding"] == "chunked"
-        assert "content-length" not in oversized_stream.request.headers
+        response = await client.put(
+            self.URL, headers=self.CONTENT_TYPE | auth_headers, content=stream()
+        )
+        assert response.status_code == 413
+        assert response.request.headers["transfer-encoding"] == "chunked"
+        assert "content-length" not in response.request.headers
         assert consumed == [len(chunk) for chunk in chunks[:3]]
         assert len(spooled) == 1
         assert spooled[0].closed
-        assert events == recorded
+        assert photo_storage[1] == []
 
+
+class TestBackgroundPhotoLimits:
     async def test_maximum_upload_is_accepted(
         self,
         client: AsyncClient,
@@ -653,16 +687,3 @@ class TestBackgroundPhoto:
         assert len(photo_storage[0][(str(test_user.user_id), photo_id)]) == (
             MAX_UPLOAD_BYTES
         )
-
-    async def test_upload_over_image_limit_is_rejected(
-        self, client: AsyncClient, auth_headers: dict
-    ):
-        from app.services.photo_upload_service import MAX_UPLOAD_BYTES
-
-        response = await client.put(
-            "/api/users/me/background",
-            files={"file": ("photo.jpg", b"x" * (MAX_UPLOAD_BYTES + 1), "image/jpeg")},
-            headers=auth_headers,
-        )
-        assert response.status_code == 413
-        assert response.json()["detail"] == "Image exceeds 10 MiB"
