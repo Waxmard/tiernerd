@@ -642,6 +642,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         visible={iconItem !== null}
         value={iconItem?.icon ?? null}
         onSelect={pickItemIcon}
+        suggestFor={
+          iconItem ? { name: iconItem.name, kind: 'item' } : undefined
+        }
         onRemove={() => pickItemIcon(null)}
         onClose={() => {
           setOptionsOpen(false);

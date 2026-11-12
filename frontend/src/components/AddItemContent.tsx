@@ -104,6 +104,7 @@ export function AddItemContent({
             label="Item emoji"
             value={form.icon}
             onChange={(icon) => onFormChange({ icon })}
+            suggestFor={{ name: form.name, kind: 'item' }}
             disabled={isBusy}
           />
         </View>

@@ -311,10 +311,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
     await refreshLists().catch(() => showCachedLists(userId, token));
   };
-  const iconListValue = (() => {
-    const icon = visibleLists.find((entry) => entry.id === iconListId)?.icon;
-    return icon ? listIconEmoji(icon) : null;
-  })();
+  const iconList = visibleLists.find((entry) => entry.id === iconListId);
+  const iconListValue = iconList?.icon ? listIconEmoji(iconList.icon) : null;
   const handleListCreated = useCallback(
     (list: ListSimple) => {
       const expectedUserId = userId;
@@ -679,6 +677,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <EmojiPickerModal
           visible={iconListId !== null}
           value={iconListValue}
+          suggestFor={
+            iconList ? { name: iconList.title, kind: 'list' } : undefined
+          }
           onSelect={(emoji) => {
             const id = iconListId;
             setIconListId(null);

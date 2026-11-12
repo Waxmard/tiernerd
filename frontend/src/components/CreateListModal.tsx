@@ -355,6 +355,7 @@ export const CreateListContent = forwardRef<
             label="List emoji"
             value={icon}
             onChange={setIcon}
+            suggestFor={{ name: title, kind: 'list' }}
             disabled={isLoading}
           />
         </View>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, ScrollView, Text, View } from 'react-native';
 import {
   BaseModalContent,
@@ -7,6 +7,9 @@ import {
   Input,
   SheetModal,
 } from '../design-system/components';
+import { useAuth } from '../providers/AuthContext';
+import { aiService, type EmojiSuggestionKind } from '../services/aiService';
+import { getApiErrorMessage } from '../services/apiError';
 import {
   EMOJI_GROUPS,
   type EmojiEntry,
@@ -16,24 +19,59 @@ import {
 const COLUMNS = 7;
 const CELL_STYLE = { width: `${100 / COLUMNS}%` } as const;
 
+type SuggestFor = { name: string; kind: EmojiSuggestionKind };
+
 function EmojiPickerContent({
   value,
   onSelect,
   onRemove,
   onClose,
+  suggestFor,
 }: {
   value: string | null;
   onSelect: (emoji: string) => void;
   onRemove?: () => void;
   onClose: () => void;
+  suggestFor?: SuggestFor;
 }) {
+  const { token } = useAuth();
   const [query, setQuery] = useState('');
   const [groupIndex, setGroupIndex] = useState(0);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    []
+  );
   const searching = query.trim() !== '';
   const emojis: EmojiEntry[] = searching
     ? searchEmoji(query)
     : (EMOJI_GROUPS[groupIndex]?.emojis ?? []);
 
+  const suggest = async (target: SuggestFor, authToken: string) => {
+    if (suggesting) return;
+    setSuggesting(true);
+    setSuggestError(null);
+    try {
+      const emoji = await aiService.suggestEmoji(
+        target.name.trim(),
+        target.kind,
+        authToken
+      );
+      if (!mountedRef.current) return;
+      onSelect(emoji);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setSuggestError(
+        getApiErrorMessage(err, "Couldn't suggest an emoji. Pick one below.")
+      );
+    } finally {
+      if (mountedRef.current) setSuggesting(false);
+    }
+  };
   return (
     <BaseModalContent
       title="Choose emoji"
@@ -60,6 +98,25 @@ function EmojiPickerContent({
         autoCorrect={false}
         containerClassName="mb-2"
       />
+      {suggestFor && suggestFor.name.trim() !== '' && token ? (
+        <>
+          <Button
+            title="✨ Suggest"
+            variant="text"
+            size="small"
+            loading={suggesting}
+            onPress={() => void suggest(suggestFor, token)}
+          />
+          {suggestError ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              className="text-body-small text-ink-muted dark:text-ink-muted-dark mb-2"
+            >
+              {suggestError}
+            </Text>
+          ) : null}
+        </>
+      ) : null}
       {searching ? null : (
         <ScrollView
           horizontal
@@ -129,11 +186,13 @@ export function EmojiPickerField({
   value,
   onChange,
   disabled = false,
+  suggestFor,
 }: {
   label: string;
   value: string | null;
   onChange: (next: string | null) => void;
   disabled?: boolean;
+  suggestFor?: SuggestFor;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -175,6 +234,7 @@ export function EmojiPickerField({
           close();
         }}
         onClose={close}
+        suggestFor={suggestFor}
       />
     </View>
   );
@@ -186,12 +246,14 @@ export function EmojiPickerModal({
   onSelect,
   onRemove,
   onClose,
+  suggestFor,
 }: {
   visible: boolean;
   value: string | null;
   onSelect: (emoji: string) => void;
   onRemove?: () => void;
   onClose: () => void;
+  suggestFor?: SuggestFor;
 }) {
   return (
     <SheetModal
@@ -205,6 +267,7 @@ export function EmojiPickerModal({
           onSelect={onSelect}
           onRemove={onRemove}
           onClose={onClose}
+          suggestFor={suggestFor}
         />
       ) : null}
     </SheetModal>

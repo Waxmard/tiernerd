@@ -202,6 +202,7 @@ export function ItemDetailContent({
         visible={pickingIcon}
         value={item.icon ?? null}
         onSelect={pickIcon}
+        suggestFor={{ name: item.name, kind: 'item' }}
         onRemove={() => pickIcon(null)}
         onClose={() => setPickingIcon(false)}
       />
