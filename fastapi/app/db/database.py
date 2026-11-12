@@ -55,9 +55,9 @@ _STARTUP_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ),
     ("items", "icon", "ALTER TABLE items ADD COLUMN icon VARCHAR(16)"),
 )
-_RETIRED_COLUMNS: tuple[tuple[str, str], ...] = (
-    ("lists", "cover"),
-    ("lists", "cover_photo"),
+_RETIRED_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    ("lists", "cover", "ALTER TABLE lists DROP COLUMN cover"),
+    ("lists", "cover_photo", "ALTER TABLE lists DROP COLUMN cover_photo"),
 )
 
 
@@ -66,9 +66,9 @@ def _ensure_columns(connection: Connection) -> None:
     for table, column, ddl in _STARTUP_COLUMNS:
         if column not in {col["name"] for col in inspector.get_columns(table)}:
             connection.execute(text(ddl))
-    for table, column in _RETIRED_COLUMNS:
+    for table, column, ddl in _RETIRED_COLUMNS:
         if column in {col["name"] for col in inspector.get_columns(table)}:
-            connection.execute(text(f"ALTER TABLE {table} DROP COLUMN {column}"))
+            connection.execute(text(ddl))
 
 
 async def get_db() -> AsyncGenerator[AsyncSession]:
