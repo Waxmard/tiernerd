@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.14.0](https://github.com/Waxmard/tiernerd/compare/v0.13.0...v0.14.0) (2026-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* replace list covers with emoji icons and sync profile backgrounds ([#134](https://github.com/Waxmard/tiernerd/issues/134))
+
+### Features
+
+* replace list covers with emoji icons and sync profile backgrounds ([#134](https://github.com/Waxmard/tiernerd/issues/134)) ([9f82b88](https://github.com/Waxmard/tiernerd/commit/9f82b88c174acc0fa88fd1105e303de8a192acfe))
+
 ## [0.13.0](https://github.com/Waxmard/tiernerd/compare/v0.12.0...v0.13.0) (2026-11-10)
 
 
