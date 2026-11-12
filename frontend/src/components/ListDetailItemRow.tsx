@@ -202,7 +202,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
         >
           {item.icon && onIconPress ? (
             <Pressable
-              className="w-10 min-h-11 mr-3 items-center justify-center shrink-0"
+              className="w-11 min-h-11 mr-2 items-center justify-center shrink-0"
               accessibilityRole="button"
               accessibilityLabel={`Change emoji for ${item.name}`}
               accessibilityHint="Opens the emoji picker"

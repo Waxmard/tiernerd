@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import type React from 'react';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -24,6 +25,7 @@ import { ApiError, getApiErrorMessage } from '../services/apiError';
 import { authService } from '../services/authService';
 import { pickLocalPhoto } from '../services/photoPicker';
 import type { ThemePreference } from '../services/themePreference';
+import { confirmDestructive } from '../utils/confirm';
 
 type ProfileScreenProps = RootStackScreenProps<'Profile'>;
 
@@ -61,7 +63,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   } = useTheme();
   const colors = useThemeColors();
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
-  const [backgroundBusy, setBackgroundBusy] = useState(false);
+  const [busyBackground, setBusyBackground] = useState<string | null>(null);
+  const backgroundBusy = busyBackground !== null;
   const hasPhoto = Boolean(user?.backgroundPhotoId);
 
   const handleSignOut = async () => {
@@ -73,38 +76,59 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   };
 
   const runBackgroundChange = async (
+    option: string,
     change: (token: string) => Promise<void>,
     fallback: string
   ) => {
     if (backgroundBusy || !token) return;
-    setBackgroundBusy(true);
+    setBusyBackground(option);
     try {
       await change(token);
     } catch (error) {
       notify(backgroundErrorMessage(error, fallback), '⚠️');
     } finally {
-      setBackgroundBusy(false);
+      setBusyBackground(null);
     }
   };
 
   const chooseBackgroundPhoto = () =>
-    runBackgroundChange(async (authToken) => {
-      const blob = await pickLocalPhoto();
-      if (!blob) return;
-      try {
-        await updateUser(await authService.setBackgroundPhoto(blob, authToken));
-      } finally {
-        (blob as Blob & { close?: () => void }).close?.();
-      }
-    }, 'Could not save the background photo. Try again.');
+    runBackgroundChange(
+      'photo',
+      async (authToken) => {
+        const blob = await pickLocalPhoto();
+        if (!blob) return;
+        try {
+          await updateUser(
+            await authService.setBackgroundPhoto(blob, authToken)
+          );
+        } finally {
+          (blob as Blob & { close?: () => void }).close?.();
+        }
+      },
+      'Could not save the background photo. Try again.'
+    );
 
-  const chooseBuiltInBackground = (background: 'landscape' | 'none') =>
-    runBackgroundChange(async (authToken) => {
-      if (hasPhoto) {
-        await updateUser(await authService.clearBackgroundPhoto(authToken));
-      }
-      setWorkspaceAppearance({ ...workspaceAppearance, background });
-    }, 'Could not remove the background photo. Try again.');
+  const chooseBuiltInBackground = async (background: 'landscape' | 'none') => {
+    if (
+      hasPhoto &&
+      !(await confirmDestructive(
+        'Remove background photo?',
+        'Your uploaded photo will be deleted.',
+        'Remove'
+      ))
+    )
+      return;
+    await runBackgroundChange(
+      background,
+      async (authToken) => {
+        if (hasPhoto) {
+          await updateUser(await authService.clearBackgroundPhoto(authToken));
+        }
+        setWorkspaceAppearance({ ...workspaceAppearance, background });
+      },
+      'Could not remove the background photo. Try again.'
+    );
+  };
 
   return (
     <ImmersiveScreenShell>
@@ -256,7 +280,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         backgroundBusy ? 'opacity-60' : '',
                       ].join(' ')}
                     >
-                      <Emoji symbol={option.emoji} size={16} />
+                      {busyBackground === option.value ? (
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      ) : (
+                        <Emoji symbol={option.emoji} size={16} />
+                      )}
                       <Text
                         className={[
                           'text-label-large',

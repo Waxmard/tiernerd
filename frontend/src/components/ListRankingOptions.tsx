@@ -311,9 +311,9 @@ export function ListRankingOptions({
               inputClassName="!min-h-[96px] text-[16px]"
               style={{ textAlignVertical: 'top' }}
             />
-            <SectionLabel emoji="😀" label="List icon" />
+            <SectionLabel emoji="😀" label="List emoji" />
             <EmojiPickerField
-              label="List icon"
+              label="List emoji"
               value={draftIcon ? listIconEmoji(draftIcon) : null}
               onChange={setDraftIcon}
               disabled={saving}

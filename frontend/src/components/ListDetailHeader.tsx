@@ -76,10 +76,12 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           />
         </TouchableOpacity>
         <View className="flex-1 min-w-0 min-h-11 flex-row items-center gap-2 px-2">
-          {addLoading ? null : (
+          {addLoading ? (
+            <View accessible={false} className="w-6 h-6" />
+          ) : (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`List icon: ${listIconEmoji(icon)}`}
+              accessibilityLabel={`List emoji: ${listIconEmoji(icon)}`}
               accessibilityHint="Opens the emoji picker"
               accessibilityState={{ disabled: optionsDisabled }}
               disabled={optionsDisabled}
@@ -92,7 +94,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
               <Emoji symbol={listIconEmoji(icon)} size={24} />
             </Pressable>
           )}
-          <Text
+          <Pressable
             accessibilityRole="header"
             accessibilityLabel={title}
             accessibilityHint={optionsDisabled ? undefined : 'Edit list title'}
@@ -101,16 +103,23 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
                 ? undefined
                 : () => optionsRef.current?.open('title')
             }
-            className={`flex-1 min-w-0 ${
-              Array.from(title).length <= 28
-                ? 'text-headline-small'
-                : Array.from(title).length <= 56
-                  ? 'text-title-medium'
-                  : 'text-title-small'
-            } text-ink dark:text-ink-dark text-left`}
+            className="flex-1 min-w-0 min-h-11 justify-center"
+            style={({ pressed }) =>
+              pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+            }
           >
-            {title}
-          </Text>
+            <Text
+              className={`${
+                Array.from(title).length <= 28
+                  ? 'text-headline-small'
+                  : Array.from(title).length <= 56
+                    ? 'text-title-medium'
+                    : 'text-title-small'
+              } text-ink dark:text-ink-dark text-left`}
+            >
+              {title}
+            </Text>
+          </Pressable>
         </View>
         <ListRankingOptions
           ref={optionsRef}
@@ -142,7 +151,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           nestedScrollEnabled
           showsVerticalScrollIndicator
         >
-          <Text
+          <Pressable
+            accessibilityRole={optionsDisabled ? undefined : 'button'}
             accessibilityHint={
               optionsDisabled ? undefined : 'Edit list description'
             }
@@ -151,10 +161,15 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
                 ? undefined
                 : () => optionsRef.current?.open('description')
             }
-            className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+            className="min-h-11 justify-center"
+            style={({ pressed }) =>
+              pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+            }
           >
-            {description}
-          </Text>
+            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+              {description}
+            </Text>
+          </Pressable>
         </ScrollView>
       ) : null}
       {addLoading ? (

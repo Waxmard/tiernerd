@@ -307,7 +307,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       );
       if (outcome.status === 'rejected') notify(outcome.message);
     } catch (err) {
-      notify(getApiErrorMessage(err, 'Unable to save the list icon.'));
+      notify(getApiErrorMessage(err, 'Unable to save the list emoji.'));
     }
     await refreshLists().catch(() => showCachedLists(userId, token));
   };
@@ -421,7 +421,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               : `${item.title}, ${item.itemCount} items`
           }
           accessibilityHint="Open tier list"
-          accessibilityActions={[{ name: 'changeIcon', label: 'Change icon' }]}
+          accessibilityActions={[{ name: 'changeIcon', label: 'Change emoji' }]}
           onAccessibilityAction={(event) => {
             if (event.nativeEvent.actionName === 'changeIcon')
               setIconListId(item.id);
@@ -439,9 +439,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <View className="flex-row items-center gap-3 p-4">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Change icon for ${item.title}`}
+              accessibilityLabel={`Change emoji for ${item.title}`}
               accessibilityHint="Opens the emoji picker"
+              hitSlop={6}
               onPress={() => setIconListId(item.id)}
+              style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
             >
               <ListIdentityBadge
                 size="lg"

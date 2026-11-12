@@ -80,20 +80,26 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
             accessibilityHint="Opens the emoji picker"
             hitSlop={10}
             onPress={onEmojiPress}
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
           >
             <Emoji symbol={emoji} size={24} />
           </Pressable>
         ) : emoji ? (
           <Emoji symbol={emoji} size={24} />
         ) : null}
-        <Text
+        <Pressable
           accessibilityRole="header"
           accessibilityHint={onTitlePress ? titleHint : undefined}
           onPress={onTitlePress}
-          className="flex-1 text-title-large text-ink dark:text-ink-dark text-left"
+          className="flex-1 min-h-11 justify-center"
+          style={({ pressed }) =>
+            pressed && onTitlePress ? { opacity: 0.7 } : undefined
+          }
         >
-          {title}
-        </Text>
+          <Text className="text-title-large text-ink dark:text-ink-dark text-left">
+            {title}
+          </Text>
+        </Pressable>
       </View>
       {scrollable ? (
         <ScrollView
@@ -139,10 +145,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View
-        className="flex-1 bg-black/50"
-        style={{ paddingTop: safeAreaInsets.top }}
-      >
+      <View className="flex-1" style={{ paddingTop: safeAreaInsets.top }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           className="flex-1 w-full items-center justify-end"

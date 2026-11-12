@@ -312,7 +312,7 @@ export function RankingResultContent({
       color={color}
       onClose={onDone}
       scrollable={false}
-      footer={null}
+      footer={<Button title="Done" variant="text" onPress={onDone} fullWidth />}
     >
       <Animated.View entering={FadeIn.duration(200)} style={{ flex: 1 }}>
         <Pressable

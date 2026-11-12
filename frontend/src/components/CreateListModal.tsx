@@ -260,8 +260,8 @@ export const CreateListContent = forwardRef<
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Appearance (optional): ${color ?? 'No color'}, ${icon ?? 'default icon'}`}
-            accessibilityHint="Choose list color and icon"
+            accessibilityLabel={`Appearance (optional): ${color ?? 'No color'}, ${icon ?? 'default emoji'}`}
+            accessibilityHint="Choose list color and emoji"
             accessibilityState={{ disabled: isLoading }}
             disabled={isLoading}
             onPress={openColor}
@@ -273,7 +273,7 @@ export const CreateListContent = forwardRef<
                 Appearance (optional)
               </Text>
               <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-                {[color ?? 'No color', icon ?? 'Default icon'].join(' · ')}
+                {[color ?? 'No color', icon ?? 'Default emoji'].join(' · ')}
               </Text>
             </View>
             {color ? (
@@ -350,9 +350,9 @@ export const CreateListContent = forwardRef<
             onChange={setColor}
             disabled={isLoading}
           />
-          <SectionLabel emoji="😀" label="Icon" />
+          <SectionLabel emoji="😀" label="Emoji" />
           <EmojiPickerField
-            label="List icon"
+            label="List emoji"
             value={icon}
             onChange={setIcon}
             disabled={isLoading}

@@ -109,13 +109,22 @@ export function ItemDetailContent({
     >
       <View className="gap-3 pb-4">
         <Pressable
-          accessibilityRole="button"
-          accessibilityHint={scoreEditable ? 'Edit score' : rankTitle}
-          accessibilityState={{ disabled: actionsBlocked }}
-          disabled={actionsBlocked}
-          onPress={() => (scoreEditable ? onEdit('manualRating') : onRank())}
+          accessibilityRole={scoreEditable ? 'button' : undefined}
+          accessibilityHint={scoreEditable ? 'Edit score' : undefined}
+          accessibilityState={
+            scoreEditable ? { disabled: actionsBlocked } : undefined
+          }
+          onPress={
+            scoreEditable && !actionsBlocked
+              ? () => onEdit('manualRating')
+              : undefined
+          }
           className="rounded-2xl border-2 p-4 gap-2"
-          style={hue.cardStyle}
+          style={({ pressed }) =>
+            pressed && scoreEditable && !actionsBlocked
+              ? [hue.cardStyle, { opacity: 0.7 }]
+              : hue.cardStyle
+          }
         >
           {item.position === null ? (
             <View className="flex-row items-center gap-1">
@@ -155,14 +164,19 @@ export function ItemDetailContent({
           ) : null}
         </Pressable>
         {item.description ? (
-          <Text
+          <Pressable
             accessibilityRole={actionsBlocked ? undefined : 'button'}
-            accessibilityHint="Edit description"
+            accessibilityHint={actionsBlocked ? undefined : 'Edit description'}
             onPress={actionsBlocked ? undefined : () => onEdit('description')}
-            className="text-body-large text-ink dark:text-ink-dark"
+            className="min-h-11 justify-center"
+            style={({ pressed }) =>
+              pressed && !actionsBlocked ? { opacity: 0.7 } : undefined
+            }
           >
-            {item.description}
-          </Text>
+            <Text className="text-body-large text-ink dark:text-ink-dark">
+              {item.description}
+            </Text>
+          </Pressable>
         ) : null}
         {item.image_url ? (
           imageFailed ? (
