@@ -16,19 +16,22 @@ class TestSuggestEmojiEndpoint:
     @staticmethod
     def _configure(monkeypatch: MonkeyPatch, fake: Any) -> None:
         monkeypatch.setattr(get_settings(), "AI_PROJECT", "test-project")
-        monkeypatch.setattr(ai_endpoint, "suggest_emoji", fake)
+        monkeypatch.setattr(ai_endpoint, "suggest_emojis", fake)
 
     async def test_returns_suggestion(
         self, client: AsyncClient, auth_headers: dict, monkeypatch: MonkeyPatch
     ):
-        self._configure(monkeypatch, lambda name, kind: "🍕")
+        self._configure(
+            monkeypatch,
+            lambda name, kind, description, list_title: ("🍕", "🗽", "🤤"),
+        )
         response = await client.post(
             "/api/ai/emoji",
             json={"name": "Pizza places", "kind": "list"},
             headers=auth_headers,
         )
         assert response.status_code == 200
-        assert response.json() == {"emoji": "🍕"}
+        assert response.json() == {"emojis": ["🍕", "🗽", "🤤"]}
 
     async def test_not_configured(
         self, client: AsyncClient, auth_headers: dict, monkeypatch: MonkeyPatch
@@ -43,7 +46,7 @@ class TestSuggestEmojiEndpoint:
     async def test_failure_maps_to_unavailable(
         self, client: AsyncClient, auth_headers: dict, monkeypatch: MonkeyPatch
     ):
-        def boom(name: str, kind: str) -> str:
+        def boom(name: str, kind: str, description: str, list_title: str) -> tuple:
             raise RuntimeError("boom")
 
         self._configure(monkeypatch, boom)
@@ -61,7 +64,11 @@ class TestSuggestEmojiEndpoint:
 
     @pytest.mark.parametrize(
         "body",
-        [{"name": "   ", "kind": "list"}, {"name": "x", "kind": "movie"}],
+        [
+            {"name": "   ", "kind": "list"},
+            {"name": "x", "kind": "movie"},
+            {"name": "x", "kind": "item", "description": "x" * 501},
+        ],
     )
     async def test_rejects_invalid_body(
         self, client: AsyncClient, auth_headers: dict, body: dict
@@ -94,7 +101,7 @@ class TestSuggestEmojiService:
                 calls.append((url, kwargs))
                 return _FakeResponse(text)
 
-        emoji_suggestion.suggest_emoji.cache_clear()
+        emoji_suggestion.suggest_emojis.cache_clear()
         monkeypatch.setattr(get_settings(), "AI_PROJECT", "test-project")
         monkeypatch.setattr(
             emoji_suggestion.google.auth, "default", lambda scopes: (object(), None)
@@ -102,9 +109,9 @@ class TestSuggestEmojiService:
         monkeypatch.setattr(emoji_suggestion, "AuthorizedSession", FakeSession)
         return calls
 
-    def test_returns_stripped_emoji(self, monkeypatch: MonkeyPatch):
-        calls = self._patch(monkeypatch, " 🍕\n")
-        assert emoji_suggestion.suggest_emoji("pizza", "list") == "🍕"
+    def test_returns_parsed_emojis(self, monkeypatch: MonkeyPatch):
+        calls = self._patch(monkeypatch, " 🍕 🗽 🤤\n")
+        assert emoji_suggestion.suggest_emojis("pizza", "list") == ("🍕", "🗽", "🤤")
         url, kwargs = calls[0]
         assert (
             "/projects/test-project/locations/global/publishers/google/models/"
@@ -112,14 +119,59 @@ class TestSuggestEmojiService:
         ) in url
         assert kwargs["timeout"] == 8
 
-    @pytest.mark.parametrize("text", ["Sure! 🍕", ""])
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("🍕 🍕 🗽 🤤 🥤", ("🍕", "🗽", "🤤")),
+            ("Sure! 🍕", ("🍕",)),
+            (
+                "\U0001f37b\U0001f32e\U0001f389",
+                ("\U0001f37b", "\U0001f32e", "\U0001f389"),
+            ),
+            (
+                "\U0001f35d\U0001f1ee\U0001f1f9 \U0001f957",
+                ("\U0001f35d", "\U0001f1ee\U0001f1f9", "\U0001f957"),
+            ),
+            (
+                "\U0001f37d\ufe0f\U0001f468\u200d\U0001f373\U0001f44b\U0001f3fd",
+                (
+                    "\U0001f37d\ufe0f",
+                    "\U0001f468\u200d\U0001f373",
+                    "\U0001f44b\U0001f3fd",
+                ),
+            ),
+        ],
+    )
+    def test_splits_dedupes_caps_and_drops_prose(
+        self, monkeypatch: MonkeyPatch, text: str, expected: tuple[str, ...]
+    ):
+        self._patch(monkeypatch, text)
+        assert emoji_suggestion.suggest_emojis("pizza", "list") == expected
+
+    @pytest.mark.parametrize("text", ["Sure thing", ""])
     def test_rejects_non_emoji(self, monkeypatch: MonkeyPatch, text: str):
         self._patch(monkeypatch, text)
         with pytest.raises(ValueError):
-            emoji_suggestion.suggest_emoji("pizza", "list")
+            emoji_suggestion.suggest_emojis("pizza", "list")
+
+    @pytest.mark.parametrize(
+        ("args", "expected"),
+        [
+            (
+                ("blue", "item", "the first one", "Pokémon games"),
+                "Item: blue\nList: Pokémon games\nDescription: the first one",
+            ),
+            (("pizza", "list", "", "ignored"), "List: pizza"),
+        ],
+    )
+    def test_user_text(self, monkeypatch: MonkeyPatch, args: tuple, expected: str):
+        calls = self._patch(monkeypatch, "🍕")
+        emoji_suggestion.suggest_emojis(*args)
+        body = calls[0][1]["json"]
+        assert body["contents"][0]["parts"][0]["text"] == expected
 
     def test_caches_successes(self, monkeypatch: MonkeyPatch):
         calls = self._patch(monkeypatch, "🍕")
-        emoji_suggestion.suggest_emoji("pizza", "list")
-        emoji_suggestion.suggest_emoji("pizza", "list")
+        emoji_suggestion.suggest_emojis("pizza", "list")
+        emoji_suggestion.suggest_emojis("pizza", "list")
         assert len(calls) == 1

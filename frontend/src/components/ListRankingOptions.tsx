@@ -316,7 +316,11 @@ export function ListRankingOptions({
               label="List emoji"
               value={draftIcon ? listIconEmoji(draftIcon) : null}
               onChange={setDraftIcon}
-              suggestFor={{ name: draftTitle, kind: 'list' }}
+              suggestFor={{
+                name: draftTitle,
+                kind: 'list',
+                description: draftDescription,
+              }}
               disabled={saving}
             />
             <SectionLabel emoji="🎨" label="Accent color" />
@@ -338,7 +342,7 @@ export function ListRankingOptions({
         visible={pickingIcon}
         value={icon ? listIconEmoji(icon) : null}
         onSelect={(emoji) => void pickIcon(emoji)}
-        suggestFor={{ name: title, kind: 'list' }}
+        suggestFor={{ name: title, kind: 'list', description }}
         onClose={closePicker}
       />
     </>

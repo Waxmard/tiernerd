@@ -8,7 +8,9 @@ class EmojiSuggestionRequest(BaseModel):
 
     name: str = Field(min_length=1, max_length=100)
     kind: Literal["list", "item"]
+    description: str = Field("", max_length=500)
+    list_title: str = Field("", max_length=100)
 
 
-class EmojiSuggestion(BaseModel):
-    emoji: str
+class EmojiSuggestions(BaseModel):
+    emojis: list[str]

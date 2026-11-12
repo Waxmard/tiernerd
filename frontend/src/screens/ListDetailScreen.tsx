@@ -366,7 +366,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     if (identityRef.current !== identity || deletingListInFlightRef.current)
       return;
     setSelectedItemId(item.item_id);
-    setDismissedDetailsItemId(null);
+    if (canMutateFor(identity)) {
+      setDismissedDetailsItemId(item.item_id);
+      workspace.openEdit(item, null);
+    } else {
+      setDismissedDetailsItemId(null);
+    }
   };
   const handleAddPress = useCallback(async () => {
     const identity = screenIdentity;
@@ -437,6 +442,25 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const handleStartRanking = () => {
     if (!selectedItem || !canMutateFor(screenIdentity)) return;
     void workspace.startRanking(selectedItem);
+  };
+  const leaveEdit = async () => {
+    const item = workspace.item;
+    const identity = screenIdentity;
+    if (workspace.mode !== 'edit' || !item) return null;
+    setDismissedDetailsItemId(null);
+    if (await requestCloseForSwitch())
+      return identityRef.current === identity ? item : null;
+    if (identityRef.current === identity)
+      setDismissedDetailsItemId(item.item_id);
+    return null;
+  };
+  const handleEditRank = async () => {
+    const identity = screenIdentity;
+    const item = await leaveEdit();
+    if (!item) return;
+    if (canMutateFor(identity)) await workspace.startRanking(item);
+    if (identityRef.current === identity)
+      setDismissedDetailsItemId(item.item_id);
   };
   const handleMobileClose = useCallback(() => {
     if (deletingListInFlightRef.current || !view.clearRestoredSelection())
@@ -632,6 +656,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               onDetailsClose={handleWorkspaceContentClose}
               onMobileClose={handleMobileClose}
               onStartRanking={handleStartRanking}
+              onEditRank={() => void handleEditRank()}
+              onEditDetails={() => void leaveEdit()}
             >
               {renderListItems()}
             </ListDetailWorkspaceHost>
@@ -643,7 +669,14 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         value={iconItem?.icon ?? null}
         onSelect={pickItemIcon}
         suggestFor={
-          iconItem ? { name: iconItem.name, kind: 'item' } : undefined
+          iconItem
+            ? {
+                name: iconItem.name,
+                kind: 'item',
+                description: iconItem.description,
+                listTitle: detailsTitle,
+              }
+            : undefined
         }
         onRemove={() => pickItemIcon(null)}
         onClose={() => {

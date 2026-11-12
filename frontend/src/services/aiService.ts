@@ -1,14 +1,29 @@
 import { api } from './api';
 
-export type EmojiSuggestionKind = 'list' | 'item';
+export interface EmojiSuggestionTarget {
+  name: string;
+  kind: 'list' | 'item';
+  description?: string | null;
+  listTitle?: string | null;
+}
 
 export const aiService = {
-  suggestEmoji: (
-    name: string,
-    kind: EmojiSuggestionKind,
+  suggestEmojis: (
+    target: EmojiSuggestionTarget,
     token: string
-  ): Promise<string> =>
+  ): Promise<string[]> =>
     api
-      .post<{ emoji: string }>('/api/ai/emoji', { name, kind }, token)
-      .then((response) => response.emoji),
+      .post<{ emojis: string[] }>(
+        '/api/ai/emoji',
+        {
+          name: target.name.trim(),
+          kind: target.kind,
+          description: [...(target.description ?? '').trim()]
+            .slice(0, 500)
+            .join(''),
+          list_title: (target.listTitle ?? '').trim(),
+        },
+        token
+      )
+      .then((response) => response.emojis),
 };

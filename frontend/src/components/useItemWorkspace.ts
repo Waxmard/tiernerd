@@ -141,7 +141,7 @@ export function useItemWorkspace({
   }, [replaceWorkspace]);
 
   const openEdit = useCallback(
-    (item: Item, focusField: ItemFormField = 'name') => {
+    (item: Item, focusField: ItemFormField | null = 'name') => {
       if (busyRef.current) return;
       const form = {
         name: item.name,

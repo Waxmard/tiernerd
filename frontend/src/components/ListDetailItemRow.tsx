@@ -177,7 +177,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel={accessibleDescription}
-        accessibilityHint="Open item details"
+        accessibilityHint="Opens the item"
         accessibilityState={{ disabled, selected }}
         accessibilityActions={
           item.icon && onIconPress

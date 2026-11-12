@@ -30,6 +30,8 @@ interface ListDetailWorkspaceHostProps {
   onDetailsClose: () => void;
   onMobileClose: () => void;
   onStartRanking: () => void;
+  onEditRank: () => void;
+  onEditDetails: () => void;
   children: React.ReactNode;
 }
 
@@ -55,6 +57,8 @@ export const ListDetailWorkspaceHost: React.FC<
   onMobileClose,
   onStartRanking,
   onIconChange,
+  onEditRank,
+  onEditDetails,
   children,
 }) => {
   const colors = useThemeColors();
@@ -104,6 +108,18 @@ export const ListDetailWorkspaceHost: React.FC<
           scoreBounds={scoreEdit?.bounds}
           color={listColor}
           focusField={workspace.focusField}
+          listTitle={listTitle}
+          editActions={
+            workspace.mode === 'edit' && workspace.item
+              ? {
+                  rankTitle:
+                    workspace.item.position === null ? 'Rank now' : 'Re-rank',
+                  onRank: onEditRank,
+                  onDetails: onEditDetails,
+                  onDelete,
+                }
+              : undefined
+          }
         />
       );
     }
@@ -134,6 +150,7 @@ export const ListDetailWorkspaceHost: React.FC<
         onDelete={onDelete}
         onClose={onDetailsClose}
         onIconChange={onIconChange}
+        listTitle={listTitle}
       />
     );
   };

@@ -671,6 +671,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 onSubmit={() => void workspace.submitMetadata()}
                 onClose={() => void workspace.requestClose().catch(() => false)}
                 introText={`“${pendingList.title}”`}
+                listTitle={pendingList.title}
               />
             ) : null)}
         </SheetModal>
@@ -678,7 +679,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           visible={iconListId !== null}
           value={iconListValue}
           suggestFor={
-            iconList ? { name: iconList.title, kind: 'list' } : undefined
+            iconList
+              ? {
+                  name: iconList.title,
+                  kind: 'list',
+                  description: iconList.description,
+                }
+              : undefined
           }
           onSelect={(emoji) => {
             const id = iconListId;

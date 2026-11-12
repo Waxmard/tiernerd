@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
 import {
   BaseModalContent,
+  Button,
+  Emoji,
   Input,
   SectionLabel,
 } from '../design-system/components';
@@ -32,7 +34,14 @@ export interface AddItemContentProps {
   autoScore?: number | null;
   scoreBounds?: ManualRatingBounds;
   color?: ListColor | null;
-  focusField?: ItemFormField;
+  focusField?: ItemFormField | null;
+  listTitle?: string;
+  editActions?: {
+    rankTitle: string;
+    onRank: () => void;
+    onDetails: () => void;
+    onDelete: () => void;
+  };
 }
 
 const MAX_NAME_LENGTH = 100;
@@ -55,6 +64,8 @@ export function AddItemContent({
   scoreBounds,
   color = null,
   focusField = 'name',
+  listTitle,
+  editActions,
 }: AddItemContentProps) {
   const nameRef = useRef<TextInputInstance>(null);
   const scoreRef = useRef<TextInputInstance>(null);
@@ -104,7 +115,12 @@ export function AddItemContent({
             label="Item emoji"
             value={form.icon}
             onChange={(icon) => onFormChange({ icon })}
-            suggestFor={{ name: form.name, kind: 'item' }}
+            suggestFor={{
+              name: form.name,
+              kind: 'item',
+              description: form.description,
+              listTitle,
+            }}
             disabled={isBusy}
           />
         </View>
@@ -175,6 +191,37 @@ export function AddItemContent({
             style={MULTILINE_INPUT_STYLE}
           />
         </View>
+        {isEdit && editActions ? (
+          <View className="gap-2">
+            <Button
+              title={editActions.rankTitle}
+              variant="secondary"
+              onPress={editActions.onRank}
+              disabled={isBusy}
+              fullWidth
+              icon={<Emoji symbol="⚖️" size={18} />}
+            />
+            <View className="flex-row flex-wrap gap-2">
+              <Button
+                title="Details"
+                variant="text"
+                onPress={editActions.onDetails}
+                disabled={isBusy}
+                className="flex-1 min-w-[120px]"
+                icon={<Emoji symbol="🔎" size={18} />}
+              />
+              <Button
+                title="Delete Item"
+                variant="text"
+                onPress={editActions.onDelete}
+                disabled={isBusy}
+                textClassName="text-danger-text dark:text-danger-text-dark"
+                icon={<Emoji symbol="🗑️" size={18} />}
+                className="flex-1 min-w-[120px]"
+              />
+            </View>
+          </View>
+        ) : null}
       </View>
     </BaseModalContent>
   );

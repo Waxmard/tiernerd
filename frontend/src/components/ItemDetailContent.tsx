@@ -24,6 +24,7 @@ export interface ItemDetailContentProps {
   onIconChange: (icon: string | null) => void;
   onDelete: () => void;
   onClose: () => void;
+  listTitle: string;
 }
 
 const SCORE_CLASS =
@@ -43,6 +44,7 @@ export function ItemDetailContent({
   onDelete,
   onClose,
   onIconChange,
+  listTitle,
 }: ItemDetailContentProps) {
   const hue = useListHue(color);
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
@@ -202,7 +204,12 @@ export function ItemDetailContent({
         visible={pickingIcon}
         value={item.icon ?? null}
         onSelect={pickIcon}
-        suggestFor={{ name: item.name, kind: 'item' }}
+        suggestFor={{
+          name: item.name,
+          kind: 'item',
+          description: item.description,
+          listTitle,
+        }}
         onRemove={() => pickIcon(null)}
         onClose={() => setPickingIcon(false)}
       />
