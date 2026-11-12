@@ -2,15 +2,16 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  type FlatList,
   type ListRenderItemInfo,
-  useWindowDimensions,
   View,
 } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { EmojiPickerModal } from '../components/EmojiPicker';
 import { ImmersiveScreenShell } from '../components/ImmersiveBoard';
 import { ListDetailHeader } from '../components/ListDetailHeader';
 import {
@@ -30,6 +31,7 @@ import type { Item } from '../services/itemsService';
 import { confirmDestructive, notifyError } from '../utils/confirm';
 
 type ListDetailScreenProps = RootStackScreenProps<'ListDetail'>;
+const ROW_TRANSITION = LinearTransition.duration(250);
 
 export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   route,
@@ -39,7 +41,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const { flush, isOffline, lastSyncedAt } = useSync();
   const userId = user?.id ?? null;
   const colors = useThemeColors();
-  const { width: windowWidth } = useWindowDimensions();
   const safeAreaInsets = useSafeAreaInsets();
   const {
     listId,
@@ -47,7 +48,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     promptAddItem,
     completedItemId,
   } = route.params;
-  const isDesktop = windowWidth >= 1024;
   const screenIdentity = JSON.stringify([userId, token, listId]);
   const {
     items,
@@ -59,8 +59,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     listDescription,
     listColor,
     listIcon,
-    listCover,
-    listCoverPhoto,
     rankingMode,
     metadataLoaded,
     hasMetadataSnapshot,
@@ -94,6 +92,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const [dismissedDetailsItemId, setDismissedDetailsItemId] = useState<
     string | null
   >(null);
+  const detailsOpen =
+    selectedItemId !== null && dismissedDetailsItemId !== selectedItemId;
   const listRef = useRef<FlatList<Item> | null>(null);
   const selectedItemIdRef = useRef<string | null>(null);
   const consumedCompletedItemIdRef = useRef<string | null>(null);
@@ -102,14 +102,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const closingForNavigationRef = useRef(false);
   const skipWorkspaceCloseFocusRef = useRef(false);
   const deletingListInFlightRef = useRef(false);
-  const previousDesktopRef = useRef(isDesktop);
-
-  useEffect(() => {
-    if (previousDesktopRef.current && !isDesktop) {
-      setDismissedDetailsItemId(null);
-    }
-    previousDesktopRef.current = isDesktop;
-  }, [isDesktop]);
 
   useEffect(() => {
     identityRef.current = screenIdentity;
@@ -118,6 +110,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setIsListOptionsOpen(false);
     isListOptionsOpenRef.current = false;
   }, [screenIdentity]);
+  const setOptionsOpen = (open: boolean) => {
+    if (identityRef.current !== screenIdentity) return;
+    isListOptionsOpenRef.current = open;
+    setIsListOptionsOpen(open);
+  };
+  const [iconItem, setIconItem] = useState<Item | null>(null);
 
   useEffect(() => {
     if (lastSyncedAt === 0) return;
@@ -147,13 +145,16 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     itemsLoaded,
     selectedItemId,
     dismissedDetailsItemId,
-    isDesktop,
     skipRestore: Boolean(promptAddItem || completedItemId),
     setSelectedItemId,
     listRef,
     scrollToOffset,
   });
 
+  const landItemIdRef = useRef<string | null>(null);
+  const [pulse, setPulse] = useState<{ itemId: string; at: number } | null>(
+    null
+  );
   const handleWorkspaceItemsChanged = useCallback(
     async (item?: Item) => {
       const identity = screenIdentity;
@@ -169,7 +170,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         return;
       view.clearRestoredSelection();
       view.clearRestoredOffset();
-      view.scrollToItem(item.item_id);
+      landItemIdRef.current = item.item_id;
       setSelectedItemId(item.item_id);
       setDismissedDetailsItemId(item.item_id);
     },
@@ -190,6 +191,14 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         pausedDraftItemIdRef.current = closingItemIdRef.current;
     },
   });
+  const sheetOpen = workspace.mode !== 'closed' || detailsOpen;
+  useEffect(() => {
+    const itemId = landItemIdRef.current;
+    if (sheetOpen || !itemId) return;
+    landItemIdRef.current = null;
+    view.scrollToItem(itemId, true);
+    setPulse({ itemId, at: Date.now() });
+  }, [sheetOpen, view]);
   closingItemIdRef.current =
     workspace.mode === 'ranking'
       ? (workspace.item?.item_id ?? workspace.ranking?.itemId ?? null)
@@ -414,6 +423,17 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     workspace.isBusy,
     workspace.requestClose,
   ]);
+  const handleItemIcon = async (item: Item, icon: string | null) => {
+    if (!canMutateFor(screenIdentity)) return;
+    if (await workspace.saveIcon(item, icon))
+      await refreshAfterMutation().catch(() => undefined);
+  };
+  const pickItemIcon = (icon: string | null) => {
+    const target = iconItem;
+    setOptionsOpen(false);
+    setIconItem(null);
+    if (target) void handleItemIcon(target, icon);
+  };
   const handleStartRanking = () => {
     if (!selectedItem || !canMutateFor(screenIdentity)) return;
     void workspace.startRanking(selectedItem);
@@ -449,11 +469,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           return;
         }
         if (workspace.mode === 'closed') {
-          if (
-            !isDesktop &&
-            selectedItemId !== null &&
-            dismissedDetailsItemId !== selectedItemId
-          ) {
+          if (detailsOpen) {
             event.preventDefault();
             handleWorkspaceContentClose();
           }
@@ -474,11 +490,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           });
       }),
     [
-      dismissedDetailsItemId,
+      detailsOpen,
       handleWorkspaceContentClose,
-      isDesktop,
       navigation,
-      selectedItemId,
       workspace.mode,
       requestCloseForSwitch,
     ]
@@ -506,7 +520,16 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       rankingMode={rankingMode}
       color={listColor}
       disabled={isDeletingList || workspace.isBusy}
+      pulseAt={pulse?.itemId === item.item_id ? pulse.at : 0}
       onPress={(selected) => void handleItemPress(selected)}
+      onIconPress={
+        canMutate && workspace.mode === 'closed'
+          ? (target) => {
+              setOptionsOpen(true);
+              setIconItem(target);
+            }
+          : undefined
+      }
     />
   );
   const renderListItems = () => {
@@ -531,9 +554,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       );
 
     return (
-      <FlatList
+      <Animated.FlatList
         ref={listRef}
-        className="flex-1 min-h-0"
+        style={{ flex: 1, minHeight: 0 }}
+        itemLayoutAnimation={ROW_TRANSITION}
         data={items}
         keyExtractor={(item) => item.item_id}
         contentContainerStyle={{
@@ -555,33 +579,20 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     <ImmersiveScreenShell>
       <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
-          <View className="flex-1 min-h-0 mx-4 desktop:mx-6">
+          <View className="flex-1 min-h-0 mx-4">
             <ListDetailHeader
               title={detailsTitle}
               color={listColor}
               icon={listIcon}
-              cover={listCover}
-              coverPhoto={listCoverPhoto}
-              listId={listId}
               description={listDescription}
               addLoading={isLoadingList}
               optionsKey={screenIdentity}
               rankingMode={rankingMode}
               optionsDisabled={
-                !canMutate ||
-                isDeletingList ||
-                workspace.isBusy ||
-                workspace.mode !== 'closed' ||
-                (!isDesktop &&
-                  selectedItemId !== null &&
-                  dismissedDetailsItemId !== selectedItemId)
+                !canMutate || isDeletingList || workspace.isBusy || detailsOpen
               }
               onSaveOptions={updateListOptions}
-              onOptionsVisibilityChange={(open) => {
-                if (identityRef.current !== screenIdentity) return;
-                isListOptionsOpenRef.current = open;
-                setIsListOptionsOpen(open);
-              }}
+              onOptionsVisibilityChange={setOptionsOpen}
               addDisabled={
                 !canMutate ||
                 isDeletingList ||
@@ -595,7 +606,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
             />
             <ListDetailWorkspaceHost
               canMutate={canMutate}
-              isDesktop={isDesktop}
               isScreenBusy={isDeletingList}
               listTitle={detailsTitle}
               listColor={listColor}
@@ -608,9 +618,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               isLoadingItems={isLoadingItems}
               itemsLoaded={itemsLoaded}
               workspace={workspace}
-              onEdit={() => {
+              onEdit={(focus) => {
                 if (selectedItem && canMutateFor(screenIdentity))
-                  workspace.openEdit(selectedItem);
+                  workspace.openEdit(selectedItem, focus);
+              }}
+              onIconChange={(icon) => {
+                if (selectedItem) void handleItemIcon(selectedItem, icon);
               }}
               onDelete={() => {
                 if (selectedItem && canMutateFor(screenIdentity))
@@ -625,6 +638,16 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           </View>
         </View>
       </SafeAreaView>
+      <EmojiPickerModal
+        visible={iconItem !== null}
+        value={iconItem?.icon ?? null}
+        onSelect={pickItemIcon}
+        onRemove={() => pickItemIcon(null)}
+        onClose={() => {
+          setOptionsOpen(false);
+          setIconItem(null);
+        }}
+      />
     </ImmersiveScreenShell>
   );
 };

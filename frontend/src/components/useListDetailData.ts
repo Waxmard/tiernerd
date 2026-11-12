@@ -34,11 +34,9 @@ import {
   sortListsByRecency,
 } from '../services/listsCache';
 import {
-  COVER_NEEDS_CONNECTION,
   INVALID_RANKING_MODE,
   type ListMetadata,
   type ListOptionsInput,
-  listOptionsPayload,
   listsService,
 } from '../services/listsService';
 import {
@@ -416,8 +414,6 @@ export function useListDetailData({
             listDescription: list.description,
             listColor: list.color,
             listIcon: list.icon ?? null,
-            listCover: list.cover ?? null,
-            listCoverPhoto: list.cover_photo ?? null,
             rankingMode: list.ranking_mode,
             metadataError: false,
             metadataLoaded: true,
@@ -489,8 +485,6 @@ export function useListDetailData({
               description: summary.description,
               color: summary.color,
               icon: summary.icon,
-              cover: summary.cover,
-              coverPhoto: summary.cover_photo,
               rankingMode: summary.ranking_mode,
             })
         );
@@ -557,78 +551,53 @@ export function useListDetailData({
         modeSaveRef.current === lifecycle
       )
         throw new Error(ITEMS_ERROR);
-      const usesLocalCover = options.coverDraft.kind === 'local';
-      if (isOfflineRef.current && usesLocalCover)
-        throw new Error(COVER_NEEDS_CONNECTION);
-      const { metadata, coverPhoto } = listOptionsPayload(options);
+      const metadata = {
+        title: options.title,
+        ranking_mode: options.ranking_mode,
+        description: options.description,
+        color: options.color,
+        icon: options.icon,
+      };
       const now = new Date().toISOString();
       modeSaveRef.current = lifecycle;
       const requestId = ++lifecycle.metadataRequest;
-      const version = ++lifecycle.cacheVersion;
+      ++lifecycle.cacheVersion;
       lifecycle.hydrationRequest++;
       try {
-        let saved: ListMetadata | null = null;
-        if (usesLocalCover) {
-          saved = await listsService.updateListOptions(
-            lifecycle.listId,
+        const outcome = await mutate(
+          {
+            id: newId(),
+            createdAt: now,
+            kind: 'list.update',
+            listId: lifecycle.listId,
             metadata,
-            lifecycle.token,
-            options.coverDraft
-          );
-          if (
-            !canAcceptMetadataResponse(
-              lifecycle,
-              requestId,
-              lifecycleRef.current
-            ) ||
-            !isCacheCurrent(lifecycle, version, lifecycleRef.current)
-          )
-            throw new Error(ITEMS_ERROR);
-          lifecycle.metadataAcceptedLive = true;
-          await writeCachedSummary(
-            lifecycle,
-            version,
-            saved,
-            itemsRef.current.length
-          ).catch(() => {});
-        } else {
-          const outcome = await mutate(
-            {
-              id: newId(),
-              createdAt: now,
-              kind: 'list.update',
-              listId: lifecycle.listId,
-              metadata,
-            },
-            {
-              applyLocal: () =>
-                localLibrary.applyLocalListUpdate(
-                  lifecycle.userId as string,
-                  lifecycle.listId,
-                  { ...metadata, cover_photo: coverPhoto },
-                  now
-                ),
-            }
-          );
-          if (outcome.status === 'rejected') throw new Error(outcome.message);
-          const base =
-            metadataRef.current?.lifecycle === lifecycle
-              ? metadataRef.current.metadata
-              : null;
-          saved = base
-            ? {
-                ...base,
-                title: options.title,
-                color: options.color,
-                icon: options.icon,
-                cover:
-                  options.coverDraft.kind === 'landscape' ? 'landscape' : null,
-                cover_photo: coverPhoto,
-                ranking_mode: options.ranking_mode,
-                updated_at: now,
-              }
+          },
+          {
+            applyLocal: () =>
+              localLibrary.applyLocalListUpdate(
+                lifecycle.userId as string,
+                lifecycle.listId,
+                metadata,
+                now
+              ),
+          }
+        );
+        if (outcome.status === 'rejected') throw new Error(outcome.message);
+        const base =
+          metadataRef.current?.lifecycle === lifecycle
+            ? metadataRef.current.metadata
             : null;
-        }
+        const saved: ListMetadata | null = base
+          ? {
+              ...base,
+              title: options.title,
+              color: options.color,
+              description: options.description,
+              icon: options.icon,
+              ranking_mode: options.ranking_mode,
+              updated_at: now,
+            }
+          : null;
         if (saved)
           metadataRef.current = { lifecycle, requestId, metadata: saved };
         updateState(
@@ -638,9 +607,8 @@ export function useListDetailData({
             ...previous,
             detailsTitle: saved?.title ?? options.title,
             listColor: saved?.color ?? options.color,
+            listDescription: saved?.description ?? options.description,
             listIcon: saved?.icon ?? options.icon,
-            listCover: saved?.cover ?? null,
-            listCoverPhoto: saved ? saved.cover_photo : coverPhoto,
             rankingMode: saved?.ranking_mode ?? options.ranking_mode,
             metadataError: false,
             metadataLoaded: true,
@@ -651,7 +619,6 @@ export function useListDetailData({
         throw new Error(
           error instanceof Error &&
             (error.message === INVALID_RANKING_MODE ||
-              error.message === COVER_NEEDS_CONNECTION ||
               error.message === ITEMS_ERROR)
             ? error.message
             : getApiErrorMessage(error, 'Unable to save list options.')
@@ -660,7 +627,7 @@ export function useListDetailData({
         if (modeSaveRef.current === lifecycle) modeSaveRef.current = null;
       }
     },
-    [mutate, updateState, writeCachedSummary]
+    [mutate, updateState]
   );
   const evictDeletedList = useCallback(async (): Promise<void> => {
     const lifecycle = lifecycleRef.current;
@@ -757,8 +724,6 @@ export function useListDetailData({
     listDescription: visibleState.listDescription,
     listColor: visibleState.listColor,
     listIcon: visibleState.listIcon,
-    listCover: visibleState.listCover,
-    listCoverPhoto: visibleState.listCoverPhoto,
     rankingMode: visibleState.rankingMode,
     metadataLoaded: visibleState.metadataLoaded,
     hasMetadataSnapshot: visibleState.hasMetadataSnapshot,

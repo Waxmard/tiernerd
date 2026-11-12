@@ -1,16 +1,6 @@
-import type {
-  ListColor,
-  ListCover,
-  ListIcon,
-} from '../design-system/tokens/colors';
+import type { ListColor, ListIcon } from '../design-system/tokens/colors';
 import { api } from './api';
-import {
-  type CoverPhotoSelection,
-  coverSelectionFromDraft,
-  listFormData,
-} from './coverDraft';
 import type { Item } from './itemsService';
-import type { CoverDraft, ListPhoto } from './listCoversService';
 
 export type ListRankingMode = 'rank' | 'score';
 
@@ -20,8 +10,6 @@ export interface ListSimple {
   description: string | null;
   color: ListColor | null;
   icon: ListIcon | null;
-  cover: ListCover | null;
-  cover_photo: ListPhoto | null;
   ranking_mode: ListRankingMode;
   created_at: string;
   updated_at: string;
@@ -37,40 +25,25 @@ export interface ListCreatePayload {
   color: ListColor | null;
   icon: ListIcon | null;
   ranking_mode: ListRankingMode;
-  cover: ListCover | null;
-  cover_photo: CoverPhotoSelection | null;
 }
 
 export type ListMetadataPatch = Partial<
   Pick<
     ListCreatePayload,
-    | 'title'
-    | 'description'
-    | 'color'
-    | 'icon'
-    | 'cover'
-    | 'cover_photo'
-    | 'ranking_mode'
+    'title' | 'description' | 'color' | 'icon' | 'ranking_mode'
   >
 >;
 
-export type ListSummaryPatch = Omit<ListMetadataPatch, 'cover_photo'> & {
-  cover_photo?: ListPhoto | null;
-};
-
 export interface ListOptionsInput {
   title: string;
+  description: string | null;
   ranking_mode: ListRankingMode;
   color: ListColor | null;
   icon: ListIcon | null;
-  coverDraft: CoverDraft;
 }
 
 export const INVALID_RANKING_MODE =
   'This API does not support list ranking modes. Update the backend.';
-
-export const COVER_NEEDS_CONNECTION =
-  'Cover uploads need a connection. Choose a color or icon instead.';
 
 const requireRankingMode = <T extends ListMetadata>(list: T): T => {
   if (
@@ -82,27 +55,11 @@ const requireRankingMode = <T extends ListMetadata>(list: T): T => {
   return list;
 };
 
-export function listOptionsPayload(options: ListOptionsInput): {
-  metadata: ListMetadataPatch;
-  coverPhoto: ListPhoto | null;
-} {
-  const draft = options.coverDraft;
-  return {
-    metadata: {
-      title: options.title,
-      ranking_mode: options.ranking_mode,
-      color: options.color,
-      icon: options.icon,
-      ...coverSelectionFromDraft(draft),
-    },
-    coverPhoto:
-      draft.kind === 'persisted'
-        ? draft.photo
-        : draft.kind === 'unsplash'
-          ? { ...draft.photo, source: 'unsplash' }
-          : null,
-  };
-}
+const metadataForm = (metadata: object): FormData => {
+  const form = new FormData();
+  form.append('metadata', JSON.stringify(metadata));
+  return form;
+};
 
 export const listsService = {
   getLists: (token: string): Promise<ListSimple[]> =>
@@ -118,24 +75,10 @@ export const listsService = {
     api.get<Item[]>(`/api/lists/${listId}/items`, token),
   createList: (
     payload: ListCreatePayload,
-    token: string,
-    draft?: CoverDraft
+    token: string
   ): Promise<ListMetadata> =>
     api
-      .post<ListMetadata>('/api/lists/', listFormData(payload, draft), token)
-      .then((list) => requireRankingMode(list)),
-  updateListOptions: (
-    listId: string,
-    metadata: ListMetadataPatch,
-    token: string,
-    draft?: CoverDraft
-  ): Promise<ListMetadata> =>
-    api
-      .put<ListMetadata>(
-        `/api/lists/${listId}`,
-        listFormData(metadata, draft),
-        token
-      )
+      .post<ListMetadata>('/api/lists/', metadataForm(payload), token)
       .then((list) => requireRankingMode(list)),
   updateListMetadata: (
     listId: string,
@@ -143,7 +86,7 @@ export const listsService = {
     token: string
   ): Promise<ListMetadata> =>
     api
-      .put<ListMetadata>(`/api/lists/${listId}`, listFormData(metadata), token)
+      .put<ListMetadata>(`/api/lists/${listId}`, metadataForm(metadata), token)
       .then((list) => requireRankingMode(list)),
   setRanking: (
     listId: string,

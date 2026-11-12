@@ -19,7 +19,6 @@ class Settings(BaseSettings):
     # Google sign-in: the public OAuth Web client ID the ID token must be minted for.
     GOOGLE_CLIENT_ID: str = ""
 
-    UNSPLASH_ACCESS_KEY: str = ""
     COVER_UPLOAD_BUCKET: str = ""
 
     LOG_LEVEL: str = "INFO"

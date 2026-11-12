@@ -9,6 +9,7 @@ class ItemBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     image_url: HttpUrl | None = None
+    icon: str | None = Field(None, min_length=1, max_length=16)
 
     @field_validator("name", mode="before")
     @classmethod
@@ -24,6 +25,7 @@ class ItemUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = None
     image_url: HttpUrl | None = None
+    icon: str | None = Field(None, min_length=1, max_length=16)
     manual_rating: float | None = None
 
     @field_validator("name", mode="before")

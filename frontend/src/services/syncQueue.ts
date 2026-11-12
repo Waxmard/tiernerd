@@ -26,6 +26,7 @@ export type SyncOp =
       itemId: string;
       name: string;
       description: string | null;
+      icon?: string | null;
     }
   | {
       id: string;
@@ -35,6 +36,7 @@ export type SyncOp =
       itemId: string;
       name?: string;
       description?: string | null;
+      icon?: string | null;
       manualRating?: number | null;
     }
   | {
@@ -100,6 +102,7 @@ export function compact(ops: SyncOp[]): SyncOp[] {
           name: op.name ?? create.name,
           description:
             op.description === undefined ? create.description : op.description,
+          icon: op.icon === undefined ? create.icon : op.icon,
         };
         if (op.manualRating === undefined) {
           continue;
@@ -108,6 +111,7 @@ export function compact(ops: SyncOp[]): SyncOp[] {
           ...op,
           name: undefined,
           description: undefined,
+          icon: undefined,
         };
       }
       const updateIndex = result.findIndex(
@@ -123,6 +127,7 @@ export function compact(ops: SyncOp[]): SyncOp[] {
             currentOp.description === undefined
               ? update.description
               : currentOp.description,
+          icon: currentOp.icon === undefined ? update.icon : currentOp.icon,
           ...(currentOp.manualRating === undefined &&
           update.manualRating === undefined
             ? {}
@@ -183,7 +188,11 @@ export function compact(ops: SyncOp[]): SyncOp[] {
         update.manualRating !== undefined
       ) {
         const { manualRating: _removed, ...rest } = update;
-        if (rest.name === undefined && rest.description === undefined) {
+        if (
+          rest.name === undefined &&
+          rest.description === undefined &&
+          rest.icon === undefined
+        ) {
           result.splice(updateIndex, 1);
         } else {
           result[updateIndex] = rest;
@@ -243,11 +252,34 @@ function notFoundMessage(op: SyncOp): string | null {
   return null;
 }
 
+function withoutCoverKeys<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return value;
+  }
+  const {
+    cover: _cover,
+    cover_photo: _photo,
+    ...rest
+  } = value as Record<string, unknown>;
+  return rest as T;
+}
+
+function stripCovers(op: SyncOp): SyncOp {
+  if (!op || typeof op !== 'object') return op;
+  if (op.kind === 'list.create') {
+    return { ...op, list: withoutCoverKeys(op.list) };
+  }
+  if (op.kind === 'list.update') {
+    return { ...op, metadata: withoutCoverKeys(op.metadata) };
+  }
+  return op;
+}
+
 function parseOps(raw: string | null): SyncOp[] {
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as SyncOp[]) : [];
+    return Array.isArray(parsed) ? (parsed as SyncOp[]).map(stripCovers) : [];
   } catch {
     return [];
   }

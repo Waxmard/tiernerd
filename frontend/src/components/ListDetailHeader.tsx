@@ -1,34 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
+import { useRef } from 'react';
 import {
-  Platform,
+  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { Button, Emoji } from '../design-system/components';
-import type {
-  ListColor,
-  ListCover,
-  ListIcon,
-} from '../design-system/tokens/colors';
+import type { ListColor, ListIcon } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
-import type { ListPhoto } from '../services/listCoversService';
+import { listIconEmoji } from '../services/listIcon';
 import type {
   ListOptionsInput,
   ListRankingMode,
 } from '../services/listsService';
-import { ListPhotoCover, PhotoAttribution } from './ListPhotoCover';
-import { ListRankingOptions } from './ListRankingOptions';
+import {
+  type ListOptionsHandle,
+  ListRankingOptions,
+} from './ListRankingOptions';
 
 interface ListDetailHeaderProps {
   title: string;
   color: ListColor | null;
   icon: ListIcon | null;
-  cover: ListCover | null;
-  coverPhoto?: ListPhoto | null;
-  listId: string;
   addDisabled: boolean;
   addLoading: boolean;
   onAdd: () => void;
@@ -46,10 +42,7 @@ interface ListDetailHeaderProps {
 export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   title,
   icon,
-  cover,
   color,
-  coverPhoto = null,
-  listId,
   addDisabled,
   addLoading,
   onAdd,
@@ -64,6 +57,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   onDelete,
 }) => {
   const { colors } = useTheme();
+  const optionsRef = useRef<ListOptionsHandle>(null);
   const header = (
     <View className="gap-2 p-3 mt-2 mb-2 rounded-2xl bg-surface dark:bg-surface-dark shrink-0">
       <View className="flex-row items-start">
@@ -81,23 +75,60 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
             accessible={false}
           />
         </TouchableOpacity>
-        <View className="flex-1 min-w-0 min-h-11 justify-center px-2">
-          <Text
+        <View className="flex-1 min-w-0 min-h-11 flex-row items-center gap-2 px-2">
+          {addLoading ? (
+            <View accessible={false} className="w-6 h-6" />
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`List emoji: ${listIconEmoji(icon)}`}
+              accessibilityHint="Opens the emoji picker"
+              accessibilityState={{ disabled: optionsDisabled }}
+              disabled={optionsDisabled}
+              hitSlop={10}
+              onPress={() => optionsRef.current?.open('icon')}
+              style={({ pressed }) =>
+                pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+              }
+            >
+              <Emoji symbol={listIconEmoji(icon)} size={24} />
+            </Pressable>
+          )}
+          <Pressable
             accessibilityRole="header"
-            className="text-headline-small text-ink dark:text-ink-dark text-left"
+            accessibilityLabel={title}
+            accessibilityHint={optionsDisabled ? undefined : 'Edit list title'}
+            onPress={
+              optionsDisabled
+                ? undefined
+                : () => optionsRef.current?.open('title')
+            }
+            className="flex-1 min-w-0 min-h-11 justify-center"
+            style={({ pressed }) =>
+              pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+            }
           >
-            {title}
-          </Text>
+            <Text
+              className={`${
+                Array.from(title).length <= 28
+                  ? 'text-headline-small'
+                  : Array.from(title).length <= 56
+                    ? 'text-title-medium'
+                    : 'text-title-small'
+              } text-ink dark:text-ink-dark text-left`}
+            >
+              {title}
+            </Text>
+          </Pressable>
         </View>
         <ListRankingOptions
+          ref={optionsRef}
           key={optionsKey}
           title={title}
+          description={description}
           rankingMode={rankingMode}
           color={color}
           icon={icon}
-          cover={cover}
-          coverPhoto={coverPhoto}
-          listId={listId}
           disabled={optionsDisabled}
           onSave={onSaveOptions}
           onVisibilityChange={onOptionsVisibilityChange}
@@ -114,36 +145,31 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           <Emoji symbol="🗑️" size={22} dimmed={deleteDisabled} />
         </TouchableOpacity>
       </View>
-      {cover === 'landscape' || coverPhoto ? (
-        <View className="h-28 desktop:h-40 rounded-xl overflow-hidden">
-          <ListPhotoCover
-            cover={cover}
-            photo={coverPhoto}
-            listId={listId}
-            color={color}
-            className="w-full h-full"
-          />
-        </View>
-      ) : null}
-      {coverPhoto?.source === 'unsplash' ? (
-        <View className="px-1 -mt-1">
-          <PhotoAttribution photo={coverPhoto} />
-        </View>
-      ) : null}
       {description?.trim() ? (
         <ScrollView
           className="max-h-[72px]"
-          role={Platform.OS === 'web' ? 'region' : undefined}
-          accessibilityLabel={
-            Platform.OS === 'web' ? 'List description' : undefined
-          }
-          tabIndex={Platform.OS === 'web' ? 0 : undefined}
           nestedScrollEnabled
           showsVerticalScrollIndicator
         >
-          <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
-            {description}
-          </Text>
+          <Pressable
+            accessibilityRole={optionsDisabled ? undefined : 'button'}
+            accessibilityHint={
+              optionsDisabled ? undefined : 'Edit list description'
+            }
+            onPress={
+              optionsDisabled
+                ? undefined
+                : () => optionsRef.current?.open('description')
+            }
+            className="min-h-11 justify-center"
+            style={({ pressed }) =>
+              pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+            }
+          >
+            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+              {description}
+            </Text>
+          </Pressable>
         </ScrollView>
       ) : null}
       {addLoading ? (
@@ -179,9 +205,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   );
   return (
     <ScrollView
-      role={Platform.OS === 'web' ? 'region' : undefined}
-      accessibilityLabel={Platform.OS === 'web' ? 'List details' : undefined}
-      tabIndex={Platform.OS === 'web' ? 0 : undefined}
       style={{ flexGrow: 0, minHeight: 0, maxHeight: '50%' }}
       alwaysBounceVertical={false}
       nestedScrollEnabled

@@ -73,6 +73,7 @@ async def create_item(
         name=item_in.name,
         description=item_in.description,
         image_url=str(item_in.image_url) if item_in.image_url else None,
+        icon=item_in.icon,
         position=None,
         rating=None,
         manual_rating=None,

@@ -7,17 +7,14 @@ from pathlib import Path
 from uuid import UUID
 
 from google.cloud import storage
-from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 get_settings = importlib.import_module("app.settings").get_settings
-ListModel = importlib.import_module("app.db.models").List
-cover_schema = importlib.import_module("app.schemas.list")
-cover_photo_adapter = TypeAdapter(cover_schema.CoverPhoto)
-object_key = importlib.import_module("app.services.cover_upload_service").object_key
+User = importlib.import_module("app.db.models").User
+object_key = importlib.import_module("app.services.photo_upload_service").object_key
 
 REQUEST_TIMEOUT = 30
 
@@ -27,21 +24,11 @@ class CleanupError(Exception):
 
 
 def _referenced_keys(rows):
-    referenced = set()
-    for user_id, metadata in rows:
-        if metadata is None:
-            continue
-        try:
-            photo = cover_photo_adapter.validate_python(metadata)
-        except ValidationError:
-            raise CleanupError(
-                "Invalid list cover metadata; no objects deleted."
-            ) from None
-        if isinstance(photo, cover_schema.UploadCoverPhoto):
-            if not isinstance(user_id, UUID):
-                raise CleanupError("Invalid list owner; no objects deleted.")
-            referenced.add(object_key(user_id, photo.id))
-    return referenced
+    return {
+        object_key(user_id, photo_id)
+        for user_id, photo_id in rows
+        if photo_id is not None
+    }
 
 
 def _is_upload_key(name: str) -> bool:
@@ -68,7 +55,7 @@ def _candidates(bucket_name: str, referenced: set[str], cutoff: datetime):
         created = blob.time_created
         if created is None or created.utcoffset() is None:
             raise CleanupError(
-                "A cover has no usable creation time; no objects deleted."
+                "A photo has no usable creation time; no objects deleted."
             )
         if blob.name in referenced or created >= cutoff:
             continue
@@ -90,7 +77,7 @@ async def _run(apply: bool) -> int:
     try:
         async with engine.connect() as connection:
             rows = await connection.execute(
-                select(ListModel.user_id, ListModel.cover_photo)
+                select(User.user_id, User.background_photo_id)
             )
             referenced = _referenced_keys(rows)
     finally:
@@ -125,7 +112,7 @@ async def _run(apply: bool) -> int:
 
 def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Find unreferenced list cover uploads older than 24 hours."
+        description="Find unreferenced photo uploads older than 24 hours."
     )
     parser.add_argument("--apply", action="store_true", help="Delete the candidates.")
     return parser.parse_args(argv)

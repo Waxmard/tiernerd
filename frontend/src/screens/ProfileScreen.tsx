@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import type React from 'react';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -18,10 +19,28 @@ import {
 import { Emoji, SectionLabel } from '../design-system/components';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
+import { useNotify } from '../providers/NotificationProvider';
 import { useTheme, useThemeColors } from '../providers/ThemeProvider';
+import { ApiError, getApiErrorMessage } from '../services/apiError';
+import { authService } from '../services/authService';
+import { pickLocalPhoto } from '../services/photoPicker';
 import type { ThemePreference } from '../services/themePreference';
+import { confirmDestructive } from '../utils/confirm';
 
 type ProfileScreenProps = RootStackScreenProps<'Profile'>;
+
+const BACKGROUND_OPTIONS = [
+  { label: 'Built-in landscape', value: 'landscape', emoji: '🏞️' },
+  { label: 'Solid canvas', value: 'none', emoji: '⬜' },
+  { label: 'My photo', value: 'photo', emoji: '🖼️' },
+] as const;
+
+const backgroundErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof ApiError
+    ? getApiErrorMessage(error, fallback)
+    : error instanceof Error
+      ? error.message
+      : fallback;
 
 const THEME_OPTIONS = [
   { label: 'System', value: 'system', emoji: '📱' },
@@ -34,7 +53,8 @@ const THEME_OPTIONS = [
 }>;
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
-  const { user, signOut } = useAuth();
+  const { user, token, signOut, updateUser } = useAuth();
+  const notify = useNotify();
   const {
     preference,
     setPreference,
@@ -43,6 +63,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   } = useTheme();
   const colors = useThemeColors();
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
+  const [busyBackground, setBusyBackground] = useState<string | null>(null);
+  const backgroundBusy = busyBackground !== null;
+  const hasPhoto = Boolean(user?.backgroundPhotoId);
 
   const handleSignOut = async () => {
     await signOut();
@@ -50,6 +73,61 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   const handleBack = () => {
     navigation.goBack();
+  };
+
+  const runBackgroundChange = async (
+    option: string,
+    change: (token: string) => Promise<void>,
+    fallback: string
+  ) => {
+    if (backgroundBusy || !token) return;
+    setBusyBackground(option);
+    try {
+      await change(token);
+    } catch (error) {
+      notify(backgroundErrorMessage(error, fallback), '⚠️');
+    } finally {
+      setBusyBackground(null);
+    }
+  };
+
+  const chooseBackgroundPhoto = () =>
+    runBackgroundChange(
+      'photo',
+      async (authToken) => {
+        const blob = await pickLocalPhoto();
+        if (!blob) return;
+        try {
+          await updateUser(
+            await authService.setBackgroundPhoto(blob, authToken)
+          );
+        } finally {
+          (blob as Blob & { close?: () => void }).close?.();
+        }
+      },
+      'Could not save the background photo. Try again.'
+    );
+
+  const chooseBuiltInBackground = async (background: 'landscape' | 'none') => {
+    if (
+      hasPhoto &&
+      !(await confirmDestructive(
+        'Remove background photo?',
+        'Your uploaded photo will be deleted.',
+        'Remove'
+      ))
+    )
+      return;
+    await runBackgroundChange(
+      background,
+      async (authToken) => {
+        if (hasPhoto) {
+          await updateUser(await authService.clearBackgroundPhoto(authToken));
+        }
+        setWorkspaceAppearance({ ...workspaceAppearance, background });
+      },
+      'Could not remove the background photo. Try again.'
+    );
   };
 
   return (
@@ -172,39 +250,41 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 label="Workspace background"
                 className="mt-4 mb-2"
               />
-              <View className="flex-row gap-2">
-                {(
-                  [
-                    {
-                      label: 'Built-in landscape',
-                      value: 'landscape',
-                      emoji: '🏞️',
-                    },
-                    { label: 'Solid canvas', value: 'none', emoji: '⬜' },
-                  ] as const
-                ).map((option) => {
+              <View className="flex-row flex-wrap gap-2">
+                {BACKGROUND_OPTIONS.map((option) => {
                   const selected =
-                    workspaceAppearance.background === option.value;
+                    option.value === 'photo'
+                      ? hasPhoto
+                      : !hasPhoto &&
+                        workspaceAppearance.background === option.value;
                   return (
                     <Pressable
                       key={option.value}
                       accessibilityRole="button"
                       accessibilityLabel={option.label}
-                      accessibilityState={{ selected }}
+                      accessibilityState={{
+                        selected,
+                        disabled: backgroundBusy,
+                      }}
+                      disabled={backgroundBusy}
                       onPress={() =>
-                        setWorkspaceAppearance({
-                          ...workspaceAppearance,
-                          background: option.value,
-                        })
+                        void (option.value === 'photo'
+                          ? chooseBackgroundPhoto()
+                          : chooseBuiltInBackground(option.value))
                       }
                       className={[
-                        'flex-1 min-h-[44px] flex-row items-center justify-center gap-1 border rounded-[10px] px-3 py-2',
+                        'grow basis-[140px] min-h-[44px] flex-row items-center justify-center gap-1 border rounded-[10px] px-3 py-2',
                         selected
                           ? 'bg-accent-tint dark:bg-accent-tint-dark border-accent dark:border-accent-dark'
                           : 'bg-surface dark:bg-surface-dark border-line dark:border-line-dark',
+                        backgroundBusy ? 'opacity-60' : '',
                       ].join(' ')}
                     >
-                      <Emoji symbol={option.emoji} size={16} />
+                      {busyBackground === option.value ? (
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      ) : (
+                        <Emoji symbol={option.emoji} size={16} />
+                      )}
                       <Text
                         className={[
                           'text-label-large',
@@ -227,6 +307,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   );
                 })}
               </View>
+              {hasPhoto ? (
+                <Text className="mt-2 text-body-small text-ink-muted dark:text-ink-muted-dark">
+                  Choosing another background removes your photo.
+                </Text>
+              ) : null}
               <SectionLabel
                 emoji="🖌️"
                 label="Workspace accent"

@@ -260,6 +260,30 @@ class TestUpdateItem:
         assert test_item.name != original_name
         assert test_item.description != original_description
 
+    async def test_item_icon_round_trips_and_validates(
+        self, client: AsyncClient, test_list: ListModel, auth_headers: dict
+    ):
+        created = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json={"name": "Pizza", "icon": "🍕"},
+            headers=auth_headers,
+        )
+        assert created.status_code == 200
+        assert created.json()["icon"] == "🍕"
+        url = f"/api/items/items/{created.json()['item_id']}"
+
+        renamed = await client.put(url, json={"name": "Pizza 2"}, headers=auth_headers)
+        assert renamed.status_code == 200
+        assert renamed.json()["icon"] == "🍕"
+
+        cleared = await client.put(url, json={"icon": None}, headers=auth_headers)
+        assert cleared.status_code == 200
+        assert cleared.json()["icon"] is None
+
+        too_long = await client.put(url, json={"icon": "x" * 17}, headers=auth_headers)
+        assert too_long.status_code == 422
+
     async def test_update_item_unauthenticated(
         self, client: AsyncClient, test_item: ItemModel
     ):

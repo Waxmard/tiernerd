@@ -81,8 +81,6 @@ class TestBuildListSimpleResponse:
             description = "Test description"
             color = None
             icon = None
-            cover = None
-            cover_photo = None
             ranking_mode = "score"
             created_at = datetime.now()
             updated_at = datetime.now()
@@ -91,4 +89,3 @@ class TestBuildListSimpleResponse:
         result = build_list_simple_response(row)
 
         assert result["item_count"] == 0
-        assert result["cover_photo"] is None

@@ -12,8 +12,8 @@ import {
 } from './listsCache.ts';
 import type {
   ListMetadata,
+  ListMetadataPatch,
   ListSimple,
-  ListSummaryPatch,
 } from './listsService.ts';
 import { computeScores } from './rankingEngine.ts';
 import type { SyncOp } from './syncQueue.ts';
@@ -23,7 +23,7 @@ export interface LocalCacheStorage {
   removeItem(key: string): Promise<void>;
 }
 
-type SummaryPatch = ListSummaryPatch & {
+type SummaryPatch = ListMetadataPatch & {
   updated_at?: string;
   item_count?: number;
 };
@@ -78,6 +78,7 @@ export function reconcileListItems(
         name: op.name,
         description: op.description,
         image_url: null,
+        icon: op.icon ?? null,
         rating: null,
         manual_rating: null,
         position: null,
@@ -96,6 +97,7 @@ export function reconcileListItems(
         ...(op.description !== undefined
           ? { description: op.description }
           : {}),
+        ...(op.icon !== undefined ? { icon: op.icon } : {}),
         ...(op.manualRating !== undefined
           ? { manual_rating: op.manualRating }
           : {}),
@@ -167,8 +169,6 @@ export function reconcileLists(
         description: op.list.description ?? null,
         color: op.list.color ?? null,
         icon: op.list.icon ?? null,
-        cover: op.list.cover ?? null,
-        cover_photo: null,
         ranking_mode: op.list.ranking_mode ?? 'score',
         created_at: op.createdAt,
         updated_at: op.createdAt,
@@ -184,18 +184,9 @@ export function reconcileLists(
     if (op.kind === 'list.update') {
       const target = lists.find((entry) => entry.list_id === op.listId);
       if (!target) continue;
-      const { cover_photo: coverSelection, ...restMetadata } = op.metadata;
-      const nextCoverPhoto =
-        coverSelection === undefined
-          ? target.cover_photo
-          : coverSelection === null
-            ? null
-            : (cachedLists.find((entry) => entry.list_id === op.listId)
-                ?.cover_photo ?? target.cover_photo);
       const updated: ListSimple = {
         ...target,
-        ...restMetadata,
-        cover_photo: nextCoverPhoto,
+        ...op.metadata,
         updated_at:
           Date.parse(op.createdAt) > Date.parse(target.updated_at)
             ? op.createdAt
@@ -324,7 +315,7 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
     applyLocalListUpdate: async (
       userId: string,
       listId: string,
-      metadata: ListSummaryPatch,
+      metadata: ListMetadataPatch,
       updatedAt: string
     ): Promise<void> => {
       await patchSummary(userId, listId, {

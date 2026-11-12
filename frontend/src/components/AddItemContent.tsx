@@ -1,13 +1,18 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
-import { BaseModalContent, Input } from '../design-system/components';
+import {
+  BaseModalContent,
+  Input,
+  SectionLabel,
+} from '../design-system/components';
 import type { ListColor } from '../design-system/tokens/colors';
 import { useListHue } from '../providers/ThemeProvider';
 import {
   formatScore,
   type ManualRatingBounds,
 } from '../services/rankingEngine';
-import type { ItemFormDraft } from './itemWorkspaceTypes';
+import { EmojiPickerField } from './EmojiPicker';
+import type { ItemFormDraft, ItemFormField } from './itemWorkspaceTypes';
 
 export interface AddItemFieldErrors {
   name?: string;
@@ -22,12 +27,12 @@ export interface AddItemContentProps {
   isBusy: boolean;
   onSubmit: () => void;
   onClose: () => void;
-  presentation: 'modal' | 'panel';
   introText?: string;
   canEditScore?: boolean;
   autoScore?: number | null;
   scoreBounds?: ManualRatingBounds;
   color?: ListColor | null;
+  focusField?: ItemFormField;
 }
 
 const MAX_NAME_LENGTH = 100;
@@ -44,12 +49,12 @@ export function AddItemContent({
   isBusy,
   onSubmit,
   onClose,
-  presentation,
   introText,
   canEditScore = false,
   autoScore = null,
   scoreBounds,
   color = null,
+  focusField = 'name',
 }: AddItemContentProps) {
   const nameRef = useRef<TextInputInstance>(null);
   const scoreRef = useRef<TextInputInstance>(null);
@@ -68,7 +73,6 @@ export function AddItemContent({
       color={color}
       isLoading={isBusy}
       submitText={isEdit ? 'Save' : 'Add item'}
-      presentation={presentation}
       onClose={onClose}
       onSubmit={onSubmit}
     >
@@ -89,9 +93,18 @@ export function AddItemContent({
             error={fieldErrors.name}
             maxLength={MAX_NAME_LENGTH}
             editable={!isBusy}
-            autoFocus
+            autoFocus={focusField === 'name'}
             containerClassName=""
             inputClassName="text-[20px] font-semibold min-h-12 min-w-0"
+          />
+        </View>
+        <View className={`${PANEL_CLASS} gap-2`} style={hue.cardStyle}>
+          <SectionLabel emoji="😀" label="Emoji (optional)" />
+          <EmojiPickerField
+            label="Item emoji"
+            value={form.icon}
+            onChange={(icon) => onFormChange({ icon })}
+            disabled={isBusy}
           />
         </View>
         {isEdit && canEditScore ? (
@@ -112,6 +125,7 @@ export function AddItemContent({
               inputMode="decimal"
               maxLength={4}
               editable={!isBusy}
+              autoFocus={focusField === 'manualRating'}
               containerClassName=""
               inputClassName="text-[16px] font-semibold min-h-12 min-w-0"
             />
@@ -147,6 +161,7 @@ export function AddItemContent({
         >
           <Input
             emoji="📝"
+            autoFocus={focusField === 'description'}
             label="Description (optional)"
             placeholder="Add a description"
             value={form.description}

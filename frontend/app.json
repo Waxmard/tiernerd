@@ -21,7 +21,7 @@
       ]
     ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.maxwellward.tiernerd",
       "appleTeamId": "48TY2FP59S",
       "infoPlist": {

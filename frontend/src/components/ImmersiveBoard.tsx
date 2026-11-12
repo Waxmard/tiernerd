@@ -1,19 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { type ReactNode, useEffect, useState } from 'react';
+import { Pressable, View } from 'react-native';
 import { Emoji } from '../design-system/components';
 import {
   LIST_COLORS,
-  LIST_ICONS,
   type ListColor,
-  type ListCover,
   type ListIcon,
   palette,
 } from '../design-system/tokens/colors';
+import { useAuth } from '../providers/AuthContext';
+import { useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
-import type { ListPhoto } from '../services/listCoversService';
+import { listIconEmoji } from '../services/listIcon';
 import { LandscapeBackdrop } from './LandscapeBackdrop';
-import { ListPhotoCover } from './ListPhotoCover';
+import { WorkspacePhotoBackdrop } from './WorkspacePhotoBackdrop';
 export const SWATCH_CLASS: Record<ListColor, string> = {
   blue: 'bg-list-blue-solid dark:bg-list-blue-solid-dark',
   teal: 'bg-list-teal-solid dark:bg-list-teal-solid-dark',
@@ -32,32 +32,26 @@ export const CHIP_CLASS: Record<ListColor, string> = {
   coral: 'bg-list-coral-tint dark:bg-list-coral-tint-dark',
 };
 
-export const LIST_ICON_EMOJI: Record<ListIcon, string> = {
-  layers: '🗂️',
-  coffee: '☕',
-  film: '🎬',
-  mountain: '🏔️',
-  star: '⭐',
-  heart: '❤️',
-  books: '📚',
-};
-
-export const LIST_ICON_LABELS: Record<ListIcon, string> = {
-  layers: 'Layers',
-  coffee: 'Coffee',
-  film: 'Film',
-  mountain: 'Outdoors',
-  star: 'Star',
-  heart: 'Favorites',
-  books: 'Books',
-};
-
 export function ImmersiveScreenShell({ children }: { children: ReactNode }) {
   const { workspaceAppearance } = useTheme();
+  const { user, token } = useAuth();
+  const { isOffline } = useSync();
+  const [failedPhotoId, setFailedPhotoId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isOffline) setFailedPhotoId(null);
+  }, [isOffline]);
+  const photoId = user?.backgroundPhotoId;
   return (
     <View className="flex-1 min-h-0 bg-canvas dark:bg-canvas-dark">
-      {workspaceAppearance.background === 'landscape' ? (
-        <LandscapeBackdrop variant="workspace" className="absolute inset-0" />
+      {token && photoId && photoId !== failedPhotoId ? (
+        <WorkspacePhotoBackdrop
+          key={photoId}
+          photoId={photoId}
+          token={token}
+          onError={setFailedPhotoId}
+        />
+      ) : workspaceAppearance.background === 'landscape' ? (
+        <LandscapeBackdrop className="absolute inset-0" />
       ) : null}
       {children}
     </View>
@@ -83,19 +77,12 @@ export function ListAccentBar({ color }: { color: ListColor | null }) {
 export function ListIdentityBadge({
   color,
   icon,
-  cover = null,
-  photo = null,
-  listId,
   size = 'md',
 }: {
   color: ListColor | null;
   icon?: ListIcon | null;
-  cover?: ListCover | null;
-  photo?: ListPhoto | null;
-  listId?: string;
   size?: 'sm' | 'md' | 'lg';
 }) {
-  const resolvedIcon: ListIcon = icon ?? 'layers';
   const boxClass =
     size === 'sm'
       ? 'w-7 h-7 rounded-lg'
@@ -114,23 +101,7 @@ export function ListIdentityBadge({
           color ? CHIP_CLASS[color] : 'bg-accent-tint dark:bg-accent-tint-dark',
         ].join(' ')}
       >
-        {photo ? (
-          <ListPhotoCover
-            photo={photo}
-            listId={listId}
-            className="w-full h-full"
-          />
-        ) : (
-          <>
-            {cover === 'landscape' ? (
-              <LandscapeBackdrop
-                variant={color}
-                className="absolute inset-0 opacity-35"
-              />
-            ) : null}
-            <Emoji symbol={LIST_ICON_EMOJI[resolvedIcon]} size={iconSize} />
-          </>
-        )}
+        <Emoji symbol={listIconEmoji(icon)} size={iconSize} />
       </View>
     </View>
   );
@@ -173,49 +144,6 @@ export function ListColorPicker({
                 accessible={false}
               />
             ) : null}
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-export function ListIconPicker({
-  value,
-  onChange,
-  disabled = false,
-}: {
-  value: ListIcon | null;
-  onChange: (next: ListIcon | null) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <View className="flex-row flex-wrap gap-2">
-      {LIST_ICONS.map((iconKey) => {
-        const selected = value === iconKey;
-        return (
-          <Pressable
-            key={iconKey}
-            accessibilityRole="button"
-            accessibilityLabel={`Icon ${LIST_ICON_LABELS[iconKey]}`}
-            accessibilityState={{ selected, disabled }}
-            disabled={disabled}
-            onPress={() => onChange(selected ? null : iconKey)}
-            className={[
-              'min-h-11 flex-row items-center gap-2 rounded-[10px] border px-3 py-2',
-              selected
-                ? 'border-accent dark:border-accent-dark bg-accent-tint dark:bg-accent-tint-dark'
-                : 'border-control dark:border-control-dark bg-surface dark:bg-surface-dark',
-            ].join(' ')}
-          >
-            <Emoji
-              symbol={LIST_ICON_EMOJI[iconKey]}
-              size={18}
-              dimmed={disabled}
-            />
-            <Text className="text-body-small font-semibold text-ink dark:text-ink-dark">
-              {LIST_ICON_LABELS[iconKey]}
-            </Text>
           </Pressable>
         );
       })}

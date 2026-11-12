@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { BaseModalContent, Button, Emoji } from '../design-system/components';
 import type { ListColor } from '../design-system/tokens/colors';
 import { useListHue } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
 import { rankMedal } from '../services/rankingEngine';
+import { EmojiPickerModal } from './EmojiPicker';
+import type { ItemFormField } from './itemWorkspaceTypes';
 import { ItemRankBadge, TABULAR_NUMS } from './ListDetailItemRow';
 
 export interface ItemDetailContentProps {
@@ -17,9 +19,9 @@ export interface ItemDetailContentProps {
   canMutate: boolean;
   hasDraft: boolean;
   isBusy: boolean;
-  presentation: 'modal' | 'panel';
   onRank: () => void;
-  onEdit: () => void;
+  onEdit: (focus?: ItemFormField) => void;
+  onIconChange: (icon: string | null) => void;
   onDelete: () => void;
   onClose: () => void;
 }
@@ -36,11 +38,11 @@ export function ItemDetailContent({
   canMutate,
   hasDraft,
   isBusy,
-  presentation,
   onRank,
   onEdit,
   onDelete,
   onClose,
+  onIconChange,
 }: ItemDetailContentProps) {
   const hue = useListHue(color);
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
@@ -53,12 +55,22 @@ export function ItemDetailContent({
       ? 'Rank now'
       : 'Re-rank';
   const medal = item.position === null ? null : rankMedal(rank);
+  const [pickingIcon, setPickingIcon] = useState(false);
+  const pickIcon = (icon: string | null) => {
+    setPickingIcon(false);
+    onIconChange(icon);
+  };
+  const scoreEditable = rankingMode === 'score' && item.position !== null;
 
   return (
     <BaseModalContent
       title={item.name}
-      presentation={presentation}
+      emoji={item.icon ?? undefined}
       color={color}
+      onTitlePress={actionsBlocked ? undefined : () => onEdit('name')}
+      titleHint="Edit name"
+      onEmojiPress={actionsBlocked ? undefined : () => setPickingIcon(true)}
+      emojiLabel={item.icon ? `Item emoji: ${item.icon}` : undefined}
       onClose={onClose}
       footer={
         <View className="gap-2">
@@ -74,7 +86,7 @@ export function ItemDetailContent({
             <Button
               title="Edit"
               variant="secondary"
-              onPress={onEdit}
+              onPress={() => onEdit()}
               disabled={actionsBlocked}
               className="flex-1 min-w-[120px]"
               icon={<Emoji symbol="✏️" size={18} />}
@@ -100,7 +112,24 @@ export function ItemDetailContent({
       }
     >
       <View className="gap-3 pb-4">
-        <View className="rounded-2xl border-2 p-4 gap-2" style={hue.cardStyle}>
+        <Pressable
+          accessibilityRole={scoreEditable ? 'button' : undefined}
+          accessibilityHint={scoreEditable ? 'Edit score' : undefined}
+          accessibilityState={
+            scoreEditable ? { disabled: actionsBlocked } : undefined
+          }
+          onPress={
+            scoreEditable && !actionsBlocked
+              ? () => onEdit('manualRating')
+              : undefined
+          }
+          className="rounded-2xl border-2 p-4 gap-2"
+          style={({ pressed }) =>
+            pressed && scoreEditable && !actionsBlocked
+              ? [hue.cardStyle, { opacity: 0.7 }]
+              : hue.cardStyle
+          }
+        >
           {item.position === null ? (
             <View className="flex-row items-center gap-1">
               <Emoji symbol="⏳" size={14} />
@@ -137,11 +166,21 @@ export function ItemDetailContent({
                 : 'Scores are based on list order and any manual scores.'}
             </Text>
           ) : null}
-        </View>
+        </Pressable>
         {item.description ? (
-          <Text className="text-body-large text-ink dark:text-ink-dark">
-            {item.description}
-          </Text>
+          <Pressable
+            accessibilityRole={actionsBlocked ? undefined : 'button'}
+            accessibilityHint={actionsBlocked ? undefined : 'Edit description'}
+            onPress={actionsBlocked ? undefined : () => onEdit('description')}
+            className="min-h-11 justify-center"
+            style={({ pressed }) =>
+              pressed && !actionsBlocked ? { opacity: 0.7 } : undefined
+            }
+          >
+            <Text className="text-body-large text-ink dark:text-ink-dark">
+              {item.description}
+            </Text>
+          </Pressable>
         ) : null}
         {item.image_url ? (
           imageFailed ? (
@@ -159,6 +198,13 @@ export function ItemDetailContent({
           )
         ) : null}
       </View>
+      <EmojiPickerModal
+        visible={pickingIcon}
+        value={item.icon ?? null}
+        onSelect={pickIcon}
+        onRemove={() => pickIcon(null)}
+        onClose={() => setPickingIcon(false)}
+      />
     </BaseModalContent>
   );
 }

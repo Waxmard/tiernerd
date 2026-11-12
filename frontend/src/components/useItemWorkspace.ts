@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from 'react';
-import { useNotify } from '../providers/NotificationProvider';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { duplicateItemName } from '../services/itemNames';
 import type { Item } from '../services/itemsService';
@@ -34,6 +33,7 @@ import { confirmDestructive } from '../utils/confirm';
 import { newId } from '../utils/id';
 import type {
   ItemFormDraft,
+  ItemFormField,
   ItemWorkspace,
   ItemWorkspaceState,
   UseItemWorkspaceOptions,
@@ -43,6 +43,7 @@ const EMPTY_FORM: ItemFormDraft = {
   name: '',
   description: '',
   manualRating: '',
+  icon: null,
 };
 const EMPTY_WORKSPACE: ItemWorkspaceState = {
   mode: 'closed',
@@ -51,6 +52,8 @@ const EMPTY_WORKSPACE: ItemWorkspaceState = {
   fieldErrors: {},
   ranking: null,
   isBusy: false,
+  focusField: 'name',
+  result: null,
 };
 const AUTH_ERROR = 'Authentication required';
 const RANKING_SAVE_ERROR = 'Unable to save this ranking.';
@@ -68,7 +71,6 @@ export function useItemWorkspace({
 }: UseItemWorkspaceOptions): ItemWorkspace {
   const { mutate } = useSync();
   const notify = useNotifyWhenOnline();
-  const celebrate = useNotify();
   const [workspace, setWorkspace] =
     useState<ItemWorkspaceState>(EMPTY_WORKSPACE);
   const workspaceRef = useRef(workspace);
@@ -139,16 +141,23 @@ export function useItemWorkspace({
   }, [replaceWorkspace]);
 
   const openEdit = useCallback(
-    (item: Item) => {
+    (item: Item, focusField: ItemFormField = 'name') => {
       if (busyRef.current) return;
       const form = {
         name: item.name,
         description: item.description ?? '',
         manualRating:
           item.manual_rating !== null ? formatScore(item.manual_rating) : '',
+        icon: item.icon ?? null,
       };
       initialFormRef.current = form;
-      replaceWorkspace({ ...EMPTY_WORKSPACE, mode: 'edit', item, form });
+      replaceWorkspace({
+        ...EMPTY_WORKSPACE,
+        mode: 'edit',
+        item,
+        form,
+        focusField,
+      });
     },
     [replaceWorkspace]
   );
@@ -220,19 +229,22 @@ export function useItemWorkspace({
           .reverse()
           .map((id) => manualById.get(id) ?? null);
         manualBestFirst.splice(insertIndex, 0, null);
-        celebrate(
-          optionsRef.current.rankingMode === 'score'
-            ? `Scored ${formatScore(computeScores(manualBestFirst)[insertIndex] ?? 0)}`
-            : `Ranked #${insertIndex + 1} of ${manualBestFirst.length}`,
-          '🎉'
-        );
-        closeWorkspace();
+        updateWorkspace({
+          mode: 'ranked',
+          item,
+          ranking: null,
+          result: {
+            rank: insertIndex + 1,
+            total: manualBestFirst.length,
+            score: computeScores(manualBestFirst)[insertIndex] ?? 0,
+          },
+        });
         return true;
       } finally {
         setBusy(false);
       }
     },
-    [beginBusy, celebrate, closeWorkspace, mutate, notify, setBusy]
+    [beginBusy, mutate, notify, setBusy, updateWorkspace]
   );
 
   const resumeRanking = useCallback(
@@ -381,6 +393,7 @@ export function useItemWorkspace({
           ...original,
           name,
           description: current.form.description,
+          icon: current.form.icon,
           rating: nextRating,
           manual_rating: nextManualRating,
           updated_at: now,
@@ -395,6 +408,9 @@ export function useItemWorkspace({
             name,
             description: current.form.description,
             ...(manualChanged ? { manualRating: nextManualRating } : {}),
+            ...(current.form.icon !== (original.icon ?? null)
+              ? { icon: current.form.icon }
+              : {}),
           },
           {
             applyLocal: () =>
@@ -439,6 +455,7 @@ export function useItemWorkspace({
         name,
         description: current.form.description,
         image_url: null,
+        icon: current.form.icon,
         rating: null,
         manual_rating: null,
         position: null,
@@ -454,6 +471,7 @@ export function useItemWorkspace({
           itemId,
           name,
           description: current.form.description,
+          icon: current.form.icon,
         },
         {
           applyLocal: () =>
@@ -516,6 +534,54 @@ export function useItemWorkspace({
     setBusy,
     updateWorkspace,
   ]);
+
+  const saveIcon = useCallback(
+    async (item: Item, icon: string | null): Promise<boolean> => {
+      const { userId: activeUserId, listId: activeListId } = optionsRef.current;
+      if (workspaceRef.current.mode !== 'closed' || icon === item.icon)
+        return false;
+      if (!activeUserId) {
+        notify(AUTH_ERROR);
+        return false;
+      }
+      if (!beginBusy()) return false;
+      const now = new Date().toISOString();
+      try {
+        const outcome = await mutate(
+          {
+            id: newId(),
+            createdAt: now,
+            kind: 'item.update',
+            listId: activeListId,
+            itemId: item.item_id,
+            icon,
+          },
+          {
+            applyLocal: () =>
+              localLibrary.applyLocalItemUpdate(activeUserId, activeListId, {
+                ...item,
+                icon,
+                updated_at: now,
+              }),
+            rollbackLocal: () =>
+              localLibrary.applyLocalItemUpdate(
+                activeUserId,
+                activeListId,
+                item
+              ),
+          }
+        );
+        if (outcome.status === 'rejected') {
+          notify(outcome.message);
+          return false;
+        }
+        return true;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [beginBusy, mutate, notify, setBusy]
+  );
 
   const startRanking = useCallback(
     async (item: Item) => {
@@ -610,9 +676,17 @@ export function useItemWorkspace({
     return true;
   }, [closeWorkspace, commit]);
 
+  const dismissResult = useCallback(() => {
+    if (workspaceRef.current.mode === 'ranked') closeWorkspace();
+  }, [closeWorkspace]);
+
   const requestClose = useCallback(async () => {
     if (busyRef.current) return false;
     const current = workspaceRef.current;
+    if (current.mode === 'ranked') {
+      closeWorkspace();
+      return true;
+    }
     if (current.mode === 'ranking' && current.ranking) {
       if (isDecided(current.ranking)) return await commit(current.ranking);
       return await cancelRanking();
@@ -625,7 +699,8 @@ export function useItemWorkspace({
       current.form.name !== initialFormRef.current.name ||
       current.form.description !== initialFormRef.current.description ||
       current.form.manualRating.trim() !==
-        initialFormRef.current.manualRating.trim();
+        initialFormRef.current.manualRating.trim() ||
+      current.form.icon !== initialFormRef.current.icon;
     if (dirty) {
       if (!beginBusy()) return false;
       const confirmed = await confirmDestructive(
@@ -692,5 +767,7 @@ export function useItemWorkspace({
     deleteItem,
     requestClose,
     pauseRanking,
+    dismissResult,
+    saveIcon,
   };
 }

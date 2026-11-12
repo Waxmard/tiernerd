@@ -1,32 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { type Ref, useImperativeHandle, useRef, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import {
   BaseModalContent,
   Button,
   Emoji,
   Input,
   SectionLabel,
+  SheetModal,
 } from '../design-system/components';
-import type {
-  ListColor,
-  ListCover,
-  ListIcon,
-} from '../design-system/tokens/colors';
+import type { ListColor, ListIcon } from '../design-system/tokens/colors';
 import { useNotifyWhenOnline } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
-import { coverDraftMatchesSaved } from '../services/coverDraft';
-import {
-  type CoverDraft,
-  coverDraftFromSaved,
-  type ListPhoto,
-} from '../services/listCoversService';
+import { listIconEmoji } from '../services/listIcon';
 import type {
   ListOptionsInput,
   ListRankingMode,
 } from '../services/listsService';
-import { ListColorPicker, ListIconPicker } from './ImmersiveBoard';
-import { ListCoverPicker, releaseCoverDraft } from './ListCoverPicker';
+import { EmojiPickerField, EmojiPickerModal } from './EmojiPicker';
+import { ListColorPicker } from './ImmersiveBoard';
 
 const MAX_TITLE_LENGTH = 100;
 
@@ -120,28 +112,30 @@ export function RankingModeSelector({
   );
 }
 
+export interface ListOptionsHandle {
+  open: (target?: 'title' | 'description' | 'icon') => void;
+}
+
 export function ListRankingOptions({
   title,
+  description,
   rankingMode,
   color,
   icon,
-  cover,
-  coverPhoto,
-  listId,
   disabled,
   onSave,
   onVisibilityChange,
+  ref,
 }: {
   title: string;
+  description: string | null;
   rankingMode: ListRankingMode;
   color: ListColor | null;
   icon: ListIcon | null;
-  cover: ListCover | null;
-  coverPhoto: ListPhoto | null;
-  listId: string;
   disabled: boolean;
   onSave: (options: ListOptionsInput) => Promise<void>;
   onVisibilityChange: (open: boolean) => void;
+  ref?: Ref<ListOptionsHandle>;
 }) {
   const notify = useNotifyWhenOnline();
   const [open, setOpen] = useState(false);
@@ -150,48 +144,45 @@ export function ListRankingOptions({
   const [titleError, setTitleError] = useState<string | null>(null);
   const [draftColor, setDraftColor] = useState(color);
   const [draftIcon, setDraftIcon] = useState(icon);
-  const [draftCover, setDraftCover] = useState<CoverDraft>(() =>
-    coverDraftFromSaved(cover, coverPhoto)
+  const [draftDescription, setDraftDescription] = useState(description ?? '');
+  const [focusField, setFocusField] = useState<'title' | 'description' | null>(
+    null
   );
+  const [pickingIcon, setPickingIcon] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [coverBusy, setCoverBusy] = useState(false);
   const savingRef = useRef(false);
-  const coverBusyRef = useRef(false);
-  const coverDraftRef = useRef(draftCover);
-  const coverSessionRef = useRef(0);
-  const coverSession = coverSessionRef.current;
-  const handleCoverBusyChange = useCallback((busy: boolean) => {
-    coverBusyRef.current = busy;
-    setCoverBusy(busy);
-  }, []);
-
-  const changeCoverDraft = useCallback((next: CoverDraft) => {
-    if (coverDraftRef.current !== next) {
-      releaseCoverDraft(coverDraftRef.current);
-    }
-    coverDraftRef.current = next;
-    setDraftCover(next);
-  }, []);
-
-  useEffect(() => () => releaseCoverDraft(coverDraftRef.current), []);
 
   const changed =
     draftTitle.trim() !== title ||
+    draftDescription.trim() !== (description ?? '').trim() ||
     draft !== rankingMode ||
     draftColor !== color ||
-    draftIcon !== icon ||
-    !coverDraftMatchesSaved(draftCover, cover, coverPhoto);
+    draftIcon !== icon;
+  const openOptions = (target?: 'title' | 'description' | 'icon') => {
+    if (disabled || savingRef.current) return;
+    onVisibilityChange(true);
+    if (target === 'icon') {
+      setPickingIcon(true);
+      return;
+    }
+    setDraft(rankingMode);
+    setDraftTitle(title);
+    setDraftDescription(description ?? '');
+    setTitleError(null);
+    setDraftColor(color);
+    setDraftIcon(icon);
+    setFocusField(target ?? null);
+    setOpen(true);
+  };
+  useImperativeHandle(ref, () => ({ open: openOptions }));
   const close = () => {
     if (savingRef.current) return;
-    coverSessionRef.current += 1;
     onVisibilityChange(false);
-    handleCoverBusyChange(false);
-    changeCoverDraft({ kind: 'none' });
     setTitleError(null);
     setOpen(false);
   };
   const save = async () => {
-    if (savingRef.current || coverBusyRef.current || !changed) return;
+    if (savingRef.current || !changed) return;
     const trimmedTitle = draftTitle.trim();
     if (!trimmedTitle) {
       setTitleError('Title is required');
@@ -209,11 +200,9 @@ export function ListRankingOptions({
         ranking_mode: draft,
         color: draftColor,
         icon: draftIcon,
-        coverDraft: coverDraftRef.current,
+        description: draftDescription.trim() || null,
       });
-      coverSessionRef.current += 1;
       onVisibilityChange(false);
-      changeCoverDraft({ kind: 'none' });
       setOpen(false);
     } catch (err) {
       notify(
@@ -224,6 +213,31 @@ export function ListRankingOptions({
       setSaving(false);
     }
   };
+  const closePicker = () => {
+    setPickingIcon(false);
+    onVisibilityChange(false);
+  };
+  const pickIcon = async (emoji: string) => {
+    closePicker();
+    if (savingRef.current || emoji === (icon ? listIconEmoji(icon) : null))
+      return;
+    savingRef.current = true;
+    try {
+      await onSave({
+        title,
+        description,
+        ranking_mode: rankingMode,
+        color,
+        icon: emoji,
+      });
+    } catch (err) {
+      notify(
+        err instanceof Error ? err.message : 'Unable to save list options.'
+      );
+    } finally {
+      savingRef.current = false;
+    }
+  };
   return (
     <>
       <Pressable
@@ -231,17 +245,7 @@ export function ListRankingOptions({
         accessibilityLabel="List options"
         accessibilityState={{ disabled }}
         disabled={disabled}
-        onPress={() => {
-          if (disabled) return;
-          setDraft(rankingMode);
-          setDraftTitle(title);
-          setTitleError(null);
-          setDraftColor(color);
-          setDraftIcon(icon);
-          changeCoverDraft(coverDraftFromSaved(cover, coverPhoto));
-          onVisibilityChange(true);
-          setOpen(true);
-        }}
+        onPress={() => openOptions()}
         style={({ pressed }) =>
           pressed && !disabled ? { opacity: 0.7 } : undefined
         }
@@ -249,10 +253,8 @@ export function ListRankingOptions({
       >
         <Emoji symbol="⚙️" size={22} dimmed={disabled} />
       </Pressable>
-      <Modal
+      <SheetModal
         visible={open}
-        transparent
-        animationType="none"
         accessibilityLabel="List options"
         onRequestClose={close}
       >
@@ -275,7 +277,7 @@ export function ListRankingOptions({
                 size="large"
                 onPress={() => void save()}
                 loading={saving}
-                disabled={saving || coverBusy || !changed}
+                disabled={saving || !changed}
                 className="min-w-[100px] max-w-full shrink"
               />
             </View>
@@ -294,10 +296,25 @@ export function ListRankingOptions({
               error={titleError ?? undefined}
               maxLength={MAX_TITLE_LENGTH}
               editable={!saving}
+              autoFocus={focusField === 'title'}
             />
-            <SectionLabel emoji="😀" label="List icon" />
-            <ListIconPicker
-              value={draftIcon}
+            <Input
+              emoji="📝"
+              label="Description (optional)"
+              placeholder="Add a description"
+              value={draftDescription}
+              onChangeText={setDraftDescription}
+              multiline
+              numberOfLines={3}
+              editable={!saving}
+              autoFocus={focusField === 'description'}
+              inputClassName="!min-h-[96px] text-[16px]"
+              style={{ textAlignVertical: 'top' }}
+            />
+            <SectionLabel emoji="😀" label="List emoji" />
+            <EmojiPickerField
+              label="List emoji"
+              value={draftIcon ? listIconEmoji(draftIcon) : null}
               onChange={setDraftIcon}
               disabled={saving}
             />
@@ -307,28 +324,6 @@ export function ListRankingOptions({
               onChange={setDraftColor}
               disabled={saving}
             />
-            <SectionLabel emoji="🖼️" label="Cover" />
-            {open ? (
-              <ListCoverPicker
-                key={coverSession}
-                value={draftCover}
-                onChange={(next) => {
-                  if (coverSessionRef.current === coverSession) {
-                    changeCoverDraft(next);
-                  } else {
-                    releaseCoverDraft(next);
-                  }
-                }}
-                color={draftColor}
-                listId={listId}
-                disabled={saving}
-                onBusyChange={(busy) => {
-                  if (coverSessionRef.current === coverSession) {
-                    handleCoverBusyChange(busy);
-                  }
-                }}
-              />
-            ) : null}
             <SectionLabel emoji="🏆" label="Ranking mode" />
             <RankingModeSelector
               value={draft}
@@ -337,7 +332,13 @@ export function ListRankingOptions({
             />
           </View>
         </BaseModalContent>
-      </Modal>
+      </SheetModal>
+      <EmojiPickerModal
+        visible={pickingIcon}
+        value={icon ? listIconEmoji(icon) : null}
+        onSelect={(emoji) => void pickIcon(emoji)}
+        onClose={closePicker}
+      />
     </>
   );
 }

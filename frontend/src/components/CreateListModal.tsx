@@ -23,24 +23,15 @@ import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
 import { getApiErrorMessage } from '../services/apiError';
-import { coverSelectionFromDraft } from '../services/coverDraft';
-import type { CoverDraft } from '../services/listCoversService';
-import {
-  COVER_NEEDS_CONNECTION,
-  type ListCreatePayload,
-  type ListRankingMode,
-  type ListSimple,
-  listsService,
+import type {
+  ListCreatePayload,
+  ListRankingMode,
+  ListSimple,
 } from '../services/listsService';
 import { localLibrary } from '../services/localLibrary';
 import { newId } from '../utils/id';
-import {
-  LIST_ICON_LABELS,
-  ListColorPicker,
-  ListIconPicker,
-  SWATCH_CLASS,
-} from './ImmersiveBoard';
-import { ListCoverPicker, releaseCoverDraft } from './ListCoverPicker';
+import { EmojiPickerField } from './EmojiPicker';
+import { ListColorPicker, SWATCH_CLASS } from './ImmersiveBoard';
 import { RankingModeSelector } from './ListRankingOptions';
 
 export interface CreatedList {
@@ -68,70 +59,34 @@ export const CreateListContent = forwardRef<
   CreateListContentProps
 >(function CreateListContent({ onClose, onSuccess }, ref) {
   const { user, token } = useAuth();
-  const { mutate, isOffline } = useSync();
+  const { mutate } = useSync();
   const notify = useNotifyWhenOnline();
   const { scheme } = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState<ListColor | null>(null);
   const [icon, setIcon] = useState<ListIcon | null>(null);
-  const [coverDraft, setCoverDraft] = useState<CoverDraft>({ kind: 'none' });
   const [rankingMode, setRankingMode] = useState<ListRankingMode>('score');
   const [view, setView] = useState<CreateListView>('overview');
   const [isLoading, setIsLoading] = useState(false);
-  const [coverBusy, setCoverBusy] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const titleRef = useRef<TextInputInstance>(null);
   const hasVisitedOptionalFieldRef = useRef(false);
   const loadingRef = useRef(false);
-  const coverBusyRef = useRef(false);
-  const coverDraftRef = useRef(coverDraft);
-  const coverSessionRef = useRef(0);
-  const coverSession = coverSessionRef.current;
-
-  const handleCoverBusyChange = useCallback((busy: boolean) => {
-    coverBusyRef.current = busy;
-    setCoverBusy(busy);
-  }, []);
-
-  const changeCoverDraft = useCallback((draft: CoverDraft) => {
-    if (coverDraftRef.current !== draft) {
-      releaseCoverDraft(coverDraftRef.current);
-    }
-    coverDraftRef.current = draft;
-    setCoverDraft(draft);
-  }, []);
-
-  const coverDescription =
-    coverDraft.kind === 'none'
-      ? 'No cover'
-      : coverDraft.kind === 'landscape'
-        ? 'Landscape cover'
-        : coverDraft.kind === 'local'
-          ? 'Device photo cover'
-          : coverDraft.kind === 'persisted' &&
-              coverDraft.photo.source === 'upload'
-            ? 'Uploaded photo cover'
-            : 'Photo cover';
-
-  useEffect(() => () => releaseCoverDraft(coverDraftRef.current), []);
 
   useEffect(() => {
     if (fieldError) titleRef.current?.focus();
   }, [fieldError]);
 
   const clearForm = useCallback(() => {
-    coverSessionRef.current += 1;
     setTitle('');
     setDescription('');
     setColor(null);
     setIcon(null);
-    changeCoverDraft({ kind: 'none' });
-    handleCoverBusyChange(false);
     setRankingMode('score');
     setView('overview');
     setFieldError(null);
-  }, [changeCoverDraft, handleCoverBusyChange]);
+  }, []);
 
   const requestClose = useCallback(async () => {
     if (loadingRef.current) return false;
@@ -152,14 +107,10 @@ export const CreateListContent = forwardRef<
     setView('color');
   };
 
-  const returnToOverview = () => {
-    if (coverBusyRef.current) return;
-    coverSessionRef.current += 1;
-    setView('overview');
-  };
+  const returnToOverview = () => setView('overview');
 
   const handleCreate = async () => {
-    if (loadingRef.current || coverBusyRef.current) return;
+    if (loadingRef.current) return;
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       setFieldError('Title is required');
@@ -171,10 +122,6 @@ export const CreateListContent = forwardRef<
     }
     if (!token || !user) {
       notify('Authentication required');
-      return;
-    }
-    if (isOffline && coverDraftRef.current.kind === 'local') {
-      setFieldError(COVER_NEEDS_CONNECTION);
       return;
     }
 
@@ -190,35 +137,14 @@ export const CreateListContent = forwardRef<
       color,
       icon,
       ranking_mode: rankingMode,
-      ...coverSelectionFromDraft(coverDraftRef.current),
     };
     const localList: ListSimple = {
       ...payload,
-      cover_photo: null,
       created_at: now,
       updated_at: now,
       item_count: 0,
     };
     try {
-      if (coverDraftRef.current.kind === 'local') {
-        const saved = await listsService.createList(
-          payload,
-          token,
-          coverDraftRef.current
-        );
-        await localLibrary.applyLocalListCreate(user.id, {
-          ...localList,
-          cover: saved.cover,
-          cover_photo: saved.cover_photo,
-        });
-        clearForm();
-        onSuccess({
-          ...localList,
-          cover: saved.cover,
-          cover_photo: saved.cover_photo,
-        });
-        return;
-      }
       const outcome = await mutate(
         {
           id: newId(),
@@ -275,7 +201,7 @@ export const CreateListContent = forwardRef<
               ? 'List appearance'
               : 'Ranking mode'
       }
-      isLoading={isLoading || coverBusy}
+      isLoading={isLoading}
       submitText={view === 'overview' ? 'Create' : 'Done'}
       closeText={view === 'overview' ? 'Cancel' : 'Back'}
       onClose={() => {
@@ -334,8 +260,8 @@ export const CreateListContent = forwardRef<
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Appearance (optional): ${color ?? 'No color'}, ${icon ? LIST_ICON_LABELS[icon] : 'default icon'}, ${coverDescription}`}
-            accessibilityHint="Choose list color, icon, and cover"
+            accessibilityLabel={`Appearance (optional): ${color ?? 'No color'}, ${icon ?? 'default emoji'}`}
+            accessibilityHint="Choose list color and emoji"
             accessibilityState={{ disabled: isLoading }}
             disabled={isLoading}
             onPress={openColor}
@@ -347,11 +273,7 @@ export const CreateListContent = forwardRef<
                 Appearance (optional)
               </Text>
               <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-                {[
-                  color ?? 'No color',
-                  icon ? LIST_ICON_LABELS[icon] : 'Default icon',
-                  coverDescription,
-                ].join(' · ')}
+                {[color ?? 'No color', icon ?? 'Default emoji'].join(' · ')}
               </Text>
             </View>
             {color ? (
@@ -426,32 +348,14 @@ export const CreateListContent = forwardRef<
           <ListColorPicker
             value={color}
             onChange={setColor}
-            disabled={isLoading || coverBusy}
+            disabled={isLoading}
           />
-          <SectionLabel emoji="😀" label="Icon" />
-          <ListIconPicker
+          <SectionLabel emoji="😀" label="Emoji" />
+          <EmojiPickerField
+            label="List emoji"
             value={icon}
             onChange={setIcon}
-            disabled={isLoading || coverBusy}
-          />
-          <SectionLabel emoji="🖼️" label="Cover" />
-          <ListCoverPicker
-            key={coverSession}
-            value={coverDraft}
-            onChange={(draft) => {
-              if (coverSessionRef.current === coverSession) {
-                changeCoverDraft(draft);
-              } else {
-                releaseCoverDraft(draft);
-              }
-            }}
-            color={color}
             disabled={isLoading}
-            onBusyChange={(busy) => {
-              if (coverSessionRef.current === coverSession) {
-                handleCoverBusyChange(busy);
-              }
-            }}
           />
         </View>
       )}

@@ -6,6 +6,7 @@ export interface Item {
   name: string;
   description: string | null;
   image_url: string | null;
+  icon: string | null;
   rating: number | null;
   manual_rating: number | null;
   position: string | null;
@@ -17,12 +18,14 @@ export interface CreateItemRequest {
   name: string;
   description?: string;
   image_url?: string;
+  icon?: string;
 }
 
 export interface UpdateItemRequest {
   name?: string;
   description?: string | null;
   manual_rating?: number | null;
+  icon?: string | null;
 }
 
 export const itemsService = {

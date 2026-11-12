@@ -339,6 +339,54 @@ test('a dependent edit waits for its refused create', async () => {
   assert.equal(await queue.count(), 2);
 });
 
+test('retired cover keys are stripped from persisted list ops', async () => {
+  const seen: SyncOp[] = [];
+  const { queue, storage } = makeQueue(async (op) => {
+    seen.push(op);
+  });
+  storage.map.set(
+    `outbox:v1:${USER}`,
+    JSON.stringify([
+      {
+        id: '1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        kind: 'list.create',
+        listId: 'l1',
+        list: {
+          list_id: 'l1',
+          title: 'Old',
+          cover: 'landscape',
+          cover_photo: null,
+        },
+      },
+      {
+        id: '2',
+        createdAt: '2026-01-01T00:00:01.000Z',
+        kind: 'list.update',
+        listId: 'l2',
+        metadata: {
+          title: 'Renamed',
+          cover: null,
+          cover_photo: { source: 'upload', id: 'x' },
+        },
+      },
+    ])
+  );
+
+  await queue.flush();
+
+  assert.deepEqual(
+    seen.map((op) =>
+      op.kind === 'list.create'
+        ? op.list
+        : op.kind === 'list.update'
+          ? op.metadata
+          : null
+    ),
+    [{ list_id: 'l1', title: 'Old' }, { title: 'Renamed' }]
+  );
+});
+
 test('compacts manualRating across item.create, ranking.set, and item.update', async () => {
   const seen: SyncOp[] = [];
   const { queue } = makeQueue(async (op) => {
@@ -388,6 +436,52 @@ test('compacts manualRating across item.create, ranking.set, and item.update', a
   assert.deepEqual(
     seen.map((op) => op.kind),
     ['ranking.set']
+  );
+});
+
+test('an emoji change survives folding into a create and a later re-rank', async () => {
+  const folded: SyncOp[] = [];
+  const first = makeQueue(async (op) => {
+    folded.push(op);
+  });
+  await first.queue.enqueue(itemCreate('1', 'a'));
+  await first.queue.enqueue({
+    id: '2',
+    createdAt: NOW,
+    kind: 'item.update',
+    listId: 'list-1',
+    itemId: 'a',
+    icon: '🍕',
+  });
+  await first.queue.flush();
+  assert.equal(folded.length, 1);
+  assert.equal(folded[0]?.kind, 'item.create');
+  assert.equal(folded[0]?.kind === 'item.create' && folded[0].icon, '🍕');
+
+  const reranked: SyncOp[] = [];
+  const second = makeQueue(async (op) => {
+    reranked.push(op);
+  });
+  await second.queue.enqueue({
+    id: '1',
+    createdAt: NOW,
+    kind: 'item.update',
+    listId: 'list-1',
+    itemId: 'b',
+    icon: '🍕',
+    manualRating: 7,
+  });
+  await second.queue.enqueue(rankingSet('2', 'b', 0));
+  await second.queue.flush();
+  assert.deepEqual(
+    reranked.map((op) => op.kind),
+    ['item.update', 'ranking.set']
+  );
+  const update = reranked[0];
+  assert.equal(update?.kind === 'item.update' && update.icon, '🍕');
+  assert.equal(
+    update?.kind === 'item.update' && update.manualRating,
+    undefined
   );
 });
 

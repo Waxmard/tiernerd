@@ -11,15 +11,26 @@ export interface ItemFormDraft {
   name: string;
   description: string;
   manualRating: string;
+  icon: string | null;
+}
+
+export type ItemFormField = 'name' | 'manualRating' | 'description';
+
+export interface RankingResult {
+  rank: number;
+  total: number;
+  score: number;
 }
 
 export interface ItemWorkspaceState {
-  mode: 'closed' | 'add' | 'edit' | 'ranking';
+  mode: 'closed' | 'add' | 'edit' | 'ranking' | 'ranked';
   item: Item | null;
   form: ItemFormDraft;
   fieldErrors: { name?: string; manualRating?: string };
   ranking: RankingSession | null;
   isBusy: boolean;
+  focusField: ItemFormField;
+  result: RankingResult | null;
 }
 
 export interface UseItemWorkspaceOptions {
@@ -47,7 +58,8 @@ export interface ItemWorkspace extends ItemWorkspaceState {
   view: RankingView | null;
   scoreEdit: { autoScore: number | null; bounds: ManualRatingBounds } | null;
   openAdd: () => void;
-  openEdit: (item: Item) => void;
+  openEdit: (item: Item, focusField?: ItemFormField) => void;
+  saveIcon: (item: Item, icon: string | null) => Promise<boolean>;
   resumeRanking: (session: RankingSession) => void;
   setForm: (patch: Partial<ItemFormDraft>) => void;
   submitMetadata: () => Promise<void>;
@@ -58,4 +70,5 @@ export interface ItemWorkspace extends ItemWorkspaceState {
   deleteItem: (item: Item) => Promise<void>;
   requestClose: () => Promise<boolean>;
   pauseRanking: () => Promise<boolean>;
+  dismissResult: () => void;
 }

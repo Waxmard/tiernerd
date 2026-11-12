@@ -112,7 +112,7 @@ npm run typecheck                 # TypeScript check
 
 The default backend for frontend work is the deployed dev API — no local containers. `make ios` and TestFlight builds target `https://tiernerd-api-dev-1015723670625.us-east1.run.app` by default; override `EXPO_PUBLIC_API_URL` to point at another public HTTPS API.
 
-`make ios` deploys the dev backend before building, and skips the deploy when a fingerprint of the backend inputs (`app/`, `scripts/`, `pyproject.toml`, `uv.lock`, `Dockerfile`, `cloudbuild.yaml`, `cloud/env.dev.yaml`) matches the last successful deploy. Without that step the app under test is local JavaScript against whatever code dev happens to be running, which is how a stale dev backend once surfaced as an app bug. `SKIP_DEPLOY=1` builds without deploying, and pointing `EXPO_PUBLIC_API_URL` at another API skips it too. A local `make testflight` deploys the same way; hosted release uploads and simulator smoke runs skip it because CI sets `CI`.
+`make ios` deploys the dev backend while it builds and installs the app only after the deploy succeeds or is skipped. It skips the deploy when a fingerprint of the backend inputs (`app/`, `scripts/`, `pyproject.toml`, `uv.lock`, `Dockerfile`, `cloudbuild.yaml`, `cloud/env.dev.yaml`) matches the last successful deploy. Without that step the app under test is local JavaScript against whatever code dev happens to be running, which is how a stale dev backend once surfaced as an app bug. `SKIP_DEPLOY=1` builds without deploying, and pointing `EXPO_PUBLIC_API_URL` at another API skips it too. A local `make testflight` deploys the same way; hosted release uploads and simulator smoke runs skip it because CI sets `CI`.
 
 The dev Cloud Run service has a service-level minimum of one instance to reduce cold starts. This is separate from the deploy recipe's revision-level `--min-instances 0` and incurs ongoing idle costs (estimated at $9.72/month before free-tier credits and active traffic).
 
@@ -179,7 +179,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 - PostgreSQL with async (asyncpg)
 - UUID primary keys throughout
-- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Startup (`create_tables`) also adds missing additive columns and applies the manual-rating migration. The Google auth migration stays manual (see the [backend README](fastapi/README.md#upgrade-the-google-authentication-schema)); it permanently removes password hashes, so back it up first and do not wipe application data.
+- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Startup (`create_tables`) also adds missing additive columns, drops the retired `lists.cover`/`lists.cover_photo` columns, and applies the manual-rating migration. The Google auth migration stays manual (see the [backend README](fastapi/README.md#upgrade-the-google-authentication-schema)); it permanently removes password hashes, so back it up first and do not wipe application data.
 
 ## Development Notes for AI Agents
 

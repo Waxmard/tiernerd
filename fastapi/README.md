@@ -61,36 +61,20 @@ Creates accept client-generated ids so a retried request is safe: `POST /api/lis
 
 Each list has a `ranking_mode` of `score` (the default) or `rank`. Set it when creating a list or updating its metadata. Both modes retain the same positions and ratings; switching modes changes presentation only.
 
-## Configure list cover photos
+## Configure the background photo
 
-Photo search needs an Unsplash developer application and its access key. On macOS, store the key in Keychain:
-
-```bash
-security add-generic-password -s tiernerd:unsplash-access-key -a "$USER" -T "" -w
-```
-
-Load it at the point of use. Each read asks for Keychain approval.
-
-```bash
-export UNSPLASH_ACCESS_KEY="$(security find-generic-password -s tiernerd:unsplash-access-key -a "$USER" -w)"
-```
-
-For uploads, set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket with uniform access and public access prevention. Grant the runtime identity object read, write, and delete access only on that bucket. Hosted environments load the Unsplash key from Secret Manager. Without the corresponding setting, uploads return an unavailable response and the app hides photo search, which reappears on the next picker open once the key is configured.
-
-To configure or change the hosted Unsplash key, pass its Secret Manager name to `make cloud-deploy UNSPLASH_SECRET=<secret-name>`. Later deployments preserve the configured mapping when you omit the option.
-
-Fresh databases use the current schema, and application startup adds the photo column to existing databases.
+A user can upload one background photo with `PUT /api/users/me/background` (multipart part `file`); `DELETE /api/users/me/background` removes it and `GET /api/users/me/background/{photo_id}` serves it to its owner. Set `COVER_UPLOAD_BUCKET` to a private Google Cloud Storage bucket with uniform access and public access prevention. Grant the runtime identity object read, write, and delete access only on that bucket. Without the setting, uploads return an unavailable response.
 
 Interrupted saves or database writes with an uncertain outcome can leave unreferenced uploads. With the correct `DATABASE_URL`, `COVER_UPLOAD_BUCKET`, and Google Cloud credentials loaded, list objects older than 24 hours that are no longer referenced:
 
 ```bash
-uv run python scripts/cleanup_list_cover_uploads.py
+uv run python scripts/cleanup_photo_uploads.py
 ```
 
 After reviewing the output and authorizing deletion, remove those objects:
 
 ```bash
-uv run python scripts/cleanup_list_cover_uploads.py --apply
+uv run python scripts/cleanup_photo_uploads.py --apply
 ```
 
 Do not configure a bucket-wide expiration policy: it would also remove attached photos.
@@ -109,7 +93,7 @@ Run the commands below from `fastapi/`.
 
 ## Upgrade manual ratings and automatic startup migrations
 
-Application startup applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table, adds any missing additive columns (`users.photo_url`, `lists.color`, `lists.icon`, `lists.cover`, `lists.cover_photo`, `lists.ranking_mode`, `items.manual_rating`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
+Application startup applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table and `lists.cover`/`lists.cover_photo` columns, adds any missing additive columns (`users.photo_url`, `users.background_photo_id`, `lists.color`, `lists.icon`, `lists.ranking_mode`, `items.manual_rating`, `items.icon`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
 
 The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Inspect the schema and count incorrect ratings without changing data:
 

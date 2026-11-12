@@ -8,7 +8,7 @@ import {
   FlatList,
   Image,
   type ListRenderItemInfo,
-  Modal,
+  Pressable,
   Text,
   TouchableOpacity,
   useWindowDimensions,
@@ -24,26 +24,22 @@ import {
   CreateListContent,
   type CreateListContentHandle,
 } from '../components/CreateListModal';
+import { EmojiPickerModal } from '../components/EmojiPicker';
 import {
   ImmersiveScreenShell,
   ListIdentityBadge,
 } from '../components/ImmersiveBoard';
-import { PhotoAttribution } from '../components/ListPhotoCover';
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
-import { Button, Emoji } from '../design-system/components';
-import type {
-  ListColor,
-  ListCover,
-  ListIcon,
-} from '../design-system/tokens/colors';
+import { Button, Emoji, SheetModal } from '../design-system/components';
+import type { ListColor, ListIcon } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { listHue, useTheme } from '../providers/ThemeProvider';
-import { ApiError } from '../services/apiError';
+import { ApiError, getApiErrorMessage } from '../services/apiError';
 import type { Item } from '../services/itemsService';
-import type { ListPhoto } from '../services/listCoversService';
+import { listIconEmoji } from '../services/listIcon';
 import {
   enqueueListCacheWrite,
   listsCacheKey,
@@ -51,8 +47,9 @@ import {
   sortListsByRecency,
 } from '../services/listsCache';
 import { type ListSimple, listsService } from '../services/listsService';
-import { reconcileLists } from '../services/localLibrary';
+import { localLibrary, reconcileLists } from '../services/localLibrary';
 import { pendingOps } from '../services/syncQueue';
+import { newId } from '../utils/id';
 
 type ModalStep = 'create' | 'addItem' | null;
 interface TierList {
@@ -61,8 +58,6 @@ interface TierList {
   description: string | null;
   color: ListColor | null;
   icon: ListIcon | null;
-  cover: ListCover | null;
-  coverPhoto: ListPhoto | null;
   itemCount: number;
   updatedAt: Date;
 }
@@ -73,14 +68,12 @@ const toTierList = (list: ListSimple): TierList => ({
   description: list.description,
   color: list.color,
   icon: list.icon ?? null,
-  cover: list.cover ?? null,
   itemCount: list.item_count,
-  coverPhoto: list.cover_photo ?? null,
   updatedAt: new Date(list.updated_at),
 });
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
-  const { flush, isOffline, lastSyncedAt } = useSync();
+  const { flush, isOffline, lastSyncedAt, mutate } = useSync();
   const notify = useNotifyWhenOnline();
   const isOfflineRef = useRef(isOffline);
   isOfflineRef.current = isOffline;
@@ -112,6 +105,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [modalStep, setModalStep] = useState<ModalStep>(null);
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
+  const [iconListId, setIconListId] = useState<string | null>(null);
   const createListRef = useRef<CreateListContentHandle | null>(null);
   const bypassBeforeRemoveRef = useRef(false);
   const closingForNavigationRef = useRef(false);
@@ -284,6 +278,43 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     onItemsChanged: handleWorkspaceItemsChanged,
     onClosed: handleWorkspaceClosed,
   });
+  const showCachedLists = useCallback(
+    async (expectedUserId: string | null, expectedToken: string | null) => {
+      if (!expectedUserId) return;
+      const cached = parseCachedLists(
+        await AsyncStorage.getItem(listsCacheKey(expectedUserId)).catch(
+          () => null
+        )
+      );
+      if (!cached || !isIdentityCurrent(expectedUserId, expectedToken)) return;
+      setLists(cached.map(toTierList));
+      setSnapshotIdentity({ userId: expectedUserId, token: expectedToken });
+      setHasSnapshot(true);
+    },
+    [isIdentityCurrent]
+  );
+  const saveListIcon = async (listId: string, icon: string) => {
+    if (!userId) return;
+    const now = new Date().toISOString();
+    const metadata = { icon };
+    try {
+      const outcome = await mutate(
+        { id: newId(), createdAt: now, kind: 'list.update', listId, metadata },
+        {
+          applyLocal: () =>
+            localLibrary.applyLocalListUpdate(userId, listId, metadata, now),
+        }
+      );
+      if (outcome.status === 'rejected') notify(outcome.message);
+    } catch (err) {
+      notify(getApiErrorMessage(err, 'Unable to save the list emoji.'));
+    }
+    await refreshLists().catch(() => showCachedLists(userId, token));
+  };
+  const iconListValue = (() => {
+    const icon = visibleLists.find((entry) => entry.id === iconListId)?.icon;
+    return icon ? listIconEmoji(icon) : null;
+  })();
   const handleListCreated = useCallback(
     (list: ListSimple) => {
       const expectedUserId = userId;
@@ -300,24 +331,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       setPendingList({ listId: list.list_id, title: list.title });
       workspace.openAdd();
       setModalStep('addItem');
-      void refreshLists().catch(async () => {
-        if (!expectedUserId) return;
-        const cached = parseCachedLists(
-          await AsyncStorage.getItem(listsCacheKey(expectedUserId)).catch(
-            () => null
-          )
-        );
-        if (!cached || !isIdentityCurrent(expectedUserId, expectedToken))
-          return;
-        setLists(cached.map(toTierList));
-        setSnapshotIdentity({
-          userId: expectedUserId,
-          token: expectedToken,
-        });
-        setHasSnapshot(true);
-      });
+      void refreshLists().catch(() =>
+        showCachedLists(expectedUserId, expectedToken)
+      );
     },
-    [isIdentityCurrent, refreshLists, token, userId, workspace.openAdd]
+    [refreshLists, showCachedLists, token, userId, workspace.openAdd]
   );
   const getModalTitle = () =>
     modalStep === 'create'
@@ -370,6 +388,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     if (lastSyncedAt === 0) return;
     void refreshLists().catch(() => undefined);
   }, [lastSyncedAt, refreshLists]);
+  const { mode: workspaceMode, dismissResult } = workspace;
+  useEffect(() => {
+    if (workspaceMode === 'ranked') dismissResult();
+  }, [workspaceMode, dismissResult]);
 
   const wasOfflineRef = useRef(isOffline);
   useEffect(() => {
@@ -388,6 +410,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
   const renderRow = ({ item }: ListRenderItemInfo<TierList>) => {
     const hue = listHue(item.color, scheme, colors);
+    const titleLength = Array.from(item.title).length;
     return (
       <View style={{ width: cardWidth }} className="shrink-0 gap-1">
         <TouchableOpacity
@@ -398,6 +421,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               : `${item.title}, ${item.itemCount} items`
           }
           accessibilityHint="Open tier list"
+          accessibilityActions={[{ name: 'changeIcon', label: 'Change emoji' }]}
+          onAccessibilityAction={(event) => {
+            if (event.nativeEvent.actionName === 'changeIcon')
+              setIconListId(item.id);
+          }}
           onPress={() =>
             navigation.navigate('ListDetail', {
               listId: item.id,
@@ -409,16 +437,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           style={hue.cardStyle}
         >
           <View className="flex-row items-center gap-3 p-4">
-            <ListIdentityBadge
-              size="lg"
-              color={item.color}
-              icon={item.icon}
-              cover={item.cover}
-              photo={item.coverPhoto}
-              listId={item.id}
-            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Change emoji for ${item.title}`}
+              accessibilityHint="Opens the emoji picker"
+              hitSlop={6}
+              onPress={() => setIconListId(item.id)}
+              style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
+            >
+              <ListIdentityBadge
+                size="lg"
+                color={item.color}
+                icon={item.icon}
+              />
+            </Pressable>
             <View className="flex-1 min-w-0 gap-1">
-              <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
+              <Text
+                className={`${
+                  titleLength <= 40
+                    ? 'text-title-medium'
+                    : titleLength <= 70
+                      ? 'text-title-small'
+                      : 'text-body-medium'
+                } font-semibold text-ink dark:text-ink-dark`}
+              >
                 {item.title}
               </Text>
               {item.description?.trim() ? (
@@ -451,11 +493,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             />
           </View>
         </TouchableOpacity>
-        {item.coverPhoto?.source === 'unsplash' ? (
-          <View className="px-2">
-            <PhotoAttribution photo={item.coverPhoto} />
-          </View>
-        ) : null}
       </View>
     );
   };
@@ -573,10 +610,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>
-        <Modal
+        <SheetModal
           visible={modalStep !== null}
-          transparent
-          animationType="none"
           accessibilityLabel={getModalTitle()}
           onRequestClose={() => {
             if (modalStep === 'create')
@@ -612,7 +647,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 listTitle={pendingList.title}
                 item={workspace.view.item}
                 view={workspace.view}
-                presentation="modal"
                 isBusy={workspace.isBusy}
                 onAnswer={(answer) => void workspace.answer(answer)}
                 onUndo={() => void workspace.undo()}
@@ -638,11 +672,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 isBusy={workspace.isBusy}
                 onSubmit={() => void workspace.submitMetadata()}
                 onClose={() => void workspace.requestClose().catch(() => false)}
-                presentation="modal"
                 introText={`“${pendingList.title}”`}
               />
             ) : null)}
-        </Modal>
+        </SheetModal>
+        <EmojiPickerModal
+          visible={iconListId !== null}
+          value={iconListValue}
+          onSelect={(emoji) => {
+            const id = iconListId;
+            setIconListId(null);
+            if (id) void saveListIcon(id, emoji);
+          }}
+          onClose={() => setIconListId(null)}
+        />
       </SafeAreaView>
     </ImmersiveScreenShell>
   );

@@ -1,14 +1,10 @@
 import {
   LIST_COLORS,
-  LIST_COVERS,
-  LIST_ICONS,
   type ListColor,
-  type ListCover,
   type ListIcon,
 } from '../design-system/tokens/colors.ts';
 import { ApiError } from './apiError.ts';
 import type { Item } from './itemsService.ts';
-import type { ListPhoto } from './listCoversService.ts';
 import type { ListRankingMode, ListSimple } from './listsService.ts';
 
 export const listsCacheKey = (userId: string): string =>
@@ -36,8 +32,9 @@ export function enqueueListCacheWrite(
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === 'string';
 
-type CachedItem = Omit<Item, 'manual_rating'> & {
+type CachedItem = Omit<Item, 'manual_rating' | 'icon'> & {
   manual_rating?: number | null;
+  icon?: string | null;
 };
 
 const isItem = (value: unknown, listId: string): value is CachedItem => {
@@ -53,6 +50,7 @@ const isItem = (value: unknown, listId: string): value is CachedItem => {
       (typeof candidate.rating === 'number' &&
         Number.isFinite(candidate.rating))) &&
     isNullableString(candidate.position) &&
+    (candidate.icon === undefined || isNullableString(candidate.icon)) &&
     (!('manual_rating' in candidate) ||
       candidate.manual_rating === undefined ||
       candidate.manual_rating === null ||
@@ -82,6 +80,7 @@ export function parseCachedListItems(
     ? parsed.map((item) => ({
         ...item,
         manual_rating: item.manual_rating ?? null,
+        icon: item.icon ?? null,
       }))
     : null;
 }
@@ -113,54 +112,9 @@ export function sortListsByRecency(lists: ListSimple[]): ListSimple[] {
   });
 }
 
-type CachedListSimple = Omit<
-  ListSimple,
-  'ranking_mode' | 'icon' | 'cover' | 'cover_photo'
-> & {
+type CachedListSimple = Omit<ListSimple, 'ranking_mode' | 'icon'> & {
   ranking_mode?: ListRankingMode;
   icon?: ListIcon | null;
-  cover?: ListCover | null;
-  cover_photo?: ListPhoto | null;
-};
-
-const isProviderUrl = (value: unknown, host: RegExp): boolean => {
-  if (typeof value !== 'string' || !host.test(value)) return false;
-  for (let i = 0; i < value.length; i += 1) {
-    const code = value.charCodeAt(i);
-    if (code <= 32 || code === 127) return false;
-  }
-  return true;
-};
-
-const isListPhoto = (value: unknown): value is ListPhoto => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    return false;
-  const photo = value as Record<string, unknown>;
-  if (photo.source === 'upload')
-    return (
-      Object.keys(photo).length === 2 &&
-      typeof photo.id === 'string' &&
-      photo.id.length === 36 &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        photo.id
-      )
-    );
-  return (
-    photo.source === 'unsplash' &&
-    Object.keys(photo).length === 6 &&
-    typeof photo.id === 'string' &&
-    photo.id.length >= 1 &&
-    photo.id.length <= 100 &&
-    !/[^A-Za-z0-9_-]/.test(photo.id) &&
-    typeof photo.photographer_name === 'string' &&
-    photo.photographer_name.trim().length > 0 &&
-    isProviderUrl(photo.url, /^https:\/\/images\.unsplash\.com\//i) &&
-    isProviderUrl(
-      photo.photographer_url,
-      /^https:\/\/(www\.)?unsplash\.com\//i
-    ) &&
-    isProviderUrl(photo.photo_url, /^https:\/\/(www\.)?unsplash\.com\//i)
-  );
 };
 
 const isListSimple = (value: unknown): value is CachedListSimple => {
@@ -176,14 +130,7 @@ const isListSimple = (value: unknown): value is CachedListSimple => {
       LIST_COLORS.includes(candidate.color as ListColor)) &&
     (!('icon' in candidate) ||
       candidate.icon === null ||
-      LIST_ICONS.includes(candidate.icon as ListIcon)) &&
-    (!('cover' in candidate) ||
-      candidate.cover === null ||
-      LIST_COVERS.includes(candidate.cover as ListCover)) &&
-    (!('cover_photo' in candidate) ||
-      candidate.cover_photo === null ||
-      isListPhoto(candidate.cover_photo)) &&
-    (!candidate.cover || !candidate.cover_photo) &&
+      typeof candidate.icon === 'string') &&
     (!('ranking_mode' in candidate) ||
       candidate.ranking_mode === 'rank' ||
       candidate.ranking_mode === 'score')
@@ -204,8 +151,6 @@ export function parseCachedLists(raw: string | null): ListSimple[] | null {
         parsed.map((list) => ({
           ...list,
           icon: list.icon ?? null,
-          cover: list.cover ?? null,
-          cover_photo: list.cover_photo ?? null,
           ranking_mode: list.ranking_mode ?? 'score',
         }))
       )
@@ -222,8 +167,6 @@ export interface ListDetailDataState {
   listDescription: string | null;
   listColor: ListColor | null;
   listIcon: ListIcon | null;
-  listCover: ListCover | null;
-  listCoverPhoto: ListPhoto | null;
   rankingMode: ListRankingMode;
   metadataError: boolean;
   metadataLoaded: boolean;
@@ -264,8 +207,6 @@ export const createListDetailState = (
   listDescription: null,
   listColor: null,
   listIcon: null,
-  listCover: null,
-  listCoverPhoto: null,
   rankingMode: 'score',
   metadataError: false,
   metadataLoaded: false,
@@ -421,8 +362,6 @@ export const createInvalidatedReadState = (
   listDescription: null,
   listColor: null,
   listIcon: null,
-  listCover: null,
-  listCoverPhoto: null,
   rankingMode: 'score',
   metadataError: true,
   metadataLoaded: false,
@@ -457,8 +396,6 @@ export const applyCachedMetadataState = (
     description: string | null;
     color: ListColor | null;
     icon?: ListIcon | null;
-    cover?: ListCover | null;
-    coverPhoto?: ListPhoto | null;
     rankingMode: ListRankingMode;
   }
 ): ListDetailDataState => ({
@@ -467,8 +404,6 @@ export const applyCachedMetadataState = (
   listDescription: metadata.description,
   listColor: metadata.color,
   listIcon: metadata.icon ?? null,
-  listCover: metadata.cover ?? null,
-  listCoverPhoto: metadata.coverPhoto ?? null,
   rankingMode: metadata.rankingMode,
   hasMetadataSnapshot: true,
 });

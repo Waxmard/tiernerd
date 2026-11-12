@@ -37,8 +37,11 @@ _STARTUP_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("users", "photo_url", "ALTER TABLE users ADD COLUMN photo_url TEXT"),
     ("lists", "color", "ALTER TABLE lists ADD COLUMN color VARCHAR(16)"),
     ("lists", "icon", "ALTER TABLE lists ADD COLUMN icon VARCHAR(16)"),
-    ("lists", "cover", "ALTER TABLE lists ADD COLUMN cover VARCHAR(16)"),
-    ("lists", "cover_photo", "ALTER TABLE lists ADD COLUMN cover_photo JSON"),
+    (
+        "users",
+        "background_photo_id",
+        "ALTER TABLE users ADD COLUMN background_photo_id UUID",
+    ),
     (
         "lists",
         "ranking_mode",
@@ -50,6 +53,11 @@ _STARTUP_COLUMNS: tuple[tuple[str, str, str], ...] = (
         "manual_rating",
         "ALTER TABLE items ADD COLUMN manual_rating DOUBLE PRECISION",
     ),
+    ("items", "icon", "ALTER TABLE items ADD COLUMN icon VARCHAR(16)"),
+)
+_RETIRED_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    ("lists", "cover", "ALTER TABLE lists DROP COLUMN cover"),
+    ("lists", "cover_photo", "ALTER TABLE lists DROP COLUMN cover_photo"),
 )
 
 
@@ -57,6 +65,9 @@ def _ensure_columns(connection: Connection) -> None:
     inspector = inspect(connection)
     for table, column, ddl in _STARTUP_COLUMNS:
         if column not in {col["name"] for col in inspector.get_columns(table)}:
+            connection.execute(text(ddl))
+    for table, column, ddl in _RETIRED_COLUMNS:
+        if column in {col["name"] for col in inspector.get_columns(table)}:
             connection.execute(text(ddl))
 
 

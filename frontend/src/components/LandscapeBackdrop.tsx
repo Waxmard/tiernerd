@@ -1,22 +1,10 @@
 import { View } from 'react-native';
-import { type ListColor, palette } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
 
-export function LandscapeBackdrop({
-  variant = 'workspace',
-  className = '',
-}: {
-  variant?: 'workspace' | ListColor | null;
-  className?: string;
-}) {
-  const { scheme, workspaceAppearance } = useTheme();
+export function LandscapeBackdrop({ className = '' }: { className?: string }) {
+  const { scheme } = useTheme();
   const isDark = scheme === 'dark';
-  const hue: ListColor =
-    variant && variant !== 'workspace' ? variant : workspaceAppearance.accent;
-  const sunColor =
-    variant && variant !== 'workspace'
-      ? palette.list[hue][scheme].solid
-      : '#F2B89B';
+  const sunColor = '#F2B89B';
   const skyColor = isDark ? '#183542' : '#CFE4EE';
   const farRidge = isDark ? '#5A7688' : '#8BA9BC';
   const midRidge = isDark ? '#375966' : '#5E8294';

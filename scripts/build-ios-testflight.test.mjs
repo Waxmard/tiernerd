@@ -137,6 +137,6 @@ test('prebuild receives the configured app bundle ID', (t) => {
     const ios = JSON.parse(readFileSync(configPath, 'utf8'));
     assert.equal(ios.bundleIdentifier, bundleId ?? 'com.maxwellward.tiernerd');
     assert.equal(ios.appleTeamId, '48TY2FP59S');
-    assert.equal(ios.supportsTablet, true);
+    assert.equal(ios.supportsTablet, false);
   }
 });
