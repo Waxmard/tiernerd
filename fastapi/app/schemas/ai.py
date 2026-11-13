@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,3 +19,15 @@ class EmojiSuggestions(BaseModel):
 class EmojiFillResult(BaseModel):
     updated: int
     remaining: int
+
+
+class ItemSuggestionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    exclude: list[Annotated[str, Field(max_length=60)]] = Field(
+        default_factory=list, max_length=50
+    )
+
+
+class ItemSuggestion(BaseModel):
+    name: str

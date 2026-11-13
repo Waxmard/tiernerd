@@ -26,8 +26,11 @@ import { useListViewRestore } from '../components/useListViewRestore';
 import { useRankingDraft } from '../components/useRankingDraft';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
+import { useNotify } from '../providers/NotificationProvider';
 import { useSync } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
+import { aiService } from '../services/aiService';
+import { getApiErrorMessage } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import { confirmDestructive, notifyError } from '../utils/confirm';
 
@@ -97,6 +100,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     []
   );
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const notify = useNotify();
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const suggestedNamesRef = useRef<string[]>([]);
   const [dismissedDetailsItemId, setDismissedDetailsItemId] = useState<
     string | null
   >(null);
@@ -117,6 +123,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setDismissedDetailsItemId(null);
     setIsListOptionsOpen(false);
     isListOptionsOpenRef.current = false;
+    suggestedNamesRef.current = [];
   }, [screenIdentity]);
   const setOptionsOpen = (open: boolean) => {
     if (identityRef.current !== screenIdentity) return;
@@ -211,9 +218,11 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     workspace.mode === 'ranking'
       ? (workspace.item?.item_id ?? workspace.ranking?.itemId ?? null)
       : null;
-  const { openAdd } = workspace;
+  const { openAdd, setForm, submitMetadata } = workspace;
   const workspaceBusyRef = useRef(workspace.isBusy);
   workspaceBusyRef.current = workspace.isBusy;
+  const workspaceModeRef = useRef(workspace.mode);
+  workspaceModeRef.current = workspace.mode;
   const requestCloseForSwitch = useCallback(async () => {
     if (skipWorkspaceCloseFocusRef.current) return false;
     skipWorkspaceCloseFocusRef.current = true;
@@ -397,6 +406,47 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     openAdd();
     return true;
   }, [canMutateFor, view, requestCloseForSwitch, screenIdentity, openAdd]);
+  const handleSuggestPress = useCallback(async () => {
+    const identity = screenIdentity;
+    if (!token || !canMutateFor(identity)) return;
+    setIsSuggesting(true);
+    try {
+      const name = await aiService.suggestNextItem(
+        listId,
+        suggestedNamesRef.current,
+        token
+      );
+      if (
+        identityRef.current !== identity ||
+        workspaceModeRef.current !== 'closed' ||
+        isListOptionsOpenRef.current
+      )
+        return;
+      suggestedNamesRef.current = [...suggestedNamesRef.current, name].slice(
+        -50
+      );
+      if (!(await handleAddPress())) return;
+      setForm({ name });
+      await submitMetadata();
+    } catch (err) {
+      if (identityRef.current === identity)
+        notify(
+          getApiErrorMessage(err, "Couldn't suggest an item. Try again."),
+          '⚠️'
+        );
+    } finally {
+      setIsSuggesting(false);
+    }
+  }, [
+    canMutateFor,
+    handleAddPress,
+    listId,
+    notify,
+    screenIdentity,
+    setForm,
+    submitMetadata,
+    token,
+  ]);
   const handleWorkspaceContentClose = useCallback(() => {
     if (
       deletingListInFlightRef.current ||
@@ -630,6 +680,16 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
                 workspace.mode === 'add'
               }
               onAdd={() => void handleAddPress()}
+              onSuggest={() => void handleSuggestPress()}
+              suggestLoading={isSuggesting}
+              suggestDisabled={
+                !canMutate ||
+                isDeletingList ||
+                workspace.isBusy ||
+                workspace.mode !== 'closed' ||
+                isOffline ||
+                !token
+              }
               deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
               onBack={() => navigation.goBack()}
               onDelete={() => void handleDeleteList()}

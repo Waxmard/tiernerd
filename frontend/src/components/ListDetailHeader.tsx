@@ -27,6 +27,9 @@ interface ListDetailHeaderProps {
   addDisabled: boolean;
   addLoading: boolean;
   onAdd: () => void;
+  onSuggest: () => void;
+  suggestDisabled: boolean;
+  suggestLoading: boolean;
   description: string | null;
   deleteDisabled: boolean;
   optionsKey: string;
@@ -46,6 +49,9 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   addDisabled,
   addLoading,
   onAdd,
+  onSuggest,
+  suggestDisabled,
+  suggestLoading,
   description,
   deleteDisabled,
   optionsKey,
@@ -185,7 +191,16 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           Loading list…
         </Text>
       ) : null}
-      <View className="flex-row justify-end">
+      <View className="flex-row justify-end gap-2">
+        <Button
+          title="✨ Suggest next"
+          onPress={onSuggest}
+          disabled={suggestDisabled}
+          loading={suggestLoading}
+          variant="text"
+          size="small"
+          className="shrink"
+        />
         <Button
           title="Add item"
           onPress={onAdd}
