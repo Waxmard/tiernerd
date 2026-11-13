@@ -14,3 +14,8 @@ class EmojiSuggestionRequest(BaseModel):
 
 class EmojiSuggestions(BaseModel):
     emojis: list[str]
+
+
+class EmojiFillResult(BaseModel):
+    updated: int
+    remaining: int

@@ -19,6 +19,7 @@ import {
   ListItemEmptyState,
 } from '../components/ListDetailItemRow';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
+import { useItemEmojiFill } from '../components/useItemEmojiFill';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { useListDetailData } from '../components/useListDetailData';
 import { useListViewRestore } from '../components/useListViewRestore';
@@ -66,6 +67,14 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     updateListOptions,
     evictDeletedList,
   } = useListDetailData({ userId, token, listId, routeTitle });
+  const { autoFill, fillMissing } = useItemEmojiFill({
+    userId,
+    token,
+    listId,
+    listTitle: detailsTitle,
+    items,
+    refresh: refreshAfterMutation,
+  });
   const [isDeletingList, setIsDeletingList] = useState(false);
   const canMutate =
     (itemsLoaded || hasItemsSnapshot) &&
@@ -166,6 +175,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       }
       if (!refreshedItems.some((entry) => entry.item_id === item.item_id))
         return;
+      if (created && !item.icon) void autoFill(item).catch(() => undefined);
       view.clearRestoredSelection();
       view.clearRestoredOffset();
       landItemIdRef.current = item.item_id;
@@ -173,7 +183,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       setSelectedItemId(item.item_id);
       setDismissedDetailsItemId(item.item_id);
     },
-    [view, refreshAfterMutation, screenIdentity]
+    [view, refreshAfterMutation, screenIdentity, autoFill]
   );
 
   const pausedDraftItemIdRef = useRef<string | null>(null);
@@ -615,6 +625,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               }
               onSaveOptions={updateListOptions}
               onOptionsVisibilityChange={setOptionsOpen}
+              missingEmojiCount={items.filter((item) => !item.icon).length}
+              onFillEmojis={fillMissing}
               addDisabled={
                 !canMutate ||
                 isDeletingList ||

@@ -10,7 +10,7 @@ import {
   SheetModal,
 } from '../design-system/components';
 import type { ListColor, ListIcon } from '../design-system/tokens/colors';
-import { useNotifyWhenOnline } from '../providers/SyncProvider';
+import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/listIcon';
 import type {
@@ -125,6 +125,8 @@ export function ListRankingOptions({
   disabled,
   onSave,
   onVisibilityChange,
+  missingEmojiCount,
+  onFillEmojis,
   ref,
 }: {
   title: string;
@@ -135,9 +137,12 @@ export function ListRankingOptions({
   disabled: boolean;
   onSave: (options: ListOptionsInput) => Promise<void>;
   onVisibilityChange: (open: boolean) => void;
+  missingEmojiCount: number;
+  onFillEmojis: () => Promise<void>;
   ref?: Ref<ListOptionsHandle>;
 }) {
   const notify = useNotifyWhenOnline();
+  const { isOffline } = useSync();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(rankingMode);
   const [draftTitle, setDraftTitle] = useState(title);
@@ -150,6 +155,7 @@ export function ListRankingOptions({
   );
   const [pickingIcon, setPickingIcon] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [filling, setFilling] = useState(false);
   const savingRef = useRef(false);
 
   const changed =
@@ -213,6 +219,17 @@ export function ListRankingOptions({
       setSaving(false);
     }
   };
+  const fillEmojis = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setFilling(true);
+    try {
+      await onFillEmojis();
+    } finally {
+      savingRef.current = false;
+      setFilling(false);
+    }
+  };
   const closePicker = () => {
     setPickingIcon(false);
     onVisibilityChange(false);
@@ -269,7 +286,7 @@ export function ListRankingOptions({
                 title="Cancel"
                 variant="text"
                 onPress={close}
-                disabled={saving}
+                disabled={saving || filling}
                 className="min-w-20 max-w-full shrink"
               />
               <Button
@@ -277,7 +294,7 @@ export function ListRankingOptions({
                 size="large"
                 onPress={() => void save()}
                 loading={saving}
-                disabled={saving || !changed}
+                disabled={saving || filling || !changed}
                 className="min-w-[100px] max-w-full shrink"
               />
             </View>
@@ -323,6 +340,19 @@ export function ListRankingOptions({
               }}
               disabled={saving}
             />
+            {(missingEmojiCount > 0 && !isOffline) || filling ? (
+              <>
+                <SectionLabel emoji="✨" label="Item emoji" />
+                <Button
+                  title={`Add emoji to ${missingEmojiCount} ${missingEmojiCount === 1 ? 'item' : 'items'}`}
+                  variant="secondary"
+                  size="large"
+                  loading={filling}
+                  disabled={saving}
+                  onPress={() => void fillEmojis()}
+                />
+              </>
+            ) : null}
             <SectionLabel emoji="🎨" label="Accent color" />
             <ListColorPicker
               value={draftColor}

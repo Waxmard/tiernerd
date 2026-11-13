@@ -223,6 +223,44 @@ test('unranked items stay last after a ranking', async () => {
   );
 });
 
+test('setting an item icon keeps a ranking saved in the meantime', async () => {
+  const storage = memoryStorage();
+  const library = createLocalLibrary(storage);
+  await seed(storage, [item('a', 'a0', 10), item('new', null, null)]);
+
+  await library.applyLocalRanking(USER, LIST, item('new', null, null), 0);
+  await library.applyLocalItemIcon(
+    USER,
+    LIST,
+    'new',
+    '🍕',
+    '2026-02-01T00:00:00.000Z'
+  );
+
+  const items = await readItems(storage);
+  const created = items.find((entry) => entry.item_id === 'new');
+  assert.equal(created?.position, 'pending');
+  assert.equal(created?.icon, '🍕');
+  assert.equal(items.find((entry) => entry.item_id === 'a')?.icon, null);
+});
+
+test('ranking keeps an icon the cache gained after the caller read the item', async () => {
+  const storage = memoryStorage();
+  const library = createLocalLibrary(storage);
+  await seed(storage, [
+    item('a', 'a0', 10),
+    { ...item('new', null, null), icon: '🍕' },
+  ]);
+
+  await library.applyLocalRanking(USER, LIST, item('new', null, null), 0);
+
+  const created = (await readItems(storage)).find(
+    (entry) => entry.item_id === 'new'
+  );
+  assert.equal(created?.icon, '🍕');
+  assert.equal(created?.position, 'pending');
+});
+
 test('updating manual_rating rescales neighbors and re-ranking clears moved item pin', async () => {
   const storage = memoryStorage();
   const library = createLocalLibrary(storage);

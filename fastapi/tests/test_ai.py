@@ -5,9 +5,15 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 from pytest import MonkeyPatch
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.endpoints import ai as ai_endpoint
-from app.core.constants import AI_NOT_CONFIGURED_ERROR, AI_UNAVAILABLE_ERROR
+from app.core.constants import (
+    AI_NOT_CONFIGURED_ERROR,
+    AI_UNAVAILABLE_ERROR,
+    LIST_NOT_FOUND_ERROR,
+)
+from app.db.models import List as ListModel
 from app.services import emoji_suggestion
 from app.settings import get_settings
 
@@ -75,6 +81,81 @@ class TestSuggestEmojiEndpoint:
     ):
         response = await client.post("/api/ai/emoji", json=body, headers=auth_headers)
         assert response.status_code == 422
+
+
+class TestFillItemEmojisEndpoint:
+    @staticmethod
+    def _configure(monkeypatch: MonkeyPatch) -> None:
+        def fake(
+            name: str, kind: str, description: str = "", list_title: str = ""
+        ) -> tuple[str, ...]:
+            if name == "broken":
+                raise ValueError("no emoji")
+            return ("🍕", "🍔")
+
+        monkeypatch.setattr(get_settings(), "AI_PROJECT", "test-project")
+        monkeypatch.setattr(ai_endpoint, "suggest_emojis", fake)
+
+    async def test_fills_only_items_without_an_emoji(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        item_factory: Any,
+        monkeypatch: MonkeyPatch,
+    ):
+        self._configure(monkeypatch)
+        sushi = item_factory(name="Sushi")
+        sushi.icon = "🍣"
+        test_db.add_all(
+            [item_factory(name="Pizza"), sushi, item_factory(name="Broken")]
+        )
+        await test_db.commit()
+
+        response = await client.post(
+            f"/api/ai/lists/{test_list.list_id}/item-emojis", headers=auth_headers
+        )
+        assert response.status_code == 200
+        assert response.json() == {"updated": 1, "remaining": 1}
+
+        items = await client.get(
+            f"/api/lists/{test_list.list_id}/items", headers=auth_headers
+        )
+        assert {item["name"]: item["icon"] for item in items.json()} == {
+            "Pizza": "🍕",
+            "Sushi": "🍣",
+            "Broken": None,
+        }
+
+    async def test_rejects_another_users_list(
+        self,
+        client: AsyncClient,
+        auth_headers_user2: dict,
+        test_list: ListModel,
+        monkeypatch: MonkeyPatch,
+    ):
+        self._configure(monkeypatch)
+        response = await client.post(
+            f"/api/ai/lists/{test_list.list_id}/item-emojis",
+            headers=auth_headers_user2,
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == LIST_NOT_FOUND_ERROR
+
+    async def test_not_configured(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_list: ListModel,
+        monkeypatch: MonkeyPatch,
+    ):
+        monkeypatch.setattr(get_settings(), "AI_PROJECT", "")
+        response = await client.post(
+            f"/api/ai/lists/{test_list.list_id}/item-emojis", headers=auth_headers
+        )
+        assert response.status_code == 503
+        assert response.json()["detail"] == AI_NOT_CONFIGURED_ERROR
 
 
 class _FakeResponse:

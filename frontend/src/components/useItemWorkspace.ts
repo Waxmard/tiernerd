@@ -715,7 +715,10 @@ export function useItemWorkspace({
     return true;
   }, [beginBusy, cancelRanking, closeWorkspace, setBusy, commit]);
 
-  const currentItem = workspace.item;
+  const heldItem = workspace.item;
+  const currentItem = heldItem
+    ? (items.find((item) => item.item_id === heldItem.item_id) ?? heldItem)
+    : null;
   const ranking = workspace.ranking;
   const rankingItem =
     currentItem ??
@@ -753,6 +756,7 @@ export function useItemWorkspace({
 
   return {
     ...workspace,
+    item: currentItem,
     view,
     scoreEdit,
     openAdd,

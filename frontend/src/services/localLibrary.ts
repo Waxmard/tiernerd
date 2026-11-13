@@ -377,6 +377,27 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
       await patchSummary(userId, listId, { updated_at: item.updated_at });
     },
 
+    applyLocalItemIcon: async (
+      userId: string,
+      listId: string,
+      itemId: string,
+      icon: string | null,
+      updatedAt: string
+    ): Promise<void> => {
+      const existing = await readItems(userId, listId);
+      if (!existing.some((entry) => entry.item_id === itemId)) return;
+      await writeItems(
+        userId,
+        listId,
+        existing.map((entry) =>
+          entry.item_id === itemId
+            ? { ...entry, icon, updated_at: updatedAt }
+            : entry
+        )
+      );
+      await patchSummary(userId, listId, { updated_at: updatedAt });
+    },
+
     applyLocalItemDelete: async (
       userId: string,
       listId: string,
@@ -403,9 +424,9 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
       item: Item,
       insertIndexBestFirst: number
     ): Promise<void> => {
-      const others = (await readItems(userId, listId)).filter(
-        (entry) => entry.item_id !== item.item_id
-      );
+      const all = await readItems(userId, listId);
+      const cached = all.find((entry) => entry.item_id === item.item_id);
+      const others = all.filter((entry) => entry.item_id !== item.item_id);
       const ranked = others.filter((entry) => entry.position !== null);
       const unranked = others.filter((entry) => entry.position === null);
       const index = Math.max(0, Math.min(insertIndexBestFirst, ranked.length));
@@ -414,7 +435,7 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
         [
           ...ranked.slice(0, index),
           {
-            ...item,
+            ...(cached ?? item),
             position: 'pending',
             manual_rating: null,
             updated_at: nowIso,

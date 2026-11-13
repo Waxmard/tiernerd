@@ -26,4 +26,14 @@ export const aiService = {
         token
       )
       .then((response) => response.emojis),
+
+  fillItemEmojis: (
+    listId: string,
+    token: string
+  ): Promise<{ updated: number; remaining: number }> =>
+    api.post<{ updated: number; remaining: number }>(
+      `/api/ai/lists/${listId}/item-emojis`,
+      undefined,
+      token
+    ),
 };

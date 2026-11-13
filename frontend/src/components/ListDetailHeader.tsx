@@ -35,6 +35,8 @@ interface ListDetailHeaderProps {
   optionsDisabled: boolean;
   onSaveOptions: (options: ListOptionsInput) => Promise<void>;
   onOptionsVisibilityChange: (open: boolean) => void;
+  missingEmojiCount: number;
+  onFillEmojis: () => Promise<void>;
   onBack: () => void;
   onDelete: () => void;
 }
@@ -53,6 +55,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   optionsDisabled,
   onSaveOptions,
   onOptionsVisibilityChange,
+  missingEmojiCount,
+  onFillEmojis,
   onBack,
   onDelete,
 }) => {
@@ -132,6 +136,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           disabled={optionsDisabled}
           onSave={onSaveOptions}
           onVisibilityChange={onOptionsVisibilityChange}
+          missingEmojiCount={missingEmojiCount}
+          onFillEmojis={onFillEmojis}
         />
         <TouchableOpacity
           onPress={onDelete}
