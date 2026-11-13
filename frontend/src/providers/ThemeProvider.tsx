@@ -113,7 +113,8 @@ export function useTheme(): ThemeContextValue {
   return context;
 }
 
-export function listHue(colors: ThemeColors) {
+export function useListHue() {
+  const { colors } = useTheme();
   const solid = colors['accent-line'];
   const tint = colors['accent-tint'];
   return {
@@ -127,10 +128,6 @@ export function listHue(colors: ThemeColors) {
       backgroundImage: `linear-gradient(180deg, ${tint} 0%, ${colors.surface} 100%)`,
     },
   };
-}
-
-export function useListHue() {
-  return listHue(useTheme().colors);
 }
 
 export const useThemeColors = (): ThemeColors => useTheme().colors;

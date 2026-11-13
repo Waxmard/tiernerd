@@ -8,13 +8,16 @@ RankingMode = Literal["rank", "score"]
 ListIcon = Annotated[str, Field(min_length=1, max_length=16)]
 
 
-def _drop_retired_color(data: Any) -> Any:
-    if isinstance(data, dict):
-        return {key: value for key, value in data.items() if key != "color"}
-    return data
+class _IgnoresColor(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _ignore_color(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return {key: value for key, value in data.items() if key != "color"}
+        return data
 
 
-class ListCreate(BaseModel):
+class ListCreate(_IgnoresColor):
     list_id: UUID | None = None
     title: str = Field(..., min_length=1, max_length=60)
     description: str | None = Field(None, max_length=500)
@@ -22,11 +25,6 @@ class ListCreate(BaseModel):
     ranking_mode: RankingMode = "score"
 
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="before")
-    @classmethod
-    def _ignore_color(cls, data: Any) -> Any:
-        return _drop_retired_color(data)
 
 
 class ListBase(BaseModel):
@@ -42,18 +40,13 @@ class LegacyListUpdate(BaseModel):
     ranking_mode: RankingMode = "score"
 
 
-class ListUpdate(BaseModel):
+class ListUpdate(_IgnoresColor):
     title: str | None = Field(None, min_length=1, max_length=60)
     description: str | None = Field(None, max_length=500)
     icon: ListIcon | None = None
     ranking_mode: RankingMode | None = None
 
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="before")
-    @classmethod
-    def _ignore_color(cls, data: Any) -> Any:
-        return _drop_retired_color(data)
 
 
 class List(ListBase):

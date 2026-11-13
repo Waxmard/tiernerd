@@ -41,7 +41,7 @@ interface CreateListContentProps {
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
-type CreateListView = 'overview' | 'description' | 'emoji' | 'ranking-mode';
+type CreateListView = 'overview' | 'description' | 'ranking-mode';
 
 export const CreateListContent = forwardRef<
   CreateListContentHandle,
@@ -87,11 +87,6 @@ export const CreateListContent = forwardRef<
   const openDescription = () => {
     hasVisitedOptionalFieldRef.current = true;
     setView('description');
-  };
-
-  const openEmoji = () => {
-    hasVisitedOptionalFieldRef.current = true;
-    setView('emoji');
   };
 
   const returnToOverview = () => setView('overview');
@@ -168,23 +163,13 @@ export const CreateListContent = forwardRef<
 
   return (
     <BaseModalContent
-      emoji={
-        view === 'overview'
-          ? '📋'
-          : view === 'description'
-            ? '📝'
-            : view === 'emoji'
-              ? '😀'
-              : '🏆'
-      }
+      emoji={view === 'overview' ? '📋' : view === 'description' ? '📝' : '🏆'}
       title={
         view === 'overview'
           ? 'Create New List'
           : view === 'description'
             ? 'Description'
-            : view === 'emoji'
-              ? 'List emoji'
-              : 'Ranking mode'
+            : 'Ranking mode'
       }
       isLoading={isLoading}
       submitText={view === 'overview' ? 'Create' : 'Done'}
@@ -244,31 +229,15 @@ export const CreateListContent = forwardRef<
               accessible={false}
             />
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Emoji: ${icon ?? 'default'}`}
-            accessibilityHint="Choose list emoji"
-            accessibilityState={{ disabled: isLoading }}
-            disabled={isLoading}
-            onPress={openEmoji}
-            className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4"
-          >
-            <Emoji symbol="😀" size={20} />
-            <View className="flex-1 min-w-0">
-              <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-                Emoji
-              </Text>
-              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-                {icon ?? 'Default emoji'}
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={palette[scheme]['ink-muted']}
-              accessible={false}
+          <View className="mb-4">
+            <EmojiPickerField
+              label="List emoji"
+              value={icon}
+              onChange={setIcon}
+              suggestFor={{ name: title, kind: 'list', description }}
+              disabled={isLoading}
             />
-          </Pressable>
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Ranking mode: ${rankingMode === 'rank' ? 'Ranked positions' : 'Scores out of 10'}`}
@@ -315,18 +284,10 @@ export const CreateListContent = forwardRef<
           inputClassName="text-[16px]"
           style={MULTILINE_INPUT_STYLE}
         />
-      ) : view === 'ranking-mode' ? (
+      ) : (
         <RankingModeSelector
           value={rankingMode}
           onChange={setRankingMode}
-          disabled={isLoading}
-        />
-      ) : (
-        <EmojiPickerField
-          label="List emoji"
-          value={icon}
-          onChange={setIcon}
-          suggestFor={{ name: title, kind: 'list', description }}
           disabled={isLoading}
         />
       )}

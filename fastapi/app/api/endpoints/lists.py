@@ -108,9 +108,8 @@ async def create_list(
         if "name" not in params or "description" not in params:
             raise HTTPException(status_code=422, detail="Invalid list metadata")
         data = {"title": params["name"], "description": params["description"]}
-        for key in ("ranking_mode",):
-            if key in params:
-                data[key] = params[key]
+        if "ranking_mode" in params:
+            data["ranking_mode"] = params["ranking_mode"]
         list_in = parse_metadata(data, ListCreate)
     else:
         raise HTTPException(status_code=415, detail="Unsupported list request")
