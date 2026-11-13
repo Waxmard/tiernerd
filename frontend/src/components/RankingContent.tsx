@@ -8,7 +8,14 @@ import Animated, {
   LayoutAnimationConfig,
   ZoomIn,
 } from 'react-native-reanimated';
-import { BaseModalContent, Button, Emoji } from '../design-system/components';
+import {
+  BaseModalContent,
+  Button,
+  EMOJI_SLIDE,
+  Emoji,
+  EmojiPop,
+  useEmojiArrival,
+} from '../design-system/components';
 import { useListHue, useTheme } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
@@ -56,6 +63,7 @@ function ComparisonChoice({
 }: ComparisonChoiceProps) {
   const { colors } = useTheme();
   const hue = useListHue();
+  const celebrateIcon = useEmojiArrival(Boolean(item.icon));
   return (
     <Pressable
       accessibilityRole="button"
@@ -72,32 +80,41 @@ function ComparisonChoice({
           : null,
       ]}
     >
-      {item.icon ? <Emoji symbol={item.icon} size={40} /> : null}
-      {item.image_url ? (
-        <Image
-          source={{ uri: item.image_url }}
-          accessibilityLabel={item.name}
-          className="w-20 h-20 rounded-2xl"
-        />
+      {item.icon ? (
+        <EmojiPop celebrate={celebrateIcon} size={40}>
+          <Emoji symbol={item.icon} size={40} />
+        </EmojiPop>
       ) : null}
-      <Text
-        numberOfLines={3}
-        className={[
-          'text-headline-small text-center',
-          choiceTextClass(isBusy),
-        ].join(' ')}
+      <Animated.View
+        layout={EMOJI_SLIDE}
+        style={{ alignSelf: 'stretch', alignItems: 'center', gap: 8 }}
       >
-        {item.name}
-      </Text>
-      {item.description ? (
+        {item.image_url ? (
+          <Image
+            source={{ uri: item.image_url }}
+            accessibilityLabel={item.name}
+            className="w-20 h-20 rounded-2xl"
+          />
+        ) : null}
         <Text
-          numberOfLines={2}
-          className="text-prose-medium text-center text-ink-muted dark:text-ink-muted-dark"
+          numberOfLines={3}
+          className={[
+            'text-headline-small text-center',
+            choiceTextClass(isBusy),
+          ].join(' ')}
         >
-          {item.description}
+          {item.name}
         </Text>
-      ) : null}
-      {children}
+        {item.description ? (
+          <Text
+            numberOfLines={2}
+            className="text-prose-medium text-center text-ink-muted dark:text-ink-muted-dark"
+          >
+            {item.description}
+          </Text>
+        ) : null}
+        {children}
+      </Animated.View>
     </Pressable>
   );
 }
@@ -287,6 +304,7 @@ export function RankingResultContent({
   const latest = useRef({ onDone, summary });
   latest.current = { onDone, summary };
   const medal = rankMedal(result.rank);
+  const celebrateIcon = useEmojiArrival(Boolean(item.icon));
 
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(latest.current.summary);
@@ -309,32 +327,41 @@ export function RankingResultContent({
           onPress={onDone}
           className="flex-1 items-center justify-center gap-3"
         >
-          {item.icon ? <Emoji symbol={item.icon} size={56} /> : null}
-          <Text
-            numberOfLines={3}
-            className="text-headline-small text-center text-ink dark:text-ink-dark"
+          {item.icon ? (
+            <EmojiPop celebrate={celebrateIcon} size={56}>
+              <Emoji symbol={item.icon} size={56} />
+            </EmojiPop>
+          ) : null}
+          <Animated.View
+            layout={EMOJI_SLIDE}
+            style={{ alignSelf: 'stretch', alignItems: 'center', gap: 12 }}
           >
-            {item.name}
-          </Text>
-          <Animated.View entering={ZoomIn.delay(120).duration(280)}>
-            <View className="flex-row items-center gap-3">
-              {medal ? <Emoji symbol={medal} size={30} /> : null}
-              <ItemRankBadge
-                rankingMode={rankingMode}
-                rating={result.score}
-                rank={result.rank}
-                size="lg"
-              />
-            </View>
+            <Text
+              numberOfLines={3}
+              className="text-headline-small text-center text-ink dark:text-ink-dark"
+            >
+              {item.name}
+            </Text>
+            <Animated.View entering={ZoomIn.delay(120).duration(280)}>
+              <View className="flex-row items-center gap-3">
+                {medal ? <Emoji symbol={medal} size={30} /> : null}
+                <ItemRankBadge
+                  rankingMode={rankingMode}
+                  rating={result.score}
+                  rank={result.rank}
+                  size="lg"
+                />
+              </View>
+            </Animated.View>
+            <Text
+              style={TABULAR_NUMS}
+              className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+            >
+              {rankingMode === 'rank'
+                ? `of ${result.total} ranked`
+                : `Rank #${result.rank} of ${result.total}`}
+            </Text>
           </Animated.View>
-          <Text
-            style={TABULAR_NUMS}
-            className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
-          >
-            {rankingMode === 'rank'
-              ? `of ${result.total} ranked`
-              : `Rank #${result.rank} of ${result.total}`}
-          </Text>
         </Pressable>
       </Animated.View>
     </BaseModalContent>

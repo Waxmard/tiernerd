@@ -1,6 +1,12 @@
 import type React from 'react';
 import { Pressable, Text, TouchableOpacity, View } from 'react-native';
-import { Emoji } from '../design-system/components';
+import Animated from 'react-native-reanimated';
+import {
+  EMOJI_SLIDE,
+  Emoji,
+  EmojiPop,
+  useEmojiArrival,
+} from '../design-system/components';
 import { useTheme } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
@@ -119,6 +125,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   onPress,
   onIconPress,
 }) => {
+  const celebrateIcon = useEmojiArrival(Boolean(item.icon));
   const ranked = item.position !== null;
   const medal = ranked ? rankMedal(rank) : null;
   const score =
@@ -161,23 +168,31 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             : 'border-transparent',
         ].join(' ')}
       >
-        {item.icon && onIconPress ? (
-          <Pressable
-            className="w-11 min-h-11 mr-2 items-center justify-center shrink-0"
-            accessibilityRole="button"
-            accessibilityLabel={`Change emoji for ${item.name}`}
-            accessibilityHint="Opens the emoji picker"
-            disabled={disabled}
-            onPress={() => onIconPress(item)}
+        {item.icon ? (
+          <EmojiPop
+            celebrate={celebrateIcon}
+            size={28}
+            style={{ flexShrink: 0, marginRight: onIconPress ? 8 : 12 }}
           >
-            <Emoji symbol={item.icon} size={28} />
-          </Pressable>
-        ) : item.icon ? (
-          <View className="w-10 mr-3 items-center shrink-0">
-            <Emoji symbol={item.icon} size={28} />
-          </View>
+            {onIconPress ? (
+              <Pressable
+                className="w-11 min-h-11 items-center justify-center"
+                accessibilityRole="button"
+                accessibilityLabel={`Change emoji for ${item.name}`}
+                accessibilityHint="Opens the emoji picker"
+                disabled={disabled}
+                onPress={() => onIconPress(item)}
+              >
+                <Emoji symbol={item.icon} size={28} />
+              </Pressable>
+            ) : (
+              <View className="w-10 items-center">
+                <Emoji symbol={item.icon} size={28} />
+              </View>
+            )}
+          </EmojiPop>
         ) : null}
-        <View className="flex-1 min-w-0">
+        <Animated.View layout={EMOJI_SLIDE} style={{ flex: 1, minWidth: 0 }}>
           <Text
             numberOfLines={2}
             className="text-title-medium font-semibold text-ink dark:text-ink-dark"
@@ -192,7 +207,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
               </Text>
             </View>
           ) : null}
-        </View>
+        </Animated.View>
         {ranked ? (
           <View className="ml-3 flex-row items-center gap-1 shrink-0">
             {medal ? <Emoji symbol={medal} size={22} /> : null}
