@@ -428,11 +428,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return (
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel={
-          item.description?.trim()
-            ? `${item.title}, ${count}. ${item.description}`
-            : `${item.title}, ${count}`
-        }
+        accessibilityLabel={`${item.title}, ${count}`}
         accessibilityHint="Open tier list"
         accessibilityActions={[{ name: 'changeIcon', label: 'Change emoji' }]}
         onAccessibilityAction={(event) => {
@@ -447,7 +443,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
         activeOpacity={0.7}
         style={{ width: cardWidth }}
-        className="shrink-0 flex-row items-center gap-3 rounded-2xl border border-line bg-surface p-3 dark:border-line-dark dark:bg-surface-dark"
+        className="shrink-0 flex-row items-center gap-3 rounded-2xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark"
       >
         <Pressable
           accessibilityRole="button"
@@ -459,26 +455,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         >
           <ListIdentityBadge size="lg" icon={item.icon} />
         </Pressable>
-        <View className="flex-1 min-w-0 gap-0.5">
+        <View className="flex-1 min-w-0 gap-1">
           <Text
+            numberOfLines={2}
             className={`${
-              titleLength <= 40
-                ? 'text-title-medium'
-                : titleLength <= 70
-                  ? 'text-title-small'
-                  : 'text-body-medium'
+              titleLength <= 40 ? 'text-title-medium' : 'text-title-small'
             } font-semibold text-ink dark:text-ink-dark`}
           >
             {item.title}
           </Text>
-          {item.description?.trim() ? (
-            <Text
-              numberOfLines={1}
-              className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
-            >
-              {item.description}
-            </Text>
-          ) : null}
           <View className="flex-row flex-wrap items-center gap-x-3">
             <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
               {count}
@@ -511,7 +496,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       onRefresh={handleRefresh}
       contentContainerStyle={{
         paddingBottom: 16 + safeAreaInsets.bottom,
-        gap: 8,
+        gap: 12,
       }}
       ListEmptyComponent={
         <TouchableOpacity

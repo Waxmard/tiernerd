@@ -131,7 +131,6 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       : rankingMode === 'score' && score !== null
         ? `${score} out of 10`
         : null,
-    item.description?.trim() || null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -179,17 +178,12 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
           </View>
         ) : null}
         <View className="flex-1 min-w-0">
-          <Text className="text-title-medium font-semibold text-ink dark:text-ink-dark">
+          <Text
+            numberOfLines={2}
+            className="text-title-medium font-semibold text-ink dark:text-ink-dark"
+          >
             {item.name}
           </Text>
-          {item.description?.trim() ? (
-            <Text
-              numberOfLines={2}
-              className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
-            >
-              {item.description}
-            </Text>
-          ) : null}
           {!ranked ? (
             <View className="flex-row items-center gap-1">
               <Emoji symbol="⏳" size={14} />

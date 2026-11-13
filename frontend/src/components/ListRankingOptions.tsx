@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from '../config/limits';
 import {
   BaseModalContent,
   Button,
@@ -18,8 +19,6 @@ import type {
   ListRankingMode,
 } from '../services/listsService';
 import { EmojiPickerField, EmojiPickerModal } from './EmojiPicker';
-
-const MAX_TITLE_LENGTH = 100;
 
 const choices: {
   value: ListRankingMode;
@@ -193,7 +192,7 @@ export function ListRankingOptions({
       return;
     }
     if (Array.from(trimmedTitle).length > MAX_TITLE_LENGTH) {
-      setTitleError('Title must be 100 characters or less');
+      setTitleError(`Title must be ${MAX_TITLE_LENGTH} characters or less`);
       return;
     }
     savingRef.current = true;
@@ -307,12 +306,15 @@ export function ListRankingOptions({
               }}
               error={titleError ?? undefined}
               maxLength={MAX_TITLE_LENGTH}
+              showCount
               editable={!saving}
               autoFocus={focusField === 'title'}
             />
             <Input
               emoji="📝"
               label="Description"
+              maxLength={MAX_DESCRIPTION_LENGTH}
+              showCount
               placeholder="Add a description"
               value={draftDescription}
               onChangeText={setDraftDescription}

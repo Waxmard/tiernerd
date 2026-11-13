@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
+import { MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from '../config/limits';
 import { BaseModalContent, Emoji, Input } from '../design-system/components';
 import { type ListIcon, palette } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
@@ -37,8 +38,6 @@ interface CreateListContentProps {
   onClose: () => void;
   onSuccess: (list: ListSimple) => void;
 }
-
-const MAX_TITLE_LENGTH = 100;
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
@@ -105,7 +104,7 @@ export const CreateListContent = forwardRef<
       return;
     }
     if (Array.from(trimmedTitle).length > MAX_TITLE_LENGTH) {
-      setFieldError('Title must be 100 characters or less');
+      setFieldError(`Title must be ${MAX_TITLE_LENGTH} characters or less`);
       return;
     }
     if (!token || !user) {
@@ -213,6 +212,7 @@ export const CreateListContent = forwardRef<
             }}
             error={fieldError ?? undefined}
             maxLength={MAX_TITLE_LENGTH}
+            showCount
             editable={!isLoading}
             autoFocus={!hasVisitedOptionalFieldRef.current}
           />
@@ -304,6 +304,8 @@ export const CreateListContent = forwardRef<
         <Input
           emoji="📝"
           label="Description"
+          maxLength={MAX_DESCRIPTION_LENGTH}
+          showCount
           placeholder="Add a description"
           value={description}
           onChangeText={setDescription}

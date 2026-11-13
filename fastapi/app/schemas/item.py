@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 
 class ItemBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-    description: str | None = None
+    name: str = Field(..., min_length=1, max_length=60)
+    description: str | None = Field(None, max_length=500)
     image_url: HttpUrl | None = None
     icon: str | None = Field(None, min_length=1, max_length=16)
 
@@ -22,8 +22,8 @@ class ItemCreate(ItemBase):
 
 
 class ItemUpdate(BaseModel):
-    name: str | None = Field(None, min_length=1, max_length=100)
-    description: str | None = None
+    name: str | None = Field(None, min_length=1, max_length=60)
+    description: str | None = Field(None, max_length=500)
     image_url: HttpUrl | None = None
     icon: str | None = Field(None, min_length=1, max_length=16)
     manual_rating: float | None = None
@@ -60,6 +60,8 @@ class ItemUpdate(BaseModel):
 class Item(ItemBase):
     item_id: uuid.UUID
     list_id: uuid.UUID
+    name: str
+    description: str | None = None
     position: str | None = None
     rating: float | None = None
     manual_rating: float | None = None

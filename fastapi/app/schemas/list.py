@@ -16,8 +16,8 @@ def _drop_retired_color(data: Any) -> Any:
 
 class ListCreate(BaseModel):
     list_id: UUID | None = None
-    title: str = Field(..., min_length=1, max_length=100)
-    description: str | None = None
+    title: str = Field(..., min_length=1, max_length=60)
+    description: str | None = Field(None, max_length=500)
     icon: ListIcon | None = None
     ranking_mode: RankingMode = "score"
 
@@ -37,14 +37,14 @@ class ListBase(BaseModel):
 
 
 class LegacyListUpdate(BaseModel):
-    title: str | None = Field(None, min_length=1, max_length=100)
-    description: str | None = None
+    title: str | None = Field(None, min_length=1, max_length=60)
+    description: str | None = Field(None, max_length=500)
     ranking_mode: RankingMode = "score"
 
 
 class ListUpdate(BaseModel):
-    title: str | None = Field(None, min_length=1, max_length=100)
-    description: str | None = None
+    title: str | None = Field(None, min_length=1, max_length=60)
+    description: str | None = Field(None, max_length=500)
     icon: ListIcon | None = None
     ranking_mode: RankingMode | None = None
 

@@ -15,6 +15,7 @@ interface InputProps extends TextInputProps {
   inputClassName?: string;
   emoji?: string;
   containerClassName?: string;
+  showCount?: boolean;
 }
 
 export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
@@ -24,12 +25,21 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
     inputClassName,
     emoji,
     containerClassName,
+    showCount,
     ...textInputProps
   },
   ref
 ) {
   const colors = useThemeColors();
   const labelId = useId();
+  const { value, maxLength } = textInputProps;
+  const count =
+    showCount &&
+    maxLength !== undefined &&
+    typeof value === 'string' &&
+    value.length >= maxLength * 0.8
+      ? `${value.length}/${maxLength}`
+      : null;
 
   return (
     <View className={containerClassName ?? 'mb-4'}>
@@ -73,6 +83,11 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
           className="text-body-small text-danger-text dark:text-danger-text-dark mt-1"
         >
           {error}
+        </Text>
+      )}
+      {count && (
+        <Text className="text-body-small text-right text-ink-muted dark:text-ink-muted-dark mt-1">
+          {count}
         </Text>
       )}
     </View>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
+import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH } from '../config/limits';
 import {
   BaseModalContent,
   Button,
@@ -41,8 +42,6 @@ export interface AddItemContentProps {
     onDelete: () => void;
   };
 }
-
-const MAX_NAME_LENGTH = 100;
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
@@ -99,6 +98,7 @@ export function AddItemContent({
             onChangeText={(name) => onFormChange({ name })}
             error={fieldErrors.name}
             maxLength={MAX_NAME_LENGTH}
+            showCount
             editable={!isBusy}
             autoFocus={focusField === 'name'}
             containerClassName=""
@@ -173,6 +173,8 @@ export function AddItemContent({
             emoji="📝"
             autoFocus={focusField === 'description'}
             label="Description"
+            maxLength={MAX_DESCRIPTION_LENGTH}
+            showCount
             placeholder="Add a description"
             value={form.description}
             onChangeText={(description) => onFormChange({ description })}

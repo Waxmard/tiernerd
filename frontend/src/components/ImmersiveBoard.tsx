@@ -4,7 +4,7 @@ import { Emoji } from '../design-system/components';
 import type { ListIcon } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
 import { useSync } from '../providers/SyncProvider';
-import { useTheme, useThemeColors } from '../providers/ThemeProvider';
+import { useTheme } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/listIcon';
 import { LandscapeBackdrop } from './LandscapeBackdrop';
 import { WorkspacePhotoBackdrop } from './WorkspacePhotoBackdrop';
@@ -35,21 +35,6 @@ export function ImmersiveScreenShell({ children }: { children: ReactNode }) {
   );
 }
 
-export function ListAccentBar() {
-  const backgroundColor = useThemeColors()['accent-line'];
-  return (
-    <View
-      accessible={false}
-      style={{
-        width: 4,
-        alignSelf: 'stretch',
-        borderRadius: 2,
-        backgroundColor,
-      }}
-    />
-  );
-}
-
 export function ListIdentityBadge({
   icon,
   size = 'md',
@@ -66,17 +51,14 @@ export function ListIdentityBadge({
   const iconSize = size === 'sm' ? 16 : size === 'lg' ? 28 : 20;
 
   return (
-    <View className="flex-row items-center gap-2 shrink-0">
-      <ListAccentBar />
-      <View
-        className={[
-          boxClass,
-          'items-center justify-center overflow-hidden border border-line dark:border-line-dark',
-          'bg-accent-tint dark:bg-accent-tint-dark',
-        ].join(' ')}
-      >
-        <Emoji symbol={listIconEmoji(icon)} size={iconSize} />
-      </View>
+    <View
+      className={[
+        boxClass,
+        'shrink-0 items-center justify-center overflow-hidden border border-line dark:border-line-dark',
+        'bg-accent-tint dark:bg-accent-tint-dark',
+      ].join(' ')}
+    >
+      <Emoji symbol={listIconEmoji(icon)} size={iconSize} />
     </View>
   );
 }

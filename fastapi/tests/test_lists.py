@@ -278,6 +278,22 @@ class TestReadList:
 
 
 class TestUpdateList:
+    async def test_update_list_text_length_limits(
+        self, client: AsyncClient, test_list: ListModel, auth_headers: dict
+    ):
+        url = f"/api/lists/{test_list.list_id}"
+        accepted = await client.put(
+            url,
+            files=metadata_files({"title": "x" * 60, "description": "y" * 500}),
+            headers=auth_headers,
+        )
+        assert accepted.status_code == 200
+        for invalid in ({"title": "x" * 61}, {"description": "y" * 501}):
+            response = await client.put(
+                url, files=metadata_files(invalid), headers=auth_headers
+            )
+            assert response.status_code == 422
+
     async def test_mode_switch_preserves_items(
         self,
         client: AsyncClient,
@@ -565,7 +581,8 @@ class TestListWriteFormats:
             {"description": ""},
             {"name": "Missing description"},
             {"name": "", "description": ""},
-            {"name": "x" * 101, "description": ""},
+            {"name": "x" * 61, "description": ""},
+            {"name": "Long description", "description": "x" * 501},
             {"name": "Bad mode", "description": "", "ranking_mode": "other"},
         ):
             response = await client.post(
@@ -619,7 +636,8 @@ class TestListWriteFormats:
 
         for invalid in (
             {"title": ""},
-            {"title": "x" * 101},
+            {"title": "x" * 61},
+            {"description": "x" * 501},
             {"title": None},
             {"ranking_mode": None},
             {"ranking_mode": "other"},
@@ -796,6 +814,24 @@ class TestDeleteList:
 
 
 class TestReadListItems:
+    async def test_read_list_items_returns_values_over_current_limits(
+        self,
+        client: AsyncClient,
+        test_list: ListModel,
+        auth_headers: dict,
+        test_db: AsyncSession,
+    ):
+        test_db.add(
+            ItemModel(list_id=test_list.list_id, name="x" * 100, description="y" * 600)
+        )
+        await test_db.commit()
+
+        response = await client.get(
+            f"/api/lists/{test_list.list_id}/items", headers=auth_headers
+        )
+        assert response.status_code == 200
+        assert response.json()[0]["name"] == "x" * 100
+
     async def test_read_list_items_empty(
         self,
         client: AsyncClient,

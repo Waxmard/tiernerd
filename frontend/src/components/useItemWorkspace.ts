@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { MAX_NAME_LENGTH } from '../config/limits';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { duplicateItemName } from '../services/itemNames';
 import type { Item } from '../services/itemsService';
@@ -329,8 +330,8 @@ export function useItemWorkspace({
     const name = current.form.name.trim();
     const fieldErrors: ItemWorkspaceState['fieldErrors'] = {};
     if (!name) fieldErrors.name = 'Name is required';
-    else if (Array.from(name).length > 100)
-      fieldErrors.name = 'Name must be 100 characters or less';
+    else if (Array.from(name).length > MAX_NAME_LENGTH)
+      fieldErrors.name = `Name must be ${MAX_NAME_LENGTH} characters or less`;
     if (Object.keys(fieldErrors).length) {
       updateWorkspace({ fieldErrors });
       return;
