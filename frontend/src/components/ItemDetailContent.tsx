@@ -26,7 +26,7 @@ export interface ItemDetailContentProps {
 }
 
 const SCORE_CLASS =
-  'text-[20px] leading-6 font-semibold text-accent-text dark:text-accent-text-dark';
+  'font-display text-[20px] leading-6 font-semibold text-accent-text dark:text-accent-text-dark';
 
 export function ItemDetailContent({
   item,
@@ -110,6 +110,21 @@ export function ItemDetailContent({
       }
     >
       <View className="gap-3 pb-4">
+        {item.description ? (
+          <Pressable
+            accessibilityRole={actionsBlocked ? undefined : 'button'}
+            accessibilityHint={actionsBlocked ? undefined : 'Edit description'}
+            onPress={actionsBlocked ? undefined : () => onEdit('description')}
+            hitSlop={10}
+            style={({ pressed }) =>
+              pressed && !actionsBlocked ? { opacity: 0.7 } : undefined
+            }
+          >
+            <Text className="text-prose-large text-ink dark:text-ink-dark">
+              {item.description}
+            </Text>
+          </Pressable>
+        ) : null}
         <Pressable
           accessibilityRole={scoreEditable ? 'button' : undefined}
           accessibilityHint={scoreEditable ? 'Edit score' : undefined}
@@ -164,21 +179,6 @@ export function ItemDetailContent({
             </Text>
           ) : null}
         </Pressable>
-        {item.description ? (
-          <Pressable
-            accessibilityRole={actionsBlocked ? undefined : 'button'}
-            accessibilityHint={actionsBlocked ? undefined : 'Edit description'}
-            onPress={actionsBlocked ? undefined : () => onEdit('description')}
-            className="min-h-11 justify-center"
-            style={({ pressed }) =>
-              pressed && !actionsBlocked ? { opacity: 0.7 } : undefined
-            }
-          >
-            <Text className="text-body-large text-ink dark:text-ink-dark">
-              {item.description}
-            </Text>
-          </Pressable>
-        ) : null}
         {item.image_url ? (
           imageFailed ? (
             <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">

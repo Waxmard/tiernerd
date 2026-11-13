@@ -71,6 +71,12 @@
 	<string>$(RCT_METRO_PORT)</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>BricolageGrotesque_600SemiBold.ttf</string>
+		<string>BricolageGrotesque_700Bold.ttf</string>
+		<string>Newsreader_400Regular_Italic.ttf</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

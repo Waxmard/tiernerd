@@ -92,7 +92,7 @@ function ComparisonChoice({
       {item.description ? (
         <Text
           numberOfLines={2}
-          className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark"
+          className="text-prose-medium text-center text-ink-muted dark:text-ink-muted-dark"
         >
           {item.description}
         </Text>

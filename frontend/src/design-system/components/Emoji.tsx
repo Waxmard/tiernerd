@@ -40,7 +40,7 @@ export function SectionLabel({
       {emoji ? <Emoji symbol={emoji} size={14} /> : null}
       <Text
         nativeID={nativeID}
-        className="text-label-medium uppercase text-ink-muted dark:text-ink-muted-dark"
+        className="text-label-large font-semibold text-ink-muted dark:text-ink-muted-dark"
       >
         {label}
       </Text>

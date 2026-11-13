@@ -102,7 +102,7 @@ export function AddItemContent({
             editable={!isBusy}
             autoFocus={focusField === 'name'}
             containerClassName=""
-            inputClassName="text-[20px] font-semibold min-h-12 min-w-0"
+            inputClassName="font-display text-[20px] font-semibold min-h-12 min-w-0"
           />
         </View>
         <View className={`${PANEL_CLASS} gap-2`} style={hue.cardStyle}>

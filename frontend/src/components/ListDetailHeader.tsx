@@ -87,6 +87,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
               accessibilityHint="Opens the emoji picker"
               accessibilityState={{ disabled: optionsDisabled }}
               disabled={optionsDisabled}
+              className="w-6 items-center"
               hitSlop={10}
               onPress={() => optionsRef.current?.open('icon')}
               style={({ pressed }) =>
@@ -150,7 +151,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
       </View>
       {description?.trim() ? (
         <ScrollView
-          className="max-h-[72px]"
+          className="max-h-[66px] -mt-1"
           nestedScrollEnabled
           showsVerticalScrollIndicator
         >
@@ -164,12 +165,13 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
                 ? undefined
                 : () => optionsRef.current?.open('description')
             }
-            className="min-h-11 justify-center"
+            className="pl-[84px]"
+            hitSlop={10}
             style={({ pressed }) =>
               pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
             }
           >
-            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-prose-medium text-ink-muted dark:text-ink-muted-dark">
               {description}
             </Text>
           </Pressable>

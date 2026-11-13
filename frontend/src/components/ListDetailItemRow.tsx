@@ -42,8 +42,8 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
       : 'min-w-[52px] h-10 px-2.5 rounded-xl';
   const primaryTextClass =
     size === 'lg'
-      ? 'text-[22px] leading-[28px] font-bold'
-      : 'text-[18px] leading-[24px] font-bold';
+      ? 'font-display text-[22px] leading-[28px] font-bold'
+      : 'font-display text-[18px] leading-[24px] font-bold';
   const secondaryTextClass =
     size === 'lg' ? 'text-[15px] font-semibold' : 'text-[13px] font-semibold';
 

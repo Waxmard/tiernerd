@@ -18,6 +18,16 @@
             "backgroundColor": "#15263F"
           }
         }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./node_modules/@expo-google-fonts/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf",
+            "./node_modules/@expo-google-fonts/bricolage-grotesque/700Bold/BricolageGrotesque_700Bold.ttf",
+            "./node_modules/@expo-google-fonts/newsreader/400Regular_Italic/Newsreader_400Regular_Italic.ttf"
+          ]
+        }
       ]
     ],
     "ios": {
