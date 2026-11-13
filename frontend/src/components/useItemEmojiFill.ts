@@ -102,11 +102,17 @@ export function useItemEmojiFill({
         await refresh().catch(() => undefined);
       } while (updated > 0 && remaining > 0);
     } catch (err) {
-      notify(getApiErrorMessage(err, FILL_ERROR), '⚠️');
+      const message = getApiErrorMessage(err, FILL_ERROR);
+      notify(
+        added > 0
+          ? `Added emoji to ${added} ${added === 1 ? 'item' : 'items'}. ${message}`
+          : message,
+        '⚠️'
+      );
       return;
     }
     if (added === 0) {
-      notify(FILL_ERROR, '⚠️');
+      if (remaining > 0) notify(FILL_ERROR, '⚠️');
       return;
     }
     const count = `${added} ${added === 1 ? 'item' : 'items'}`;

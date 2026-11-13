@@ -103,15 +103,21 @@ async def fill_item_emojis(
         )
         for _, name, description in batch
     ]
-    done, _ = await asyncio.wait(futures, timeout=EMOJI_FILL_DEADLINE)
+    done, pending = await asyncio.wait(futures, timeout=EMOJI_FILL_DEADLINE)
+    for future in pending:
+        future.cancel()
     picks = {
         item_id: future.result()
         for (item_id, _, _), future in zip(batch, futures, strict=True)
         if future in done and future.exception() is None
     }
     if len(picks) < len(batch):
+        error = next((f.exception() for f in done if f.exception()), None)
         logger.warning(
-            "Emoji fill skipped %d of %d items", len(batch) - len(picks), len(batch)
+            "Emoji fill skipped %d of %d items",
+            len(batch) - len(picks),
+            len(batch),
+            exc_info=error,
         )
 
     updated = 0

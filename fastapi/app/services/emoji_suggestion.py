@@ -23,6 +23,14 @@ SYSTEM_PROMPT = (
 )
 
 
+@functools.cache
+def _session() -> AuthorizedSession:
+    credentials, _ = google.auth.default(
+        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
+    return AuthorizedSession(credentials)  # type: ignore[no-untyped-call]
+
+
 @functools.lru_cache(maxsize=1024)
 def suggest_emojis(
     name: str,
@@ -36,10 +44,7 @@ def suggest_emojis(
         lines.append(f"List: {list_title}")
     if description:
         lines.append(f"Description: {description}")
-    credentials, _ = google.auth.default(
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
-    session = AuthorizedSession(credentials)  # type: ignore[no-untyped-call]
+    session = _session()
     settings = get_settings()
     response = session.post(
         f"https://aiplatform.googleapis.com/v1/projects/{settings.AI_PROJECT}"

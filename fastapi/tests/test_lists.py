@@ -831,6 +831,7 @@ class TestReadListItems:
         )
         assert response.status_code == 200
         assert response.json()[0]["name"] == "x" * 100
+        assert response.json()[0]["description"] == "y" * 600
 
     async def test_read_list_items_empty(
         self,

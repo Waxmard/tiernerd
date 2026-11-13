@@ -10,6 +10,7 @@ for (const [name, value] of Object.entries(palette.light)) {
 
 const fontFamily = {
   display: 'BricolageGrotesque-SemiBold',
+  'display-bold': 'BricolageGrotesque-Bold',
   prose: 'Newsreader-Italic',
 };
 
