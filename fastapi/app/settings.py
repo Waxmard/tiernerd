@@ -21,6 +21,9 @@ class Settings(BaseSettings):
 
     COVER_UPLOAD_BUCKET: str = ""
 
+    AI_PROJECT: str = ""
+    AI_MODEL: str = "gemini-3.5-flash-lite"
+
     LOG_LEVEL: str = "INFO"
 
     model_config = SettingsConfigDict(

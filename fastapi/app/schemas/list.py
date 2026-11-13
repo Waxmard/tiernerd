@@ -1,19 +1,26 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 RankingMode = Literal["rank", "score"]
-ListColor = Literal["blue", "teal", "amber", "pink", "violet", "coral"]
 ListIcon = Annotated[str, Field(min_length=1, max_length=16)]
 
 
-class ListCreate(BaseModel):
+class _IgnoresColor(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _ignore_color(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return {key: value for key, value in data.items() if key != "color"}
+        return data
+
+
+class ListCreate(_IgnoresColor):
     list_id: UUID | None = None
-    title: str = Field(..., min_length=1, max_length=100)
-    description: str | None = None
-    color: ListColor | None = None
+    title: str = Field(..., min_length=1, max_length=60)
+    description: str | None = Field(None, max_length=500)
     icon: ListIcon | None = None
     ranking_mode: RankingMode = "score"
 
@@ -23,21 +30,19 @@ class ListCreate(BaseModel):
 class ListBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
-    color: ListColor | None = None
     icon: ListIcon | None = None
     ranking_mode: RankingMode = "score"
 
 
 class LegacyListUpdate(BaseModel):
-    title: str | None = Field(None, min_length=1, max_length=100)
-    description: str | None = None
+    title: str | None = Field(None, min_length=1, max_length=60)
+    description: str | None = Field(None, max_length=500)
     ranking_mode: RankingMode = "score"
 
 
-class ListUpdate(BaseModel):
-    title: str | None = Field(None, min_length=1, max_length=100)
-    description: str | None = None
-    color: ListColor | None = None
+class ListUpdate(_IgnoresColor):
+    title: str | None = Field(None, min_length=1, max_length=60)
+    description: str | None = Field(None, max_length=500)
     icon: ListIcon | None = None
     ranking_mode: RankingMode | None = None
 

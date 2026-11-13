@@ -6,3 +6,5 @@ INVALID_CREDENTIALS_ERROR = "Could not validate credentials"
 GOOGLE_AUTH_NOT_CONFIGURED_ERROR = "Google sign-in is not configured"
 INVALID_GOOGLE_TOKEN_ERROR = "Invalid Google token"  # noqa: S105  # message, not a credential
 BACKGROUND_PHOTO_NOT_FOUND_ERROR = "Background photo not found"
+AI_NOT_CONFIGURED_ERROR = "AI suggestions are not configured"
+AI_UNAVAILABLE_ERROR = "AI suggestions are unavailable"

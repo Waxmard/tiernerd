@@ -12,8 +12,6 @@ import {
 } from 'react';
 import {
   type ColorSchemeName,
-  type ListColor,
-  palette,
   type ThemeColors,
   themeColors,
 } from '../design-system/tokens/colors';
@@ -115,38 +113,21 @@ export function useTheme(): ThemeContextValue {
   return context;
 }
 
-export function listHue(
-  color: ListColor | null,
-  scheme: ColorSchemeName,
-  colors: ThemeColors
-) {
-  const hue = color
-    ? palette.list[color][scheme]
-    : {
-        solid: colors['accent-line'],
-        'on-solid': colors['on-accent'],
-        tint: colors['accent-tint'],
-        'on-tint': colors['accent-text'],
-      };
+export function useListHue() {
+  const { colors } = useTheme();
+  const solid = colors['accent-line'];
+  const tint = colors['accent-tint'];
   return {
-    solid: hue.solid,
-    onSolid: hue['on-solid'],
-    tint: hue.tint,
-    onTint: hue['on-tint'],
+    solid,
+    onSolid: colors['on-accent'],
     cardStyle: {
-      backgroundColor: hue.tint,
-      backgroundImage: `linear-gradient(135deg, ${hue.tint} 0%, ${colors.surface} 100%)`,
-      borderColor: hue.solid,
+      backgroundColor: tint,
+      backgroundImage: `linear-gradient(135deg, ${tint} 0%, ${colors.surface} 100%)`,
     },
     washStyle: {
-      backgroundImage: `linear-gradient(180deg, ${hue.tint} 0%, ${colors.surface} 100%)`,
+      backgroundImage: `linear-gradient(180deg, ${tint} 0%, ${colors.surface} 100%)`,
     },
   };
-}
-
-export function useListHue(color: ListColor | null) {
-  const { scheme, colors } = useTheme();
-  return listHue(color, scheme, colors);
 }
 
 export const useThemeColors = (): ThemeColors => useTheme().colors;

@@ -79,7 +79,6 @@ class TestBuildListSimpleResponse:
             user_id = uuid.uuid4()
             title = "Test List"
             description = "Test description"
-            color = None
             icon = None
             ranking_mode = "score"
             created_at = datetime.now()

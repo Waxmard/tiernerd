@@ -29,7 +29,7 @@ export interface ItemWorkspaceState {
   fieldErrors: { name?: string; manualRating?: string };
   ranking: RankingSession | null;
   isBusy: boolean;
-  focusField: ItemFormField;
+  focusField: ItemFormField | null;
   result: RankingResult | null;
 }
 
@@ -39,7 +39,7 @@ export interface UseItemWorkspaceOptions {
   listTitle: string;
   rankingMode?: ListRankingMode;
   items: Item[];
-  onItemsChanged: (item?: Item) => Promise<void>;
+  onItemsChanged: (item?: Item, created?: boolean) => Promise<void>;
   onClosed: () => void;
 }
 
@@ -58,7 +58,7 @@ export interface ItemWorkspace extends ItemWorkspaceState {
   view: RankingView | null;
   scoreEdit: { autoScore: number | null; bounds: ManualRatingBounds } | null;
   openAdd: () => void;
-  openEdit: (item: Item, focusField?: ItemFormField) => void;
+  openEdit: (item: Item, focusField?: ItemFormField | null) => void;
   saveIcon: (item: Item, icon: string | null) => Promise<boolean>;
   resumeRanking: (session: RankingSession) => void;
   setForm: (patch: Partial<ItemFormDraft>) => void;

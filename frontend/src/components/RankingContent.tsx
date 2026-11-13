@@ -8,9 +8,15 @@ import Animated, {
   LayoutAnimationConfig,
   ZoomIn,
 } from 'react-native-reanimated';
-import { BaseModalContent, Button, Emoji } from '../design-system/components';
-import type { ListColor } from '../design-system/tokens/colors';
-import { useListHue, useTheme } from '../providers/ThemeProvider';
+import {
+  BaseModalContent,
+  Button,
+  EMOJI_SLIDE,
+  Emoji,
+  EmojiPop,
+  useEmojiArrival,
+} from '../design-system/components';
+import { useListHue } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
 import {
@@ -29,7 +35,6 @@ export interface RankingContentProps {
   view: RankingView;
   isBusy: boolean;
   rankingMode?: ListRankingMode;
-  color?: ListColor | null;
   onAnswer: (result: RankingAnswer) => void;
   onUndo: () => void;
   onCancel: () => void;
@@ -39,7 +44,6 @@ export interface RankingContentProps {
 interface ComparisonChoiceProps {
   item: Item;
   accessibilityLabel: string;
-  color: ListColor | null;
   isBusy: boolean;
   onPress: () => void;
   children: React.ReactNode;
@@ -53,13 +57,12 @@ const choiceTextClass = (isBusy: boolean): string =>
 function ComparisonChoice({
   item,
   accessibilityLabel,
-  color,
   isBusy,
   onPress,
   children,
 }: ComparisonChoiceProps) {
-  const { colors } = useTheme();
-  const hue = useListHue(color);
+  const hue = useListHue();
+  const celebrateIcon = useEmojiArrival(Boolean(item.icon));
   return (
     <Pressable
       accessibilityRole="button"
@@ -68,40 +71,47 @@ function ComparisonChoice({
       accessibilityState={{ disabled: isBusy }}
       disabled={isBusy}
       onPress={onPress}
-      className="flex-1 min-h-[120px] items-center justify-center gap-2 rounded-2xl border-2 px-4 py-4"
+      className="flex-1 min-h-[120px] items-center justify-center gap-2 rounded-2xl px-4 py-4"
       style={({ pressed }) => [
         hue.cardStyle,
-        pressed && !isBusy
-          ? { transform: [{ scale: 0.97 }], borderColor: colors['accent-text'] }
-          : null,
+        pressed && !isBusy ? { transform: [{ scale: 0.97 }] } : null,
       ]}
     >
-      {item.icon ? <Emoji symbol={item.icon} size={40} /> : null}
-      {item.image_url ? (
-        <Image
-          source={{ uri: item.image_url }}
-          accessibilityLabel={item.name}
-          className="w-20 h-20 rounded-2xl"
-        />
+      {item.icon ? (
+        <EmojiPop celebrate={celebrateIcon} size={40}>
+          <Emoji symbol={item.icon} size={40} />
+        </EmojiPop>
       ) : null}
-      <Text
-        numberOfLines={3}
-        className={[
-          'text-headline-small text-center',
-          choiceTextClass(isBusy),
-        ].join(' ')}
+      <Animated.View
+        layout={EMOJI_SLIDE}
+        style={{ alignSelf: 'stretch', alignItems: 'center', gap: 8 }}
       >
-        {item.name}
-      </Text>
-      {item.description ? (
+        {item.image_url ? (
+          <Image
+            source={{ uri: item.image_url }}
+            accessibilityLabel={item.name}
+            className="w-20 h-20 rounded-2xl"
+          />
+        ) : null}
         <Text
-          numberOfLines={2}
-          className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark"
+          numberOfLines={3}
+          className={[
+            'text-headline-small text-center',
+            choiceTextClass(isBusy),
+          ].join(' ')}
         >
-          {item.description}
+          {item.name}
         </Text>
-      ) : null}
-      {children}
+        {item.description ? (
+          <Text
+            numberOfLines={2}
+            className="text-prose-medium text-center text-ink-muted dark:text-ink-muted-dark"
+          >
+            {item.description}
+          </Text>
+        ) : null}
+        {children}
+      </Animated.View>
     </Pressable>
   );
 }
@@ -112,13 +122,12 @@ export function RankingContent({
   view,
   isBusy,
   rankingMode = 'rank',
-  color = null,
   onAnswer,
   onUndo,
   onCancel,
   onPause,
 }: RankingContentProps) {
-  const hue = useListHue(color);
+  const hue = useListHue();
   const target = view.target;
   const caption = item.position === null ? 'New' : 'Re-ranking';
 
@@ -126,7 +135,6 @@ export function RankingContent({
     <BaseModalContent
       title="Which is better?"
       emoji="⚖️"
-      color={color}
       onClose={onPause}
       footer={
         <View className="gap-2">
@@ -205,7 +213,6 @@ export function RankingContent({
             <ComparisonChoice
               item={item}
               accessibilityLabel={`${item.name}. ${caption}.`}
-              color={color}
               isBusy={isBusy}
               onPress={() => onAnswer('better')}
             >
@@ -241,7 +248,6 @@ export function RankingContent({
                     ? `${target.name}. Ranked ${view.targetRank} of ${view.rankedCount}.`
                     : `${target.name}. Existing item.`
                 }
-                color={color}
                 isBusy={isBusy}
                 onPress={() => onAnswer('worse')}
               >
@@ -250,7 +256,6 @@ export function RankingContent({
                     rankingMode={rankingMode}
                     rating={target.rating}
                     rank={view.targetRank}
-                    color={color}
                   />
                   {view.targetRank !== null ? (
                     <Text
@@ -282,13 +287,11 @@ export function RankingResultContent({
   item,
   result,
   rankingMode = 'rank',
-  color = null,
   onDone,
 }: {
   item: Item;
   result: RankingResult;
   rankingMode?: ListRankingMode;
-  color?: ListColor | null;
   onDone: () => void;
 }) {
   const summary =
@@ -298,6 +301,7 @@ export function RankingResultContent({
   const latest = useRef({ onDone, summary });
   latest.current = { onDone, summary };
   const medal = rankMedal(result.rank);
+  const celebrateIcon = useEmojiArrival(Boolean(item.icon));
 
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(latest.current.summary);
@@ -309,7 +313,6 @@ export function RankingResultContent({
     <BaseModalContent
       title={rankingMode === 'score' ? 'Scored!' : 'Ranked!'}
       emoji="🎉"
-      color={color}
       onClose={onDone}
       scrollable={false}
       footer={<Button title="Done" variant="text" onPress={onDone} fullWidth />}
@@ -321,33 +324,41 @@ export function RankingResultContent({
           onPress={onDone}
           className="flex-1 items-center justify-center gap-3"
         >
-          {item.icon ? <Emoji symbol={item.icon} size={56} /> : null}
-          <Text
-            numberOfLines={3}
-            className="text-headline-small text-center text-ink dark:text-ink-dark"
+          {item.icon ? (
+            <EmojiPop celebrate={celebrateIcon} size={56}>
+              <Emoji symbol={item.icon} size={56} />
+            </EmojiPop>
+          ) : null}
+          <Animated.View
+            layout={EMOJI_SLIDE}
+            style={{ alignSelf: 'stretch', alignItems: 'center', gap: 12 }}
           >
-            {item.name}
-          </Text>
-          <Animated.View entering={ZoomIn.delay(120).duration(280)}>
-            <View className="flex-row items-center gap-3">
-              {medal ? <Emoji symbol={medal} size={30} /> : null}
-              <ItemRankBadge
-                rankingMode={rankingMode}
-                rating={result.score}
-                rank={result.rank}
-                color={color}
-                size="lg"
-              />
-            </View>
+            <Text
+              numberOfLines={3}
+              className="text-headline-small text-center text-ink dark:text-ink-dark"
+            >
+              {item.name}
+            </Text>
+            <Animated.View entering={ZoomIn.delay(120).duration(280)}>
+              <View className="flex-row items-center gap-3">
+                {medal ? <Emoji symbol={medal} size={30} /> : null}
+                <ItemRankBadge
+                  rankingMode={rankingMode}
+                  rating={result.score}
+                  rank={result.rank}
+                  size="lg"
+                />
+              </View>
+            </Animated.View>
+            <Text
+              style={TABULAR_NUMS}
+              className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
+            >
+              {rankingMode === 'rank'
+                ? `of ${result.total} ranked`
+                : `Rank #${result.rank} of ${result.total}`}
+            </Text>
           </Animated.View>
-          <Text
-            style={TABULAR_NUMS}
-            className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
-          >
-            {rankingMode === 'rank'
-              ? `of ${result.total} ranked`
-              : `Rank #${result.rank} of ${result.total}`}
-          </Text>
         </Pressable>
       </Animated.View>
     </BaseModalContent>

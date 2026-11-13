@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
+import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH } from '../config/limits';
 import {
   BaseModalContent,
+  Button,
+  Emoji,
   Input,
   SectionLabel,
 } from '../design-system/components';
-import type { ListColor } from '../design-system/tokens/colors';
 import { useListHue } from '../providers/ThemeProvider';
 import {
   formatScore,
@@ -31,15 +33,19 @@ export interface AddItemContentProps {
   canEditScore?: boolean;
   autoScore?: number | null;
   scoreBounds?: ManualRatingBounds;
-  color?: ListColor | null;
-  focusField?: ItemFormField;
+  focusField?: ItemFormField | null;
+  listTitle?: string;
+  editActions?: {
+    rankTitle: string;
+    onRank: () => void;
+    onDetails: () => void;
+    onDelete: () => void;
+  };
 }
-
-const MAX_NAME_LENGTH = 100;
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
-const PANEL_CLASS = 'rounded-2xl border-2 p-3';
+const PANEL_CLASS = 'rounded-2xl p-3';
 
 export function AddItemContent({
   mode,
@@ -53,12 +59,13 @@ export function AddItemContent({
   canEditScore = false,
   autoScore = null,
   scoreBounds,
-  color = null,
   focusField = 'name',
+  listTitle,
+  editActions,
 }: AddItemContentProps) {
   const nameRef = useRef<TextInputInstance>(null);
   const scoreRef = useRef<TextInputInstance>(null);
-  const hue = useListHue(color);
+  const hue = useListHue();
   const isEdit = mode === 'edit';
 
   useEffect(() => {
@@ -70,7 +77,6 @@ export function AddItemContent({
     <BaseModalContent
       title={isEdit ? 'Edit item' : 'Add item'}
       emoji={isEdit ? '✏️' : '🌱'}
-      color={color}
       isLoading={isBusy}
       submitText={isEdit ? 'Save' : 'Add item'}
       onClose={onClose}
@@ -92,18 +98,27 @@ export function AddItemContent({
             onChangeText={(name) => onFormChange({ name })}
             error={fieldErrors.name}
             maxLength={MAX_NAME_LENGTH}
+            showCount
             editable={!isBusy}
             autoFocus={focusField === 'name'}
+            returnKeyType="done"
+            onSubmitEditing={onSubmit}
             containerClassName=""
-            inputClassName="text-[20px] font-semibold min-h-12 min-w-0"
+            inputClassName="font-display text-[20px] font-semibold min-h-12 min-w-0"
           />
         </View>
         <View className={`${PANEL_CLASS} gap-2`} style={hue.cardStyle}>
-          <SectionLabel emoji="😀" label="Emoji (optional)" />
+          <SectionLabel emoji="😀" label="Emoji" />
           <EmojiPickerField
             label="Item emoji"
             value={form.icon}
             onChange={(icon) => onFormChange({ icon })}
+            suggestFor={{
+              name: form.name,
+              kind: 'item',
+              description: form.description,
+              listTitle,
+            }}
             disabled={isBusy}
           />
         </View>
@@ -155,25 +170,54 @@ export function AddItemContent({
             </View>
           </View>
         ) : null}
-        <View
-          className={`${PANEL_CLASS} flex-1 min-h-[160px]`}
-          style={hue.cardStyle}
-        >
+        <View className={PANEL_CLASS} style={hue.cardStyle}>
           <Input
             emoji="📝"
             autoFocus={focusField === 'description'}
-            label="Description (optional)"
+            label="Description"
+            maxLength={MAX_DESCRIPTION_LENGTH}
+            showCount
             placeholder="Add a description"
             value={form.description}
             onChangeText={(description) => onFormChange({ description })}
             multiline
             editable={!isBusy}
-            fill
             containerClassName=""
             inputClassName="text-[16px]"
             style={MULTILINE_INPUT_STYLE}
           />
         </View>
+        {isEdit && editActions ? (
+          <View className="gap-2">
+            <Button
+              title={editActions.rankTitle}
+              variant="secondary"
+              onPress={editActions.onRank}
+              disabled={isBusy}
+              fullWidth
+              icon={<Emoji symbol="⚖️" size={18} />}
+            />
+            <View className="flex-row flex-wrap gap-2">
+              <Button
+                title="Details"
+                variant="text"
+                onPress={editActions.onDetails}
+                disabled={isBusy}
+                className="flex-1 min-w-[120px]"
+                icon={<Emoji symbol="🔎" size={18} />}
+              />
+              <Button
+                title="Delete Item"
+                variant="text"
+                onPress={editActions.onDelete}
+                disabled={isBusy}
+                textClassName="text-danger-text dark:text-danger-text-dark"
+                icon={<Emoji symbol="🗑️" size={18} />}
+                className="flex-1 min-w-[120px]"
+              />
+            </View>
+          </View>
+        ) : null}
       </View>
     </BaseModalContent>
   );

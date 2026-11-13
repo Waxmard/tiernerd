@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { MAX_NAME_LENGTH } from '../config/limits';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { duplicateItemName } from '../services/itemNames';
 import type { Item } from '../services/itemsService';
@@ -141,7 +142,7 @@ export function useItemWorkspace({
   }, [replaceWorkspace]);
 
   const openEdit = useCallback(
-    (item: Item, focusField: ItemFormField = 'name') => {
+    (item: Item, focusField: ItemFormField | null = 'name') => {
       if (busyRef.current) return;
       const form = {
         name: item.name,
@@ -329,8 +330,8 @@ export function useItemWorkspace({
     const name = current.form.name.trim();
     const fieldErrors: ItemWorkspaceState['fieldErrors'] = {};
     if (!name) fieldErrors.name = 'Name is required';
-    else if (Array.from(name).length > 100)
-      fieldErrors.name = 'Name must be 100 characters or less';
+    else if (Array.from(name).length > MAX_NAME_LENGTH)
+      fieldErrors.name = `Name must be ${MAX_NAME_LENGTH} characters or less`;
     if (Object.keys(fieldErrors).length) {
       updateWorkspace({ fieldErrors });
       return;
@@ -514,7 +515,7 @@ export function useItemWorkspace({
         next = firstRanked;
       }
       updateWorkspace({ item: next, fieldErrors: {} });
-      await optionsRef.current.onItemsChanged(next);
+      await optionsRef.current.onItemsChanged(next, true);
       if (peers.length === 0) {
         closeWorkspace();
         return;
@@ -715,7 +716,10 @@ export function useItemWorkspace({
     return true;
   }, [beginBusy, cancelRanking, closeWorkspace, setBusy, commit]);
 
-  const currentItem = workspace.item;
+  const heldItem = workspace.item;
+  const currentItem = heldItem
+    ? (items.find((item) => item.item_id === heldItem.item_id) ?? heldItem)
+    : null;
   const ranking = workspace.ranking;
   const rankingItem =
     currentItem ??
@@ -753,6 +757,7 @@ export function useItemWorkspace({
 
   return {
     ...workspace,
+    item: currentItem,
     view,
     scoreEdit,
     openAdd,

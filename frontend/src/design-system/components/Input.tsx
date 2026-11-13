@@ -15,7 +15,7 @@ interface InputProps extends TextInputProps {
   inputClassName?: string;
   emoji?: string;
   containerClassName?: string;
-  fill?: boolean;
+  showCount?: boolean;
 }
 
 export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
@@ -25,20 +25,24 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
     inputClassName,
     emoji,
     containerClassName,
-    fill,
+    showCount,
     ...textInputProps
   },
   ref
 ) {
   const colors = useThemeColors();
   const labelId = useId();
+  const { value, maxLength } = textInputProps;
+  const count =
+    showCount &&
+    maxLength !== undefined &&
+    typeof value === 'string' &&
+    value.length >= maxLength * 0.8
+      ? `${value.length}/${maxLength}`
+      : null;
 
   return (
-    <View
-      className={[containerClassName ?? 'mb-4', fill ? 'flex-1' : '']
-        .filter(Boolean)
-        .join(' ')}
-    >
+    <View className={containerClassName ?? 'mb-4'}>
       {label && (
         <SectionLabel
           label={label}
@@ -49,8 +53,7 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
       )}
       <View
         className={[
-          'flex-row border rounded-[10px] px-3 min-h-[48px]',
-          fill ? 'flex-1 items-stretch' : 'items-center',
+          'flex-row border rounded-[10px] px-3 min-h-[48px] items-center',
           'bg-surface dark:bg-surface-dark',
           error
             ? 'border-danger-text dark:border-danger-text-dark'
@@ -80,6 +83,11 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
           className="text-body-small text-danger-text dark:text-danger-text-dark mt-1"
         >
           {error}
+        </Text>
+      )}
+      {count && (
+        <Text className="text-body-small text-right text-ink-muted dark:text-ink-muted-dark mt-1">
+          {count}
         </Text>
       )}
     </View>

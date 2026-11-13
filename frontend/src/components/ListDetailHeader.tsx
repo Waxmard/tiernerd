@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Button, Emoji } from '../design-system/components';
-import type { ListColor, ListIcon } from '../design-system/tokens/colors';
+import type { ListIcon } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/listIcon';
 import type {
@@ -23,7 +23,6 @@ import {
 
 interface ListDetailHeaderProps {
   title: string;
-  color: ListColor | null;
   icon: ListIcon | null;
   addDisabled: boolean;
   addLoading: boolean;
@@ -35,6 +34,8 @@ interface ListDetailHeaderProps {
   optionsDisabled: boolean;
   onSaveOptions: (options: ListOptionsInput) => Promise<void>;
   onOptionsVisibilityChange: (open: boolean) => void;
+  missingEmojiCount: number;
+  onFillEmojis: () => Promise<void>;
   onBack: () => void;
   onDelete: () => void;
 }
@@ -42,7 +43,6 @@ interface ListDetailHeaderProps {
 export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   title,
   icon,
-  color,
   addDisabled,
   addLoading,
   onAdd,
@@ -53,6 +53,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   optionsDisabled,
   onSaveOptions,
   onOptionsVisibilityChange,
+  missingEmojiCount,
+  onFillEmojis,
   onBack,
   onDelete,
 }) => {
@@ -85,6 +87,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
               accessibilityHint="Opens the emoji picker"
               accessibilityState={{ disabled: optionsDisabled }}
               disabled={optionsDisabled}
+              className="w-6 items-center"
               hitSlop={10}
               onPress={() => optionsRef.current?.open('icon')}
               style={({ pressed }) =>
@@ -127,11 +130,12 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           title={title}
           description={description}
           rankingMode={rankingMode}
-          color={color}
           icon={icon}
           disabled={optionsDisabled}
           onSave={onSaveOptions}
           onVisibilityChange={onOptionsVisibilityChange}
+          missingEmojiCount={missingEmojiCount}
+          onFillEmojis={onFillEmojis}
         />
         <TouchableOpacity
           onPress={onDelete}
@@ -147,7 +151,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
       </View>
       {description?.trim() ? (
         <ScrollView
-          className="max-h-[72px]"
+          className="max-h-[66px] -mt-1"
           nestedScrollEnabled
           showsVerticalScrollIndicator
         >
@@ -161,12 +165,13 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
                 ? undefined
                 : () => optionsRef.current?.open('description')
             }
-            className="min-h-11 justify-center"
+            className="pl-[84px] min-h-11 justify-center"
+            hitSlop={10}
             style={({ pressed }) =>
               pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
             }
           >
-            <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-prose-medium text-ink-muted dark:text-ink-muted-dark">
               {description}
             </Text>
           </Pressable>

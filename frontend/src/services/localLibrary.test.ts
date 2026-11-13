@@ -38,7 +38,6 @@ const listSummary = (overrides: Partial<ListSimple> = {}): ListSimple => ({
   list_id: LIST,
   title: 'Ranked',
   description: null,
-  color: null,
   icon: null,
   ranking_mode: 'score',
   created_at: '2026-01-01T00:00:00.000Z',
@@ -221,6 +220,44 @@ test('unranked items stay last after a ranking', async () => {
     (await readItems(storage)).map((entry) => entry.item_id),
     ['a', 'mover', 'b', 'loose']
   );
+});
+
+test('setting an item icon keeps a ranking saved in the meantime', async () => {
+  const storage = memoryStorage();
+  const library = createLocalLibrary(storage);
+  await seed(storage, [item('a', 'a0', 10), item('new', null, null)]);
+
+  await library.applyLocalRanking(USER, LIST, item('new', null, null), 0);
+  await library.applyLocalItemIcon(
+    USER,
+    LIST,
+    'new',
+    '🍕',
+    '2026-02-01T00:00:00.000Z'
+  );
+
+  const items = await readItems(storage);
+  const created = items.find((entry) => entry.item_id === 'new');
+  assert.equal(created?.position, 'pending');
+  assert.equal(created?.icon, '🍕');
+  assert.equal(items.find((entry) => entry.item_id === 'a')?.icon, null);
+});
+
+test('ranking keeps an icon the cache gained after the caller read the item', async () => {
+  const storage = memoryStorage();
+  const library = createLocalLibrary(storage);
+  await seed(storage, [
+    item('a', 'a0', 10),
+    { ...item('new', null, null), icon: '🍕' },
+  ]);
+
+  await library.applyLocalRanking(USER, LIST, item('new', null, null), 0);
+
+  const created = (await readItems(storage)).find(
+    (entry) => entry.item_id === 'new'
+  );
+  assert.equal(created?.icon, '🍕');
+  assert.equal(created?.position, 'pending');
 });
 
 test('updating manual_rating rescales neighbors and re-ranking clears moved item pin', async () => {
@@ -424,7 +461,6 @@ test('an icon-only list update keeps the other list fields', () => {
       listSummary({
         title: 'Games',
         description: 'Best of',
-        color: 'coral',
         icon: null,
       }),
     ],
@@ -436,7 +472,6 @@ test('an icon-only list update keeps the other list fields', () => {
   assert.equal(list.icon, '🎮');
   assert.equal(list.title, 'Games');
   assert.equal(list.description, 'Best of');
-  assert.equal(list.color, 'coral');
   assert.equal(list.updated_at, op.createdAt);
 });
 
@@ -536,7 +571,6 @@ test('reconcileListItems and reconcileLists apply pending create and delete ops'
       list_id: 'list-pending',
       title: 'Pending list',
       description: null,
-      color: null,
       icon: null,
       ranking_mode: 'score',
     },
@@ -550,7 +584,6 @@ test('reconcileListItems and reconcileLists apply pending create and delete ops'
       list_id: 'list-fallback',
       title: 'Fallback list',
       description: null,
-      color: null,
       icon: null,
       ranking_mode: 'rank',
     },

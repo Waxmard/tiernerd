@@ -2,10 +2,6 @@ import palette from './palette.json' with { type: 'json' };
 
 export { palette };
 
-export type ListColor = keyof typeof palette.list;
-
-export const LIST_COLORS = Object.keys(palette.list) as ListColor[];
-
 export type ListIcon = string;
 
 export type ColorSchemeName = 'light' | 'dark';

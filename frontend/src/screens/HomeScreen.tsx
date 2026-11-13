@@ -32,11 +32,11 @@ import {
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button, Emoji, SheetModal } from '../design-system/components';
-import type { ListColor, ListIcon } from '../design-system/tokens/colors';
+import type { ListIcon } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
-import { listHue, useTheme } from '../providers/ThemeProvider';
+import { useTheme } from '../providers/ThemeProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import { listIconEmoji } from '../services/listIcon';
@@ -56,7 +56,6 @@ interface TierList {
   id: string;
   title: string;
   description: string | null;
-  color: ListColor | null;
   icon: ListIcon | null;
   itemCount: number;
   updatedAt: Date;
@@ -66,11 +65,12 @@ const toTierList = (list: ListSimple): TierList => ({
   id: list.list_id,
   title: list.title,
   description: list.description,
-  color: list.color,
   icon: list.icon ?? null,
   itemCount: list.item_count,
   updatedAt: new Date(list.updated_at),
 });
+const itemCountLabel = (count: number) =>
+  `${count} ${count === 1 ? 'item' : 'items'}`;
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
   const { flush, isOffline, lastSyncedAt, mutate } = useSync();
@@ -78,7 +78,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const isOfflineRef = useRef(isOffline);
   isOfflineRef.current = isOffline;
   const userId = user?.id ?? null;
-  const { scheme, colors } = useTheme();
+  const { colors } = useTheme();
   const safeAreaInsets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const columns = windowWidth >= 1280 ? 3 : windowWidth >= 768 ? 2 : 1;
@@ -102,6 +102,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     snapshotIdentity.token === token;
   const visibleLists = currentSnapshot ? lists : [];
   const [isLoading, setIsLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
@@ -127,6 +129,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setHasSnapshot(false);
     setSnapshotIdentity({ userId, token });
     setIsLoading(Boolean(token));
+    setLoadFailed(false);
   }, [token, userId]);
   const refreshLists = useCallback(
     async (showLoading = false) => {
@@ -159,6 +162,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         setLists(result.map(toTierList));
         setSnapshotIdentity({ userId, token });
         setHasSnapshot(true);
+        setLoadFailed(false);
         if (userId) {
           const key = listsCacheKey(userId);
           if (isCurrent())
@@ -169,6 +173,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
       } catch (err: unknown) {
         if (isCurrent()) {
+          setLoadFailed(true);
           notify(
             err instanceof Error ? err.message : "Couldn't load your lists."
           );
@@ -203,6 +208,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       return;
     }
   }, [refreshLists]);
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    void refreshLists()
+      .catch(() => undefined)
+      .finally(() => setIsRefreshing(false));
+  };
   useFocusEffect(
     useCallback(() => {
       const lifecycleId = ++overviewLifecycleRef.current;
@@ -311,10 +322,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
     await refreshLists().catch(() => showCachedLists(userId, token));
   };
-  const iconListValue = (() => {
-    const icon = visibleLists.find((entry) => entry.id === iconListId)?.icon;
-    return icon ? listIconEmoji(icon) : null;
-  })();
+  const iconList = visibleLists.find((entry) => entry.id === iconListId);
+  const iconListValue = iconList?.icon ? listIconEmoji(iconList.icon) : null;
   const handleListCreated = useCallback(
     (list: ListSimple) => {
       const expectedUserId = userId;
@@ -406,121 +415,145 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     if (age === 0) return 'today';
     if (age === 1) return 'yesterday';
     if (age < 7) return `${age} days ago`;
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year:
+        date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+    });
   };
   const renderRow = ({ item }: ListRenderItemInfo<TierList>) => {
-    const hue = listHue(item.color, scheme, colors);
     const titleLength = Array.from(item.title).length;
+    const count = itemCountLabel(item.itemCount);
     return (
-      <View style={{ width: cardWidth }} className="shrink-0 gap-1">
-        <TouchableOpacity
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={`${item.title}, ${count}`}
+        accessibilityHint="Open tier list"
+        accessibilityActions={[{ name: 'changeIcon', label: 'Change emoji' }]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'changeIcon')
+            setIconListId(item.id);
+        }}
+        onPress={() =>
+          navigation.navigate('ListDetail', {
+            listId: item.id,
+            listTitle: item.title,
+          })
+        }
+        activeOpacity={0.7}
+        style={{ width: cardWidth }}
+        className="shrink-0 flex-row items-center gap-3 rounded-2xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark"
+      >
+        <Pressable
           accessibilityRole="button"
-          accessibilityLabel={
-            item.description?.trim()
-              ? `${item.title}, ${item.itemCount} items. ${item.description}`
-              : `${item.title}, ${item.itemCount} items`
-          }
-          accessibilityHint="Open tier list"
-          accessibilityActions={[{ name: 'changeIcon', label: 'Change emoji' }]}
-          onAccessibilityAction={(event) => {
-            if (event.nativeEvent.actionName === 'changeIcon')
-              setIconListId(item.id);
-          }}
-          onPress={() =>
-            navigation.navigate('ListDetail', {
-              listId: item.id,
-              listTitle: item.title,
-            })
-          }
-          activeOpacity={0.7}
-          className="w-full shrink-0 overflow-hidden rounded-2xl border-2"
-          style={hue.cardStyle}
+          accessibilityLabel={`Change emoji for ${item.title}`}
+          accessibilityHint="Opens the emoji picker"
+          hitSlop={6}
+          onPress={() => setIconListId(item.id)}
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
         >
-          <View className="flex-row items-center gap-3 p-4">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Change emoji for ${item.title}`}
-              accessibilityHint="Opens the emoji picker"
-              hitSlop={6}
-              onPress={() => setIconListId(item.id)}
-              style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
-            >
-              <ListIdentityBadge
-                size="lg"
-                color={item.color}
-                icon={item.icon}
-              />
-            </Pressable>
-            <View className="flex-1 min-w-0 gap-1">
-              <Text
-                className={`${
-                  titleLength <= 40
-                    ? 'text-title-medium'
-                    : titleLength <= 70
-                      ? 'text-title-small'
-                      : 'text-body-medium'
-                } font-semibold text-ink dark:text-ink-dark`}
-              >
-                {item.title}
-              </Text>
-              {item.description?.trim() ? (
-                <Text
-                  numberOfLines={2}
-                  className="text-body-medium text-ink-muted dark:text-ink-muted-dark"
-                >
-                  {item.description}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-          <View
-            className="flex-row items-center justify-between gap-2 border-t px-3 py-2"
-            style={{ borderColor: hue.solid }}
+          <ListIdentityBadge size="lg" icon={item.icon} />
+        </Pressable>
+        <View className="flex-1 min-w-0 gap-1">
+          <Text
+            numberOfLines={2}
+            className={`${
+              titleLength <= 40 ? 'text-title-medium' : 'text-title-small'
+            } font-semibold text-ink dark:text-ink-dark`}
           >
-            <View className="flex-1 min-w-0 flex-row flex-wrap items-center gap-3">
-              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-                {item.itemCount} items
-              </Text>
-              <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-                Modified {formatDate(item.updatedAt)}
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors['ink-muted']}
-              accessible={false}
-            />
+            {item.title}
+          </Text>
+          <View className="flex-row flex-wrap items-center gap-x-3">
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+              {count}
+            </Text>
+            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+              Modified {formatDate(item.updatedAt)}
+            </Text>
           </View>
-        </TouchableOpacity>
-      </View>
+        </View>
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={colors['ink-muted']}
+          accessible={false}
+        />
+      </TouchableOpacity>
     );
   };
-  const content =
-    !token || (isLoading && !currentSnapshot) ? (
-      <View className="flex-1 items-center justify-center px-6">
-        <ActivityIndicator size="large" color={colors.accent} />
+  const content = currentSnapshot ? (
+    <FlatList
+      key={columns}
+      className="flex-1 min-h-0"
+      data={visibleLists}
+      numColumns={columns}
+      columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
+      renderItem={renderRow}
+      keyExtractor={(item) => item.id}
+      showsVerticalScrollIndicator={false}
+      refreshing={isRefreshing}
+      onRefresh={handleRefresh}
+      contentContainerStyle={{
+        paddingBottom: 16 + safeAreaInsets.bottom,
+        gap: 12,
+      }}
+      ListEmptyComponent={
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Create a list. Start ranking what you love."
+          onPress={() => setModalStep('create')}
+          activeOpacity={0.7}
+          className="w-full items-center gap-2 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-8 dark:border-control-dark dark:bg-surface-muted-dark"
+        >
+          <Emoji symbol="🏆" size={56} />
+          <View className="items-center gap-1">
+            <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
+              Create a list
+            </Text>
+            <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
+              Start ranking what you love.
+            </Text>
+          </View>
+        </TouchableOpacity>
+      }
+    />
+  ) : loadFailed && !isLoading ? (
+    <View className="w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-8 dark:border-line-dark dark:bg-surface-dark">
+      <Emoji symbol="⚠️" size={40} />
+      <View className="items-center gap-1">
+        <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
+          Couldn't load your lists
+        </Text>
+        <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
+          Check your connection and try again.
+        </Text>
       </View>
-    ) : (
-      <FlatList
-        key={columns}
-        className="flex-1 min-h-0"
-        data={visibleLists}
-        numColumns={columns}
-        columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
-        renderItem={renderRow}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingBottom: 16 + safeAreaInsets.bottom,
-          gap: 12,
-        }}
-        ListHeaderComponent={
-          <View className="gap-2">
-            <View className="w-full flex-row flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-4 py-3 dark:border-line-dark dark:bg-surface-dark">
+      <Button
+        title="Try again"
+        variant="secondary"
+        size="small"
+        onPress={() => void fetchLists()}
+      />
+    </View>
+  ) : (
+    <View className="flex-1 items-center justify-center px-6">
+      <ActivityIndicator size="large" color={colors.accent} />
+    </View>
+  );
+  return (
+    <ImmersiveScreenShell>
+      <SafeAreaView className="min-h-0 flex-1" edges={['top', 'left', 'right']}>
+        <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
+          <View
+            className="flex-1 min-h-0"
+            style={{ marginHorizontal: horizontalGutter }}
+          >
+            <View className="my-2 py-2 pl-4 pr-3 flex-row items-center gap-2 shrink-0 rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
               <Text
                 accessibilityRole="header"
-                className="text-headline-small text-ink dark:text-ink-dark"
+                numberOfLines={1}
+                className="flex-1 min-w-0 text-headline-small text-ink dark:text-ink-dark"
               >
                 My lists
               </Text>
@@ -538,53 +571,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 }
                 accessibilityLabel="Create new list"
               />
-            </View>
-          </View>
-        }
-        ListEmptyComponent={
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Create a list. Start ranking what you love."
-            onPress={() => setModalStep('create')}
-            activeOpacity={0.7}
-            className="w-full items-center gap-2 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-8 dark:border-control-dark dark:bg-surface-muted-dark"
-          >
-            <Emoji symbol="🏆" size={56} />
-            <View className="items-center gap-1">
-              <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
-                Create a list
-              </Text>
-              <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
-                Start ranking what you love.
-              </Text>
-            </View>
-          </TouchableOpacity>
-        }
-      />
-    );
-  return (
-    <ImmersiveScreenShell>
-      <SafeAreaView className="min-h-0 flex-1" edges={['top', 'left', 'right']}>
-        <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
-          <View
-            className="flex-1 min-h-0"
-            style={{ marginHorizontal: horizontalGutter }}
-          >
-            <View className="my-2 py-2 px-3 flex-row justify-between items-center gap-2 shrink-0 rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-              <View className="flex-row items-center gap-2 shrink min-w-0">
-                <Image
-                  source={require('../../assets/brand-mark.png')}
-                  resizeMode="contain"
-                  style={{ width: 32, height: 32, borderRadius: 8 }}
-                  accessible={false}
-                />
-                <Text
-                  numberOfLines={1}
-                  className="shrink min-w-0 text-title-medium font-semibold text-ink dark:text-ink-dark"
-                >
-                  TierNerd
-                </Text>
-              </View>
               <TouchableOpacity
                 onPress={() => navigation.navigate('Profile')}
                 className="w-11 h-11 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
@@ -673,12 +659,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 onSubmit={() => void workspace.submitMetadata()}
                 onClose={() => void workspace.requestClose().catch(() => false)}
                 introText={`“${pendingList.title}”`}
+                listTitle={pendingList.title}
               />
             ) : null)}
         </SheetModal>
         <EmojiPickerModal
           visible={iconListId !== null}
           value={iconListValue}
+          suggestFor={
+            iconList
+              ? {
+                  name: iconList.title,
+                  kind: 'list',
+                  description: iconList.description,
+                }
+              : undefined
+          }
           onSelect={(emoji) => {
             const id = iconListId;
             setIconListId(null);

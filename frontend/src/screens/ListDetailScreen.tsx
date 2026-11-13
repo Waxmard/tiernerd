@@ -19,6 +19,7 @@ import {
   ListItemEmptyState,
 } from '../components/ListDetailItemRow';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
+import { useItemEmojiFill } from '../components/useItemEmojiFill';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { useListDetailData } from '../components/useListDetailData';
 import { useListViewRestore } from '../components/useListViewRestore';
@@ -57,7 +58,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     itemsError,
     detailsTitle,
     listDescription,
-    listColor,
     listIcon,
     rankingMode,
     metadataLoaded,
@@ -66,6 +66,14 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     updateListOptions,
     evictDeletedList,
   } = useListDetailData({ userId, token, listId, routeTitle });
+  const { autoFill, fillMissing } = useItemEmojiFill({
+    userId,
+    token,
+    listId,
+    listTitle: detailsTitle,
+    items,
+    refresh: refreshAfterMutation,
+  });
   const [isDeletingList, setIsDeletingList] = useState(false);
   const canMutate =
     (itemsLoaded || hasItemsSnapshot) &&
@@ -152,11 +160,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   });
 
   const landItemIdRef = useRef<string | null>(null);
-  const [pulse, setPulse] = useState<{ itemId: string; at: number } | null>(
-    null
-  );
+  const scrollOnLandRef = useRef(false);
   const handleWorkspaceItemsChanged = useCallback(
-    async (item?: Item) => {
+    async (item?: Item, created = false) => {
       const identity = screenIdentity;
       const refreshedItems = await refreshAfterMutation();
       if (identityRef.current !== identity) return;
@@ -168,13 +174,15 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       }
       if (!refreshedItems.some((entry) => entry.item_id === item.item_id))
         return;
+      if (created && !item.icon) void autoFill(item).catch(() => undefined);
       view.clearRestoredSelection();
       view.clearRestoredOffset();
       landItemIdRef.current = item.item_id;
+      if (created) scrollOnLandRef.current = true;
       setSelectedItemId(item.item_id);
       setDismissedDetailsItemId(item.item_id);
     },
-    [view, refreshAfterMutation, screenIdentity]
+    [view, refreshAfterMutation, screenIdentity, autoFill]
   );
 
   const pausedDraftItemIdRef = useRef<string | null>(null);
@@ -196,8 +204,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     const itemId = landItemIdRef.current;
     if (sheetOpen || !itemId) return;
     landItemIdRef.current = null;
-    view.scrollToItem(itemId, true);
-    setPulse({ itemId, at: Date.now() });
+    if (scrollOnLandRef.current) view.scrollToItem(itemId, true);
+    scrollOnLandRef.current = false;
   }, [sheetOpen, view]);
   closingItemIdRef.current =
     workspace.mode === 'ranking'
@@ -366,7 +374,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     if (identityRef.current !== identity || deletingListInFlightRef.current)
       return;
     setSelectedItemId(item.item_id);
-    setDismissedDetailsItemId(null);
+    if (canMutateFor(identity)) {
+      setDismissedDetailsItemId(item.item_id);
+      workspace.openEdit(item, null);
+    } else {
+      setDismissedDetailsItemId(null);
+    }
   };
   const handleAddPress = useCallback(async () => {
     const identity = screenIdentity;
@@ -437,6 +450,25 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const handleStartRanking = () => {
     if (!selectedItem || !canMutateFor(screenIdentity)) return;
     void workspace.startRanking(selectedItem);
+  };
+  const leaveEdit = async () => {
+    const item = workspace.item;
+    const identity = screenIdentity;
+    if (workspace.mode !== 'edit' || !item) return null;
+    setDismissedDetailsItemId(null);
+    if (await requestCloseForSwitch())
+      return identityRef.current === identity ? item : null;
+    if (identityRef.current === identity)
+      setDismissedDetailsItemId(item.item_id);
+    return null;
+  };
+  const handleEditRank = async () => {
+    const identity = screenIdentity;
+    const item = await leaveEdit();
+    if (!item) return;
+    if (canMutateFor(identity)) await workspace.startRanking(item);
+    if (identityRef.current === identity)
+      setDismissedDetailsItemId(item.item_id);
   };
   const handleMobileClose = useCallback(() => {
     if (deletingListInFlightRef.current || !view.clearRestoredSelection())
@@ -515,12 +547,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const renderItem = ({ item }: ListRenderItemInfo<Item>) => (
     <ListDetailItemRow
       item={item}
-      selected={selectedItemId === item.item_id}
       rank={rankByItemId.get(item.item_id) ?? null}
       rankingMode={rankingMode}
-      color={listColor}
       disabled={isDeletingList || workspace.isBusy}
-      pulseAt={pulse?.itemId === item.item_id ? pulse.at : 0}
       onPress={(selected) => void handleItemPress(selected)}
       onIconPress={
         canMutate && workspace.mode === 'closed'
@@ -582,7 +611,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           <View className="flex-1 min-h-0 mx-4">
             <ListDetailHeader
               title={detailsTitle}
-              color={listColor}
               icon={listIcon}
               description={listDescription}
               addLoading={isLoadingList}
@@ -593,6 +621,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               }
               onSaveOptions={updateListOptions}
               onOptionsVisibilityChange={setOptionsOpen}
+              missingEmojiCount={items.filter((item) => !item.icon).length}
+              onFillEmojis={fillMissing}
               addDisabled={
                 !canMutate ||
                 isDeletingList ||
@@ -608,7 +638,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               canMutate={canMutate}
               isScreenBusy={isDeletingList}
               listTitle={detailsTitle}
-              listColor={listColor}
               selectedItemId={selectedItemId}
               dismissedDetailsItemId={dismissedDetailsItemId}
               selectedItem={selectedItem}
@@ -632,6 +661,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               onDetailsClose={handleWorkspaceContentClose}
               onMobileClose={handleMobileClose}
               onStartRanking={handleStartRanking}
+              onEditRank={() => void handleEditRank()}
+              onEditDetails={() => void leaveEdit()}
             >
               {renderListItems()}
             </ListDetailWorkspaceHost>
@@ -642,6 +673,16 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         visible={iconItem !== null}
         value={iconItem?.icon ?? null}
         onSelect={pickItemIcon}
+        suggestFor={
+          iconItem
+            ? {
+                name: iconItem.name,
+                kind: 'item',
+                description: iconItem.description,
+                listTitle: detailsTitle,
+              }
+            : undefined
+        }
         onRemove={() => pickItemIcon(null)}
         onClose={() => {
           setOptionsOpen(false);

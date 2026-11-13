@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { BaseModalContent, Button, Emoji } from '../design-system/components';
-import type { ListColor } from '../design-system/tokens/colors';
 import { useListHue } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
@@ -15,7 +14,6 @@ export interface ItemDetailContentProps {
   rank: number | null;
   rankedCount: number;
   rankingMode: ListRankingMode;
-  color?: ListColor | null;
   canMutate: boolean;
   hasDraft: boolean;
   isBusy: boolean;
@@ -24,17 +22,17 @@ export interface ItemDetailContentProps {
   onIconChange: (icon: string | null) => void;
   onDelete: () => void;
   onClose: () => void;
+  listTitle: string;
 }
 
 const SCORE_CLASS =
-  'text-[20px] leading-6 font-semibold text-accent-text dark:text-accent-text-dark';
+  'font-display text-[20px] leading-6 font-semibold text-accent-text dark:text-accent-text-dark';
 
 export function ItemDetailContent({
   item,
   rank,
   rankedCount,
   rankingMode,
-  color = null,
   canMutate,
   hasDraft,
   isBusy,
@@ -43,8 +41,9 @@ export function ItemDetailContent({
   onDelete,
   onClose,
   onIconChange,
+  listTitle,
 }: ItemDetailContentProps) {
-  const hue = useListHue(color);
+  const hue = useListHue();
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const imageFailed =
     item.image_url !== null && failedImageUrl === item.image_url;
@@ -66,7 +65,6 @@ export function ItemDetailContent({
     <BaseModalContent
       title={item.name}
       emoji={item.icon ?? undefined}
-      color={color}
       onTitlePress={actionsBlocked ? undefined : () => onEdit('name')}
       titleHint="Edit name"
       onEmojiPress={actionsBlocked ? undefined : () => setPickingIcon(true)}
@@ -112,6 +110,22 @@ export function ItemDetailContent({
       }
     >
       <View className="gap-3 pb-4">
+        {item.description ? (
+          <Pressable
+            accessibilityRole={actionsBlocked ? undefined : 'button'}
+            accessibilityHint={actionsBlocked ? undefined : 'Edit description'}
+            onPress={actionsBlocked ? undefined : () => onEdit('description')}
+            className="min-h-11 justify-center"
+            hitSlop={10}
+            style={({ pressed }) =>
+              pressed && !actionsBlocked ? { opacity: 0.7 } : undefined
+            }
+          >
+            <Text className="text-prose-large text-ink dark:text-ink-dark">
+              {item.description}
+            </Text>
+          </Pressable>
+        ) : null}
         <Pressable
           accessibilityRole={scoreEditable ? 'button' : undefined}
           accessibilityHint={scoreEditable ? 'Edit score' : undefined}
@@ -123,7 +137,7 @@ export function ItemDetailContent({
               ? () => onEdit('manualRating')
               : undefined
           }
-          className="rounded-2xl border-2 p-4 gap-2"
+          className="rounded-2xl p-4 gap-2"
           style={({ pressed }) =>
             pressed && scoreEditable && !actionsBlocked
               ? [hue.cardStyle, { opacity: 0.7 }]
@@ -144,7 +158,6 @@ export function ItemDetailContent({
                 rankingMode={rankingMode}
                 rating={item.rating}
                 rank={rank}
-                color={color}
                 size="lg"
               />
               {rank !== null ? (
@@ -167,21 +180,6 @@ export function ItemDetailContent({
             </Text>
           ) : null}
         </Pressable>
-        {item.description ? (
-          <Pressable
-            accessibilityRole={actionsBlocked ? undefined : 'button'}
-            accessibilityHint={actionsBlocked ? undefined : 'Edit description'}
-            onPress={actionsBlocked ? undefined : () => onEdit('description')}
-            className="min-h-11 justify-center"
-            style={({ pressed }) =>
-              pressed && !actionsBlocked ? { opacity: 0.7 } : undefined
-            }
-          >
-            <Text className="text-body-large text-ink dark:text-ink-dark">
-              {item.description}
-            </Text>
-          </Pressable>
-        ) : null}
         {item.image_url ? (
           imageFailed ? (
             <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
@@ -202,6 +200,12 @@ export function ItemDetailContent({
         visible={pickingIcon}
         value={item.icon ?? null}
         onSelect={pickIcon}
+        suggestFor={{
+          name: item.name,
+          kind: 'item',
+          description: item.description,
+          listTitle,
+        }}
         onRemove={() => pickIcon(null)}
         onClose={() => setPickingIcon(false)}
       />

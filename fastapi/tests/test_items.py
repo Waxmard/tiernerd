@@ -730,7 +730,7 @@ class TestItemCreateValidation:
     async def test_name_validation_rejects_blank_and_overlength(
         self, client: AsyncClient, test_list: ListModel, auth_headers: dict
     ) -> None:
-        for name in ("   ", "x" * 101):
+        for name in ("   ", "x" * 61):
             response = await client.post(
                 "/api/items/",
                 params={"list_id": str(test_list.list_id)},
@@ -738,6 +738,13 @@ class TestItemCreateValidation:
                 headers=auth_headers,
             )
             assert response.status_code == 422
+        too_long_description = await client.post(
+            "/api/items/",
+            params={"list_id": str(test_list.list_id)},
+            json={"name": "Long description", "description": "x" * 501},
+            headers=auth_headers,
+        )
+        assert too_long_description.status_code == 422
 
     async def test_self_rename_and_duplicate_rename(
         self,

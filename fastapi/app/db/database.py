@@ -35,7 +35,6 @@ SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSe
 
 _STARTUP_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("users", "photo_url", "ALTER TABLE users ADD COLUMN photo_url TEXT"),
-    ("lists", "color", "ALTER TABLE lists ADD COLUMN color VARCHAR(16)"),
     ("lists", "icon", "ALTER TABLE lists ADD COLUMN icon VARCHAR(16)"),
     (
         "users",
@@ -58,6 +57,7 @@ _STARTUP_COLUMNS: tuple[tuple[str, str, str], ...] = (
 _RETIRED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("lists", "cover", "ALTER TABLE lists DROP COLUMN cover"),
     ("lists", "cover_photo", "ALTER TABLE lists DROP COLUMN cover_photo"),
+    ("lists", "color", "ALTER TABLE lists DROP COLUMN color"),
 )
 
 

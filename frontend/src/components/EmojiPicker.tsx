@@ -7,6 +7,9 @@ import {
   Input,
   SheetModal,
 } from '../design-system/components';
+import { useAuth } from '../providers/AuthContext';
+import { aiService, type EmojiSuggestionTarget } from '../services/aiService';
+import { getApiErrorMessage } from '../services/apiError';
 import {
   EMOJI_GROUPS,
   type EmojiEntry,
@@ -21,19 +24,39 @@ function EmojiPickerContent({
   onSelect,
   onRemove,
   onClose,
+  suggestFor,
 }: {
   value: string | null;
   onSelect: (emoji: string) => void;
   onRemove?: () => void;
   onClose: () => void;
+  suggestFor?: EmojiSuggestionTarget;
 }) {
+  const { token } = useAuth();
   const [query, setQuery] = useState('');
   const [groupIndex, setGroupIndex] = useState(0);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const searching = query.trim() !== '';
   const emojis: EmojiEntry[] = searching
     ? searchEmoji(query)
     : (EMOJI_GROUPS[groupIndex]?.emojis ?? []);
 
+  const suggest = async (target: EmojiSuggestionTarget, authToken: string) => {
+    if (suggesting) return;
+    setSuggesting(true);
+    setSuggestError(null);
+    try {
+      setSuggestions(await aiService.suggestEmojis(target, authToken));
+    } catch (err) {
+      setSuggestError(
+        getApiErrorMessage(err, "Couldn't suggest an emoji. Pick one below.")
+      );
+    } finally {
+      setSuggesting(false);
+    }
+  };
   return (
     <BaseModalContent
       title="Choose emoji"
@@ -49,17 +72,58 @@ function EmojiPickerContent({
         ) : undefined
       }
     >
-      <Input
-        emoji="🔍"
-        label="Search emoji"
-        placeholder="Search by name"
-        value={query}
-        onChangeText={setQuery}
-        maxLength={40}
-        autoCapitalize="none"
-        autoCorrect={false}
-        containerClassName="mb-2"
-      />
+      <View className="flex-row items-center gap-2 mb-2">
+        <Input
+          accessibilityLabel="Search emoji"
+          placeholder="Search emoji"
+          value={query}
+          onChangeText={setQuery}
+          maxLength={40}
+          autoCapitalize="none"
+          autoCorrect={false}
+          containerClassName="flex-1"
+        />
+        {suggestFor && token ? (
+          <Button
+            title="✨ Suggest"
+            variant="secondary"
+            size="large"
+            loading={suggesting}
+            disabled={suggestFor.name.trim() === ''}
+            onPress={() => void suggest(suggestFor, token)}
+          />
+        ) : null}
+      </View>
+      {suggestError ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-body-small text-ink-muted dark:text-ink-muted-dark mb-2"
+        >
+          {suggestError}
+        </Text>
+      ) : null}
+      {suggestions ? (
+        <View className="flex-row items-center gap-2 mb-2">
+          <Emoji symbol="✨" size={18} />
+          {suggestions.map((emoji) => (
+            <Pressable
+              key={emoji}
+              accessibilityRole="button"
+              accessibilityLabel={`Suggested emoji ${emoji}`}
+              accessibilityState={{ selected: emoji === value }}
+              onPress={() => onSelect(emoji)}
+              className={[
+                'w-12 h-12 items-center justify-center rounded-[10px] border border-control dark:border-control-dark',
+                emoji === value
+                  ? 'bg-accent-tint dark:bg-accent-tint-dark'
+                  : 'bg-surface dark:bg-surface-dark',
+              ].join(' ')}
+            >
+              <Emoji symbol={emoji} size={28} />
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
       {searching ? null : (
         <ScrollView
           horizontal
@@ -89,6 +153,7 @@ function EmojiPickerContent({
       )}
       <FlatList
         className="flex-1 min-h-0"
+        automaticallyAdjustKeyboardInsets
         data={emojis}
         numColumns={COLUMNS}
         keyExtractor={(entry) => entry.emoji}
@@ -129,11 +194,13 @@ export function EmojiPickerField({
   value,
   onChange,
   disabled = false,
+  suggestFor,
 }: {
   label: string;
   value: string | null;
   onChange: (next: string | null) => void;
   disabled?: boolean;
+  suggestFor?: EmojiSuggestionTarget;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -175,6 +242,7 @@ export function EmojiPickerField({
           close();
         }}
         onClose={close}
+        suggestFor={suggestFor}
       />
     </View>
   );
@@ -186,12 +254,14 @@ export function EmojiPickerModal({
   onSelect,
   onRemove,
   onClose,
+  suggestFor,
 }: {
   visible: boolean;
   value: string | null;
   onSelect: (emoji: string) => void;
   onRemove?: () => void;
   onClose: () => void;
+  suggestFor?: EmojiSuggestionTarget;
 }) {
   return (
     <SheetModal
@@ -205,6 +275,7 @@ export function EmojiPickerModal({
           onSelect={onSelect}
           onRemove={onRemove}
           onClose={onClose}
+          suggestFor={suggestFor}
         />
       ) : null}
     </SheetModal>

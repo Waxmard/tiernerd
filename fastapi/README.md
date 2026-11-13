@@ -29,7 +29,7 @@ Development startup seeds accounts for fixture data, not password sign-in. Sign 
 - `/api/lists` — List creation and management
 - `/api/items` — Item management
 
-List writes use multipart `metadata` and an optional image file. Older clients can create lists with `name` and `description` query parameters and optional `color` and `ranking_mode` parameters. They can update `title`, `description`, or `ranking_mode` with JSON.
+List writes use multipart `metadata` and an optional image file. Older clients can create lists with `name` and `description` query parameters and an optional `ranking_mode` parameter. They can update `title`, `description`, or `ranking_mode` with JSON.
 
 ### Backend commands
 
@@ -93,7 +93,7 @@ Run the commands below from `fastapi/`.
 
 ## Upgrade manual ratings and automatic startup migrations
 
-Application startup applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table and `lists.cover`/`lists.cover_photo` columns, adds any missing additive columns (`users.photo_url`, `users.background_photo_id`, `lists.color`, `lists.icon`, `lists.ranking_mode`, `items.manual_rating`, `items.icon`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
+Application startup applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table and `lists.cover`/`lists.cover_photo`/`lists.color` columns, adds any missing additive columns (`users.photo_url`, `users.background_photo_id`, `lists.icon`, `lists.ranking_mode`, `items.manual_rating`, `items.icon`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
 
 The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Inspect the schema and count incorrect ratings without changing data:
 

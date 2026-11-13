@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from '../config/limits';
 import {
   BaseModalContent,
   Button,
@@ -9,8 +10,8 @@ import {
   SectionLabel,
   SheetModal,
 } from '../design-system/components';
-import type { ListColor, ListIcon } from '../design-system/tokens/colors';
-import { useNotifyWhenOnline } from '../providers/SyncProvider';
+import type { ListIcon } from '../design-system/tokens/colors';
+import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/listIcon';
 import type {
@@ -18,9 +19,6 @@ import type {
   ListRankingMode,
 } from '../services/listsService';
 import { EmojiPickerField, EmojiPickerModal } from './EmojiPicker';
-import { ListColorPicker } from './ImmersiveBoard';
-
-const MAX_TITLE_LENGTH = 100;
 
 const choices: {
   value: ListRankingMode;
@@ -120,29 +118,31 @@ export function ListRankingOptions({
   title,
   description,
   rankingMode,
-  color,
   icon,
   disabled,
   onSave,
   onVisibilityChange,
+  missingEmojiCount,
+  onFillEmojis,
   ref,
 }: {
   title: string;
   description: string | null;
   rankingMode: ListRankingMode;
-  color: ListColor | null;
   icon: ListIcon | null;
   disabled: boolean;
   onSave: (options: ListOptionsInput) => Promise<void>;
   onVisibilityChange: (open: boolean) => void;
+  missingEmojiCount: number;
+  onFillEmojis: () => Promise<void>;
   ref?: Ref<ListOptionsHandle>;
 }) {
   const notify = useNotifyWhenOnline();
+  const { isOffline } = useSync();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(rankingMode);
   const [draftTitle, setDraftTitle] = useState(title);
   const [titleError, setTitleError] = useState<string | null>(null);
-  const [draftColor, setDraftColor] = useState(color);
   const [draftIcon, setDraftIcon] = useState(icon);
   const [draftDescription, setDraftDescription] = useState(description ?? '');
   const [focusField, setFocusField] = useState<'title' | 'description' | null>(
@@ -150,13 +150,13 @@ export function ListRankingOptions({
   );
   const [pickingIcon, setPickingIcon] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [filling, setFilling] = useState(false);
   const savingRef = useRef(false);
 
   const changed =
     draftTitle.trim() !== title ||
     draftDescription.trim() !== (description ?? '').trim() ||
     draft !== rankingMode ||
-    draftColor !== color ||
     draftIcon !== icon;
   const openOptions = (target?: 'title' | 'description' | 'icon') => {
     if (disabled || savingRef.current) return;
@@ -169,7 +169,6 @@ export function ListRankingOptions({
     setDraftTitle(title);
     setDraftDescription(description ?? '');
     setTitleError(null);
-    setDraftColor(color);
     setDraftIcon(icon);
     setFocusField(target ?? null);
     setOpen(true);
@@ -182,14 +181,18 @@ export function ListRankingOptions({
     setOpen(false);
   };
   const save = async () => {
-    if (savingRef.current || !changed) return;
+    if (savingRef.current) return;
+    if (!changed) {
+      close();
+      return;
+    }
     const trimmedTitle = draftTitle.trim();
     if (!trimmedTitle) {
       setTitleError('Title is required');
       return;
     }
     if (Array.from(trimmedTitle).length > MAX_TITLE_LENGTH) {
-      setTitleError('Title must be 100 characters or less');
+      setTitleError(`Title must be ${MAX_TITLE_LENGTH} characters or less`);
       return;
     }
     savingRef.current = true;
@@ -198,7 +201,6 @@ export function ListRankingOptions({
       await onSave({
         title: trimmedTitle,
         ranking_mode: draft,
-        color: draftColor,
         icon: draftIcon,
         description: draftDescription.trim() || null,
       });
@@ -211,6 +213,17 @@ export function ListRankingOptions({
     } finally {
       savingRef.current = false;
       setSaving(false);
+    }
+  };
+  const fillEmojis = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setFilling(true);
+    try {
+      await onFillEmojis();
+    } finally {
+      savingRef.current = false;
+      setFilling(false);
     }
   };
   const closePicker = () => {
@@ -227,7 +240,6 @@ export function ListRankingOptions({
         title,
         description,
         ranking_mode: rankingMode,
-        color,
         icon: emoji,
       });
     } catch (err) {
@@ -261,15 +273,14 @@ export function ListRankingOptions({
         <BaseModalContent
           title="List options"
           emoji="⚙️"
-          color={draftColor}
           onClose={close}
           footer={
-            <View className="flex-row flex-wrap items-center justify-end gap-2">
+            <View className="flex-row flex-wrap items-center justify-between gap-2">
               <Button
                 title="Cancel"
                 variant="text"
                 onPress={close}
-                disabled={saving}
+                disabled={saving || filling}
                 className="min-w-20 max-w-full shrink"
               />
               <Button
@@ -277,7 +288,7 @@ export function ListRankingOptions({
                 size="large"
                 onPress={() => void save()}
                 loading={saving}
-                disabled={saving || !changed}
+                disabled={saving || filling}
                 className="min-w-[100px] max-w-full shrink"
               />
             </View>
@@ -295,20 +306,24 @@ export function ListRankingOptions({
               }}
               error={titleError ?? undefined}
               maxLength={MAX_TITLE_LENGTH}
+              showCount
               editable={!saving}
               autoFocus={focusField === 'title'}
+              returnKeyType="done"
+              onSubmitEditing={() => void save()}
             />
             <Input
               emoji="📝"
-              label="Description (optional)"
+              label="Description"
+              maxLength={MAX_DESCRIPTION_LENGTH}
+              showCount
               placeholder="Add a description"
               value={draftDescription}
               onChangeText={setDraftDescription}
               multiline
-              numberOfLines={3}
               editable={!saving}
               autoFocus={focusField === 'description'}
-              inputClassName="!min-h-[96px] text-[16px]"
+              inputClassName="text-[16px]"
               style={{ textAlignVertical: 'top' }}
             />
             <SectionLabel emoji="😀" label="List emoji" />
@@ -316,14 +331,26 @@ export function ListRankingOptions({
               label="List emoji"
               value={draftIcon ? listIconEmoji(draftIcon) : null}
               onChange={setDraftIcon}
+              suggestFor={{
+                name: draftTitle,
+                kind: 'list',
+                description: draftDescription,
+              }}
               disabled={saving}
             />
-            <SectionLabel emoji="🎨" label="Accent color" />
-            <ListColorPicker
-              value={draftColor}
-              onChange={setDraftColor}
-              disabled={saving}
-            />
+            {(missingEmojiCount > 0 && !isOffline) || filling ? (
+              <>
+                <SectionLabel emoji="✨" label="Item emoji" />
+                <Button
+                  title={`Add emoji to ${missingEmojiCount} ${missingEmojiCount === 1 ? 'item' : 'items'}`}
+                  variant="secondary"
+                  size="large"
+                  loading={filling}
+                  disabled={saving}
+                  onPress={() => void fillEmojis()}
+                />
+              </>
+            ) : null}
             <SectionLabel emoji="🏆" label="Ranking mode" />
             <RankingModeSelector
               value={draft}
@@ -337,6 +364,7 @@ export function ListRankingOptions({
         visible={pickingIcon}
         value={icon ? listIconEmoji(icon) : null}
         onSelect={(emoji) => void pickIcon(emoji)}
+        suggestFor={{ name: title, kind: 'list', description }}
         onClose={closePicker}
       />
     </>
