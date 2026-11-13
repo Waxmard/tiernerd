@@ -83,15 +83,13 @@ function EmojiPickerContent({
           autoCorrect={false}
           containerClassName="flex-1"
         />
-        {suggestFor &&
-        suggestFor.name.trim() !== '' &&
-        token &&
-        suggestions === null ? (
+        {suggestFor && token ? (
           <Button
             title="✨ Suggest"
             variant="secondary"
             size="large"
             loading={suggesting}
+            disabled={suggestFor.name.trim() === ''}
             onPress={() => void suggest(suggestFor, token)}
           />
         ) : null}

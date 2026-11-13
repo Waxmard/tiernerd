@@ -200,6 +200,8 @@ export const CreateListContent = forwardRef<
             showCount
             editable={!isLoading}
             autoFocus={!hasVisitedOptionalFieldRef.current}
+            returnKeyType="done"
+            onSubmitEditing={() => void handleCreate()}
           />
           <Pressable
             accessibilityRole="button"

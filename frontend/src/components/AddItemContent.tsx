@@ -101,6 +101,8 @@ export function AddItemContent({
             showCount
             editable={!isBusy}
             autoFocus={focusField === 'name'}
+            returnKeyType="done"
+            onSubmitEditing={onSubmit}
             containerClassName=""
             inputClassName="font-display text-[20px] font-semibold min-h-12 min-w-0"
           />

@@ -165,7 +165,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
                 ? undefined
                 : () => optionsRef.current?.open('description')
             }
-            className="pl-[84px]"
+            className="pl-[84px] min-h-11 justify-center"
             hitSlop={10}
             style={({ pressed }) =>
               pressed && !optionsDisabled ? { opacity: 0.7 } : undefined

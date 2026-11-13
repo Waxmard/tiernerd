@@ -115,6 +115,7 @@ export function ItemDetailContent({
             accessibilityRole={actionsBlocked ? undefined : 'button'}
             accessibilityHint={actionsBlocked ? undefined : 'Edit description'}
             onPress={actionsBlocked ? undefined : () => onEdit('description')}
+            className="min-h-11 justify-center"
             hitSlop={10}
             style={({ pressed }) =>
               pressed && !actionsBlocked ? { opacity: 0.7 } : undefined

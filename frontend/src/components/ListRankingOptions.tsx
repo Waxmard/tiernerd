@@ -309,6 +309,8 @@ export function ListRankingOptions({
               showCount
               editable={!saving}
               autoFocus={focusField === 'title'}
+              returnKeyType="done"
+              onSubmitEditing={() => void save()}
             />
             <Input
               emoji="📝"
