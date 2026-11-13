@@ -1,8 +1,6 @@
 import type React from 'react';
 import {
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -12,7 +10,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NotificationToast } from '../../providers/NotificationProvider';
 import { useListHue } from '../../providers/ThemeProvider';
-import type { ListColor } from '../tokens/colors';
 import { Button } from './Button';
 import { Emoji } from './Emoji';
 
@@ -33,7 +30,6 @@ interface BaseModalContentProps {
   onClose: () => void;
   onSubmit?: () => void;
   footer?: React.ReactNode;
-  color?: ListColor | null;
   emoji?: string;
   scrollable?: boolean;
   onTitlePress?: () => void;
@@ -51,7 +47,6 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   onClose,
   onSubmit,
   footer,
-  color = null,
   emoji,
   scrollable = true,
   onTitlePress,
@@ -60,7 +55,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   emojiLabel,
 }) => {
   const safeAreaInsets = useSafeAreaInsets();
-  const hue = useListHue(color);
+  const hue = useListHue();
   const content = (
     <View
       className="w-full flex-1 min-h-0 p-4 bg-surface dark:bg-surface-dark"
@@ -106,6 +101,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
           className="flex-1 min-h-0 -m-1"
           contentContainerClassName="grow p-1"
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
         >
           {children}
         </ScrollView>
@@ -120,7 +116,7 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
         {footer !== undefined ? (
           footer
         ) : (
-          <View className="flex-row flex-wrap items-center justify-end gap-2">
+          <View className="flex-row flex-wrap items-center justify-between gap-2">
             <Button
               title={closeText}
               variant="text"
@@ -146,13 +142,9 @@ export const BaseModalContent: React.FC<BaseModalContentProps> = ({
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View className="flex-1" style={{ paddingTop: safeAreaInsets.top }}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={-safeAreaInsets.bottom}
-          className="flex-1 w-full items-center justify-end"
-        >
+        <View className="flex-1 w-full items-center justify-end">
           <TouchableWithoutFeedback>{content}</TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     </TouchableWithoutFeedback>
   );

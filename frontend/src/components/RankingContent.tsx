@@ -9,7 +9,6 @@ import Animated, {
   ZoomIn,
 } from 'react-native-reanimated';
 import { BaseModalContent, Button, Emoji } from '../design-system/components';
-import type { ListColor } from '../design-system/tokens/colors';
 import { useListHue, useTheme } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
@@ -29,7 +28,6 @@ export interface RankingContentProps {
   view: RankingView;
   isBusy: boolean;
   rankingMode?: ListRankingMode;
-  color?: ListColor | null;
   onAnswer: (result: RankingAnswer) => void;
   onUndo: () => void;
   onCancel: () => void;
@@ -39,7 +37,6 @@ export interface RankingContentProps {
 interface ComparisonChoiceProps {
   item: Item;
   accessibilityLabel: string;
-  color: ListColor | null;
   isBusy: boolean;
   onPress: () => void;
   children: React.ReactNode;
@@ -53,13 +50,12 @@ const choiceTextClass = (isBusy: boolean): string =>
 function ComparisonChoice({
   item,
   accessibilityLabel,
-  color,
   isBusy,
   onPress,
   children,
 }: ComparisonChoiceProps) {
   const { colors } = useTheme();
-  const hue = useListHue(color);
+  const hue = useListHue();
   return (
     <Pressable
       accessibilityRole="button"
@@ -112,13 +108,12 @@ export function RankingContent({
   view,
   isBusy,
   rankingMode = 'rank',
-  color = null,
   onAnswer,
   onUndo,
   onCancel,
   onPause,
 }: RankingContentProps) {
-  const hue = useListHue(color);
+  const hue = useListHue();
   const target = view.target;
   const caption = item.position === null ? 'New' : 'Re-ranking';
 
@@ -126,7 +121,6 @@ export function RankingContent({
     <BaseModalContent
       title="Which is better?"
       emoji="⚖️"
-      color={color}
       onClose={onPause}
       footer={
         <View className="gap-2">
@@ -205,7 +199,6 @@ export function RankingContent({
             <ComparisonChoice
               item={item}
               accessibilityLabel={`${item.name}. ${caption}.`}
-              color={color}
               isBusy={isBusy}
               onPress={() => onAnswer('better')}
             >
@@ -241,7 +234,6 @@ export function RankingContent({
                     ? `${target.name}. Ranked ${view.targetRank} of ${view.rankedCount}.`
                     : `${target.name}. Existing item.`
                 }
-                color={color}
                 isBusy={isBusy}
                 onPress={() => onAnswer('worse')}
               >
@@ -250,7 +242,6 @@ export function RankingContent({
                     rankingMode={rankingMode}
                     rating={target.rating}
                     rank={view.targetRank}
-                    color={color}
                   />
                   {view.targetRank !== null ? (
                     <Text
@@ -282,13 +273,11 @@ export function RankingResultContent({
   item,
   result,
   rankingMode = 'rank',
-  color = null,
   onDone,
 }: {
   item: Item;
   result: RankingResult;
   rankingMode?: ListRankingMode;
-  color?: ListColor | null;
   onDone: () => void;
 }) {
   const summary =
@@ -309,7 +298,6 @@ export function RankingResultContent({
     <BaseModalContent
       title={rankingMode === 'score' ? 'Scored!' : 'Ranked!'}
       emoji="🎉"
-      color={color}
       onClose={onDone}
       scrollable={false}
       footer={<Button title="Done" variant="text" onPress={onDone} fullWidth />}
@@ -335,7 +323,6 @@ export function RankingResultContent({
                 rankingMode={rankingMode}
                 rating={result.score}
                 rank={result.rank}
-                color={color}
                 size="lg"
               />
             </View>

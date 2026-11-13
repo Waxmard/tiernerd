@@ -127,42 +127,24 @@ class TestCreateList:
         assert response.status_code == 409
         assert "already exists" in response.json()["detail"].lower()
 
-    async def test_create_list_with_color_round_trips_through_the_api(
+    async def test_create_list_ignores_retired_color(
         self, client: AsyncClient, auth_headers: dict
     ):
-        """A chosen swatch is persisted, echoed, and rejected when unknown."""
         response = await client.post(
             "/api/lists/",
-            files=metadata_files(
-                {
-                    "title": "Colored List",
-                    "description": "Has a swatch",
-                    "color": "teal",
-                }
-            ),
+            files=metadata_files({"title": "Colored", "color": "teal"}),
             headers=auth_headers,
         )
         assert response.status_code == 200
-        assert response.json()["color"] == "teal"
+        assert "color" not in response.json()
 
         lists = await client.get("/api/lists/", headers=auth_headers)
         assert lists.status_code == 200
-        colored = [row for row in lists.json() if row["title"] == "Colored List"]
-        assert [row["color"] for row in colored] == ["teal"]
+        assert all("color" not in row for row in lists.json())
 
-        invalid = await client.post(
-            "/api/lists/",
-            files=metadata_files(
-                {
-                    "title": "Chartreuse List",
-                    "description": "Not a swatch",
-                    "color": "chartreuse",
-                }
-            ),
-            headers=auth_headers,
-        )
-        assert invalid.status_code == 422
-
+    async def test_create_list_with_icon_round_trips_through_the_api(
+        self, client: AsyncClient, auth_headers: dict
+    ):
         uncolored = await client.post(
             "/api/lists/",
             files=metadata_files(
@@ -171,7 +153,6 @@ class TestCreateList:
             headers=auth_headers,
         )
         assert uncolored.status_code == 200
-        assert uncolored.json()["color"] is None
         assert uncolored.json()["icon"] is None
 
         styled = await client.post(
@@ -180,7 +161,6 @@ class TestCreateList:
                 {
                     "title": "Immersive List",
                     "description": "With icon",
-                    "color": "violet",
                     "icon": "🚀",
                 }
             ),
@@ -188,14 +168,14 @@ class TestCreateList:
         )
         assert styled.status_code == 200
         styled_data = styled.json()
-        assert styled_data["color"] == "violet"
+        assert "color" not in styled_data
         assert styled_data["icon"] == "🚀"
 
         detail = await client.get(
             f"/api/lists/{styled_data['list_id']}", headers=auth_headers
         )
         assert detail.status_code == 200
-        assert detail.json()["color"] == "violet"
+        assert "color" not in detail.json()
         assert detail.json()["icon"] == "🚀"
 
         summaries = await client.get("/api/lists/", headers=auth_headers)
@@ -203,7 +183,7 @@ class TestCreateList:
         summary = next(
             row for row in summaries.json() if row["list_id"] == styled_data["list_id"]
         )
-        assert summary["color"] == "violet"
+        assert "color" not in summary
         assert summary["icon"] == "🚀"
 
         for bad_metadata in (
@@ -350,23 +330,21 @@ class TestUpdateList:
         )
         assert appearance.status_code == 200
         assert appearance.json()["ranking_mode"] == "rank"
-        assert appearance.json()["color"] == "coral"
+        assert "color" not in appearance.json()
         assert appearance.json()["icon"] == "heart"
         after_appearance = await client.get(f"{url}/items", headers=auth_headers)
         assert after_appearance.json() == before
 
         cleared = await client.put(
             url,
-            files=metadata_files({"color": None, "icon": None}),
+            files=metadata_files({"icon": None}),
             headers=auth_headers,
         )
         assert cleared.status_code == 200
         assert cleared.json()["ranking_mode"] == "rank"
-        assert cleared.json()["color"] is None
         assert cleared.json()["icon"] is None
 
         for invalid_payload in (
-            {"color": "chartreuse"},
             {"icon": "x" * 17},
             {"icon": ""},
             {"cover": "landscape"},
@@ -558,7 +536,7 @@ class TestListWriteFormats:
         assert created.status_code == 200
         assert created.json()["title"] == params["name"]
         assert created.json()["description"] == ""
-        assert created.json()["color"] == "teal"
+        assert "color" not in created.json()
         assert created.json()["ranking_mode"] == "rank"
 
         detail = await client.get(
@@ -573,7 +551,7 @@ class TestListWriteFormats:
             headers=auth_headers,
         )
         assert defaulted.status_code == 200
-        assert defaulted.json()["color"] is None
+        assert "color" not in defaulted.json()
         assert defaulted.json()["ranking_mode"] == "score"
 
         duplicate = await client.post(
@@ -588,7 +566,6 @@ class TestListWriteFormats:
             {"name": "Missing description"},
             {"name": "", "description": ""},
             {"name": "x" * 101, "description": ""},
-            {"name": "Bad color", "description": "", "color": "chartreuse"},
             {"name": "Bad mode", "description": "", "ranking_mode": "other"},
         ):
             response = await client.post(
@@ -604,7 +581,6 @@ class TestListWriteFormats:
         auth_headers_user2: dict,
         test_db: AsyncSession,
     ):
-        test_list.color = "teal"
         test_list.icon = "heart"
         test_db.add(ListModel(user_id=test_list.user_id, title="Existing title"))
         await test_db.commit()
@@ -631,7 +607,6 @@ class TestListWriteFormats:
         assert updated.json()["title"] == "Legacy rename"
         assert updated.json()["description"] == "Legacy description"
         assert updated.json()["ranking_mode"] == "rank"
-        assert updated.json()["color"] == "teal"
         assert updated.json()["icon"] == "heart"
 
         partial = await client.put(

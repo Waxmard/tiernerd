@@ -1,36 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
 import { type ReactNode, useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Emoji } from '../design-system/components';
-import {
-  LIST_COLORS,
-  type ListColor,
-  type ListIcon,
-  palette,
-} from '../design-system/tokens/colors';
+import type { ListIcon } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
 import { useSync } from '../providers/SyncProvider';
-import { useTheme } from '../providers/ThemeProvider';
+import { useTheme, useThemeColors } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/listIcon';
 import { LandscapeBackdrop } from './LandscapeBackdrop';
 import { WorkspacePhotoBackdrop } from './WorkspacePhotoBackdrop';
-export const SWATCH_CLASS: Record<ListColor, string> = {
-  blue: 'bg-list-blue-solid dark:bg-list-blue-solid-dark',
-  teal: 'bg-list-teal-solid dark:bg-list-teal-solid-dark',
-  amber: 'bg-list-amber-solid dark:bg-list-amber-solid-dark',
-  pink: 'bg-list-pink-solid dark:bg-list-pink-solid-dark',
-  violet: 'bg-list-violet-solid dark:bg-list-violet-solid-dark',
-  coral: 'bg-list-coral-solid dark:bg-list-coral-solid-dark',
-};
-
-export const CHIP_CLASS: Record<ListColor, string> = {
-  blue: 'bg-list-blue-tint dark:bg-list-blue-tint-dark',
-  teal: 'bg-list-teal-tint dark:bg-list-teal-tint-dark',
-  amber: 'bg-list-amber-tint dark:bg-list-amber-tint-dark',
-  pink: 'bg-list-pink-tint dark:bg-list-pink-tint-dark',
-  violet: 'bg-list-violet-tint dark:bg-list-violet-tint-dark',
-  coral: 'bg-list-coral-tint dark:bg-list-coral-tint-dark',
-};
 
 export function ImmersiveScreenShell({ children }: { children: ReactNode }) {
   const { workspaceAppearance } = useTheme();
@@ -58,9 +35,8 @@ export function ImmersiveScreenShell({ children }: { children: ReactNode }) {
   );
 }
 
-export function ListAccentBar({ color }: { color: ListColor | null }) {
-  const { scheme, workspaceAppearance } = useTheme();
-  const hue = color ?? workspaceAppearance.accent;
+export function ListAccentBar() {
+  const backgroundColor = useThemeColors()['accent-line'];
   return (
     <View
       accessible={false}
@@ -68,18 +44,16 @@ export function ListAccentBar({ color }: { color: ListColor | null }) {
         width: 4,
         alignSelf: 'stretch',
         borderRadius: 2,
-        backgroundColor: palette.list[hue][scheme].solid,
+        backgroundColor,
       }}
     />
   );
 }
 
 export function ListIdentityBadge({
-  color,
   icon,
   size = 'md',
 }: {
-  color: ListColor | null;
   icon?: ListIcon | null;
   size?: 'sm' | 'md' | 'lg';
 }) {
@@ -93,60 +67,16 @@ export function ListIdentityBadge({
 
   return (
     <View className="flex-row items-center gap-2 shrink-0">
-      <ListAccentBar color={color} />
+      <ListAccentBar />
       <View
         className={[
           boxClass,
           'items-center justify-center overflow-hidden border border-line dark:border-line-dark',
-          color ? CHIP_CLASS[color] : 'bg-accent-tint dark:bg-accent-tint-dark',
+          'bg-accent-tint dark:bg-accent-tint-dark',
         ].join(' ')}
       >
         <Emoji symbol={listIconEmoji(icon)} size={iconSize} />
       </View>
-    </View>
-  );
-}
-
-export function ListColorPicker({
-  value,
-  onChange,
-  disabled = false,
-  allowNone = true,
-}: {
-  value: ListColor | null;
-  onChange: (next: ListColor | null) => void;
-  disabled?: boolean;
-  allowNone?: boolean;
-}) {
-  const { scheme } = useTheme();
-  return (
-    <View className="flex-row flex-wrap gap-3">
-      {LIST_COLORS.map((hue) => {
-        const selected = value === hue;
-        return (
-          <Pressable
-            key={hue}
-            accessibilityRole="button"
-            accessibilityLabel={`Color ${hue}`}
-            accessibilityState={{ selected, disabled }}
-            disabled={disabled}
-            onPress={() => onChange(selected && allowNone ? null : hue)}
-            className={[
-              'w-11 h-11 rounded-full items-center justify-center',
-              SWATCH_CLASS[hue],
-            ].join(' ')}
-          >
-            {selected ? (
-              <Ionicons
-                name="checkmark"
-                size={20}
-                color={palette.list[hue][scheme]['on-solid']}
-                accessible={false}
-              />
-            ) : null}
-          </Pressable>
-        );
-      })}
     </View>
   );
 }

@@ -12,10 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  ImmersiveScreenShell,
-  ListColorPicker,
-} from '../components/ImmersiveBoard';
+import { ImmersiveScreenShell } from '../components/ImmersiveBoard';
 import { Emoji, SectionLabel } from '../design-system/components';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
@@ -312,19 +309,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   Choosing another background removes your photo.
                 </Text>
               ) : null}
-              <SectionLabel
-                emoji="🖌️"
-                label="Workspace accent"
-                className="mt-4 mb-2"
-              />
-              <ListColorPicker
-                value={workspaceAppearance.accent}
-                allowNone={false}
-                onChange={(accent) => {
-                  if (accent)
-                    setWorkspaceAppearance({ ...workspaceAppearance, accent });
-                }}
-              />
             </View>
 
             <TouchableOpacity

@@ -32,7 +32,6 @@ const listSimple: ListSimple = {
   list_id: 'list-1',
   title: 'Cache proof',
   description: null,
-  color: null,
   icon: null,
   ranking_mode: 'score',
   created_at: '2026-01-01T00:00:00Z',
@@ -254,7 +253,6 @@ test('applies cached ranking mode and resets it when metadata is invalidated', (
   const restored = applyCachedMetadataState(initial, {
     title: 'Cached list',
     description: null,
-    color: null,
     icon: 'coffee',
     rankingMode: 'rank',
   });
@@ -304,36 +302,14 @@ test('rejects cached lists with unparseable modification dates', () => {
   );
 });
 
-test('drops payloads whose color is missing or not a known swatch', () => {
-  const withoutColor: Record<string, unknown> = { ...listSimple };
-  delete withoutColor.color;
-
-  assert.equal(parseCachedLists(JSON.stringify([withoutColor])), null);
-  assert.equal(
-    parseCachedLists(JSON.stringify([{ ...listSimple, color: 'chartreuse' }])),
+test('accepts cached lists with or without an icon', () => {
+  assert.notEqual(
+    parseCachedLists(JSON.stringify([{ ...listSimple, color: 'teal' }])),
     null
   );
   assert.deepEqual(
-    parseCachedLists(JSON.stringify([{ ...listSimple, color: 'teal' }])),
-    [{ ...listSimple, color: 'teal' }]
-  );
-  assert.deepEqual(
-    parseCachedLists(
-      JSON.stringify([
-        {
-          ...listSimple,
-          color: 'violet',
-          icon: 'mountain',
-        },
-      ])
-    ),
-    [
-      {
-        ...listSimple,
-        color: 'violet',
-        icon: 'mountain',
-      },
-    ]
+    parseCachedLists(JSON.stringify([{ ...listSimple, icon: 'mountain' }])),
+    [{ ...listSimple, icon: 'mountain' }]
   );
 
   const legacyNoIcon: Record<string, unknown> = { ...listSimple };

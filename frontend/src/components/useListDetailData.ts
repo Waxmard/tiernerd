@@ -412,7 +412,6 @@ export function useListDetailData({
             ...previous,
             detailsTitle: list.title,
             listDescription: list.description,
-            listColor: list.color,
             listIcon: list.icon ?? null,
             rankingMode: list.ranking_mode,
             metadataError: false,
@@ -483,7 +482,6 @@ export function useListDetailData({
             applyCachedMetadataState(previous, {
               title: summary.title,
               description: summary.description,
-              color: summary.color,
               icon: summary.icon,
               rankingMode: summary.ranking_mode,
             })
@@ -555,7 +553,6 @@ export function useListDetailData({
         title: options.title,
         ranking_mode: options.ranking_mode,
         description: options.description,
-        color: options.color,
         icon: options.icon,
       };
       const now = new Date().toISOString();
@@ -591,7 +588,6 @@ export function useListDetailData({
           ? {
               ...base,
               title: options.title,
-              color: options.color,
               description: options.description,
               icon: options.icon,
               ranking_mode: options.ranking_mode,
@@ -606,7 +602,6 @@ export function useListDetailData({
           (previous) => ({
             ...previous,
             detailsTitle: saved?.title ?? options.title,
-            listColor: saved?.color ?? options.color,
             listDescription: saved?.description ?? options.description,
             listIcon: saved?.icon ?? options.icon,
             rankingMode: saved?.ranking_mode ?? options.ranking_mode,
@@ -722,7 +717,6 @@ export function useListDetailData({
     itemsError: visibleState.itemsError,
     detailsTitle: visibleState.detailsTitle,
     listDescription: visibleState.listDescription,
-    listColor: visibleState.listColor,
     listIcon: visibleState.listIcon,
     rankingMode: visibleState.rankingMode,
     metadataLoaded: visibleState.metadataLoaded,

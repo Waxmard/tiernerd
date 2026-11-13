@@ -1,4 +1,4 @@
-import type { ListColor, ListIcon } from '../design-system/tokens/colors';
+import type { ListIcon } from '../design-system/tokens/colors';
 import { api } from './api';
 import type { Item } from './itemsService';
 
@@ -8,7 +8,6 @@ export interface ListSimple {
   list_id: string;
   title: string;
   description: string | null;
-  color: ListColor | null;
   icon: ListIcon | null;
   ranking_mode: ListRankingMode;
   created_at: string;
@@ -22,23 +21,18 @@ export interface ListCreatePayload {
   list_id: string;
   title: string;
   description: string | null;
-  color: ListColor | null;
   icon: ListIcon | null;
   ranking_mode: ListRankingMode;
 }
 
 export type ListMetadataPatch = Partial<
-  Pick<
-    ListCreatePayload,
-    'title' | 'description' | 'color' | 'icon' | 'ranking_mode'
-  >
+  Pick<ListCreatePayload, 'title' | 'description' | 'icon' | 'ranking_mode'>
 >;
 
 export interface ListOptionsInput {
   title: string;
   description: string | null;
   ranking_mode: ListRankingMode;
-  color: ListColor | null;
   icon: ListIcon | null;
 }
 

@@ -32,7 +32,7 @@ import {
 import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button, Emoji, SheetModal } from '../design-system/components';
-import type { ListColor, ListIcon } from '../design-system/tokens/colors';
+import type { ListIcon } from '../design-system/tokens/colors';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
@@ -56,7 +56,6 @@ interface TierList {
   id: string;
   title: string;
   description: string | null;
-  color: ListColor | null;
   icon: ListIcon | null;
   itemCount: number;
   updatedAt: Date;
@@ -66,7 +65,6 @@ const toTierList = (list: ListSimple): TierList => ({
   id: list.list_id,
   title: list.title,
   description: list.description,
-  color: list.color,
   icon: list.icon ?? null,
   itemCount: list.item_count,
   updatedAt: new Date(list.updated_at),
@@ -78,7 +76,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const isOfflineRef = useRef(isOffline);
   isOfflineRef.current = isOffline;
   const userId = user?.id ?? null;
-  const { scheme, colors } = useTheme();
+  const { colors } = useTheme();
   const safeAreaInsets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const columns = windowWidth >= 1280 ? 3 : windowWidth >= 768 ? 2 : 1;
@@ -407,7 +405,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   };
   const renderRow = ({ item }: ListRenderItemInfo<TierList>) => {
-    const hue = listHue(item.color, scheme, colors);
+    const hue = listHue(colors);
     const titleLength = Array.from(item.title).length;
     return (
       <View style={{ width: cardWidth }} className="shrink-0 gap-1">
@@ -443,11 +441,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               onPress={() => setIconListId(item.id)}
               style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
             >
-              <ListIdentityBadge
-                size="lg"
-                color={item.color}
-                icon={item.icon}
-              />
+              <ListIdentityBadge size="lg" icon={item.icon} />
             </Pressable>
             <View className="flex-1 min-w-0 gap-1">
               <Text

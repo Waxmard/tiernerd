@@ -58,7 +58,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     itemsError,
     detailsTitle,
     listDescription,
-    listColor,
     listIcon,
     rankingMode,
     metadataLoaded,
@@ -551,7 +550,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       selected={selectedItemId === item.item_id}
       rank={rankByItemId.get(item.item_id) ?? null}
       rankingMode={rankingMode}
-      color={listColor}
       disabled={isDeletingList || workspace.isBusy}
       onPress={(selected) => void handleItemPress(selected)}
       onIconPress={
@@ -614,7 +612,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           <View className="flex-1 min-h-0 mx-4">
             <ListDetailHeader
               title={detailsTitle}
-              color={listColor}
               icon={listIcon}
               description={listDescription}
               addLoading={isLoadingList}
@@ -642,7 +639,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
               canMutate={canMutate}
               isScreenBusy={isDeletingList}
               listTitle={detailsTitle}
-              listColor={listColor}
               selectedItemId={selectedItemId}
               dismissedDetailsItemId={dismissedDetailsItemId}
               selectedItem={selectedItem}

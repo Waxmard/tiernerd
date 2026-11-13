@@ -8,17 +8,8 @@ import {
   useState,
 } from 'react';
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
-import {
-  BaseModalContent,
-  Emoji,
-  Input,
-  SectionLabel,
-} from '../design-system/components';
-import {
-  type ListColor,
-  type ListIcon,
-  palette,
-} from '../design-system/tokens/colors';
+import { BaseModalContent, Emoji, Input } from '../design-system/components';
+import { type ListIcon, palette } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
@@ -31,7 +22,6 @@ import type {
 import { localLibrary } from '../services/localLibrary';
 import { newId } from '../utils/id';
 import { EmojiPickerField } from './EmojiPicker';
-import { ListColorPicker, SWATCH_CLASS } from './ImmersiveBoard';
 import { RankingModeSelector } from './ListRankingOptions';
 
 export interface CreatedList {
@@ -52,7 +42,7 @@ const MAX_TITLE_LENGTH = 100;
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
-type CreateListView = 'overview' | 'description' | 'color' | 'ranking-mode';
+type CreateListView = 'overview' | 'description' | 'emoji' | 'ranking-mode';
 
 export const CreateListContent = forwardRef<
   CreateListContentHandle,
@@ -64,7 +54,6 @@ export const CreateListContent = forwardRef<
   const { scheme } = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [color, setColor] = useState<ListColor | null>(null);
   const [icon, setIcon] = useState<ListIcon | null>(null);
   const [rankingMode, setRankingMode] = useState<ListRankingMode>('score');
   const [view, setView] = useState<CreateListView>('overview');
@@ -81,7 +70,6 @@ export const CreateListContent = forwardRef<
   const clearForm = useCallback(() => {
     setTitle('');
     setDescription('');
-    setColor(null);
     setIcon(null);
     setRankingMode('score');
     setView('overview');
@@ -102,9 +90,9 @@ export const CreateListContent = forwardRef<
     setView('description');
   };
 
-  const openColor = () => {
+  const openEmoji = () => {
     hasVisitedOptionalFieldRef.current = true;
-    setView('color');
+    setView('emoji');
   };
 
   const returnToOverview = () => setView('overview');
@@ -134,7 +122,6 @@ export const CreateListContent = forwardRef<
       list_id: listId,
       title: trimmedTitle,
       description: description.trim(),
-      color,
       icon,
       ranking_mode: rankingMode,
     };
@@ -182,14 +169,13 @@ export const CreateListContent = forwardRef<
 
   return (
     <BaseModalContent
-      color={color}
       emoji={
         view === 'overview'
           ? '📋'
           : view === 'description'
             ? '📝'
-            : view === 'color'
-              ? '🎨'
+            : view === 'emoji'
+              ? '😀'
               : '🏆'
       }
       title={
@@ -197,8 +183,8 @@ export const CreateListContent = forwardRef<
           ? 'Create New List'
           : view === 'description'
             ? 'Description'
-            : view === 'color'
-              ? 'List appearance'
+            : view === 'emoji'
+              ? 'List emoji'
               : 'Ranking mode'
       }
       isLoading={isLoading}
@@ -232,7 +218,7 @@ export const CreateListContent = forwardRef<
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Description (optional): ${description.trim() || 'Not set'}`}
+            accessibilityLabel={`Description: ${description.trim() || 'Not set'}`}
             accessibilityHint="Edit the list description"
             accessibilityState={{ disabled: isLoading }}
             disabled={isLoading}
@@ -242,7 +228,7 @@ export const CreateListContent = forwardRef<
             <Emoji symbol="📝" size={20} />
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-                Description (optional)
+                Description
               </Text>
               <Text
                 numberOfLines={2}
@@ -260,30 +246,22 @@ export const CreateListContent = forwardRef<
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Appearance (optional): ${color ?? 'No color'}, ${icon ?? 'default emoji'}`}
-            accessibilityHint="Choose list color and emoji"
+            accessibilityLabel={`Emoji: ${icon ?? 'default'}`}
+            accessibilityHint="Choose list emoji"
             accessibilityState={{ disabled: isLoading }}
             disabled={isLoading}
-            onPress={openColor}
+            onPress={openEmoji}
             className="flex-row min-h-11 items-center gap-3 border border-control dark:border-control-dark rounded-[10px] px-3 py-2 mb-4"
           >
-            <Emoji symbol="🎨" size={20} />
+            <Emoji symbol="😀" size={20} />
             <View className="flex-1 min-w-0">
               <Text className="text-body-medium font-semibold text-ink dark:text-ink-dark">
-                Appearance (optional)
+                Emoji
               </Text>
               <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-                {[color ?? 'No color', icon ?? 'Default emoji'].join(' · ')}
+                {icon ?? 'Default emoji'}
               </Text>
             </View>
-            {color ? (
-              <View
-                accessible={false}
-                className={['w-4 h-4 rounded-full', SWATCH_CLASS[color]].join(
-                  ' '
-                )}
-              />
-            ) : null}
             <Ionicons
               name="chevron-forward"
               size={18}
@@ -325,15 +303,14 @@ export const CreateListContent = forwardRef<
       ) : view === 'description' ? (
         <Input
           emoji="📝"
-          label="Description (optional)"
+          label="Description"
           placeholder="Add a description"
           value={description}
           onChangeText={setDescription}
           multiline
-          numberOfLines={5}
           editable={!isLoading}
           autoFocus
-          inputClassName="!min-h-[120px] text-[16px]"
+          inputClassName="text-[16px]"
           style={MULTILINE_INPUT_STYLE}
         />
       ) : view === 'ranking-mode' ? (
@@ -343,22 +320,13 @@ export const CreateListContent = forwardRef<
           disabled={isLoading}
         />
       ) : (
-        <View className="gap-4">
-          <SectionLabel emoji="🎨" label="Color" />
-          <ListColorPicker
-            value={color}
-            onChange={setColor}
-            disabled={isLoading}
-          />
-          <SectionLabel emoji="😀" label="Emoji" />
-          <EmojiPickerField
-            label="List emoji"
-            value={icon}
-            onChange={setIcon}
-            suggestFor={{ name: title, kind: 'list', description }}
-            disabled={isLoading}
-          />
-        </View>
+        <EmojiPickerField
+          label="List emoji"
+          value={icon}
+          onChange={setIcon}
+          suggestFor={{ name: title, kind: 'list', description }}
+          disabled={isLoading}
+        />
       )}
     </BaseModalContent>
   );

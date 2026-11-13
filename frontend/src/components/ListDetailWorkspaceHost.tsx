@@ -1,7 +1,6 @@
 import type React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SheetModal } from '../design-system/components';
-import type { ListColor } from '../design-system/tokens/colors';
 import { useThemeColors } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
@@ -13,7 +12,6 @@ import { RankingContent, RankingResultContent } from './RankingContent';
 interface ListDetailWorkspaceHostProps {
   isScreenBusy: boolean;
   listTitle: string;
-  listColor?: ListColor | null;
   selectedItemId: string | null;
   dismissedDetailsItemId: string | null;
   selectedItem: Item | null;
@@ -40,7 +38,6 @@ export const ListDetailWorkspaceHost: React.FC<
 > = ({
   isScreenBusy,
   listTitle,
-  listColor = null,
   selectedItemId,
   dismissedDetailsItemId,
   selectedItem,
@@ -71,7 +68,6 @@ export const ListDetailWorkspaceHost: React.FC<
           item={workspace.item}
           result={workspace.result}
           rankingMode={rankingMode}
-          color={listColor}
           onDone={workspace.dismissResult}
         />
       );
@@ -83,7 +79,6 @@ export const ListDetailWorkspaceHost: React.FC<
           view={workspace.view}
           isBusy={isBusy}
           rankingMode={rankingMode}
-          color={listColor}
           onAnswer={(answer) => void workspace.answer(answer)}
           onUndo={() => void workspace.undo()}
           onCancel={() => void workspace.cancelRanking()}
@@ -106,7 +101,6 @@ export const ListDetailWorkspaceHost: React.FC<
           canEditScore={scoreEdit !== null}
           autoScore={scoreEdit?.autoScore ?? null}
           scoreBounds={scoreEdit?.bounds}
-          color={listColor}
           focusField={workspace.focusField}
           listTitle={listTitle}
           editActions={
@@ -142,7 +136,6 @@ export const ListDetailWorkspaceHost: React.FC<
         rank={selectedRank}
         rankedCount={rankedCount}
         rankingMode={rankingMode}
-        color={listColor}
         hasDraft={workspace.ranking !== null}
         isBusy={isBusy}
         onRank={onStartRanking}

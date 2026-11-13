@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Button, Emoji } from '../design-system/components';
-import type { ListColor, ListIcon } from '../design-system/tokens/colors';
+import type { ListIcon } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/listIcon';
 import type {
@@ -23,7 +23,6 @@ import {
 
 interface ListDetailHeaderProps {
   title: string;
-  color: ListColor | null;
   icon: ListIcon | null;
   addDisabled: boolean;
   addLoading: boolean;
@@ -44,7 +43,6 @@ interface ListDetailHeaderProps {
 export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   title,
   icon,
-  color,
   addDisabled,
   addLoading,
   onAdd,
@@ -131,7 +129,6 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           title={title}
           description={description}
           rankingMode={rankingMode}
-          color={color}
           icon={icon}
           disabled={optionsDisabled}
           onSave={onSaveOptions}

@@ -9,7 +9,7 @@ import {
   SectionLabel,
   SheetModal,
 } from '../design-system/components';
-import type { ListColor, ListIcon } from '../design-system/tokens/colors';
+import type { ListIcon } from '../design-system/tokens/colors';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/listIcon';
@@ -18,7 +18,6 @@ import type {
   ListRankingMode,
 } from '../services/listsService';
 import { EmojiPickerField, EmojiPickerModal } from './EmojiPicker';
-import { ListColorPicker } from './ImmersiveBoard';
 
 const MAX_TITLE_LENGTH = 100;
 
@@ -120,7 +119,6 @@ export function ListRankingOptions({
   title,
   description,
   rankingMode,
-  color,
   icon,
   disabled,
   onSave,
@@ -132,7 +130,6 @@ export function ListRankingOptions({
   title: string;
   description: string | null;
   rankingMode: ListRankingMode;
-  color: ListColor | null;
   icon: ListIcon | null;
   disabled: boolean;
   onSave: (options: ListOptionsInput) => Promise<void>;
@@ -147,7 +144,6 @@ export function ListRankingOptions({
   const [draft, setDraft] = useState(rankingMode);
   const [draftTitle, setDraftTitle] = useState(title);
   const [titleError, setTitleError] = useState<string | null>(null);
-  const [draftColor, setDraftColor] = useState(color);
   const [draftIcon, setDraftIcon] = useState(icon);
   const [draftDescription, setDraftDescription] = useState(description ?? '');
   const [focusField, setFocusField] = useState<'title' | 'description' | null>(
@@ -162,7 +158,6 @@ export function ListRankingOptions({
     draftTitle.trim() !== title ||
     draftDescription.trim() !== (description ?? '').trim() ||
     draft !== rankingMode ||
-    draftColor !== color ||
     draftIcon !== icon;
   const openOptions = (target?: 'title' | 'description' | 'icon') => {
     if (disabled || savingRef.current) return;
@@ -175,7 +170,6 @@ export function ListRankingOptions({
     setDraftTitle(title);
     setDraftDescription(description ?? '');
     setTitleError(null);
-    setDraftColor(color);
     setDraftIcon(icon);
     setFocusField(target ?? null);
     setOpen(true);
@@ -188,7 +182,11 @@ export function ListRankingOptions({
     setOpen(false);
   };
   const save = async () => {
-    if (savingRef.current || !changed) return;
+    if (savingRef.current) return;
+    if (!changed) {
+      close();
+      return;
+    }
     const trimmedTitle = draftTitle.trim();
     if (!trimmedTitle) {
       setTitleError('Title is required');
@@ -204,7 +202,6 @@ export function ListRankingOptions({
       await onSave({
         title: trimmedTitle,
         ranking_mode: draft,
-        color: draftColor,
         icon: draftIcon,
         description: draftDescription.trim() || null,
       });
@@ -244,7 +241,6 @@ export function ListRankingOptions({
         title,
         description,
         ranking_mode: rankingMode,
-        color,
         icon: emoji,
       });
     } catch (err) {
@@ -278,10 +274,9 @@ export function ListRankingOptions({
         <BaseModalContent
           title="List options"
           emoji="⚙️"
-          color={draftColor}
           onClose={close}
           footer={
-            <View className="flex-row flex-wrap items-center justify-end gap-2">
+            <View className="flex-row flex-wrap items-center justify-between gap-2">
               <Button
                 title="Cancel"
                 variant="text"
@@ -294,7 +289,7 @@ export function ListRankingOptions({
                 size="large"
                 onPress={() => void save()}
                 loading={saving}
-                disabled={saving || filling || !changed}
+                disabled={saving || filling}
                 className="min-w-[100px] max-w-full shrink"
               />
             </View>
@@ -317,15 +312,14 @@ export function ListRankingOptions({
             />
             <Input
               emoji="📝"
-              label="Description (optional)"
+              label="Description"
               placeholder="Add a description"
               value={draftDescription}
               onChangeText={setDraftDescription}
               multiline
-              numberOfLines={3}
               editable={!saving}
               autoFocus={focusField === 'description'}
-              inputClassName="!min-h-[96px] text-[16px]"
+              inputClassName="text-[16px]"
               style={{ textAlignVertical: 'top' }}
             />
             <SectionLabel emoji="😀" label="List emoji" />
@@ -353,12 +347,6 @@ export function ListRankingOptions({
                 />
               </>
             ) : null}
-            <SectionLabel emoji="🎨" label="Accent color" />
-            <ListColorPicker
-              value={draftColor}
-              onChange={setDraftColor}
-              disabled={saving}
-            />
             <SectionLabel emoji="🏆" label="Ranking mode" />
             <RankingModeSelector
               value={draft}

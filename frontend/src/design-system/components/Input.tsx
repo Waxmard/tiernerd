@@ -15,7 +15,6 @@ interface InputProps extends TextInputProps {
   inputClassName?: string;
   emoji?: string;
   containerClassName?: string;
-  fill?: boolean;
 }
 
 export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
@@ -25,7 +24,6 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
     inputClassName,
     emoji,
     containerClassName,
-    fill,
     ...textInputProps
   },
   ref
@@ -34,11 +32,7 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
   const labelId = useId();
 
   return (
-    <View
-      className={[containerClassName ?? 'mb-4', fill ? 'flex-1' : '']
-        .filter(Boolean)
-        .join(' ')}
-    >
+    <View className={containerClassName ?? 'mb-4'}>
       {label && (
         <SectionLabel
           label={label}
@@ -49,8 +43,7 @@ export const Input = forwardRef<TextInputInstance, InputProps>(function Input(
       )}
       <View
         className={[
-          'flex-row border rounded-[10px] px-3 min-h-[48px]',
-          fill ? 'flex-1 items-stretch' : 'items-center',
+          'flex-row border rounded-[10px] px-3 min-h-[48px] items-center',
           'bg-surface dark:bg-surface-dark',
           error
             ? 'border-danger-text dark:border-danger-text-dark'

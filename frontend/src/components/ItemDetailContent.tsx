@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { BaseModalContent, Button, Emoji } from '../design-system/components';
-import type { ListColor } from '../design-system/tokens/colors';
 import { useListHue } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
@@ -15,7 +14,6 @@ export interface ItemDetailContentProps {
   rank: number | null;
   rankedCount: number;
   rankingMode: ListRankingMode;
-  color?: ListColor | null;
   canMutate: boolean;
   hasDraft: boolean;
   isBusy: boolean;
@@ -35,7 +33,6 @@ export function ItemDetailContent({
   rank,
   rankedCount,
   rankingMode,
-  color = null,
   canMutate,
   hasDraft,
   isBusy,
@@ -46,7 +43,7 @@ export function ItemDetailContent({
   onIconChange,
   listTitle,
 }: ItemDetailContentProps) {
-  const hue = useListHue(color);
+  const hue = useListHue();
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const imageFailed =
     item.image_url !== null && failedImageUrl === item.image_url;
@@ -68,7 +65,6 @@ export function ItemDetailContent({
     <BaseModalContent
       title={item.name}
       emoji={item.icon ?? undefined}
-      color={color}
       onTitlePress={actionsBlocked ? undefined : () => onEdit('name')}
       titleHint="Edit name"
       onEmojiPress={actionsBlocked ? undefined : () => setPickingIcon(true)}
@@ -146,7 +142,6 @@ export function ItemDetailContent({
                 rankingMode={rankingMode}
                 rating={item.rating}
                 rank={rank}
-                color={color}
                 size="lg"
               />
               {rank !== null ? (

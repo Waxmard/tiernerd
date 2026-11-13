@@ -7,7 +7,6 @@ import {
   Input,
   SectionLabel,
 } from '../design-system/components';
-import type { ListColor } from '../design-system/tokens/colors';
 import { useListHue } from '../providers/ThemeProvider';
 import {
   formatScore,
@@ -33,7 +32,6 @@ export interface AddItemContentProps {
   canEditScore?: boolean;
   autoScore?: number | null;
   scoreBounds?: ManualRatingBounds;
-  color?: ListColor | null;
   focusField?: ItemFormField | null;
   listTitle?: string;
   editActions?: {
@@ -62,14 +60,13 @@ export function AddItemContent({
   canEditScore = false,
   autoScore = null,
   scoreBounds,
-  color = null,
   focusField = 'name',
   listTitle,
   editActions,
 }: AddItemContentProps) {
   const nameRef = useRef<TextInputInstance>(null);
   const scoreRef = useRef<TextInputInstance>(null);
-  const hue = useListHue(color);
+  const hue = useListHue();
   const isEdit = mode === 'edit';
 
   useEffect(() => {
@@ -81,7 +78,6 @@ export function AddItemContent({
     <BaseModalContent
       title={isEdit ? 'Edit item' : 'Add item'}
       emoji={isEdit ? '✏️' : '🌱'}
-      color={color}
       isLoading={isBusy}
       submitText={isEdit ? 'Save' : 'Add item'}
       onClose={onClose}
@@ -172,20 +168,16 @@ export function AddItemContent({
             </View>
           </View>
         ) : null}
-        <View
-          className={`${PANEL_CLASS} flex-1 min-h-[160px]`}
-          style={hue.cardStyle}
-        >
+        <View className={PANEL_CLASS} style={hue.cardStyle}>
           <Input
             emoji="📝"
             autoFocus={focusField === 'description'}
-            label="Description (optional)"
+            label="Description"
             placeholder="Add a description"
             value={form.description}
             onChangeText={(description) => onFormChange({ description })}
             multiline
             editable={!isBusy}
-            fill
             containerClassName=""
             inputClassName="text-[16px]"
             style={MULTILINE_INPUT_STYLE}

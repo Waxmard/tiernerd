@@ -1,7 +1,6 @@
 import type React from 'react';
 import { Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { Emoji } from '../design-system/components';
-import { type ListColor, palette } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
@@ -10,7 +9,6 @@ import {
   rankMedal,
   splitScoreParts,
 } from '../services/rankingEngine';
-import { CHIP_CLASS } from './ImmersiveBoard';
 
 export const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
 
@@ -18,7 +16,6 @@ export interface ItemRankBadgeProps {
   rankingMode: ListRankingMode;
   rating: number | null;
   rank: number | null;
-  color?: ListColor | null;
   size?: 'md' | 'lg';
   className?: string;
 }
@@ -27,24 +24,17 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
   rankingMode,
   rating,
   rank,
-  color = null,
   size = 'md',
   className,
 }) => {
-  const { scheme, colors } = useTheme();
+  const { colors } = useTheme();
   if (rankingMode === 'score' ? rating === null : rank === null) {
     return null;
   }
 
-  const tintClass = color
-    ? CHIP_CLASS[color]
-    : 'bg-accent-tint dark:bg-accent-tint-dark';
-  const borderColor = color
-    ? palette.list[color][scheme].solid
-    : colors['accent-line'];
-  const primaryColor = color
-    ? palette.list[color][scheme]['on-tint']
-    : colors['accent-text'];
+  const tintClass = 'bg-accent-tint dark:bg-accent-tint-dark';
+  const borderColor = colors['accent-line'];
+  const primaryColor = colors['accent-text'];
   const secondaryColor = colors['ink-muted'];
   const sizeClass =
     size === 'lg'
@@ -111,7 +101,6 @@ interface ListDetailItemRowProps {
   item: Item;
   rank: number | null;
   rankingMode: ListRankingMode;
-  color?: ListColor | null;
   selected: boolean;
   disabled: boolean;
   onPress: (item: Item) => void;
@@ -125,7 +114,6 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
   rank,
   rankingMode,
-  color = null,
   selected,
   disabled,
   onPress,
@@ -218,7 +206,6 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
               rankingMode={rankingMode}
               rating={item.rating}
               rank={rank}
-              color={color}
             />
           </View>
         ) : null}

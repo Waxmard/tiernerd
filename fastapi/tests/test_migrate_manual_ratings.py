@@ -153,7 +153,7 @@ async def test_create_tables_drops_retired_list_cover_columns(
         connection.execute(
             text(
                 "CREATE TABLE lists (list_id VARCHAR(36) PRIMARY KEY, "
-                "cover VARCHAR(32), cover_photo VARCHAR(36))"
+                "cover VARCHAR(32), cover_photo VARCHAR(36), color VARCHAR(16))"
             )
         )
     engine = create_async_engine(f"sqlite+aiosqlite:///{path}")
@@ -167,6 +167,7 @@ async def test_create_tables_drops_retired_list_cover_columns(
     try:
         assert not _has_column(sync_engine, "lists", "cover")
         assert not _has_column(sync_engine, "lists", "cover_photo")
+        assert not _has_column(sync_engine, "lists", "color")
     finally:
         sync_engine.dispose()
 

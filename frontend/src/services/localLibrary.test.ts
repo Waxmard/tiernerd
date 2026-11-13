@@ -38,7 +38,6 @@ const listSummary = (overrides: Partial<ListSimple> = {}): ListSimple => ({
   list_id: LIST,
   title: 'Ranked',
   description: null,
-  color: null,
   icon: null,
   ranking_mode: 'score',
   created_at: '2026-01-01T00:00:00.000Z',
@@ -462,7 +461,6 @@ test('an icon-only list update keeps the other list fields', () => {
       listSummary({
         title: 'Games',
         description: 'Best of',
-        color: 'coral',
         icon: null,
       }),
     ],
@@ -474,7 +472,6 @@ test('an icon-only list update keeps the other list fields', () => {
   assert.equal(list.icon, '🎮');
   assert.equal(list.title, 'Games');
   assert.equal(list.description, 'Best of');
-  assert.equal(list.color, 'coral');
   assert.equal(list.updated_at, op.createdAt);
 });
 
@@ -574,7 +571,6 @@ test('reconcileListItems and reconcileLists apply pending create and delete ops'
       list_id: 'list-pending',
       title: 'Pending list',
       description: null,
-      color: null,
       icon: null,
       ranking_mode: 'score',
     },
@@ -588,7 +584,6 @@ test('reconcileListItems and reconcileLists apply pending create and delete ops'
       list_id: 'list-fallback',
       title: 'Fallback list',
       description: null,
-      color: null,
       icon: null,
       ranking_mode: 'rank',
     },

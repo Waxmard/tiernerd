@@ -1,29 +1,37 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 RankingMode = Literal["rank", "score"]
-ListColor = Literal["blue", "teal", "amber", "pink", "violet", "coral"]
 ListIcon = Annotated[str, Field(min_length=1, max_length=16)]
+
+
+def _drop_retired_color(data: Any) -> Any:
+    if isinstance(data, dict):
+        return {key: value for key, value in data.items() if key != "color"}
+    return data
 
 
 class ListCreate(BaseModel):
     list_id: UUID | None = None
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
-    color: ListColor | None = None
     icon: ListIcon | None = None
     ranking_mode: RankingMode = "score"
 
     model_config = ConfigDict(extra="forbid")
 
+    @model_validator(mode="before")
+    @classmethod
+    def _ignore_color(cls, data: Any) -> Any:
+        return _drop_retired_color(data)
+
 
 class ListBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
-    color: ListColor | None = None
     icon: ListIcon | None = None
     ranking_mode: RankingMode = "score"
 
@@ -37,11 +45,15 @@ class LegacyListUpdate(BaseModel):
 class ListUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = None
-    color: ListColor | None = None
     icon: ListIcon | None = None
     ranking_mode: RankingMode | None = None
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _ignore_color(cls, data: Any) -> Any:
+        return _drop_retired_color(data)
 
 
 class List(ListBase):

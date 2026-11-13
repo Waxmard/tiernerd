@@ -22,7 +22,6 @@ def build_list_simple_response(row: tuple[Any, ...]) -> dict[str, Any]:
         "user_id": list_obj.user_id,
         "title": list_obj.title,
         "description": list_obj.description,
-        "color": list_obj.color,
         "icon": list_obj.icon,
         "ranking_mode": list_obj.ranking_mode,
         "created_at": list_obj.created_at,

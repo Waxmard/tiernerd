@@ -1,8 +1,4 @@
-import {
-  LIST_COLORS,
-  type ListColor,
-  type ListIcon,
-} from '../design-system/tokens/colors.ts';
+import type { ListIcon } from '../design-system/tokens/colors.ts';
 import { ApiError } from './apiError.ts';
 import type { Item } from './itemsService.ts';
 import type { ListRankingMode, ListSimple } from './listsService.ts';
@@ -126,8 +122,6 @@ const isListSimple = (value: unknown): value is CachedListSimple => {
     typeof candidate.item_count === 'number' &&
     typeof candidate.updated_at === 'string' &&
     !Number.isNaN(Date.parse(candidate.updated_at)) &&
-    (candidate.color === null ||
-      LIST_COLORS.includes(candidate.color as ListColor)) &&
     (!('icon' in candidate) ||
       candidate.icon === null ||
       typeof candidate.icon === 'string') &&
@@ -165,7 +159,6 @@ export interface ListDetailDataState {
   itemsError: string | null;
   detailsTitle: string;
   listDescription: string | null;
-  listColor: ListColor | null;
   listIcon: ListIcon | null;
   rankingMode: ListRankingMode;
   metadataError: boolean;
@@ -205,7 +198,6 @@ export const createListDetailState = (
   itemsError: null,
   detailsTitle: routeTitle,
   listDescription: null,
-  listColor: null,
   listIcon: null,
   rankingMode: 'score',
   metadataError: false,
@@ -360,7 +352,6 @@ export const createInvalidatedReadState = (
   itemsError: errorText,
   detailsTitle: routeTitle,
   listDescription: null,
-  listColor: null,
   listIcon: null,
   rankingMode: 'score',
   metadataError: true,
@@ -394,7 +385,6 @@ export const applyCachedMetadataState = (
   metadata: {
     title: string;
     description: string | null;
-    color: ListColor | null;
     icon?: ListIcon | null;
     rankingMode: ListRankingMode;
   }
@@ -402,7 +392,6 @@ export const applyCachedMetadataState = (
   ...previous,
   detailsTitle: metadata.title,
   listDescription: metadata.description,
-  listColor: metadata.color,
   listIcon: metadata.icon ?? null,
   rankingMode: metadata.rankingMode,
   hasMetadataSnapshot: true,

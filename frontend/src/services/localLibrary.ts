@@ -167,7 +167,6 @@ export function reconcileLists(
         list_id: op.listId,
         title: op.list.title,
         description: op.list.description ?? null,
-        color: op.list.color ?? null,
         icon: op.list.icon ?? null,
         ranking_mode: op.list.ranking_mode ?? 'score',
         created_at: op.createdAt,
