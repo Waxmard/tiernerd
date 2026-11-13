@@ -153,9 +153,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 
   const landItemIdRef = useRef<string | null>(null);
   const scrollOnLandRef = useRef(false);
-  const [pulse, setPulse] = useState<{ itemId: string; at: number } | null>(
-    null
-  );
   const handleWorkspaceItemsChanged = useCallback(
     async (item?: Item, created = false) => {
       const identity = screenIdentity;
@@ -200,7 +197,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     landItemIdRef.current = null;
     if (scrollOnLandRef.current) view.scrollToItem(itemId, true);
     scrollOnLandRef.current = false;
-    setPulse({ itemId, at: Date.now() });
   }, [sheetOpen, view]);
   closingItemIdRef.current =
     workspace.mode === 'ranking'
@@ -547,7 +543,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       rankingMode={rankingMode}
       color={listColor}
       disabled={isDeletingList || workspace.isBusy}
-      pulseAt={pulse?.itemId === item.item_id ? pulse.at : 0}
       onPress={(selected) => void handleItemPress(selected)}
       onIconPress={
         canMutate && workspace.mode === 'closed'
