@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/Waxmard/tiernerd/compare/v0.14.0...v0.15.0) (2026-11-13)
+
+
+### Features
+
+* suggest and auto-fill list and item emoji with AI ([#136](https://github.com/Waxmard/tiernerd/issues/136)) ([0484153](https://github.com/Waxmard/tiernerd/commit/048415354e536e7ca1da04fdfd03980e557d2683))
+
 ## [0.14.0](https://github.com/Waxmard/tiernerd/compare/v0.13.0...v0.14.0) (2026-11-12)
 
 
