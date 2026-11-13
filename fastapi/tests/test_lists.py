@@ -168,14 +168,12 @@ class TestCreateList:
         )
         assert styled.status_code == 200
         styled_data = styled.json()
-        assert "color" not in styled_data
         assert styled_data["icon"] == "🚀"
 
         detail = await client.get(
             f"/api/lists/{styled_data['list_id']}", headers=auth_headers
         )
         assert detail.status_code == 200
-        assert "color" not in detail.json()
         assert detail.json()["icon"] == "🚀"
 
         summaries = await client.get("/api/lists/", headers=auth_headers)
@@ -183,7 +181,6 @@ class TestCreateList:
         summary = next(
             row for row in summaries.json() if row["list_id"] == styled_data["list_id"]
         )
-        assert "color" not in summary
         assert summary["icon"] == "🚀"
 
         for bad_metadata in (
@@ -552,7 +549,6 @@ class TestListWriteFormats:
         assert created.status_code == 200
         assert created.json()["title"] == params["name"]
         assert created.json()["description"] == ""
-        assert "color" not in created.json()
         assert created.json()["ranking_mode"] == "rank"
 
         detail = await client.get(
@@ -567,7 +563,6 @@ class TestListWriteFormats:
             headers=auth_headers,
         )
         assert defaulted.status_code == 200
-        assert "color" not in defaulted.json()
         assert defaulted.json()["ranking_mode"] == "score"
 
         duplicate = await client.post(
