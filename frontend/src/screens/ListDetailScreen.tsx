@@ -152,11 +152,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   });
 
   const landItemIdRef = useRef<string | null>(null);
+  const scrollOnLandRef = useRef(false);
   const [pulse, setPulse] = useState<{ itemId: string; at: number } | null>(
     null
   );
   const handleWorkspaceItemsChanged = useCallback(
-    async (item?: Item) => {
+    async (item?: Item, created = false) => {
       const identity = screenIdentity;
       const refreshedItems = await refreshAfterMutation();
       if (identityRef.current !== identity) return;
@@ -171,6 +172,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       view.clearRestoredSelection();
       view.clearRestoredOffset();
       landItemIdRef.current = item.item_id;
+      if (created) scrollOnLandRef.current = true;
       setSelectedItemId(item.item_id);
       setDismissedDetailsItemId(item.item_id);
     },
@@ -196,7 +198,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     const itemId = landItemIdRef.current;
     if (sheetOpen || !itemId) return;
     landItemIdRef.current = null;
-    view.scrollToItem(itemId, true);
+    if (scrollOnLandRef.current) view.scrollToItem(itemId, true);
+    scrollOnLandRef.current = false;
     setPulse({ itemId, at: Date.now() });
   }, [sheetOpen, view]);
   closingItemIdRef.current =

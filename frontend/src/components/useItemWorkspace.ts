@@ -514,7 +514,7 @@ export function useItemWorkspace({
         next = firstRanked;
       }
       updateWorkspace({ item: next, fieldErrors: {} });
-      await optionsRef.current.onItemsChanged(next);
+      await optionsRef.current.onItemsChanged(next, true);
       if (peers.length === 0) {
         closeWorkspace();
         return;

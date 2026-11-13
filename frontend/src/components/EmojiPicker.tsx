@@ -72,58 +72,59 @@ function EmojiPickerContent({
         ) : undefined
       }
     >
-      <Input
-        emoji="🔍"
-        label="Search emoji"
-        placeholder="Search by name"
-        value={query}
-        onChangeText={setQuery}
-        maxLength={40}
-        autoCapitalize="none"
-        autoCorrect={false}
-        containerClassName="mb-2"
-      />
-      {suggestFor && suggestFor.name.trim() !== '' && token ? (
+      <View className="flex-row items-center gap-2 mb-2">
+        <Input
+          accessibilityLabel="Search emoji"
+          placeholder="Search emoji"
+          value={query}
+          onChangeText={setQuery}
+          maxLength={40}
+          autoCapitalize="none"
+          autoCorrect={false}
+          containerClassName="flex-1"
+        />
+        {suggestFor &&
+        suggestFor.name.trim() !== '' &&
+        token &&
         suggestions === null ? (
-          <>
-            <Button
-              title="✨ Suggest"
-              variant="text"
-              size="small"
-              loading={suggesting}
-              onPress={() => void suggest(suggestFor, token)}
-            />
-            {suggestError ? (
-              <Text
-                accessibilityLiveRegion="polite"
-                className="text-body-small text-ink-muted dark:text-ink-muted-dark mb-2"
-              >
-                {suggestError}
-              </Text>
-            ) : null}
-          </>
-        ) : (
-          <View className="flex-row items-center gap-2 mb-2">
-            <Emoji symbol="✨" size={18} />
-            {suggestions.map((emoji) => (
-              <Pressable
-                key={emoji}
-                accessibilityRole="button"
-                accessibilityLabel={`Suggested emoji ${emoji}`}
-                accessibilityState={{ selected: emoji === value }}
-                onPress={() => onSelect(emoji)}
-                className={[
-                  'w-12 h-12 items-center justify-center rounded-[10px] border border-control dark:border-control-dark',
-                  emoji === value
-                    ? 'bg-accent-tint dark:bg-accent-tint-dark'
-                    : 'bg-surface dark:bg-surface-dark',
-                ].join(' ')}
-              >
-                <Emoji symbol={emoji} size={28} />
-              </Pressable>
-            ))}
-          </View>
-        )
+          <Button
+            title="✨ Suggest"
+            variant="secondary"
+            size="large"
+            loading={suggesting}
+            onPress={() => void suggest(suggestFor, token)}
+          />
+        ) : null}
+      </View>
+      {suggestError ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          className="text-body-small text-ink-muted dark:text-ink-muted-dark mb-2"
+        >
+          {suggestError}
+        </Text>
+      ) : null}
+      {suggestions ? (
+        <View className="flex-row items-center gap-2 mb-2">
+          <Emoji symbol="✨" size={18} />
+          {suggestions.map((emoji) => (
+            <Pressable
+              key={emoji}
+              accessibilityRole="button"
+              accessibilityLabel={`Suggested emoji ${emoji}`}
+              accessibilityState={{ selected: emoji === value }}
+              onPress={() => onSelect(emoji)}
+              className={[
+                'w-12 h-12 items-center justify-center rounded-[10px] border border-control dark:border-control-dark',
+                emoji === value
+                  ? 'bg-accent-tint dark:bg-accent-tint-dark'
+                  : 'bg-surface dark:bg-surface-dark',
+              ].join(' ')}
+            >
+              <Emoji symbol={emoji} size={28} />
+            </Pressable>
+          ))}
+        </View>
       ) : null}
       {searching ? null : (
         <ScrollView

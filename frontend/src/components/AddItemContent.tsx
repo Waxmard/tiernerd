@@ -110,7 +110,7 @@ export function AddItemContent({
           />
         </View>
         <View className={`${PANEL_CLASS} gap-2`} style={hue.cardStyle}>
-          <SectionLabel emoji="😀" label="Emoji (optional)" />
+          <SectionLabel emoji="😀" label="Emoji" />
           <EmojiPickerField
             label="Item emoji"
             value={form.icon}
