@@ -45,7 +45,7 @@ export interface AddItemContentProps {
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
 
-const PANEL_CLASS = 'rounded-2xl border-2 p-3';
+const PANEL_CLASS = 'rounded-2xl p-3';
 
 export function AddItemContent({
   mode,

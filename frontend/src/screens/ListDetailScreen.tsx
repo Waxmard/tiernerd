@@ -547,7 +547,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const renderItem = ({ item }: ListRenderItemInfo<Item>) => (
     <ListDetailItemRow
       item={item}
-      selected={selectedItemId === item.item_id}
       rank={rankByItemId.get(item.item_id) ?? null}
       rankingMode={rankingMode}
       disabled={isDeletingList || workspace.isBusy}

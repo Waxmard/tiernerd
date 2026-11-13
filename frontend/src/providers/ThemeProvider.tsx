@@ -122,7 +122,6 @@ export function listHue(colors: ThemeColors) {
     cardStyle: {
       backgroundColor: tint,
       backgroundImage: `linear-gradient(135deg, ${tint} 0%, ${colors.surface} 100%)`,
-      borderColor: solid,
     },
     washStyle: {
       backgroundImage: `linear-gradient(180deg, ${tint} 0%, ${colors.surface} 100%)`,

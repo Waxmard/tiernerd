@@ -16,7 +16,7 @@ import {
   EmojiPop,
   useEmojiArrival,
 } from '../design-system/components';
-import { useListHue, useTheme } from '../providers/ThemeProvider';
+import { useListHue } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
 import type { ListRankingMode } from '../services/listsService';
 import {
@@ -61,7 +61,6 @@ function ComparisonChoice({
   onPress,
   children,
 }: ComparisonChoiceProps) {
-  const { colors } = useTheme();
   const hue = useListHue();
   const celebrateIcon = useEmojiArrival(Boolean(item.icon));
   return (
@@ -72,12 +71,10 @@ function ComparisonChoice({
       accessibilityState={{ disabled: isBusy }}
       disabled={isBusy}
       onPress={onPress}
-      className="flex-1 min-h-[120px] items-center justify-center gap-2 rounded-2xl border-2 px-4 py-4"
+      className="flex-1 min-h-[120px] items-center justify-center gap-2 rounded-2xl px-4 py-4"
       style={({ pressed }) => [
         hue.cardStyle,
-        pressed && !isBusy
-          ? { transform: [{ scale: 0.97 }], borderColor: colors['accent-text'] }
-          : null,
+        pressed && !isBusy ? { transform: [{ scale: 0.97 }] } : null,
       ]}
     >
       {item.icon ? (

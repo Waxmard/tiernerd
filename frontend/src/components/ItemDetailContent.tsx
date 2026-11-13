@@ -136,7 +136,7 @@ export function ItemDetailContent({
               ? () => onEdit('manualRating')
               : undefined
           }
-          className="rounded-2xl border-2 p-4 gap-2"
+          className="rounded-2xl p-4 gap-2"
           style={({ pressed }) =>
             pressed && scoreEditable && !actionsBlocked
               ? [hue.cardStyle, { opacity: 0.7 }]

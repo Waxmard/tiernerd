@@ -39,7 +39,6 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
   }
 
   const tintClass = 'bg-accent-tint dark:bg-accent-tint-dark';
-  const borderColor = colors['accent-line'];
   const primaryColor = colors['accent-text'];
   const secondaryColor = colors['ink-muted'];
   const sizeClass =
@@ -58,10 +57,9 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
 
   return (
     <View
-      style={{ borderColor }}
       className={[
         sizeClass,
-        'border-[1.5px] items-center justify-center shrink-0',
+        'items-center justify-center shrink-0',
         tintClass,
         className,
       ]
@@ -107,20 +105,18 @@ interface ListDetailItemRowProps {
   item: Item;
   rank: number | null;
   rankingMode: ListRankingMode;
-  selected: boolean;
   disabled: boolean;
   onPress: (item: Item) => void;
   onIconPress?: (item: Item) => void;
 }
 
 const ROW_CLASS =
-  'flex-row items-center border-2 px-4 py-3 mb-2 min-h-16 rounded-2xl bg-surface dark:bg-surface-dark';
+  'flex-row items-center px-4 py-3 mb-2 min-h-16 rounded-2xl bg-surface dark:bg-surface-dark';
 
 export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
   rank,
   rankingMode,
-  selected,
   disabled,
   onPress,
   onIconPress,
@@ -147,7 +143,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       accessibilityRole="button"
       accessibilityLabel={accessibleDescription}
       accessibilityHint="Opens the item"
-      accessibilityState={{ disabled, selected }}
+      accessibilityState={{ disabled }}
       accessibilityActions={
         item.icon && onIconPress
           ? [{ name: 'changeIcon', label: 'Change emoji' }]
@@ -160,14 +156,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
       onPress={() => onPress(item)}
       activeOpacity={0.7}
     >
-      <View
-        className={[
-          ROW_CLASS,
-          selected
-            ? 'border-accent-text dark:border-accent-text-dark'
-            : 'border-transparent',
-        ].join(' ')}
-      >
+      <View className={ROW_CLASS}>
         {item.icon ? (
           <EmojiPop
             celebrate={celebrateIcon}
