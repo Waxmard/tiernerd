@@ -131,6 +131,28 @@ export function useItemWorkspace({
       .map((item) => item.item_id);
   }, []);
 
+  const removeItem = useCallback(
+    (activeUserId: string, itemId: string) =>
+      mutate(
+        {
+          id: newId(),
+          createdAt: new Date().toISOString(),
+          kind: 'item.delete',
+          listId: optionsRef.current.listId,
+          itemId,
+        },
+        {
+          applyLocal: () =>
+            localLibrary.applyLocalItemDelete(
+              activeUserId,
+              optionsRef.current.listId,
+              itemId
+            ),
+        }
+      ),
+    [mutate]
+  );
+
   const openAdd = useCallback(() => {
     if (busyRef.current) return;
     initialFormRef.current = { ...EMPTY_FORM };
@@ -299,28 +321,39 @@ export function useItemWorkspace({
   }, [updateWorkspace]);
 
   const cancelRanking = useCallback(async () => {
-    if (busyRef.current) return false;
     const current = workspaceRef.current;
     const activeUserId = optionsRef.current.userId;
-    if (current.mode === 'ranking' && current.ranking) {
-      if (!beginBusy()) return false;
-      try {
-        if (current.ranking.answers.length > 0) {
-          const confirmed = await confirmDestructive(
-            'Cancel ranking?',
-            'This item will stay unranked.',
-            'Cancel ranking'
-          );
-          if (!confirmed) return false;
-        }
-      } finally {
-        setBusy(false);
-      }
+    const ranking = current.mode === 'ranking' ? current.ranking : null;
+    if (!beginBusy()) return false;
+    try {
+      const item = ranking
+        ? (optionsRef.current.items.find(
+            (entry) => entry.item_id === ranking.itemId
+          ) ?? current.item)
+        : null;
+      let discarded = false;
+      if (item && item.position === null && activeUserId) {
+        const outcome = await removeItem(activeUserId, item.item_id);
+        if (outcome.status === 'rejected') notify(outcome.message);
+        discarded = true;
+      } else if (
+        ranking &&
+        ranking.answers.length > 0 &&
+        !(await confirmDestructive(
+          'Cancel ranking?',
+          'This item will keep its current rank.',
+          'Cancel ranking'
+        ))
+      )
+        return false;
+      if (activeUserId) await clearDraft(activeUserId);
+      closeWorkspace();
+      if (discarded) await optionsRef.current.onItemsChanged();
+      return true;
+    } finally {
+      setBusy(false);
     }
-    if (activeUserId) await clearDraft(activeUserId);
-    closeWorkspace();
-    return true;
-  }, [beginBusy, closeWorkspace, setBusy]);
+  }, [beginBusy, closeWorkspace, notify, removeItem, setBusy]);
 
   const submitMetadata = useCallback(async () => {
     if (busyRef.current) return;
@@ -631,23 +664,7 @@ export function useItemWorkspace({
         if (!confirmed) return;
         const draft = await loadDraft(activeUserId);
         if (draft?.itemId === item.item_id) await clearDraft(activeUserId);
-        const outcome = await mutate(
-          {
-            id: newId(),
-            createdAt: new Date().toISOString(),
-            kind: 'item.delete',
-            listId: optionsRef.current.listId,
-            itemId: item.item_id,
-          },
-          {
-            applyLocal: () =>
-              localLibrary.applyLocalItemDelete(
-                activeUserId,
-                optionsRef.current.listId,
-                item.item_id
-              ),
-          }
-        );
+        const outcome = await removeItem(activeUserId, item.item_id);
         if (outcome.status === 'rejected') {
           notify(outcome.message);
           return;
@@ -660,7 +677,7 @@ export function useItemWorkspace({
         setBusy(false);
       }
     },
-    [beginBusy, closeWorkspace, mutate, notify, setBusy]
+    [beginBusy, closeWorkspace, notify, removeItem, setBusy]
   );
 
   const pauseRanking = useCallback(async () => {
@@ -688,10 +705,8 @@ export function useItemWorkspace({
       closeWorkspace();
       return true;
     }
-    if (current.mode === 'ranking' && current.ranking) {
-      if (isDecided(current.ranking)) return await commit(current.ranking);
-      return await cancelRanking();
-    }
+    if (current.mode === 'ranking' && current.ranking)
+      return await pauseRanking();
     if (current.mode === 'closed') {
       if (current.item) closeWorkspace();
       return true;
@@ -714,7 +729,7 @@ export function useItemWorkspace({
     }
     closeWorkspace();
     return true;
-  }, [beginBusy, cancelRanking, closeWorkspace, setBusy, commit]);
+  }, [beginBusy, closeWorkspace, pauseRanking, setBusy]);
 
   const heldItem = workspace.item;
   const currentItem = heldItem
