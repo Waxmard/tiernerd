@@ -14,7 +14,7 @@ from app.core.constants import (
     LIST_NOT_FOUND_ERROR,
 )
 from app.db.models import List as ListModel
-from app.services import emoji_suggestion
+from app.services import emoji_suggestion, gemini, item_suggestion
 from app.settings import get_settings
 
 
@@ -169,27 +169,29 @@ class _FakeResponse:
         return {"candidates": [{"content": {"parts": [{"text": self._text}]}}]}
 
 
+def _patch_gemini(monkeypatch: MonkeyPatch, text: str) -> list[tuple[str, dict]]:
+    calls: list[tuple[str, dict]] = []
+
+    class FakeSession:
+        def __init__(self, credentials: object):
+            pass
+
+        def post(self, url: str, **kwargs: Any) -> _FakeResponse:
+            calls.append((url, kwargs))
+            return _FakeResponse(text)
+
+    gemini._session.cache_clear()
+    monkeypatch.setattr(get_settings(), "AI_PROJECT", "test-project")
+    monkeypatch.setattr(gemini.google.auth, "default", lambda scopes: (object(), None))
+    monkeypatch.setattr(gemini, "AuthorizedSession", FakeSession)
+    return calls
+
+
 class TestSuggestEmojiService:
     @staticmethod
     def _patch(monkeypatch: MonkeyPatch, text: str) -> list[tuple[str, dict]]:
-        calls: list[tuple[str, dict]] = []
-
-        class FakeSession:
-            def __init__(self, credentials: object):
-                pass
-
-            def post(self, url: str, **kwargs: Any) -> _FakeResponse:
-                calls.append((url, kwargs))
-                return _FakeResponse(text)
-
         emoji_suggestion.suggest_emojis.cache_clear()
-        emoji_suggestion._session.cache_clear()
-        monkeypatch.setattr(get_settings(), "AI_PROJECT", "test-project")
-        monkeypatch.setattr(
-            emoji_suggestion.google.auth, "default", lambda scopes: (object(), None)
-        )
-        monkeypatch.setattr(emoji_suggestion, "AuthorizedSession", FakeSession)
-        return calls
+        return _patch_gemini(monkeypatch, text)
 
     def test_returns_parsed_emojis(self, monkeypatch: MonkeyPatch):
         calls = self._patch(monkeypatch, " 🍕 🗽 🤤\n")
@@ -252,3 +254,100 @@ class TestSuggestEmojiService:
         emoji_suggestion.suggest_emojis("pizza", "list")
         emoji_suggestion.suggest_emojis("pizza", "list")
         assert len(calls) == 1
+
+
+class TestSuggestNextItemService:
+    def test_returns_first_line_and_sends_existing_names(
+        self, monkeypatch: MonkeyPatch
+    ):
+        calls = _patch_gemini(monkeypatch, '"WALL-E"\nIt is a classic.')
+        assert (
+            item_suggestion.suggest_next_item("Pixar movies", "", ["Up", "Coco"])
+            == "WALL-E"
+        )
+        body = calls[0][1]["json"]
+        assert (
+            body["contents"][0]["parts"][0]["text"]
+            == "List: Pixar movies\nAlready in the list:\n- Up\n- Coco"
+        )
+
+    @pytest.mark.parametrize(
+        ("text", "existing"),
+        [("", []), ("x" * 61, []), ("up", ["Up"])],
+    )
+    def test_rejects_unusable_replies(
+        self, monkeypatch: MonkeyPatch, text: str, existing: list[str]
+    ):
+        _patch_gemini(monkeypatch, text)
+        with pytest.raises(ValueError):
+            item_suggestion.suggest_next_item("Pixar movies", "", existing)
+
+
+class TestSuggestNextItemEndpoint:
+    @staticmethod
+    def _configure(monkeypatch: MonkeyPatch, fake: Any) -> None:
+        monkeypatch.setattr(get_settings(), "AI_PROJECT", "test-project")
+        monkeypatch.setattr(ai_endpoint, "suggest_next_item", fake)
+
+    async def test_returns_suggestion_excluding_known_names(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_db: AsyncSession,
+        test_list: ListModel,
+        item_factory: Any,
+        monkeypatch: MonkeyPatch,
+    ):
+        received: dict[str, Any] = {}
+
+        def fake(list_title: str, description: str, existing: list[str]) -> str:
+            received.update(list_title=list_title, existing=existing)
+            return "Ramen"
+
+        self._configure(monkeypatch, fake)
+        test_db.add(item_factory(name="Pizza"))
+        await test_db.commit()
+
+        response = await client.post(
+            f"/api/ai/lists/{test_list.list_id}/next-item",
+            json={"exclude": ["Sushi"]},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json() == {"name": "Ramen"}
+        assert received == {"list_title": "Test List", "existing": ["Pizza", "Sushi"]}
+
+    async def test_rejects_another_users_list(
+        self,
+        client: AsyncClient,
+        auth_headers_user2: dict,
+        test_list: ListModel,
+        monkeypatch: MonkeyPatch,
+    ):
+        self._configure(monkeypatch, lambda *args: "Ramen")
+        response = await client.post(
+            f"/api/ai/lists/{test_list.list_id}/next-item",
+            json={"exclude": []},
+            headers=auth_headers_user2,
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == LIST_NOT_FOUND_ERROR
+
+    async def test_failure_maps_to_unavailable(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_list: ListModel,
+        monkeypatch: MonkeyPatch,
+    ):
+        def boom(*args: Any) -> str:
+            raise ValueError("no usable item")
+
+        self._configure(monkeypatch, boom)
+        response = await client.post(
+            f"/api/ai/lists/{test_list.list_id}/next-item",
+            json={"exclude": []},
+            headers=auth_headers,
+        )
+        assert response.status_code == 503
+        assert response.json()["detail"] == AI_UNAVAILABLE_ERROR

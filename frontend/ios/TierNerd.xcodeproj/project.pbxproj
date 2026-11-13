@@ -7,33 +7,33 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		06C4C48BAB4AEFECC2163830 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7313EE060E9C5DEF34F923C6 /* PrivacyInfo.xcprivacy */; };
-		08AA4F4C36FB4B14BB06A0C7 /* BricolageGrotesque_600SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = ACE0C5031C0347C59144081E /* BricolageGrotesque_600SemiBold.ttf */; };
+		0FDCDF56B9574D5488BABE39 /* BricolageGrotesque_600SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3656F039E8C34340B9A47046 /* BricolageGrotesque_600SemiBold.ttf */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		252614FDBCC34D719B9A8A94 /* BricolageGrotesque_700Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5D72D8816FC74E06A3FC161C /* BricolageGrotesque_700Bold.ttf */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		4144D5ED091CB0E7129D8DD3 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBBF75EA40B0B0CD7BC0CA1F /* ExpoModulesProvider.swift */; };
+		8BE1AE8978069A1C49BF7F2C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D9DD9060726D1ADEA1313CAB /* PrivacyInfo.xcprivacy */; };
+		9CA9F271C93E415499C74C1D /* Newsreader_400Regular_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 49B4CE71E01746CF8EE17DC7 /* Newsreader_400Regular_Italic.ttf */; };
+		A591444A6CFC84D2C2EAD35A /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A1851DA213A54ABC2FA60D /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		DDA32D2EAE75460E8AD12ADA /* BricolageGrotesque_700Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D969A1BAC261447499D97763 /* BricolageGrotesque_700Bold.ttf */; };
-		E3194C97610B00D8D0678B99 /* libPods-TierNerd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 33B3606119F7131E1231F1E4 /* libPods-TierNerd.a */; };
+		C6A2827B24AFFAC9025F9760 /* libPods-TierNerd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5B1FDD0C64A2C3B870C9F0D0 /* libPods-TierNerd.a */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		F11748442D0307B40044C1D9 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748432D0307B40044C1D9 /* SceneDelegate.swift */; };
-		F7029B7496BF456987B1F35E /* Newsreader_400Regular_Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 26D5FADFDBFE4A368DAA1BDA /* Newsreader_400Regular_Italic.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		046EEA15B0927542E68CC27E /* Pods-TierNerd.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TierNerd.release.xcconfig"; path = "Target Support Files/Pods-TierNerd/Pods-TierNerd.release.xcconfig"; sourceTree = "<group>"; };
+		078282BFBF6A5589322750A0 /* Pods-TierNerd.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TierNerd.release.xcconfig"; path = "Target Support Files/Pods-TierNerd/Pods-TierNerd.release.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* TierNerd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TierNerd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = TierNerd/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = TierNerd/Info.plist; sourceTree = "<group>"; };
-		26D5FADFDBFE4A368DAA1BDA /* Newsreader_400Regular_Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Newsreader_400Regular_Italic.ttf; path = "../node_modules/@expo-google-fonts/newsreader/400Regular_Italic/Newsreader_400Regular_Italic.ttf"; sourceTree = "<group>"; };
-		33B3606119F7131E1231F1E4 /* libPods-TierNerd.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TierNerd.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		7313EE060E9C5DEF34F923C6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = TierNerd/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		82AB5549D29F269C3BD166D5 /* Pods-TierNerd.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TierNerd.debug.xcconfig"; path = "Target Support Files/Pods-TierNerd/Pods-TierNerd.debug.xcconfig"; sourceTree = "<group>"; };
+		3656F039E8C34340B9A47046 /* BricolageGrotesque_600SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BricolageGrotesque_600SemiBold.ttf; path = "../node_modules/@expo-google-fonts/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf"; sourceTree = "<group>"; };
+		49B4CE71E01746CF8EE17DC7 /* Newsreader_400Regular_Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Newsreader_400Regular_Italic.ttf; path = "../node_modules/@expo-google-fonts/newsreader/400Regular_Italic/Newsreader_400Regular_Italic.ttf"; sourceTree = "<group>"; };
+		4DF664665C22842984F74DB7 /* Pods-TierNerd.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TierNerd.debug.xcconfig"; path = "Target Support Files/Pods-TierNerd/Pods-TierNerd.debug.xcconfig"; sourceTree = "<group>"; };
+		5B1FDD0C64A2C3B870C9F0D0 /* libPods-TierNerd.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TierNerd.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5D72D8816FC74E06A3FC161C /* BricolageGrotesque_700Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BricolageGrotesque_700Bold.ttf; path = "../node_modules/@expo-google-fonts/bricolage-grotesque/700Bold/BricolageGrotesque_700Bold.ttf"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = TierNerd/SplashScreen.storyboard; sourceTree = "<group>"; };
-		ACE0C5031C0347C59144081E /* BricolageGrotesque_600SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BricolageGrotesque_600SemiBold.ttf; path = "../node_modules/@expo-google-fonts/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		CBBF75EA40B0B0CD7BC0CA1F /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-TierNerd/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		D969A1BAC261447499D97763 /* BricolageGrotesque_700Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BricolageGrotesque_700Bold.ttf; path = "../node_modules/@expo-google-fonts/bricolage-grotesque/700Bold/BricolageGrotesque_700Bold.ttf"; sourceTree = "<group>"; };
+		D4A1851DA213A54ABC2FA60D /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-TierNerd/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		D9DD9060726D1ADEA1313CAB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = TierNerd/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = TierNerd/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748432D0307B40044C1D9 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = TierNerd/SceneDelegate.swift; sourceTree = "<group>"; };
@@ -45,24 +45,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E3194C97610B00D8D0678B99 /* libPods-TierNerd.a in Frameworks */,
+				C6A2827B24AFFAC9025F9760 /* libPods-TierNerd.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		03C38B1E049640598858389B /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				ACE0C5031C0347C59144081E /* BricolageGrotesque_600SemiBold.ttf */,
-				D969A1BAC261447499D97763 /* BricolageGrotesque_700Bold.ttf */,
-				26D5FADFDBFE4A368DAA1BDA /* Newsreader_400Regular_Italic.ttf */,
-			);
-			name = Resources;
-			path = "";
-			sourceTree = "<group>";
-		};
 		13B07FAE1A68108700A75B9A /* TierNerd */ = {
 			isa = PBXGroup;
 			children = (
@@ -73,26 +62,37 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				7313EE060E9C5DEF34F923C6 /* PrivacyInfo.xcprivacy */,
+				D9DD9060726D1ADEA1313CAB /* PrivacyInfo.xcprivacy */,
 			);
 			name = TierNerd;
+			sourceTree = "<group>";
+		};
+		157280D333B4B9550015122F /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				B9E352ADA73A8DF29048319A /* TierNerd */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		1FFFA298A9954826A6BED666 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				3656F039E8C34340B9A47046 /* BricolageGrotesque_600SemiBold.ttf */,
+				5D72D8816FC74E06A3FC161C /* BricolageGrotesque_700Bold.ttf */,
+				49B4CE71E01746CF8EE17DC7 /* Newsreader_400Regular_Italic.ttf */,
+			);
+			name = Resources;
+			path = "";
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				33B3606119F7131E1231F1E4 /* libPods-TierNerd.a */,
+				5B1FDD0C64A2C3B870C9F0D0 /* libPods-TierNerd.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		42F9A83A1B5E92B8EE2719C5 /* TierNerd */ = {
-			isa = PBXGroup;
-			children = (
-				CBBF75EA40B0B0CD7BC0CA1F /* ExpoModulesProvider.swift */,
-			);
-			name = TierNerd;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -109,9 +109,9 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				03C38B1E049640598858389B /* Resources */,
-				B3F4E3FCA7BAD2AA0E827E62 /* Pods */,
-				B41731C1E311A19298A04B88 /* ExpoModulesProviders */,
+				1FFFA298A9954826A6BED666 /* Resources */,
+				D3C4DD95034272F032C02ED8 /* Pods */,
+				157280D333B4B9550015122F /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -126,22 +126,12 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		B3F4E3FCA7BAD2AA0E827E62 /* Pods */ = {
+		B9E352ADA73A8DF29048319A /* TierNerd */ = {
 			isa = PBXGroup;
 			children = (
-				82AB5549D29F269C3BD166D5 /* Pods-TierNerd.debug.xcconfig */,
-				046EEA15B0927542E68CC27E /* Pods-TierNerd.release.xcconfig */,
+				D4A1851DA213A54ABC2FA60D /* ExpoModulesProvider.swift */,
 			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		B41731C1E311A19298A04B88 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				42F9A83A1B5E92B8EE2719C5 /* TierNerd */,
-			);
-			name = ExpoModulesProviders;
+			name = TierNerd;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -153,6 +143,16 @@
 			path = TierNerd/Supporting;
 			sourceTree = "<group>";
 		};
+		D3C4DD95034272F032C02ED8 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				4DF664665C22842984F74DB7 /* Pods-TierNerd.debug.xcconfig */,
+				078282BFBF6A5589322750A0 /* Pods-TierNerd.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -161,14 +161,14 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "TierNerd" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				A0CCA210D2D9FA31D7900319 /* [Expo] Configure project */,
+				83436430A8146113EEC05DE2 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				8A7C449FBD8C445797F39B01 /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
-				DD095CECEAFDCDD9113345C0 /* [CP] Embed Pods Frameworks */,
+				C630166C965C47AF9F90DF1D /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
+				F2C9042861E8DD24AF56C640 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -218,10 +218,10 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				08AA4F4C36FB4B14BB06A0C7 /* BricolageGrotesque_600SemiBold.ttf in Resources */,
-				DDA32D2EAE75460E8AD12ADA /* BricolageGrotesque_700Bold.ttf in Resources */,
-				F7029B7496BF456987B1F35E /* Newsreader_400Regular_Italic.ttf in Resources */,
-				06C4C48BAB4AEFECC2163830 /* PrivacyInfo.xcprivacy in Resources */,
+				0FDCDF56B9574D5488BABE39 /* BricolageGrotesque_600SemiBold.ttf in Resources */,
+				252614FDBCC34D719B9A8A94 /* BricolageGrotesque_700Bold.ttf in Resources */,
+				9CA9F271C93E415499C74C1D /* Newsreader_400Regular_Italic.ttf in Resources */,
+				8BE1AE8978069A1C49BF7F2C /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -315,21 +315,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TierNerd/Pods-TierNerd-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		8A7C449FBD8C445797F39B01 /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[Expo Dev Launcher] Strip Local Network Keys for Release";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Strip dev-launcher-specific local network permission keys from release builds.\n# This only removes _expo._tcp Bonjour services and the dev-launcher usage description.\n# Other Bonjour services and custom descriptions are preserved for production use.\n#\n# Detect debug builds via the DEBUG compile condition rather than the configuration name,\n# so custom debug configurations (e.g. \"Dev\", \"Staging\") that define DEBUG keep the keys.\ncase \" $SWIFT_ACTIVE_COMPILATION_CONDITIONS \" in\n  *\" DEBUG \"*) IS_DEBUG_BUILD=1 ;;\n  *) IS_DEBUG_BUILD=0 ;;\nesac\n\nif [ \"$IS_DEBUG_BUILD\" != \"1\" ]; then\n  PLIST_PATH=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n  if [ -f \"$PLIST_PATH\" ]; then\n    # Check if NSBonjourServices exists\n    if /usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" >/dev/null 2>&1; then\n      # Get the count of services\n      COUNT=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null | grep \"^    \" | wc -l | tr -d ' ')\n\n      # Remove _expo._tcp\n      for ((i=COUNT-1; i>=0; i--)); do\n        SERVICE=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices:$i\" \"$PLIST_PATH\" 2>/dev/null || echo \"\")\n        if echo \"$SERVICE\" | grep -q \"_expo._tcp\"; then\n          /usr/libexec/PlistBuddy -c \"Delete :NSBonjourServices:$i\" \"$PLIST_PATH\" 2>/dev/null || true\n        fi\n      done\n\n      # If the array is now empty, remove it entirely\n      REMAINING=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null | grep \"^    \" | wc -l | tr -d ' ')\n      if [ \"$REMAINING\" -eq \"0\" ]; then\n        /usr/libexec/PlistBuddy -c \"Delete :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null || true\n      fi\n    fi\n\n    # Only delete the description if it matches the dev-launcher default text\n    DESC=$(/usr/libexec/PlistBuddy -c \"Print :NSLocalNetworkUsageDescription\" \"$PLIST_PATH\" 2>/dev/null || echo \"\")\n    if echo \"$DESC\" | grep -q \"Expo Dev Launcher\"; then\n      /usr/libexec/PlistBuddy -c \"Delete :NSLocalNetworkUsageDescription\" \"$PLIST_PATH\" 2>/dev/null || true\n    fi\n  fi\nfi\n";
-		};
-		A0CCA210D2D9FA31D7900319 /* [Expo] Configure project */ = {
+		83436430A8146113EEC05DE2 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -353,7 +339,21 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-TierNerd/expo-configure-project.sh\"\n";
 		};
-		DD095CECEAFDCDD9113345C0 /* [CP] Embed Pods Frameworks */ = {
+		C630166C965C47AF9F90DF1D /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[Expo Dev Launcher] Strip Local Network Keys for Release";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Strip dev-launcher-specific local network permission keys from release builds.\n# This only removes _expo._tcp Bonjour services and the dev-launcher usage description.\n# Other Bonjour services and custom descriptions are preserved for production use.\n#\n# Detect debug builds via the DEBUG compile condition rather than the configuration name,\n# so custom debug configurations (e.g. \"Dev\", \"Staging\") that define DEBUG keep the keys.\ncase \" $SWIFT_ACTIVE_COMPILATION_CONDITIONS \" in\n  *\" DEBUG \"*) IS_DEBUG_BUILD=1 ;;\n  *) IS_DEBUG_BUILD=0 ;;\nesac\n\nif [ \"$IS_DEBUG_BUILD\" != \"1\" ]; then\n  PLIST_PATH=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n  if [ -f \"$PLIST_PATH\" ]; then\n    # Check if NSBonjourServices exists\n    if /usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" >/dev/null 2>&1; then\n      # Get the count of services\n      COUNT=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null | grep \"^    \" | wc -l | tr -d ' ')\n\n      # Remove _expo._tcp\n      for ((i=COUNT-1; i>=0; i--)); do\n        SERVICE=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices:$i\" \"$PLIST_PATH\" 2>/dev/null || echo \"\")\n        if echo \"$SERVICE\" | grep -q \"_expo._tcp\"; then\n          /usr/libexec/PlistBuddy -c \"Delete :NSBonjourServices:$i\" \"$PLIST_PATH\" 2>/dev/null || true\n        fi\n      done\n\n      # If the array is now empty, remove it entirely\n      REMAINING=$(/usr/libexec/PlistBuddy -c \"Print :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null | grep \"^    \" | wc -l | tr -d ' ')\n      if [ \"$REMAINING\" -eq \"0\" ]; then\n        /usr/libexec/PlistBuddy -c \"Delete :NSBonjourServices\" \"$PLIST_PATH\" 2>/dev/null || true\n      fi\n    fi\n\n    # Only delete the description if it matches the dev-launcher default text\n    DESC=$(/usr/libexec/PlistBuddy -c \"Print :NSLocalNetworkUsageDescription\" \"$PLIST_PATH\" 2>/dev/null || echo \"\")\n    if echo \"$DESC\" | grep -q \"Expo Dev Launcher\"; then\n      /usr/libexec/PlistBuddy -c \"Delete :NSLocalNetworkUsageDescription\" \"$PLIST_PATH\" 2>/dev/null || true\n    fi\n  fi\nfi\n";
+		};
+		F2C9042861E8DD24AF56C640 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -408,7 +408,7 @@
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				F11748442D0307B40044C1D9 /* SceneDelegate.swift in Sources */,
-				4144D5ED091CB0E7129D8DD3 /* ExpoModulesProvider.swift in Sources */,
+				A591444A6CFC84D2C2EAD35A /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -417,7 +417,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 82AB5549D29F269C3BD166D5 /* Pods-TierNerd.debug.xcconfig */;
+			baseConfigurationReference = 4DF664665C22842984F74DB7 /* Pods-TierNerd.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -455,7 +455,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 046EEA15B0927542E68CC27E /* Pods-TierNerd.release.xcconfig */;
+			baseConfigurationReference = 078282BFBF6A5589322750A0 /* Pods-TierNerd.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
