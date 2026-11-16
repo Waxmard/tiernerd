@@ -373,7 +373,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   };
   const iconList = visibleLists.find((entry) => entry.id === iconListId);
-  const iconListValue = iconList?.icon ? listIconEmoji(iconList.icon) : null;
+  const iconListValue = listIconEmoji(iconList?.icon);
   const handleListCreated = useCallback(
     (list: ListSimple, fromSuggestion: boolean) => {
       const expectedUserId = userId;
@@ -498,16 +498,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         style={{ width: cardWidth }}
         className="shrink-0 flex-row items-center gap-3 rounded-2xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark"
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Change emoji for ${item.title}`}
-          accessibilityHint="Opens the emoji picker"
-          hitSlop={6}
-          onPress={() => setIconListId(item.id)}
-          style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
-        >
-          <ListIdentityBadge size="lg" icon={item.icon} />
-        </Pressable>
+        {item.icon ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Change emoji for ${item.title}`}
+            accessibilityHint="Opens the emoji picker"
+            hitSlop={6}
+            onPress={() => setIconListId(item.id)}
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
+          >
+            <ListIdentityBadge size="lg" icon={item.icon} />
+          </Pressable>
+        ) : null}
         <View className="flex-1 min-w-0 gap-1">
           <Text
             numberOfLines={2}

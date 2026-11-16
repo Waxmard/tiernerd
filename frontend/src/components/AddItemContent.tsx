@@ -75,7 +75,7 @@ export function AddItemContent({
   return (
     <BaseModalContent
       title={isEdit ? 'Edit item' : 'Add item'}
-      emoji={isEdit ? '✏️' : '🌱'}
+      emoji={isEdit ? '✏️' : undefined}
       isLoading={isBusy}
       submitText={isEdit ? 'Save' : 'Add item'}
       onClose={onClose}

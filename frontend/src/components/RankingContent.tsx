@@ -212,7 +212,7 @@ export function RankingContent({
                 className="flex-row items-center gap-1 rounded-full px-3 py-1"
                 style={{ backgroundColor: hue.solid }}
               >
-                <Emoji symbol={view.isNew ? '🌱' : '🔄'} size={14} />
+                {view.isNew ? null : <Emoji symbol="🔄" size={14} />}
                 <Text
                   className="text-label-large"
                   style={{ color: hue.onSolid }}

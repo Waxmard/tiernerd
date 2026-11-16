@@ -66,6 +66,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
 }) => {
   const { colors } = useTheme();
   const optionsRef = useRef<ListOptionsHandle>(null);
+  const emoji = listIconEmoji(icon);
   const header = (
     <View className="gap-2 p-3 mt-2 mb-2 rounded-2xl bg-surface dark:bg-surface-dark shrink-0">
       <View className="flex-row items-center">
@@ -110,12 +111,12 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
         </TouchableOpacity>
       </View>
       <View className="min-h-11 flex-row items-center gap-2 px-2">
-        {addLoading ? (
+        {!emoji ? null : addLoading ? (
           <View accessible={false} className="w-6 h-6" />
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`List emoji: ${listIconEmoji(icon)}`}
+            accessibilityLabel={`List emoji: ${emoji}`}
             accessibilityHint="Opens the emoji picker"
             accessibilityState={{ disabled: optionsDisabled }}
             disabled={optionsDisabled}
@@ -126,7 +127,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
               pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
             }
           >
-            <Emoji symbol={listIconEmoji(icon)} size={24} />
+            <Emoji symbol={emoji} size={24} />
           </Pressable>
         )}
         <Pressable
