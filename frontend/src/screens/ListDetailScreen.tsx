@@ -23,7 +23,6 @@ import { useItemEmojiFill } from '../components/useItemEmojiFill';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { useListDetailData } from '../components/useListDetailData';
 import { useListViewRestore } from '../components/useListViewRestore';
-import { useRankingDraft } from '../components/useRankingDraft';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useNotify } from '../providers/NotificationProvider';
@@ -86,7 +85,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     (!itemsLoaded && !hasItemsSnapshot) ||
     (!metadataLoaded && !hasMetadataSnapshot);
   const isListOptionsOpenRef = useRef(false);
-  const [isListOptionsOpen, setIsListOptionsOpen] = useState(false);
   const identityRef = useRef(screenIdentity);
   if (identityRef.current !== screenIdentity) {
     identityRef.current = screenIdentity;
@@ -121,14 +119,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     identityRef.current = screenIdentity;
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
-    setIsListOptionsOpen(false);
     isListOptionsOpenRef.current = false;
     suggestedNamesRef.current = [];
   }, [screenIdentity]);
   const setOptionsOpen = (open: boolean) => {
     if (identityRef.current !== screenIdentity) return;
     isListOptionsOpenRef.current = open;
-    setIsListOptionsOpen(open);
   };
   const [iconItem, setIconItem] = useState<Item | null>(null);
 
@@ -192,8 +188,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     [view, refreshAfterMutation, screenIdentity, autoFill]
   );
 
-  const pausedDraftItemIdRef = useRef<string | null>(null);
-  const closingItemIdRef = useRef<string | null>(null);
   const workspace = useItemWorkspace({
     userId,
     listId,
@@ -201,10 +195,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     rankingMode,
     items,
     onItemsChanged: handleWorkspaceItemsChanged,
-    onClosed: () => {
-      if (closingItemIdRef.current)
-        pausedDraftItemIdRef.current = closingItemIdRef.current;
-    },
   });
   const sheetOpen = workspace.mode !== 'closed' || detailsOpen;
   useEffect(() => {
@@ -214,10 +204,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     if (scrollOnLandRef.current) view.scrollToItem(itemId, true);
     scrollOnLandRef.current = false;
   }, [sheetOpen, view]);
-  closingItemIdRef.current =
-    workspace.mode === 'ranking'
-      ? (workspace.item?.item_id ?? workspace.ranking?.itemId ?? null)
-      : null;
   const { openAdd, setForm, submitMetadata } = workspace;
   const workspaceBusyRef = useRef(workspace.isBusy);
   workspaceBusyRef.current = workspace.isBusy;
@@ -227,57 +213,24 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     if (skipWorkspaceCloseFocusRef.current) return false;
     skipWorkspaceCloseFocusRef.current = true;
     try {
-      if (workspace.mode === 'ranking') {
-        return await workspace.pauseRanking();
-      }
       return await workspace.requestClose();
     } catch {
       return false;
     } finally {
       skipWorkspaceCloseFocusRef.current = false;
     }
-  }, [workspace.mode, workspace.pauseRanking, workspace.requestClose]);
-
-  const resumeWorkspace = workspace.resumeRanking;
-  const draftResumeEnabled =
-    canMutate &&
-    Boolean(userId) &&
-    !promptAddItem &&
-    !completedItemId &&
-    workspace.mode === 'closed' &&
-    !workspace.isBusy &&
-    !isListOptionsOpen &&
-    !isDeletingList;
-  useRankingDraft({
-    userId,
-    listId,
-    items,
-    enabled: draftResumeEnabled,
-    onResume: (session) => {
-      if (
-        !canMutateFor(screenIdentity) ||
-        workspace.mode !== 'closed' ||
-        isListOptionsOpenRef.current ||
-        pausedDraftItemIdRef.current === session.itemId
-      )
-        return;
-      view.clearRestoredSelection();
-      setSelectedItemId(session.itemId);
-      setDismissedDetailsItemId(null);
-      resumeWorkspace(session);
-    },
-  });
+  }, [workspace.requestClose]);
 
   const selectedItem =
     items.find((item) => item.item_id === selectedItemId) ?? null;
-  const rankByItemId = useMemo(() => {
-    const ranks = new Map<string, number>();
-    for (const item of items) {
-      if (item.position !== null) ranks.set(item.item_id, ranks.size + 1);
-    }
-    return ranks;
-  }, [items]);
-  const rankedCount = rankByItemId.size;
+  const rankByItemId = useMemo(
+    () =>
+      new Map(
+        items.map((item, index): [string, number] => [item.item_id, index + 1])
+      ),
+    [items]
+  );
+  const rankedCount = items.length;
   const selectedRank = selectedItemId
     ? (rankByItemId.get(selectedItemId) ?? null)
     : null;
@@ -499,7 +452,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   };
   const handleStartRanking = () => {
     if (!selectedItem || !canMutateFor(screenIdentity)) return;
-    void workspace.startRanking(selectedItem);
+    workspace.startRanking(selectedItem);
   };
   const leaveEdit = async () => {
     const item = workspace.item;
@@ -516,7 +469,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     const identity = screenIdentity;
     const item = await leaveEdit();
     if (!item) return;
-    if (canMutateFor(identity)) await workspace.startRanking(item);
+    if (canMutateFor(identity)) workspace.startRanking(item);
     if (identityRef.current === identity)
       setDismissedDetailsItemId(item.item_id);
   };

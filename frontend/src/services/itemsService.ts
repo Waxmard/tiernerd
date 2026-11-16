@@ -7,9 +7,9 @@ export interface Item {
   description: string | null;
   image_url: string | null;
   icon: string | null;
-  rating: number | null;
+  rating: number;
   manual_rating: number | null;
-  position: string | null;
+  position: string;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +19,7 @@ export interface CreateItemRequest {
   description?: string;
   image_url?: string;
   icon?: string;
+  gap: number;
 }
 
 export interface UpdateItemRequest {

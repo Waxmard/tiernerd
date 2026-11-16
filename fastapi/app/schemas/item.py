@@ -19,6 +19,7 @@ class ItemBase(BaseModel):
 
 class ItemCreate(ItemBase):
     item_id: uuid.UUID | None = None
+    gap: int = 0
 
 
 class ItemUpdate(BaseModel):
@@ -62,8 +63,8 @@ class Item(ItemBase):
     list_id: uuid.UUID
     name: str
     description: str | None = None
-    position: str | None = None
-    rating: float | None = None
+    position: str
+    rating: float
     manual_rating: float | None = None
     created_at: datetime
     updated_at: datetime

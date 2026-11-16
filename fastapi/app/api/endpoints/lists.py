@@ -169,7 +169,7 @@ async def read_list_items(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """
-    Get all items for a list, best first; unranked items last.
+    Get all items for a list, best first.
     """
     list_obj = await list_crud.get_by_id_and_user(db, list_id, current_user.user_id)
     if not list_obj:

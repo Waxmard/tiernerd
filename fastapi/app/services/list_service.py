@@ -6,11 +6,8 @@ from app.db.models import Item as ItemModel
 
 
 def get_items_best_first(items: list[ItemModel]) -> list[ItemModel]:
-    """Order ranked items by descending position, then append unranked items."""
-    ranked = [i for i in items if i.position is not None]
-    unranked = [i for i in items if i.position is None]
-    ranked.sort(key=lambda i: i.position or "", reverse=True)
-    return ranked + unranked
+    """Order items by descending position."""
+    return sorted(items, key=lambda i: i.position, reverse=True)
 
 
 def build_list_simple_response(row: tuple[Any, ...]) -> dict[str, Any]:

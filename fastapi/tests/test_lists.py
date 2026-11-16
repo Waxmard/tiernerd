@@ -817,7 +817,13 @@ class TestReadListItems:
         test_db: AsyncSession,
     ):
         test_db.add(
-            ItemModel(list_id=test_list.list_id, name="x" * 100, description="y" * 600)
+            ItemModel(
+                list_id=test_list.list_id,
+                name="x" * 100,
+                description="y" * 600,
+                position="a0",
+                rating=0.0,
+            )
         )
         await test_db.commit()
 
@@ -840,7 +846,7 @@ class TestReadListItems:
         assert response.status_code == 200
         assert response.json() == []
 
-    async def test_read_list_items_best_first_with_unranked_last(
+    async def test_read_list_items_best_first(
         self,
         client: AsyncClient,
         test_list: ListModel,
@@ -850,11 +856,10 @@ class TestReadListItems:
         lower = ItemModel(
             list_id=test_list.list_id, name="Lower", position="a0", rating=0.0
         )
-        unranked = ItemModel(list_id=test_list.list_id, name="Unranked")
         higher = ItemModel(
             list_id=test_list.list_id, name="Higher", position="a1", rating=10.0
         )
-        test_db.add_all([lower, unranked, higher])
+        test_db.add_all([lower, higher])
         await test_db.commit()
 
         response = await client.get(
@@ -862,11 +867,10 @@ class TestReadListItems:
         )
         assert response.status_code == 200
         data = response.json()
-        assert [item["name"] for item in data] == ["Higher", "Lower", "Unranked"]
+        assert [item["name"] for item in data] == ["Higher", "Lower"]
         assert [(item["position"], item["rating"]) for item in data] == [
             ("a1", 10.0),
             ("a0", 0.0),
-            (None, None),
         ]
 
     async def test_read_list_items_not_found(

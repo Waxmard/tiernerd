@@ -21,7 +21,6 @@ import {
   isLifecycleReadable,
   listItemsCacheKey,
   listsCacheKey,
-  mergePendingItems,
   parseCachedListItems,
   parseCachedLists,
   sortListsByRecency,
@@ -70,15 +69,10 @@ test('keys list snapshots by user and list', () => {
   assert.equal(listsCacheKey('user-1'), 'cachedLists:user-1');
 });
 
-test('round-trips ordered ranked and unranked items unchanged', () => {
+test('round-trips ordered items unchanged', () => {
   const items = [
     item(),
-    item({
-      item_id: 'item-2',
-      name: 'Second',
-      rating: null,
-      position: null,
-    }),
+    item({ item_id: 'item-2', name: 'Second', rating: 7.1, position: '2' }),
   ];
   assert.deepEqual(
     parseCachedListItems(JSON.stringify(items), 'list-1'),
@@ -97,20 +91,23 @@ test('normalizes legacy cached items missing manual_rating and rejects invalid m
 
   assert.equal(
     parseCachedListItems(
-      JSON.stringify([
-        item({ position: null, rating: null, manual_rating: 7.0 }),
-      ]),
-      'list-1'
-    ),
-    null
-  );
-  assert.equal(
-    parseCachedListItems(
       JSON.stringify([item({ manual_rating: 10.5 })]),
       'list-1'
     ),
     null
   );
+});
+
+test('rejects cached items with a null position or rating', () => {
+  for (const nulled of [{ position: null }, { rating: null }]) {
+    assert.equal(
+      parseCachedListItems(
+        JSON.stringify([{ ...item(), ...nulled }]),
+        'list-1'
+      ),
+      null
+    );
+  }
 });
 
 test('keeps an empty item snapshot distinct from a cache miss', () => {
@@ -498,49 +495,4 @@ test('mutation refresh invalidates cache version and clears live accepted flags'
   assert.notEqual(nextVersion, initialVersion);
   assert.equal(isCacheCurrent(lifecycle, initialVersion), false);
   assert.equal(isCacheCurrent(lifecycle, nextVersion), true);
-});
-
-test('a pending create lands where its score places it, not at the end', () => {
-  const ratings = [10, 8.9, 7.8, 6.7, 5.6, 4.4, 3.3, 2.2, 1.1, 0];
-  const server = ratings.map((rating, index) =>
-    item({ item_id: `server-${index}`, rating, position: `a${index}` })
-  );
-  const pending = item({
-    item_id: 'pending-1',
-    rating: 4,
-    position: 'pending',
-  });
-
-  const merged = mergePendingItems(server, [pending]);
-
-  assert.deepEqual(
-    merged.map((entry) => entry.item_id),
-    [
-      'server-0',
-      'server-1',
-      'server-2',
-      'server-3',
-      'server-4',
-      'server-5',
-      'pending-1',
-      'server-6',
-      'server-7',
-      'server-8',
-      'server-9',
-    ]
-  );
-});
-
-test('pending creates that are unranked or unknown stay at the end', () => {
-  const server = [item({ item_id: 'server-0', rating: 10 })];
-  const merged = mergePendingItems(server, [
-    item({ item_id: 'pending-ranked', rating: 4 }),
-    item({ item_id: 'pending-unranked', rating: null, position: null }),
-    item({ item_id: 'server-0', rating: 1 }),
-  ]);
-
-  assert.deepEqual(
-    merged.map((entry) => entry.item_id),
-    ['server-0', 'pending-ranked', 'pending-unranked']
-  );
 });

@@ -36,7 +36,6 @@ export interface AddItemContentProps {
   focusField?: ItemFormField | null;
   listTitle?: string;
   editActions?: {
-    rankTitle: string;
     onRank: () => void;
     onDetails: () => void;
     onDelete: () => void;
@@ -190,7 +189,7 @@ export function AddItemContent({
         {isEdit && editActions ? (
           <View className="gap-2">
             <Button
-              title={editActions.rankTitle}
+              title="Re-rank"
               variant="secondary"
               onPress={editActions.onRank}
               disabled={isBusy}

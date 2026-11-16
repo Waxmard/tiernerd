@@ -8,7 +8,7 @@ User-facing flows live in [README.md](../README.md#ranking-lists).
 
 Home shows the most recently modified lists first, including when displaying cached lists. Editing an item updates its list's modification time; opening a list does not.
 
-Previously opened lists show saved items, order, ranking mode, scores, and available list metadata while refreshing from the API. Cached empty lists also appear without waiting for the refresh. You can read cached items, but changing the ranking mode, adding, editing, deleting, or starting a ranking requires successful live validation of the list and its items. Active ranking drafts stay online-only. If a refresh fails, saved content stays visible with a retry action; deleted or inaccessible lists clear when the API confirms they are unavailable. Cache storage is best effort and never confirms a write.
+Previously opened lists show saved items, order, ranking mode, scores, and available list metadata while refreshing from the API. Cached empty lists also appear without waiting for the refresh. You can read cached items, but changing the ranking mode, adding, editing, deleting, or starting a ranking requires successful live validation of the list and its items. A new item is held in memory while you compare it and is saved, with its rank, only when the comparisons finish; leaving the comparison discards it. If a refresh fails, saved content stays visible with a retry action; deleted or inaccessible lists clear when the API confirms they are unavailable. Cache storage is best effort and never confirms a write.
 
 A saved list position is restored for up to 24 hours as items load. Dragging takes priority over the saved position.
 

@@ -42,16 +42,14 @@ const isItem = (value: unknown, listId: string): value is CachedItem => {
     typeof candidate.name === 'string' &&
     isNullableString(candidate.description) &&
     isNullableString(candidate.image_url) &&
-    (candidate.rating === null ||
-      (typeof candidate.rating === 'number' &&
-        Number.isFinite(candidate.rating))) &&
-    isNullableString(candidate.position) &&
+    typeof candidate.rating === 'number' &&
+    Number.isFinite(candidate.rating) &&
+    typeof candidate.position === 'string' &&
     (candidate.icon === undefined || isNullableString(candidate.icon)) &&
     (!('manual_rating' in candidate) ||
       candidate.manual_rating === undefined ||
       candidate.manual_rating === null ||
-      (candidate.position !== null &&
-        typeof candidate.manual_rating === 'number' &&
+      (typeof candidate.manual_rating === 'number' &&
         Number.isFinite(candidate.manual_rating) &&
         candidate.manual_rating >= 0 &&
         candidate.manual_rating <= 10)) &&
@@ -79,24 +77,6 @@ export function parseCachedListItems(
         icon: item.icon ?? null,
       }))
     : null;
-}
-
-export function mergePendingItems(items: Item[], pending: Item[]): Item[] {
-  const merged = [...items];
-  const placed = new Set(merged.map((item) => item.item_id));
-  for (const entry of pending) {
-    if (placed.has(entry.item_id)) continue;
-    placed.add(entry.item_id);
-    const rating = entry.rating;
-    const index =
-      rating === null
-        ? -1
-        : merged.findIndex(
-            (item) => item.rating === null || item.rating < rating
-          );
-    merged.splice(index === -1 ? merged.length : index, 0, entry);
-  }
-  return merged;
 }
 
 export function sortListsByRecency(lists: ListSimple[]): ListSimple[] {

@@ -192,15 +192,18 @@ async def multiple_items(
 @pytest.fixture
 def item_factory(test_list: ListModel):
     """Factory fixture for creating ItemModel instances with defaults."""
+    import itertools
     import uuid as uuid_module
     from datetime import datetime
+
+    counter = itertools.count()
 
     def _create_item(
         name: str = "Test Item",
         description: str = "",
         image_url: str | None = None,
         position: str | None = None,
-        rating: float | None = None,
+        rating: float = 0.0,
         list_id=None,
     ) -> ItemModel:
         return ItemModel(
@@ -209,7 +212,7 @@ def item_factory(test_list: ListModel):
             name=name,
             description=description,
             image_url=image_url,
-            position=position,
+            position=position or f"b{next(counter):02d}",
             rating=rating,
             created_at=datetime.now(),
             updated_at=datetime.now(),

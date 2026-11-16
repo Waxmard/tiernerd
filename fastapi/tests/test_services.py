@@ -8,18 +8,16 @@ from app.db.models import Item as ItemModel, List as ListModel
 from app.services.list_service import get_items_best_first
 from app.services.ranking import (
     assign_scores,
-    filter_ranked_items,
     score_for_rank,
     set_item_ranking,
-    sort_items_by_position,
 )
 
 
 def create_item(
     name: str = "Test Item",
     list_id: uuid.UUID | None = None,
-    position: str | None = "a0",
-    rating: float | None = None,
+    position: str = "a0",
+    rating: float = 0.0,
 ) -> ItemModel:
     now = datetime.now(UTC)
     return ItemModel(
@@ -36,17 +34,6 @@ def create_item(
 
 
 class TestRankingService:
-    def test_filter_ranked_items(self) -> None:
-        excluded_id = uuid.uuid4()
-        ranked = create_item(name="Ranked")
-        excluded = create_item(name="Excluded", position="a1")
-        excluded.item_id = excluded_id
-        unranked = create_item(name="Unranked", position=None)
-        items = [ranked, excluded, unranked]
-        assert filter_ranked_items([]) == []
-        assert filter_ranked_items(items) == [ranked, excluded]
-        assert filter_ranked_items(items, excluded_id) == [ranked]
-
     @pytest.mark.parametrize(
         "best_first_scores",
         [
@@ -70,13 +57,6 @@ class TestRankingService:
             score_for_rank(rank, len(items)) for rank in range(1, len(items) + 1)
         ] == best_first_scores
 
-    def test_sort_items_by_position(self) -> None:
-        items = [
-            create_item(name="Second", position="a1"),
-            create_item(name="First", position="a0"),
-        ]
-        assert sort_items_by_position(items) == [items[1], items[0]]
-
 
 class TestSetItemRanking:
     async def test_inserts_between_peers_and_rescores(
@@ -90,7 +70,7 @@ class TestSetItemRanking:
             item_factory(name="Third", position="a1", rating=5.0),
             item_factory(name="Best", position="a2", rating=10.0),
         ]
-        mover = item_factory(name="Mover", position=None)
+        mover = item_factory(name="Mover")
         test_db.add_all([*peers, mover])
         await test_db.commit()
 
@@ -116,7 +96,7 @@ class TestSetItemRanking:
             item_factory(name="Worst", position="a0", rating=0.0),
             item_factory(name="Best", position="a1", rating=10.0),
         ]
-        mover = item_factory(name="Mover", position=None)
+        mover = item_factory(name="Mover")
         test_db.add_all([*peers, mover])
         await test_db.commit()
 
@@ -136,7 +116,7 @@ class TestSetItemRanking:
     ) -> None:
         stale = datetime(2020, 1, 1)
         test_list.updated_at = stale
-        mover = item_factory(name="Mover", position=None)
+        mover = item_factory(name="Mover")
         mover.updated_at = stale
         test_db.add(mover)
         await test_db.commit()
@@ -152,7 +132,7 @@ class TestSetItemRanking:
         test_list: ListModel,
         item_factory,
     ) -> None:
-        mover = item_factory(name="Only", position=None)
+        mover = item_factory(name="Only")
         test_db.add(mover)
         await test_db.commit()
 

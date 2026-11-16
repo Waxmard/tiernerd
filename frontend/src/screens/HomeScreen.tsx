@@ -29,7 +29,6 @@ import {
   ImmersiveScreenShell,
   ListIdentityBadge,
 } from '../components/ImmersiveBoard';
-import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button, Emoji, SheetModal } from '../design-system/components';
 import type { ListIcon } from '../design-system/tokens/colors';
@@ -347,11 +346,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     [refreshLists, showCachedLists, token, userId, workspace.openAdd]
   );
   const getModalTitle = () =>
-    modalStep === 'create'
-      ? 'Create New List'
-      : workspace.mode === 'ranking'
-        ? 'Which is better?'
-        : 'Add item';
+    modalStep === 'create' ? 'Create New List' : 'Add item';
   useEffect(
     () =>
       navigation.addListener('beforeRemove', (event) => {
@@ -370,9 +365,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         const close =
           modalStep === 'create'
             ? createListRef.current?.requestClose()
-            : workspace.mode === 'ranking'
-              ? workspace.pauseRanking()
-              : workspace.requestClose();
+            : workspace.requestClose();
         void Promise.resolve(close)
           .catch(() => false)
           .then((canLeave) => {
@@ -385,13 +378,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             closingForNavigationRef.current = false;
           });
       }),
-    [
-      modalStep,
-      navigation,
-      workspace.mode,
-      workspace.pauseRanking,
-      workspace.requestClose,
-    ]
+    [modalStep, navigation, workspace.requestClose]
   );
   useEffect(() => {
     if (lastSyncedAt === 0) return;
@@ -602,18 +589,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onRequestClose={() => {
             if (modalStep === 'create')
               void createListRef.current?.requestClose().catch(() => false);
-            else if (modalStep === 'addItem') {
-              if (workspace.mode === 'ranking') {
-                const list = pendingList;
-                void workspace.pauseRanking().then((paused) => {
-                  if (paused && list)
-                    navigation.navigate('ListDetail', {
-                      listId: list.listId,
-                      listTitle: list.title,
-                    });
-                });
-              } else void workspace.requestClose().catch(() => false);
-            }
+            else if (modalStep === 'addItem')
+              void workspace.requestClose().catch(() => false);
           }}
         >
           {modalStep === 'create' && (
@@ -628,28 +605,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           )}
           {modalStep === 'addItem' &&
             pendingList &&
-            (workspace.mode === 'ranking' && workspace.view ? (
-              <RankingContent
-                listTitle={pendingList.title}
-                item={workspace.view.item}
-                view={workspace.view}
-                isBusy={workspace.isBusy}
-                onAnswer={(answer) => void workspace.answer(answer)}
-                onUndo={() => void workspace.undo()}
-                onCancel={() => void workspace.cancelRanking()}
-                onPause={() => {
-                  const list = pendingList;
-                  void workspace.pauseRanking().then((paused) => {
-                    if (paused && list) {
-                      navigation.navigate('ListDetail', {
-                        listId: list.listId,
-                        listTitle: list.title,
-                      });
-                    }
-                  });
-                }}
-              />
-            ) : workspace.mode === 'add' || workspace.mode === 'edit' ? (
+            (workspace.mode === 'add' || workspace.mode === 'edit' ? (
               <AddItemContent
                 mode={workspace.mode}
                 form={workspace.form}

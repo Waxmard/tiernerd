@@ -129,7 +129,7 @@ async def test_create_tables_adds_column_and_rescores_legacy_items(
         with sync_engine.connect() as connection:
             rows = (
                 connection.execute(
-                    text("SELECT item_id, rating FROM items ORDER BY item_id")
+                    text("SELECT item_id, position, rating FROM items ORDER BY item_id")
                 )
                 .mappings()
                 .all()
@@ -137,10 +137,10 @@ async def test_create_tables_adds_column_and_rescores_legacy_items(
     finally:
         sync_engine.dispose()
     assert [dict(row) for row in rows] == [
-        {"item_id": "i1", "rating": 8.0},
-        {"item_id": "i2", "rating": 6.5},
-        {"item_id": "i3", "rating": 4.6},
-        {"item_id": "i4", "rating": None},
+        {"item_id": "i1", "position": "a2", "rating": 8.3},
+        {"item_id": "i2", "position": "a1", "rating": 7.1},
+        {"item_id": "i3", "position": "a0", "rating": 5.8},
+        {"item_id": "i4", "position": "Z0", "rating": 4.1},
     ]
 
 

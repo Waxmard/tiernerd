@@ -186,10 +186,6 @@ export function computeScores(
   return scores;
 }
 
-export function scoreForRank(rank: number, rankedCount: number): number {
-  return computeScores(new Array<null>(rankedCount).fill(null))[rank - 1] ?? 0;
-}
-
 export function manualRatingBounds(
   bestFirstItems: readonly {
     item_id: string;
@@ -302,23 +298,4 @@ export function autoScoreWithoutPin(
     index === targetIndex ? null : item.manual_rating
   );
   return computeScores(manualRatings)[targetIndex] ?? null;
-}
-
-export function isDraftCurrent(
-  session: RankingSession,
-  itemId: string,
-  listId: string,
-  rankedBestFirst: string[]
-): boolean {
-  if (
-    session.itemId !== itemId ||
-    session.listId !== listId ||
-    session.peersWorstFirst.length !== rankedBestFirst.length
-  ) {
-    return false;
-  }
-  return session.peersWorstFirst.every(
-    (peerId, index) =>
-      peerId === rankedBestFirst[rankedBestFirst.length - 1 - index]
-  );
 }

@@ -80,9 +80,8 @@ export const ListDetailWorkspaceHost: React.FC<
           isBusy={isBusy}
           rankingMode={rankingMode}
           onAnswer={(answer) => void workspace.answer(answer)}
-          onUndo={() => void workspace.undo()}
+          onUndo={workspace.undo}
           onCancel={() => void workspace.cancelRanking()}
-          onPause={() => void workspace.pauseRanking()}
         />
       );
     }
@@ -106,8 +105,6 @@ export const ListDetailWorkspaceHost: React.FC<
           editActions={
             workspace.mode === 'edit' && workspace.item
               ? {
-                  rankTitle:
-                    workspace.item.position === null ? 'Rank now' : 'Re-rank',
                   onRank: onEditRank,
                   onDetails: onEditDetails,
                   onDelete,
@@ -136,7 +133,6 @@ export const ListDetailWorkspaceHost: React.FC<
         rank={selectedRank}
         rankedCount={rankedCount}
         rankingMode={rankingMode}
-        hasDraft={workspace.ranking !== null}
         isBusy={isBusy}
         onRank={onStartRanking}
         onEdit={onEdit}
