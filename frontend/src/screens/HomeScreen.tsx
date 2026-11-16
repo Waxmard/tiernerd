@@ -650,7 +650,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </View>
             <View className="flex-row">
               <Button
-                title="✨ Suggest list"
+                icon={<Emoji symbol="✨" size={18} />}
+                title="Suggest list"
                 variant="text"
                 size="small"
                 loading={isSuggesting}

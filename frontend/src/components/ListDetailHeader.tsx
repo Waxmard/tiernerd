@@ -173,7 +173,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
                 ? undefined
                 : () => optionsRef.current?.open('description')
             }
-            className="pl-10 min-h-11 justify-center"
+            className={`${emoji ? 'pl-10' : 'pl-2'} min-h-11 justify-center`}
             hitSlop={10}
             style={({ pressed }) =>
               pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
@@ -195,7 +195,8 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
       ) : null}
       <View className="flex-row justify-between gap-2">
         <Button
-          title="✨ Suggest next"
+          icon={<Emoji symbol="✨" size={18} />}
+          title="Suggest next"
           onPress={onSuggest}
           disabled={suggestDisabled}
           loading={suggestLoading}

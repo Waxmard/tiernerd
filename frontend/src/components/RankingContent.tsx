@@ -149,7 +149,7 @@ export function RankingContent({
             fullWidth
           />
           <Button
-            title="Cancel ranking"
+            title={view.isNew ? 'Discard item' : 'Cancel ranking'}
             variant="text"
             onPress={onCancel}
             disabled={isBusy}
