@@ -68,7 +68,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     updateListOptions,
     evictDeletedList,
   } = useListDetailData({ userId, token, listId, routeTitle });
-  const { autoFill, fillMissing } = useItemEmojiFill({
+  const { autoFill, fillMissing, suggestIcon } = useItemEmojiFill({
     userId,
     token,
     listId,
@@ -165,7 +165,11 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const landItemIdRef = useRef<string | null>(null);
   const scrollOnLandRef = useRef(false);
   const handleWorkspaceItemsChanged = useCallback(
-    async (item?: Item, created = false) => {
+    async (
+      item?: Item,
+      created = false,
+      pendingIcon?: Promise<string | null>
+    ) => {
       const identity = screenIdentity;
       const refreshedItems = await refreshAfterMutation();
       if (identityRef.current !== identity) return;
@@ -177,7 +181,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       }
       if (!refreshedItems.some((entry) => entry.item_id === item.item_id))
         return;
-      if (created && !item.icon) void autoFill(item).catch(() => undefined);
+      if (created && !item.icon)
+        void autoFill(item, pendingIcon).catch(() => undefined);
       view.clearRestoredSelection();
       view.clearRestoredOffset();
       landItemIdRef.current = item.item_id;
@@ -195,6 +200,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     rankingMode,
     items,
     onItemsChanged: handleWorkspaceItemsChanged,
+    suggestIcon,
   });
   const sheetOpen = workspace.mode !== 'closed' || detailsOpen;
   useEffect(() => {

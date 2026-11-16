@@ -62,6 +62,7 @@ export function useItemWorkspace({
   rankingMode = 'rank',
   items,
   onItemsChanged,
+  suggestIcon,
   onClosed,
 }: UseItemWorkspaceOptions): ItemWorkspace {
   const { mutate } = useSync();
@@ -72,6 +73,10 @@ export function useItemWorkspace({
   const workspaceRef = useRef(workspace);
   const initialFormRef = useRef<ItemFormDraft>({ ...EMPTY_FORM });
   const busyRef = useRef(false);
+  const pendingIconRef = useRef<{
+    itemId: string;
+    icon: Promise<string | null>;
+  } | null>(null);
   const optionsRef = useRef({
     userId,
     listId,
@@ -79,6 +84,7 @@ export function useItemWorkspace({
     rankingMode,
     items,
     onItemsChanged,
+    suggestIcon,
     onClosed,
   });
   optionsRef.current = {
@@ -88,6 +94,7 @@ export function useItemWorkspace({
     rankingMode,
     items,
     onItemsChanged,
+    suggestIcon,
     onClosed,
   };
 
@@ -282,7 +289,12 @@ export function useItemWorkspace({
           notify(outcome.message);
           return false;
         }
-        await optionsRef.current.onItemsChanged(item, !existing);
+        const pending = pendingIconRef.current;
+        await optionsRef.current.onItemsChanged(
+          item,
+          !existing,
+          pending?.itemId === item.item_id ? pending.icon : undefined
+        );
         if (!existing && session.peersWorstFirst.length === 0) {
           closeWorkspace();
           return true;
@@ -386,6 +398,22 @@ export function useItemWorkspace({
         return;
       }
       updateWorkspace({ mode: 'ranking', ranking: session, fieldErrors: {} });
+      const suggest = optionsRef.current.suggestIcon;
+      if (current.form.icon || !suggest) return;
+      const icon = suggest({ name, description: current.form.description });
+      pendingIconRef.current = { itemId, icon };
+      void icon.then((value) => {
+        const live = workspaceRef.current;
+        if (
+          !value ||
+          busyRef.current ||
+          live.mode !== 'ranking' ||
+          live.ranking?.itemId !== itemId ||
+          live.form.icon
+        )
+          return;
+        updateWorkspace({ form: { ...live.form, icon: value } });
+      });
       return;
     }
     const original = current.item;

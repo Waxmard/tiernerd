@@ -39,7 +39,14 @@ export interface UseItemWorkspaceOptions {
   listTitle: string;
   rankingMode?: ListRankingMode;
   items: Item[];
-  onItemsChanged: (item?: Item, created?: boolean) => Promise<void>;
+  onItemsChanged: (
+    item?: Item,
+    created?: boolean,
+    pendingIcon?: Promise<string | null>
+  ) => Promise<void>;
+  suggestIcon?: (
+    draft: Pick<ItemFormDraft, 'name' | 'description'>
+  ) => Promise<string | null>;
   onClosed?: () => void;
 }
 
