@@ -375,7 +375,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const iconList = visibleLists.find((entry) => entry.id === iconListId);
   const iconListValue = iconList?.icon ? listIconEmoji(iconList.icon) : null;
   const handleListCreated = useCallback(
-    (list: ListSimple) => {
+    (list: ListSimple, fromSuggestion: boolean) => {
       const expectedUserId = userId;
       const expectedToken = token;
       const created = toTierList(list);
@@ -387,14 +387,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       setSnapshotIdentity({ userId: expectedUserId, token: expectedToken });
       setHasSnapshot(true);
       setIsLoading(false);
-      setPendingList({ listId: list.list_id, title: list.title });
-      workspace.openAdd();
-      setModalStep('addItem');
+      if (fromSuggestion) {
+        setModalStep(null);
+        navigation.navigate('ListDetail', {
+          listId: list.list_id,
+          listTitle: list.title,
+        });
+      } else {
+        setPendingList({ listId: list.list_id, title: list.title });
+        workspace.openAdd();
+        setModalStep('addItem');
+      }
       void refreshLists().catch(() =>
         showCachedLists(expectedUserId, expectedToken)
       );
     },
-    [refreshLists, showCachedLists, token, userId, workspace.openAdd]
+    [
+      navigation,
+      refreshLists,
+      showCachedLists,
+      token,
+      userId,
+      workspace.openAdd,
+    ]
   );
   const getModalTitle = () =>
     modalStep === 'create' ? 'Create New List' : 'Add item';
@@ -664,8 +679,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 setSuggestedTitle('');
               }}
               onSuccess={(list) => {
+                const fromSuggestion = suggestedTitle !== '';
                 setSuggestedTitle('');
-                handleListCreated(list);
+                handleListCreated(list, fromSuggestion);
                 void autoFillListIcon(list);
               }}
             />

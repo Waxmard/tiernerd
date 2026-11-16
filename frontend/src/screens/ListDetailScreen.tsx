@@ -382,7 +382,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       );
       if (!(await handleAddPress())) return;
       setForm({ name });
-      await submitMetadata();
+      if (items.length > 0) await submitMetadata();
     } catch (err) {
       if (identityRef.current === identity)
         notify(
@@ -395,6 +395,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   }, [
     canMutateFor,
     handleAddPress,
+    items.length,
     listId,
     notify,
     screenIdentity,
