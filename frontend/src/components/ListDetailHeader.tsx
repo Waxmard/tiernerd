@@ -68,7 +68,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
   const optionsRef = useRef<ListOptionsHandle>(null);
   const header = (
     <View className="gap-2 p-3 mt-2 mb-2 rounded-2xl bg-surface dark:bg-surface-dark shrink-0">
-      <View className="flex-row items-start">
+      <View className="flex-row items-center">
         <TouchableOpacity
           onPress={onBack}
           accessibilityRole="button"
@@ -83,53 +83,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
             accessible={false}
           />
         </TouchableOpacity>
-        <View className="flex-1 min-w-0 min-h-11 flex-row items-center gap-2 px-2">
-          {addLoading ? (
-            <View accessible={false} className="w-6 h-6" />
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`List emoji: ${listIconEmoji(icon)}`}
-              accessibilityHint="Opens the emoji picker"
-              accessibilityState={{ disabled: optionsDisabled }}
-              disabled={optionsDisabled}
-              className="w-6 items-center"
-              hitSlop={10}
-              onPress={() => optionsRef.current?.open('icon')}
-              style={({ pressed }) =>
-                pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
-              }
-            >
-              <Emoji symbol={listIconEmoji(icon)} size={24} />
-            </Pressable>
-          )}
-          <Pressable
-            accessibilityRole="header"
-            accessibilityLabel={title}
-            accessibilityHint={optionsDisabled ? undefined : 'Edit list title'}
-            onPress={
-              optionsDisabled
-                ? undefined
-                : () => optionsRef.current?.open('title')
-            }
-            className="flex-1 min-w-0 min-h-11 justify-center"
-            style={({ pressed }) =>
-              pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
-            }
-          >
-            <Text
-              className={`${
-                Array.from(title).length <= 28
-                  ? 'text-headline-small'
-                  : Array.from(title).length <= 56
-                    ? 'text-title-medium'
-                    : 'text-title-small'
-              } text-ink dark:text-ink-dark text-left`}
-            >
-              {title}
-            </Text>
-          </Pressable>
-        </View>
+        <View className="flex-1" />
         <ListRankingOptions
           ref={optionsRef}
           key={optionsKey}
@@ -155,6 +109,53 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           <Emoji symbol="🗑️" size={22} dimmed={deleteDisabled} />
         </TouchableOpacity>
       </View>
+      <View className="min-h-11 flex-row items-center gap-2 px-2">
+        {addLoading ? (
+          <View accessible={false} className="w-6 h-6" />
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`List emoji: ${listIconEmoji(icon)}`}
+            accessibilityHint="Opens the emoji picker"
+            accessibilityState={{ disabled: optionsDisabled }}
+            disabled={optionsDisabled}
+            className="w-6 items-center"
+            hitSlop={10}
+            onPress={() => optionsRef.current?.open('icon')}
+            style={({ pressed }) =>
+              pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+            }
+          >
+            <Emoji symbol={listIconEmoji(icon)} size={24} />
+          </Pressable>
+        )}
+        <Pressable
+          accessibilityRole="header"
+          accessibilityLabel={title}
+          accessibilityHint={optionsDisabled ? undefined : 'Edit list title'}
+          onPress={
+            optionsDisabled
+              ? undefined
+              : () => optionsRef.current?.open('title')
+          }
+          className="flex-1 min-w-0 min-h-11 justify-center"
+          style={({ pressed }) =>
+            pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+          }
+        >
+          <Text
+            className={`${
+              Array.from(title).length <= 28
+                ? 'text-headline-small'
+                : Array.from(title).length <= 56
+                  ? 'text-title-medium'
+                  : 'text-title-small'
+            } text-ink dark:text-ink-dark text-left`}
+          >
+            {title}
+          </Text>
+        </Pressable>
+      </View>
       {description?.trim() ? (
         <ScrollView
           className="max-h-[66px] -mt-1"
@@ -171,7 +172,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
                 ? undefined
                 : () => optionsRef.current?.open('description')
             }
-            className="pl-[84px] min-h-11 justify-center"
+            className="pl-10 min-h-11 justify-center"
             hitSlop={10}
             style={({ pressed }) =>
               pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
@@ -191,7 +192,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           Loading list…
         </Text>
       ) : null}
-      <View className="flex-row justify-end gap-2">
+      <View className="flex-row justify-between gap-2">
         <Button
           title="✨ Suggest next"
           onPress={onSuggest}
@@ -199,7 +200,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           loading={suggestLoading}
           variant="text"
           size="small"
-          className="shrink"
+          className="shrink -ml-2"
         />
         <Button
           title="Add item"
@@ -208,7 +209,7 @@ export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
           loading={addLoading}
           variant="text"
           size="small"
-          className="shrink"
+          className="shrink -mr-1"
           icon={
             addLoading ? undefined : (
               <Ionicons
