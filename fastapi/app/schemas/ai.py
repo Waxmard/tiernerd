@@ -21,7 +21,7 @@ class EmojiFillResult(BaseModel):
     remaining: int
 
 
-class ItemSuggestionRequest(BaseModel):
+class SuggestionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     exclude: list[Annotated[str, Field(max_length=60)]] = Field(
@@ -31,3 +31,7 @@ class ItemSuggestionRequest(BaseModel):
 
 class ItemSuggestion(BaseModel):
     name: str
+
+
+class ListSuggestion(BaseModel):
+    title: str

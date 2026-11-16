@@ -271,6 +271,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       (item) => item.item_id === completedItemId
     );
     if (completedItem) {
+      if (!completedItem.icon)
+        void autoFill(completedItem).catch(() => undefined);
       view.clearRestoredSelection();
       setSelectedItemId(completedItemId);
       view.clearRestoredOffset();
@@ -279,7 +281,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     }
     consumedCompletedItemIdRef.current = completedItemId;
     navigation.setParams({ completedItemId: undefined });
-  }, [view, completedItemId, items, itemsLoaded, navigation]);
+  }, [view, completedItemId, items, itemsLoaded, navigation, autoFill]);
 
   const handleDeleteList = useCallback(async () => {
     const identity = screenIdentity;

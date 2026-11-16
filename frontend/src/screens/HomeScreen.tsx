@@ -36,6 +36,7 @@ import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
+import { aiService } from '../services/aiService';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import { listIconEmoji } from '../services/listIcon';
@@ -89,6 +90,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const cardWidth =
     (availableWidth - 2 * horizontalGutter - 12 * (columns - 1)) / columns;
   const [lists, setLists] = useState<TierList[]>([]);
+  const listsRef = useRef(lists);
+  listsRef.current = lists;
   const [hasSnapshot, setHasSnapshot] = useState(false);
   const [snapshotIdentity, setSnapshotIdentity] = useState<{
     userId: string | null;
@@ -104,6 +107,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [loadFailed, setLoadFailed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
+  const modalStepRef = useRef(modalStep);
+  modalStepRef.current = modalStep;
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestedTitle, setSuggestedTitle] = useState('');
+  const suggestedTitlesRef = useRef<string[]>([]);
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
   const [iconListId, setIconListId] = useState<string | null>(null);
@@ -129,6 +137,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setSnapshotIdentity({ userId, token });
     setIsLoading(Boolean(token));
     setLoadFailed(false);
+    suggestedTitlesRef.current = [];
   }, [token, userId]);
   const refreshLists = useCallback(
     async (showLoading = false) => {
@@ -320,6 +329,48 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       notify(getApiErrorMessage(err, 'Unable to save the list emoji.'));
     }
     await refreshLists().catch(() => showCachedLists(userId, token));
+  };
+  const autoFillListIcon = async (list: ListSimple) => {
+    if (!token || list.icon || isOfflineRef.current) return;
+    const expectedUserId = userId;
+    const [icon] = await aiService
+      .suggestEmojis(
+        { name: list.title, kind: 'list', description: list.description },
+        token
+      )
+      .catch((): string[] => []);
+    if (!icon || !isIdentityCurrent(expectedUserId, token)) return;
+    if (
+      listsRef.current.find((entry) => entry.id === list.list_id)?.icon !== null
+    )
+      return;
+    await saveListIcon(list.list_id, icon);
+  };
+  const handleSuggestList = async () => {
+    if (!token) return;
+    const expectedUserId = userId;
+    setIsSuggesting(true);
+    try {
+      const title = await aiService.suggestNextList(
+        suggestedTitlesRef.current,
+        token
+      );
+      if (
+        !isIdentityCurrent(expectedUserId, token) ||
+        modalStepRef.current !== null ||
+        !navigation.isFocused()
+      )
+        return;
+      suggestedTitlesRef.current = [...suggestedTitlesRef.current, title].slice(
+        -50
+      );
+      setSuggestedTitle(title);
+      setModalStep('create');
+    } catch (err) {
+      notify(getApiErrorMessage(err, "Couldn't suggest a list. Try again."));
+    } finally {
+      setIsSuggesting(false);
+    }
   };
   const iconList = visibleLists.find((entry) => entry.id === iconListId);
   const iconListValue = iconList?.icon ? listIconEmoji(iconList.icon) : null;
@@ -580,6 +631,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 )}
               </TouchableOpacity>
             </View>
+            <View className="flex-row">
+              <Button
+                title="✨ Suggest list"
+                variant="text"
+                size="small"
+                loading={isSuggesting}
+                disabled={isOffline || !token || modalStep !== null}
+                onPress={() => void handleSuggestList()}
+              />
+            </View>
             <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>
@@ -596,11 +657,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           {modalStep === 'create' && (
             <CreateListContent
               ref={createListRef}
+              initialTitle={suggestedTitle}
               onClose={() => {
                 setModalStep(null);
                 setPendingList(null);
+                setSuggestedTitle('');
               }}
-              onSuccess={handleListCreated}
+              onSuccess={(list) => {
+                setSuggestedTitle('');
+                handleListCreated(list);
+                void autoFillListIcon(list);
+              }}
             />
           )}
           {modalStep === 'addItem' &&

@@ -351,3 +351,47 @@ class TestSuggestNextItemEndpoint:
         )
         assert response.status_code == 503
         assert response.json()["detail"] == AI_UNAVAILABLE_ERROR
+
+
+class TestSuggestNextListService:
+    def test_sends_existing_titles(self, monkeypatch: MonkeyPatch):
+        calls = _patch_gemini(monkeypatch, '"Best pizza toppings"\nBecause.')
+        assert (
+            item_suggestion.suggest_next_list(["Pixar movies"]) == "Best pizza toppings"
+        )
+        body = calls[0][1]["json"]
+        assert (
+            body["contents"][0]["parts"][0]["text"] == "Existing lists:\n- Pixar movies"
+        )
+
+    def test_rejects_existing_title(self, monkeypatch: MonkeyPatch):
+        _patch_gemini(monkeypatch, "pixar movies")
+        with pytest.raises(ValueError):
+            item_suggestion.suggest_next_list(["Pixar movies"])
+
+
+class TestSuggestNextListEndpoint:
+    async def test_returns_title_excluding_known_titles(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_list: ListModel,
+        monkeypatch: MonkeyPatch,
+    ):
+        received: dict[str, Any] = {}
+
+        def fake(existing: list[str]) -> str:
+            received["existing"] = existing
+            return "Best pizza toppings"
+
+        monkeypatch.setattr(get_settings(), "AI_PROJECT", "test-project")
+        monkeypatch.setattr(ai_endpoint, "suggest_next_list", fake)
+
+        response = await client.post(
+            "/api/ai/next-list",
+            json={"exclude": ["Board games"]},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json() == {"title": "Best pizza toppings"}
+        assert received["existing"] == ["Test List", "Board games"]

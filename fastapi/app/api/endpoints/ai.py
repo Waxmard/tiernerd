@@ -20,12 +20,13 @@ from app.schemas.ai import (
     EmojiSuggestionRequest,
     EmojiSuggestions,
     ItemSuggestion,
-    ItemSuggestionRequest,
+    ListSuggestion,
+    SuggestionRequest,
 )
 from app.schemas.user import User
 from app.services.auth import get_current_user
 from app.services.emoji_suggestion import suggest_emojis
-from app.services.item_suggestion import suggest_next_item
+from app.services.item_suggestion import suggest_next_item, suggest_next_list
 from app.settings import get_settings
 
 router = APIRouter()
@@ -151,7 +152,7 @@ async def fill_item_emojis(
 @router.post("/lists/{list_id}/next-item", response_model=ItemSuggestion)
 async def suggest_next_list_item(
     list_id: uuid.UUID,
-    payload: ItemSuggestionRequest,
+    payload: SuggestionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -185,3 +186,35 @@ async def suggest_next_list_item(
         ) from None
 
     return {"name": name}
+
+
+@router.post("/next-list", response_model=ListSuggestion)
+async def suggest_next_list_title(
+    payload: SuggestionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Suggest one new list title for the current user.
+    """
+    if not get_settings().AI_PROJECT:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=AI_NOT_CONFIGURED_ERROR,
+        )
+    existing = [
+        row[0].title
+        for row in await list_crud.get_by_user_with_stats(db, current_user.user_id)
+    ] + payload.exclude
+    await db.commit()
+
+    try:
+        title = await asyncio.to_thread(suggest_next_list, existing)
+    except Exception:
+        logger.warning("List suggestion failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=AI_UNAVAILABLE_ERROR,
+        ) from None
+
+    return {"title": title}

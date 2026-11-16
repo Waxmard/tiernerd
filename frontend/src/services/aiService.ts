@@ -49,4 +49,9 @@ export const aiService = {
         token
       )
       .then((response) => response.name),
+
+  suggestNextList: (exclude: string[], token: string): Promise<string> =>
+    api
+      .post<{ title: string }>('/api/ai/next-list', { exclude }, token)
+      .then((response) => response.title),
 };

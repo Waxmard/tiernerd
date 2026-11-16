@@ -10,7 +10,7 @@ import {
 import { Pressable, Text, type TextInputInstance, View } from 'react-native';
 import { MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from '../config/limits';
 import { BaseModalContent, Emoji, Input } from '../design-system/components';
-import { type ListIcon, palette } from '../design-system/tokens/colors';
+import { palette } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
@@ -22,7 +22,6 @@ import type {
 } from '../services/listsService';
 import { localLibrary } from '../services/localLibrary';
 import { newId } from '../utils/id';
-import { EmojiPickerField } from './EmojiPicker';
 import { RankingModeSelector } from './ListRankingOptions';
 
 export interface CreatedList {
@@ -37,6 +36,7 @@ export interface CreateListContentHandle {
 interface CreateListContentProps {
   onClose: () => void;
   onSuccess: (list: ListSimple) => void;
+  initialTitle?: string;
 }
 
 const MULTILINE_INPUT_STYLE = { textAlignVertical: 'top' } as const;
@@ -46,14 +46,13 @@ type CreateListView = 'overview' | 'description' | 'ranking-mode';
 export const CreateListContent = forwardRef<
   CreateListContentHandle,
   CreateListContentProps
->(function CreateListContent({ onClose, onSuccess }, ref) {
+>(function CreateListContent({ onClose, onSuccess, initialTitle = '' }, ref) {
   const { user, token } = useAuth();
   const { mutate } = useSync();
   const notify = useNotifyWhenOnline();
   const { scheme } = useTheme();
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState('');
-  const [icon, setIcon] = useState<ListIcon | null>(null);
   const [rankingMode, setRankingMode] = useState<ListRankingMode>('score');
   const [view, setView] = useState<CreateListView>('overview');
   const [isLoading, setIsLoading] = useState(false);
@@ -69,7 +68,6 @@ export const CreateListContent = forwardRef<
   const clearForm = useCallback(() => {
     setTitle('');
     setDescription('');
-    setIcon(null);
     setRankingMode('score');
     setView('overview');
     setFieldError(null);
@@ -116,7 +114,7 @@ export const CreateListContent = forwardRef<
       list_id: listId,
       title: trimmedTitle,
       description: description.trim(),
-      icon,
+      icon: null,
       ranking_mode: rankingMode,
     };
     const localList: ListSimple = {
@@ -231,15 +229,6 @@ export const CreateListContent = forwardRef<
               accessible={false}
             />
           </Pressable>
-          <View className="mb-4">
-            <EmojiPickerField
-              label="List emoji"
-              value={icon}
-              onChange={setIcon}
-              suggestFor={{ name: title, kind: 'list', description }}
-              disabled={isLoading}
-            />
-          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Ranking mode: ${rankingMode === 'rank' ? 'Ranked positions' : 'Scores out of 10'}`}

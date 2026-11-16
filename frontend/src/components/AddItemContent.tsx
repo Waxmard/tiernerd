@@ -106,21 +106,23 @@ export function AddItemContent({
             inputClassName="font-display text-[20px] font-semibold min-h-12 min-w-0"
           />
         </View>
-        <View className={`${PANEL_CLASS} gap-2`} style={hue.cardStyle}>
-          <SectionLabel emoji="😀" label="Emoji" />
-          <EmojiPickerField
-            label="Item emoji"
-            value={form.icon}
-            onChange={(icon) => onFormChange({ icon })}
-            suggestFor={{
-              name: form.name,
-              kind: 'item',
-              description: form.description,
-              listTitle,
-            }}
-            disabled={isBusy}
-          />
-        </View>
+        {isEdit ? (
+          <View className={`${PANEL_CLASS} gap-2`} style={hue.cardStyle}>
+            <SectionLabel emoji="😀" label="Emoji" />
+            <EmojiPickerField
+              label="Item emoji"
+              value={form.icon}
+              onChange={(icon) => onFormChange({ icon })}
+              suggestFor={{
+                name: form.name,
+                kind: 'item',
+                description: form.description,
+                listTitle,
+              }}
+              disabled={isBusy}
+            />
+          </View>
+        ) : null}
         {isEdit && canEditScore ? (
           <View className={`${PANEL_CLASS} gap-1`} style={hue.cardStyle}>
             <Input
