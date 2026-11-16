@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/Waxmard/tiernerd/compare/v0.15.0...v0.16.0) (2026-11-16)
+
+
+### Features
+
+* add AI suggest-next button for list items ([#138](https://github.com/Waxmard/tiernerd/issues/138)) ([2fb1361](https://github.com/Waxmard/tiernerd/commit/2fb1361941645516cec396c7aa65bdc9536f61de))
+
 ## [0.15.0](https://github.com/Waxmard/tiernerd/compare/v0.14.0...v0.15.0) (2026-11-13)
 
 
