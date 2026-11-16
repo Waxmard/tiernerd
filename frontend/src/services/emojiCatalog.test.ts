@@ -25,5 +25,5 @@ test('every emoji fits the database column', () => {
 test('legacy list icon keys map to emoji and emoji pass through', () => {
   assert.equal(listIconEmoji('coffee'), '☕');
   assert.equal(listIconEmoji('🚀'), '🚀');
-  assert.equal(listIconEmoji(null), '🗂️');
+  assert.equal(listIconEmoji(null), null);
 });

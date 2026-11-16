@@ -17,6 +17,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 _ranking = importlib.import_module("app.services.ranking")
 compute_scores = _ranking.compute_scores
 _half_even_1 = _ranking._half_even_1
+generate_key_between = importlib.import_module(
+    "app.core.fractional_index"
+).generate_key_between
 
 
 class MigrationError(Exception):
@@ -110,6 +113,31 @@ def _plan_score_updates(
     for ranked in groups.values():
         _plan_ranked_list_updates(ranked, has_column, updates)
     return updates
+
+
+async def rank_items_missing_position(connection: AsyncConnection) -> None:
+    if connection.dialect.name == "postgresql":
+        await connection.execute(text("LOCK TABLE items IN ACCESS EXCLUSIVE MODE"))
+    result = await connection.execute(
+        text("SELECT item_id, list_id, position FROM items ORDER BY item_id")
+    )
+    lowest: dict[Any, str] = {}
+    unranked: list[tuple[Any, Any]] = []
+    for item_id, list_id, position in result.all():
+        if position is None:
+            unranked.append((item_id, list_id))
+        elif list_id not in lowest or position < lowest[list_id]:
+            lowest[list_id] = position
+    for item_id, list_id in unranked:
+        position = generate_key_between(None, lowest.get(list_id))
+        lowest[list_id] = position
+        await connection.execute(
+            text(
+                "UPDATE items SET position = :position, manual_rating = NULL "
+                "WHERE item_id = :item_id"
+            ),
+            {"position": position, "item_id": item_id},
+        )
 
 
 async def apply_connection(connection: AsyncConnection) -> int:

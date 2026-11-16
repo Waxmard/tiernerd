@@ -27,6 +27,7 @@ export type SyncOp =
       name: string;
       description: string | null;
       icon?: string | null;
+      gap: number;
     }
   | {
       id: string;
@@ -275,11 +276,19 @@ function stripCovers(op: SyncOp): SyncOp {
   return op;
 }
 
+function withGap(op: SyncOp): SyncOp {
+  return op?.kind === 'item.create' && typeof op.gap !== 'number'
+    ? { ...op, gap: 0 }
+    : op;
+}
+
 function parseOps(raw: string | null): SyncOp[] {
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as SyncOp[]).map(stripCovers) : [];
+    return Array.isArray(parsed)
+      ? (parsed as SyncOp[]).map(stripCovers).map(withGap)
+      : [];
   } catch {
     return [];
   }

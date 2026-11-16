@@ -24,25 +24,28 @@ import {
   type RankingAnswer,
   rankMedal,
 } from '../services/rankingEngine';
-import type { RankingResult, RankingView } from './itemWorkspaceTypes';
+import type {
+  RankingResult,
+  RankingSubject,
+  RankingView,
+} from './itemWorkspaceTypes';
 import { ItemRankBadge, TABULAR_NUMS } from './ListDetailItemRow';
 
 const RESULT_HOLD_MS = 1500;
 
 export interface RankingContentProps {
   listTitle: string;
-  item: Item;
+  item: RankingSubject;
   view: RankingView;
   isBusy: boolean;
   rankingMode?: ListRankingMode;
   onAnswer: (result: RankingAnswer) => void;
   onUndo: () => void;
   onCancel: () => void;
-  onPause: () => void;
 }
 
 interface ComparisonChoiceProps {
-  item: Item;
+  item: RankingSubject;
   accessibilityLabel: string;
   isBusy: boolean;
   onPress: () => void;
@@ -125,39 +128,28 @@ export function RankingContent({
   onAnswer,
   onUndo,
   onCancel,
-  onPause,
 }: RankingContentProps) {
   const hue = useListHue();
   const target = view.target;
-  const caption = item.position === null ? 'New' : 'Re-ranking';
+  const caption = view.isNew ? 'New' : 'Re-ranking';
 
   return (
     <BaseModalContent
       title="Which is better?"
       emoji="⚖️"
-      onClose={onPause}
+      onClose={onCancel}
       footer={
         <View className="gap-2">
-          <View className="flex-row gap-2">
-            <Button
-              icon={<Emoji symbol="↩️" size={18} />}
-              title="Undo last answer"
-              variant="secondary"
-              onPress={onUndo}
-              disabled={isBusy || !view.canUndo}
-              className="flex-1"
-            />
-            <Button
-              icon={<Emoji symbol="🔖" size={18} />}
-              title="Finish later"
-              variant="secondary"
-              onPress={onPause}
-              disabled={isBusy}
-              className="flex-1"
-            />
-          </View>
           <Button
-            title="Cancel ranking"
+            icon={<Emoji symbol="↩️" size={18} />}
+            title="Undo last answer"
+            variant="secondary"
+            onPress={onUndo}
+            disabled={isBusy || !view.canUndo}
+            fullWidth
+          />
+          <Button
+            title={view.isNew ? 'Discard item' : 'Cancel ranking'}
             variant="text"
             onPress={onCancel}
             disabled={isBusy}
@@ -220,10 +212,7 @@ export function RankingContent({
                 className="flex-row items-center gap-1 rounded-full px-3 py-1"
                 style={{ backgroundColor: hue.solid }}
               >
-                <Emoji
-                  symbol={item.position === null ? '🌱' : '🔄'}
-                  size={14}
-                />
+                {view.isNew ? null : <Emoji symbol="🔄" size={14} />}
                 <Text
                   className="text-label-large"
                   style={{ color: hue.onSolid }}

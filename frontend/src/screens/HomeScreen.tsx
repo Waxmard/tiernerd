@@ -29,7 +29,6 @@ import {
   ImmersiveScreenShell,
   ListIdentityBadge,
 } from '../components/ImmersiveBoard';
-import { RankingContent } from '../components/RankingContent';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button, Emoji, SheetModal } from '../design-system/components';
 import type { ListIcon } from '../design-system/tokens/colors';
@@ -37,6 +36,7 @@ import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
 import { useNotifyWhenOnline, useSync } from '../providers/SyncProvider';
 import { useTheme } from '../providers/ThemeProvider';
+import { aiService } from '../services/aiService';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import { listIconEmoji } from '../services/listIcon';
@@ -90,6 +90,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const cardWidth =
     (availableWidth - 2 * horizontalGutter - 12 * (columns - 1)) / columns;
   const [lists, setLists] = useState<TierList[]>([]);
+  const listsRef = useRef(lists);
+  listsRef.current = lists;
   const [hasSnapshot, setHasSnapshot] = useState(false);
   const [snapshotIdentity, setSnapshotIdentity] = useState<{
     userId: string | null;
@@ -105,6 +107,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [loadFailed, setLoadFailed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [modalStep, setModalStep] = useState<ModalStep>(null);
+  const modalStepRef = useRef(modalStep);
+  modalStepRef.current = modalStep;
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestedTitle, setSuggestedTitle] = useState('');
+  const suggestedTitlesRef = useRef<string[]>([]);
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
   const [iconListId, setIconListId] = useState<string | null>(null);
@@ -130,6 +137,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setSnapshotIdentity({ userId, token });
     setIsLoading(Boolean(token));
     setLoadFailed(false);
+    suggestedTitlesRef.current = [];
   }, [token, userId]);
   const refreshLists = useCallback(
     async (showLoading = false) => {
@@ -322,10 +330,52 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
     await refreshLists().catch(() => showCachedLists(userId, token));
   };
+  const autoFillListIcon = async (list: ListSimple) => {
+    if (!token || list.icon || isOfflineRef.current) return;
+    const expectedUserId = userId;
+    const [icon] = await aiService
+      .suggestEmojis(
+        { name: list.title, kind: 'list', description: list.description },
+        token
+      )
+      .catch((): string[] => []);
+    if (!icon || !isIdentityCurrent(expectedUserId, token)) return;
+    if (
+      listsRef.current.find((entry) => entry.id === list.list_id)?.icon !== null
+    )
+      return;
+    await saveListIcon(list.list_id, icon);
+  };
+  const handleSuggestList = async () => {
+    if (!token) return;
+    const expectedUserId = userId;
+    setIsSuggesting(true);
+    try {
+      const title = await aiService.suggestNextList(
+        suggestedTitlesRef.current,
+        token
+      );
+      if (
+        !isIdentityCurrent(expectedUserId, token) ||
+        modalStepRef.current !== null ||
+        !navigation.isFocused()
+      )
+        return;
+      suggestedTitlesRef.current = [...suggestedTitlesRef.current, title].slice(
+        -50
+      );
+      setSuggestedTitle(title);
+      setModalStep('create');
+    } catch (err) {
+      notify(getApiErrorMessage(err, "Couldn't suggest a list. Try again."));
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
   const iconList = visibleLists.find((entry) => entry.id === iconListId);
-  const iconListValue = iconList?.icon ? listIconEmoji(iconList.icon) : null;
+  const iconListValue = listIconEmoji(iconList?.icon);
   const handleListCreated = useCallback(
-    (list: ListSimple) => {
+    (list: ListSimple, fromSuggestion: boolean) => {
       const expectedUserId = userId;
       const expectedToken = token;
       const created = toTierList(list);
@@ -337,21 +387,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       setSnapshotIdentity({ userId: expectedUserId, token: expectedToken });
       setHasSnapshot(true);
       setIsLoading(false);
-      setPendingList({ listId: list.list_id, title: list.title });
-      workspace.openAdd();
-      setModalStep('addItem');
+      if (fromSuggestion) {
+        setModalStep(null);
+        navigation.navigate('ListDetail', {
+          listId: list.list_id,
+          listTitle: list.title,
+        });
+      } else {
+        setPendingList({ listId: list.list_id, title: list.title });
+        workspace.openAdd();
+        setModalStep('addItem');
+      }
       void refreshLists().catch(() =>
         showCachedLists(expectedUserId, expectedToken)
       );
     },
-    [refreshLists, showCachedLists, token, userId, workspace.openAdd]
+    [
+      navigation,
+      refreshLists,
+      showCachedLists,
+      token,
+      userId,
+      workspace.openAdd,
+    ]
   );
   const getModalTitle = () =>
-    modalStep === 'create'
-      ? 'Create New List'
-      : workspace.mode === 'ranking'
-        ? 'Which is better?'
-        : 'Add item';
+    modalStep === 'create' ? 'Create New List' : 'Add item';
   useEffect(
     () =>
       navigation.addListener('beforeRemove', (event) => {
@@ -370,9 +431,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         const close =
           modalStep === 'create'
             ? createListRef.current?.requestClose()
-            : workspace.mode === 'ranking'
-              ? workspace.pauseRanking()
-              : workspace.requestClose();
+            : workspace.requestClose();
         void Promise.resolve(close)
           .catch(() => false)
           .then((canLeave) => {
@@ -385,13 +444,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             closingForNavigationRef.current = false;
           });
       }),
-    [
-      modalStep,
-      navigation,
-      workspace.mode,
-      workspace.pauseRanking,
-      workspace.requestClose,
-    ]
+    [modalStep, navigation, workspace.requestClose]
   );
   useEffect(() => {
     if (lastSyncedAt === 0) return;
@@ -445,16 +498,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         style={{ width: cardWidth }}
         className="shrink-0 flex-row items-center gap-3 rounded-2xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark"
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Change emoji for ${item.title}`}
-          accessibilityHint="Opens the emoji picker"
-          hitSlop={6}
-          onPress={() => setIconListId(item.id)}
-          style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
-        >
-          <ListIdentityBadge size="lg" icon={item.icon} />
-        </Pressable>
+        {item.icon ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Change emoji for ${item.title}`}
+            accessibilityHint="Opens the emoji picker"
+            hitSlop={6}
+            onPress={() => setIconListId(item.id)}
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
+          >
+            <ListIdentityBadge size="lg" icon={item.icon} />
+          </Pressable>
+        ) : null}
         <View className="flex-1 min-w-0 gap-1">
           <Text
             numberOfLines={2}
@@ -593,6 +648,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 )}
               </TouchableOpacity>
             </View>
+            <View className="flex-row">
+              <Button
+                icon={<Emoji symbol="✨" size={18} />}
+                title="Suggest list"
+                variant="text"
+                size="small"
+                loading={isSuggesting}
+                disabled={isOffline || !token || modalStep !== null}
+                onPress={() => void handleSuggestList()}
+              />
+            </View>
             <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>
@@ -602,54 +668,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onRequestClose={() => {
             if (modalStep === 'create')
               void createListRef.current?.requestClose().catch(() => false);
-            else if (modalStep === 'addItem') {
-              if (workspace.mode === 'ranking') {
-                const list = pendingList;
-                void workspace.pauseRanking().then((paused) => {
-                  if (paused && list)
-                    navigation.navigate('ListDetail', {
-                      listId: list.listId,
-                      listTitle: list.title,
-                    });
-                });
-              } else void workspace.requestClose().catch(() => false);
-            }
+            else if (modalStep === 'addItem')
+              void workspace.requestClose().catch(() => false);
           }}
         >
           {modalStep === 'create' && (
             <CreateListContent
               ref={createListRef}
+              initialTitle={suggestedTitle}
               onClose={() => {
                 setModalStep(null);
                 setPendingList(null);
+                setSuggestedTitle('');
               }}
-              onSuccess={handleListCreated}
+              onSuccess={(list) => {
+                const fromSuggestion = suggestedTitle !== '';
+                setSuggestedTitle('');
+                handleListCreated(list, fromSuggestion);
+                void autoFillListIcon(list);
+              }}
             />
           )}
           {modalStep === 'addItem' &&
             pendingList &&
-            (workspace.mode === 'ranking' && workspace.view ? (
-              <RankingContent
-                listTitle={pendingList.title}
-                item={workspace.view.item}
-                view={workspace.view}
-                isBusy={workspace.isBusy}
-                onAnswer={(answer) => void workspace.answer(answer)}
-                onUndo={() => void workspace.undo()}
-                onCancel={() => void workspace.cancelRanking()}
-                onPause={() => {
-                  const list = pendingList;
-                  void workspace.pauseRanking().then((paused) => {
-                    if (paused && list) {
-                      navigation.navigate('ListDetail', {
-                        listId: list.listId,
-                        listTitle: list.title,
-                      });
-                    }
-                  });
-                }}
-              />
-            ) : workspace.mode === 'add' || workspace.mode === 'edit' ? (
+            (workspace.mode === 'add' || workspace.mode === 'edit' ? (
               <AddItemContent
                 mode={workspace.mode}
                 form={workspace.form}

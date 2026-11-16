@@ -48,8 +48,8 @@ const listSummary = (overrides: Partial<ListSimple> = {}): ListSimple => ({
 
 const item = (
   itemId: string,
-  position: string | null,
-  rating: number | null,
+  position: string,
+  rating: number,
   manualRating: number | null = null
 ): Item => ({
   item_id: itemId,
@@ -123,21 +123,33 @@ test('deleting a list removes its summary and items', async () => {
   assert.equal(storage.map.has(listItemsCacheKey(USER, LIST)), false);
 });
 
-test('creating an item appends it and bumps the count', async () => {
+test('creating an item inserts at the index, rescoring the list, and bumps the count', async () => {
   const storage = memoryStorage();
   const library = createLocalLibrary(storage);
-  await seed(storage, [item('a', 'a0', 10)]);
+  await seed(
+    storage,
+    [item('a', 'a1', 10), item('b', 'a0', 0)],
+    listSummary({ item_count: 2 })
+  );
+  const created = {
+    ...item('c', 'pending', 0),
+    updated_at: '2026-02-01T00:00:00.000Z',
+  };
 
-  await library.applyLocalItemCreate(USER, LIST, item('b', null, null));
+  await library.applyLocalItemCreate(USER, LIST, created, 1);
 
   const items = await readItems(storage);
   assert.deepEqual(
     items.map((entry) => entry.item_id),
-    ['a', 'b']
+    ['a', 'c', 'b']
+  );
+  assert.deepEqual(
+    items.map((entry) => entry.rating),
+    [8, 6.5, 4.6]
   );
   const summary = await readSummary(storage);
-  assert.equal(summary?.item_count, 2);
-  assert.equal(summary?.updated_at, items[1]?.updated_at);
+  assert.equal(summary?.item_count, 3);
+  assert.equal(summary?.updated_at, created.updated_at);
 });
 
 test('deleting a ranked item rescores the survivors', async () => {
@@ -165,19 +177,6 @@ test('deleting a ranked item rescores the survivors', async () => {
   );
 });
 
-test('deleting an unranked item leaves the scores alone', async () => {
-  const storage = memoryStorage();
-  const library = createLocalLibrary(storage);
-  await seed(storage, [item('a', 'a0', 10), item('b', null, null)]);
-
-  await library.applyLocalItemDelete(USER, LIST, 'b');
-
-  assert.deepEqual(
-    (await readItems(storage)).map((entry) => entry.rating),
-    [10]
-  );
-});
-
 test('ranking inserts at the index and rescores every ranked item', async () => {
   const storage = memoryStorage();
   const library = createLocalLibrary(storage);
@@ -191,7 +190,7 @@ test('ranking inserts at the index and rescores every ranked item', async () => 
   ];
   await seed(storage, ranked);
 
-  await library.applyLocalRanking(USER, LIST, item('mover', null, null), 2);
+  await library.applyLocalRanking(USER, LIST, item('mover', 'pending', 0), 2);
 
   const items = await readItems(storage);
   assert.deepEqual(
@@ -205,29 +204,12 @@ test('ranking inserts at the index and rescores every ranked item', async () => 
   assert.equal(items[2]?.position, 'pending');
 });
 
-test('unranked items stay last after a ranking', async () => {
-  const storage = memoryStorage();
-  const library = createLocalLibrary(storage);
-  await seed(storage, [
-    item('a', 'a1', 10),
-    item('b', 'a0', 0),
-    item('loose', null, null),
-  ]);
-
-  await library.applyLocalRanking(USER, LIST, item('mover', null, null), 1);
-
-  assert.deepEqual(
-    (await readItems(storage)).map((entry) => entry.item_id),
-    ['a', 'mover', 'b', 'loose']
-  );
-});
-
 test('setting an item icon keeps a ranking saved in the meantime', async () => {
   const storage = memoryStorage();
   const library = createLocalLibrary(storage);
-  await seed(storage, [item('a', 'a0', 10), item('new', null, null)]);
+  await seed(storage, [item('a', 'a1', 10), item('new', 'a0', 0)]);
 
-  await library.applyLocalRanking(USER, LIST, item('new', null, null), 0);
+  await library.applyLocalRanking(USER, LIST, item('new', 'a0', 0), 0);
   await library.applyLocalItemIcon(
     USER,
     LIST,
@@ -247,11 +229,11 @@ test('ranking keeps an icon the cache gained after the caller read the item', as
   const storage = memoryStorage();
   const library = createLocalLibrary(storage);
   await seed(storage, [
-    item('a', 'a0', 10),
-    { ...item('new', null, null), icon: '🍕' },
+    item('a', 'a1', 10),
+    { ...item('new', 'a0', 0), icon: '🍕' },
   ]);
 
-  await library.applyLocalRanking(USER, LIST, item('new', null, null), 0);
+  await library.applyLocalRanking(USER, LIST, item('new', 'a0', 0), 0);
 
   const created = (await readItems(storage)).find(
     (entry) => entry.item_id === 'new'
@@ -369,9 +351,9 @@ test('reconcileListItems and reconcileLists preserve pending item.delete and rec
 
 test('reconcileListItems, reconcileLists, and reconcileListMetadata apply pending update and ranking ops', () => {
   const serverItems: Item[] = [
-    item('a', 'a1', 8.5),
-    item('b', 'a0', 3.8),
-    item('c', null, null),
+    item('a', 'a2', 8.5),
+    item('b', 'a1', 3.8),
+    item('c', 'a0', 0),
   ];
   const ops: SyncOp[] = [
     {
@@ -485,21 +467,33 @@ test('reconcileListItems and reconcileLists apply pending create and delete ops'
     itemId: 'c',
     name: 'Charlie',
     description: null,
+    gap: 1,
   };
 
   const fromCache = reconcileListItems(
     LIST,
     serverItems,
-    [item('c', null, null)],
+    [item('c', 'pending', 0)],
     [pendingCreate]
   );
   assert.deepEqual(
     fromCache.map((entry) => [entry.item_id, entry.name, entry.rating]),
     [
-      ['a', 'a', 8.5],
-      ['b', 'b', 3.8],
-      ['c', 'c', null],
+      ['a', 'a', 8],
+      ['c', 'c', 6.5],
+      ['b', 'b', 4.6],
     ]
+  );
+
+  const atBottom = reconcileListItems(
+    LIST,
+    serverItems,
+    [item('c', 'pending', 0)],
+    [{ ...pendingCreate, gap: 0 }]
+  );
+  assert.deepEqual(
+    atBottom.map((entry) => entry.item_id),
+    ['a', 'b', 'c']
   );
 
   const fromFallback = reconcileListItems(
@@ -517,15 +511,15 @@ test('reconcileListItems and reconcileLists apply pending create and delete ops'
     ]),
     [
       ['a', 'a', LIST, '2026-01-01T00:00:00.000Z'],
-      ['b', 'b', LIST, '2026-01-01T00:00:00.000Z'],
       ['c', 'Charlie', LIST, '2026-01-05T00:00:00.000Z'],
+      ['b', 'b', LIST, '2026-01-01T00:00:00.000Z'],
     ]
   );
 
   const dedupedById = reconcileListItems(
     LIST,
-    [...serverItems, item('c', null, null)],
-    [item('c', null, null)],
+    [...serverItems, item('c', 'Z0', 0)],
+    [item('c', 'pending', 0)],
     [pendingCreate]
   );
   assert.deepEqual(
@@ -536,7 +530,7 @@ test('reconcileListItems and reconcileLists apply pending create and delete ops'
   const dedupedByName = reconcileListItems(
     LIST,
     [...serverItems, { ...item('server-c', 'a2', 10), name: 'CHARLIE' }],
-    [item('c', null, null)],
+    [item('c', 'pending', 0)],
     [{ ...pendingCreate, itemId: 'other-c', name: '  charlie ' }]
   );
   assert.deepEqual(

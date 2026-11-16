@@ -13,7 +13,7 @@ from app.services.ranking import assign_scores
 
 def create_mock_item(
     name: str,
-    position: str | None = "a0",
+    position: str = "a0",
 ) -> ItemModel:
     """Create a mock item for testing."""
     return ItemModel(
@@ -45,18 +45,6 @@ class TestGetItemsBestFirst:
         low.rating = 10.0
         high.rating = 0.0
         assert get_items_best_first([low, high]) == [high, low]
-
-    def test_unranked_last(self):
-        ranked = create_mock_item("Ranked")
-        first_unranked = create_mock_item("First unranked", position=None)
-        second_unranked = create_mock_item("Second unranked", position=None)
-        assert get_items_best_first([first_unranked, ranked, second_unranked]) == [
-            ranked,
-            first_unranked,
-            second_unranked,
-        ]
-        assert first_unranked.rating is None
-        assert second_unranked.rating is None
 
     def test_equal_rounded_scores_keep_position_order(self):
         items = [

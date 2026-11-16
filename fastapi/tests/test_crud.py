@@ -26,27 +26,25 @@ class TestItemCRUD:
         result = await item_crud.get_by_list_id(test_db, test_list.list_id)
         assert result == []
 
-    async def test_get_by_list_id_includes_ranked_and_unranked_items(
+    async def test_get_by_list_id_excludes_other_lists(
         self,
         test_db: AsyncSession,
         test_list: ListModel,
         multiple_items: list[ItemModel],
     ):
-        unranked = ItemModel(list_id=test_list.list_id, name="Unranked")
         other_list = ListModel(user_id=test_list.user_id, title="Other list")
-        test_db.add_all([unranked, other_list])
+        test_db.add(other_list)
         await test_db.flush()
-        other_item = ItemModel(list_id=other_list.list_id, name="Other item")
+        other_item = ItemModel(
+            list_id=other_list.list_id, name="Other item", position="a0", rating=0.0
+        )
         test_db.add(other_item)
         await test_db.commit()
 
         result = await item_crud.get_by_list_id(test_db, test_list.list_id)
         assert {item.item_id for item in result} == {
-            *(item.item_id for item in multiple_items),
-            unranked.item_id,
+            item.item_id for item in multiple_items
         }
-        assert unranked.position is None
-        assert unranked.rating is None
 
     async def test_ranked_positions_are_unique_per_list(
         self, test_db: AsyncSession, test_list: ListModel, test_item: ItemModel
@@ -56,8 +54,6 @@ class TestItemCRUD:
         await test_db.flush()
         test_db.add_all(
             [
-                ItemModel(list_id=test_list.list_id, name="Unranked one"),
-                ItemModel(list_id=test_list.list_id, name="Unranked two"),
                 ItemModel(
                     list_id=other_list.list_id,
                     name="Other list item",
@@ -67,12 +63,6 @@ class TestItemCRUD:
             ]
         )
         await test_db.commit()
-
-        items = await item_crud.get_by_list_id(test_db, test_list.list_id)
-        assert {item.name for item in items if item.position is None} == {
-            "Unranked one",
-            "Unranked two",
-        }
 
         duplicate = ItemModel(
             list_id=test_list.list_id,
@@ -90,6 +80,8 @@ class TestItemCRUD:
         duplicate = ItemModel(
             list_id=test_item.list_id,
             name="  TEST ITEM  ",
+            position="z0",
+            rating=0.0,
         )
         with pytest.raises(IntegrityError) as caught:
             await item_crud.create(test_db, duplicate)

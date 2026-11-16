@@ -30,6 +30,7 @@ const itemCreate = (id: string, itemId: string, name = 'Alpha'): SyncOp => ({
   itemId,
   name,
   description: null,
+  gap: 0,
 });
 
 const itemDelete = (id: string, itemId: string): SyncOp => ({
@@ -384,6 +385,33 @@ test('retired cover keys are stripped from persisted list ops', async () => {
           : null
     ),
     [{ list_id: 'l1', title: 'Old' }, { title: 'Renamed' }]
+  );
+});
+
+test('a create queued by an older build defaults to the bottom', async () => {
+  const storage = memoryStorage();
+  const legacy = {
+    id: '1',
+    createdAt: NOW,
+    kind: 'item.create',
+    listId: 'list-1',
+    itemId: 'a',
+    name: 'Alpha',
+    description: null,
+  };
+  storage.map.set(
+    `outbox:v1:${USER}`,
+    JSON.stringify([
+      legacy,
+      { ...legacy, id: '2', itemId: 'b', name: 'Beta', gap: 2 },
+    ])
+  );
+
+  const ops = await pendingOps(USER, storage);
+
+  assert.deepEqual(
+    ops.map((op) => (op.kind === 'item.create' ? op.gap : null)),
+    [0, 2]
   );
 });
 

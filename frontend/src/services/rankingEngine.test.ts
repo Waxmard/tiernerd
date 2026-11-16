@@ -12,13 +12,11 @@ import {
   halfEven1,
   insertIndexBestFirst,
   isDecided,
-  isDraftCurrent,
   landingRange,
   manualRatingBounds,
   manualRatingBoundsError,
   parseManualRatingInput,
   rankMedal,
-  scoreForRank,
   splitScoreParts,
   targetPeerId,
   undoAnswer,
@@ -104,7 +102,7 @@ test('comparison limits match the server bit-length rule', () => {
 test('scores follow log-odds order-statistic curve and round half-even', () => {
   assert.equal(halfEven1(6.25), 6.2);
   assert.equal(halfEven1(6.35), 6.4);
-  assert.equal(scoreForRank(1, 1), 6.5);
+  assert.deepEqual(computeScores([null]), [6.5]);
   assert.deepEqual(computeScores([null, null]), [7.5, 5.3]);
   assert.deepEqual(computeScores([null, null, null]), [8.0, 6.5, 4.6]);
   assert.deepEqual(
@@ -200,24 +198,4 @@ test('parseManualRatingInput validates blank, decimal precision, and range', () 
   assert.deepEqual(parseManualRatingInput('abc'), {
     error: 'Score must be between 0.0 and 10.0.',
   });
-});
-
-test('drafts are only current while the ranked peers are unchanged', () => {
-  const session = createRankingSession('item', 'list', peers);
-  assert.equal(isDraftCurrent(session, 'item', 'list', peers), true);
-  assert.equal(isDraftCurrent(session, 'other', 'list', peers), false);
-  assert.equal(isDraftCurrent(session, 'item', 'other', peers), false);
-  assert.equal(
-    isDraftCurrent(session, 'item', 'list', [...peers, 'new']),
-    false
-  );
-  assert.equal(
-    isDraftCurrent(session, 'item', 'list', [
-      'best',
-      'second',
-      'worst',
-      'third',
-    ]),
-    false
-  );
 });

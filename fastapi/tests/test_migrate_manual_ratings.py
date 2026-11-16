@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.db import database as db_module
 from app.settings import get_settings
-from scripts.migrate_manual_ratings import main
+from scripts.migrate_manual_ratings import main, rank_items_missing_position
 
 
 def _sqlite_engine(path) -> Engine:
@@ -129,7 +129,7 @@ async def test_create_tables_adds_column_and_rescores_legacy_items(
         with sync_engine.connect() as connection:
             rows = (
                 connection.execute(
-                    text("SELECT item_id, rating FROM items ORDER BY item_id")
+                    text("SELECT item_id, position, rating FROM items ORDER BY item_id")
                 )
                 .mappings()
                 .all()
@@ -137,11 +137,44 @@ async def test_create_tables_adds_column_and_rescores_legacy_items(
     finally:
         sync_engine.dispose()
     assert [dict(row) for row in rows] == [
-        {"item_id": "i1", "rating": 8.0},
-        {"item_id": "i2", "rating": 6.5},
-        {"item_id": "i3", "rating": 4.6},
-        {"item_id": "i4", "rating": None},
+        {"item_id": "i1", "position": "a2", "rating": 8.3},
+        {"item_id": "i2", "position": "a1", "rating": 7.1},
+        {"item_id": "i3", "position": "a0", "rating": 5.8},
+        {"item_id": "i4", "position": "Z0", "rating": 4.1},
     ]
+
+
+async def test_rank_items_missing_position_places_each_below_list_lowest(
+    tmp_path,
+) -> None:
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'r.db'}")
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "CREATE TABLE items (item_id VARCHAR(36) PRIMARY KEY, "
+                    "list_id VARCHAR(36), position VARCHAR(255), "
+                    "manual_rating DOUBLE PRECISION)"
+                )
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO items (item_id, list_id, position) VALUES "
+                    "('a', 'l1', 'a1'), ('b', 'l1', NULL), ('c', 'l1', NULL), "
+                    "('d', 'l2', NULL), ('e', 'l2', NULL)"
+                )
+            )
+            await rank_items_missing_position(connection)
+            rows = (
+                await connection.execute(
+                    text("SELECT item_id, list_id, position FROM items")
+                )
+            ).all()
+    finally:
+        await engine.dispose()
+    positions = {item_id: position for item_id, _list_id, position in rows}
+    assert positions["c"] < positions["b"] < positions["a"]
+    assert positions["e"] < positions["d"]
 
 
 async def test_create_tables_drops_retired_list_cover_columns(

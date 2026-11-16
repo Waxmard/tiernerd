@@ -39,12 +39,25 @@ export interface UseItemWorkspaceOptions {
   listTitle: string;
   rankingMode?: ListRankingMode;
   items: Item[];
-  onItemsChanged: (item?: Item, created?: boolean) => Promise<void>;
-  onClosed: () => void;
+  onItemsChanged: (
+    item?: Item,
+    created?: boolean,
+    pendingIcon?: Promise<string | null>
+  ) => Promise<void>;
+  suggestIcon?: (
+    draft: Pick<ItemFormDraft, 'name' | 'description'>
+  ) => Promise<string | null>;
+  onClosed?: () => void;
 }
 
+export type RankingSubject = Pick<
+  Item,
+  'item_id' | 'name' | 'description' | 'icon' | 'image_url'
+>;
+
 export interface RankingView {
-  item: Item;
+  item: RankingSubject;
+  isNew: boolean;
   target: Item | null;
   targetRank: number | null;
   rankedCount: number;
@@ -60,15 +73,13 @@ export interface ItemWorkspace extends ItemWorkspaceState {
   openAdd: () => void;
   openEdit: (item: Item, focusField?: ItemFormField | null) => void;
   saveIcon: (item: Item, icon: string | null) => Promise<boolean>;
-  resumeRanking: (session: RankingSession) => void;
   setForm: (patch: Partial<ItemFormDraft>) => void;
   submitMetadata: () => Promise<void>;
-  startRanking: (item: Item) => Promise<void>;
+  startRanking: (item: Item) => void;
   answer: (answer: RankingAnswer) => Promise<void>;
-  undo: () => Promise<void>;
+  undo: () => void;
   cancelRanking: () => Promise<boolean>;
   deleteItem: (item: Item) => Promise<void>;
   requestClose: () => Promise<boolean>;
-  pauseRanking: () => Promise<boolean>;
   dismissResult: () => void;
 }

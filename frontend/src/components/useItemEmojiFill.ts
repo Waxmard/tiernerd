@@ -29,22 +29,33 @@ export function useItemEmojiFill({
   const live = useRef({ userId, listId, items });
   live.current = { userId, listId, items };
 
-  const autoFill = useCallback(
-    async (item: Item): Promise<void> => {
-      if (!userId || !token || isOffline) return;
-      const isCurrent = () =>
-        live.current.userId === userId && live.current.listId === listId;
+  const suggestIcon = useCallback(
+    async (
+      target: Pick<Item, 'name' | 'description'>
+    ): Promise<string | null> => {
+      if (!token || isOffline) return null;
       const [icon] = await aiService
         .suggestEmojis(
           {
-            name: item.name,
+            name: target.name,
             kind: 'item',
-            description: item.description,
+            description: target.description,
             listTitle,
           },
           token
         )
         .catch((): string[] => []);
+      return icon ?? null;
+    },
+    [isOffline, listTitle, token]
+  );
+
+  const autoFill = useCallback(
+    async (item: Item, pending?: Promise<string | null>): Promise<void> => {
+      if (!userId) return;
+      const isCurrent = () =>
+        live.current.userId === userId && live.current.listId === listId;
+      const icon = await (pending ?? suggestIcon(item));
       if (!icon || !isCurrent()) return;
       const current = live.current.items.find(
         (entry) => entry.item_id === item.item_id
@@ -81,7 +92,7 @@ export function useItemEmojiFill({
       );
       if (isCurrent()) await refresh();
     },
-    [isOffline, listId, listTitle, mutate, refresh, token, userId]
+    [listId, mutate, refresh, suggestIcon, userId]
   );
 
   const fillMissing = useCallback(async (): Promise<void> => {
@@ -124,5 +135,5 @@ export function useItemEmojiFill({
     );
   }, [listId, notify, refresh, token, userId]);
 
-  return { autoFill, fillMissing };
+  return { autoFill, fillMissing, suggestIcon };
 }

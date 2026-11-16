@@ -52,7 +52,7 @@ To rank an item, choose the better item in each comparison. **Undo last answer**
 
 Select an item to see its description, image, rank and, in score lists, its score. **Edit** changes its details. **Re-rank** runs the comparisons again and keeps the old rank until they finish. **Delete Item** removes it after confirmation.
 
-An unfinished ranking stays on the device. Reopen the list or choose **Resume ranking** to continue. Cancelling leaves the item marked **Not ranked yet**; choose **Rank now** to start again.
+A new item is added only when its comparisons finish. Leaving them early (**Discard item**, closing or swiping down the sheet) discards it, and a notification says it wasn't added. A ranking in progress survives the app going to the background, not the app being closed. Cancelling a **Re-rank** asks first and keeps the old rank.
 
 Scores come from each item's place in the list, not a separate rating. They run from 0.1 to 9.9, and adding, removing or re-ranking an item can change every score. To set a score yourself, edit a ranked item and enter 0 to 10; the items around it adjust. A manual score must fit between the manual scores above and below it.
 

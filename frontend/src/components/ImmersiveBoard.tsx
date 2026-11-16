@@ -49,6 +49,8 @@ export function ListIdentityBadge({
         ? 'w-12 h-12 rounded-2xl'
         : 'w-9 h-9 rounded-xl';
   const iconSize = size === 'sm' ? 16 : size === 'lg' ? 28 : 20;
+  const emoji = listIconEmoji(icon);
+  if (!emoji) return null;
 
   return (
     <View
@@ -58,7 +60,7 @@ export function ListIdentityBadge({
         'bg-accent-tint dark:bg-accent-tint-dark',
       ].join(' ')}
     >
-      <Emoji symbol={listIconEmoji(icon)} size={iconSize} />
+      <Emoji symbol={emoji} size={iconSize} />
     </View>
   );
 }

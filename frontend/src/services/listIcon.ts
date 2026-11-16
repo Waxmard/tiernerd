@@ -8,7 +8,7 @@ const LEGACY_ICON_EMOJI = new Map([
   ['books', '📚'],
 ]);
 
-export function listIconEmoji(icon: string | null | undefined): string {
-  if (!icon) return '🗂️';
+export function listIconEmoji(icon: string | null | undefined): string | null {
+  if (!icon) return null;
   return LEGACY_ICON_EMOJI.get(icon) ?? icon;
 }

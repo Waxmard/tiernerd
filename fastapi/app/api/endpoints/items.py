@@ -7,7 +7,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import ITEM_NAME_ALREADY_EXISTS_ERROR, ITEM_NOT_FOUND_ERROR
-from app.core.fractional_index import generate_key_between
 from app.crud import item as item_crud, list as list_crud
 from app.db.database import get_db
 from app.db.models import Item as ItemModel
@@ -16,8 +15,8 @@ from app.schemas.user import User
 from app.services.auth import get_current_user
 from app.services.ranking import (
     assign_scores,
-    filter_ranked_items,
     manual_rating_bounds_error,
+    place_item,
 )
 
 router = APIRouter()
@@ -74,17 +73,15 @@ async def create_item(
         description=item_in.description,
         image_url=str(item_in.image_url) if item_in.image_url else None,
         icon=item_in.icon,
-        position=None,
-        rating=None,
         manual_rating=None,
         created_at=now,
         updated_at=now,
     )
     list_obj.updated_at = now
 
-    if not filter_ranked_items(await item_crud.get_by_list_id(db, list_obj.list_id)):
-        item_obj.position = generate_key_between(None, None)
-        assign_scores([item_obj])
+    place_item(
+        await item_crud.get_by_list_id(db, list_obj.list_id), item_obj, item_in.gap
+    )
 
     try:
         await item_crud.create(db, item_obj)
@@ -147,31 +144,24 @@ async def update_item(
             )
     ranked_asc: list[ItemModel] = []
     if "manual_rating" in update_data:
-        if item_obj.position is None and update_data["manual_rating"] is not None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Rank this item before setting a manual score.",
+        items = await item_crud.get_by_list_id(db, list_obj.list_id)
+        ranked_asc = sorted(items, key=lambda x: x.position)
+        if update_data["manual_rating"] is not None:
+            error = manual_rating_bounds_error(
+                list(reversed(ranked_asc)),
+                item_obj.item_id,
+                update_data["manual_rating"],
             )
-        if item_obj.position is not None:
-            items = await item_crud.get_by_list_id(db, list_obj.list_id)
-            ranked_asc = sorted(
-                filter_ranked_items(items), key=lambda x: x.position or ""
-            )
-            best_first = list(reversed(ranked_asc))
-            if update_data["manual_rating"] is not None:
-                error = manual_rating_bounds_error(
-                    best_first, item_obj.item_id, update_data["manual_rating"]
+            if error is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=error,
                 )
-                if error is not None:
-                    raise HTTPException(
-                        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                        detail=error,
-                    )
     if update_data:
         list_obj.updated_at = datetime.now(UTC)
     try:
         await item_crud.update(db, item_obj, update_data)
-        if "manual_rating" in update_data and item_obj.position is not None:
+        if "manual_rating" in update_data:
             assign_scores(ranked_asc)
             await db.flush()
     except IntegrityError as error:
@@ -202,13 +192,9 @@ async def delete_item(
             status_code=status.HTTP_404_NOT_FOUND, detail=ITEM_NOT_FOUND_ERROR
         )
 
-    was_ranked = item_obj.position is not None
     await item_crud.delete(db, item_obj)
-    if was_ranked:
-        await db.flush()
-        items = await item_crud.get_by_list_id(db, list_obj.list_id)
-        assign_scores(
-            sorted(filter_ranked_items(items), key=lambda item: item.position or "")
-        )
+    await db.flush()
+    items = await item_crud.get_by_list_id(db, list_obj.list_id)
+    assign_scores(sorted(items, key=lambda item: item.position))
     list_obj.updated_at = datetime.now(UTC)
     await db.commit()

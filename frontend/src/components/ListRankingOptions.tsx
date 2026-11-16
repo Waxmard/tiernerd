@@ -232,8 +232,7 @@ export function ListRankingOptions({
   };
   const pickIcon = async (emoji: string) => {
     closePicker();
-    if (savingRef.current || emoji === (icon ? listIconEmoji(icon) : null))
-      return;
+    if (savingRef.current || emoji === listIconEmoji(icon)) return;
     savingRef.current = true;
     try {
       await onSave({
@@ -329,7 +328,7 @@ export function ListRankingOptions({
             <SectionLabel emoji="😀" label="List emoji" />
             <EmojiPickerField
               label="List emoji"
-              value={draftIcon ? listIconEmoji(draftIcon) : null}
+              value={listIconEmoji(draftIcon)}
               onChange={setDraftIcon}
               suggestFor={{
                 name: draftTitle,
@@ -362,7 +361,7 @@ export function ListRankingOptions({
       </SheetModal>
       <EmojiPickerModal
         visible={pickingIcon}
-        value={icon ? listIconEmoji(icon) : null}
+        value={listIconEmoji(icon)}
         onSelect={(emoji) => void pickIcon(emoji)}
         suggestFor={{ name: title, kind: 'list', description }}
         onClose={closePicker}

@@ -2,14 +2,10 @@ import functools
 import re
 from typing import Literal
 
-import google.auth
-from google.auth.transport.requests import AuthorizedSession
-
-from app.settings import get_settings
+from app.services.gemini import generate_text
 
 SuggestionKind = Literal["list", "item"]
 
-REQUEST_TIMEOUT = 8
 MAX_EMOJI_LENGTH = 16
 MAX_SUGGESTIONS = 3
 EMOJI_PATTERN = re.compile(
@@ -21,14 +17,6 @@ SYSTEM_PROMPT = (
     "that best represent the named list or item, best first, separated by single "
     "spaces. Output only the three emoji and nothing else."
 )
-
-
-@functools.cache
-def _session() -> AuthorizedSession:
-    credentials, _ = google.auth.default(
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
-    return AuthorizedSession(credentials)  # type: ignore[no-untyped-call]
 
 
 @functools.lru_cache(maxsize=1024)
@@ -44,20 +32,7 @@ def suggest_emojis(
         lines.append(f"List: {list_title}")
     if description:
         lines.append(f"Description: {description}")
-    session = _session()
-    settings = get_settings()
-    response = session.post(
-        f"https://aiplatform.googleapis.com/v1/projects/{settings.AI_PROJECT}"
-        f"/locations/global/publishers/google/models/{settings.AI_MODEL}:generateContent",
-        timeout=REQUEST_TIMEOUT,
-        json={
-            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-            "contents": [{"role": "user", "parts": [{"text": "\n".join(lines)}]}],
-            "generationConfig": {"temperature": 0, "maxOutputTokens": 64},
-        },
-    )
-    response.raise_for_status()
-    text: str = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    text = generate_text(SYSTEM_PROMPT, "\n".join(lines))
     emojis = tuple(
         dict.fromkeys(
             emoji

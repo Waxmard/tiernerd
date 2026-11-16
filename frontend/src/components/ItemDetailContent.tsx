@@ -15,7 +15,6 @@ export interface ItemDetailContentProps {
   rankedCount: number;
   rankingMode: ListRankingMode;
   canMutate: boolean;
-  hasDraft: boolean;
   isBusy: boolean;
   onRank: () => void;
   onEdit: (focus?: ItemFormField) => void;
@@ -25,16 +24,12 @@ export interface ItemDetailContentProps {
   listTitle: string;
 }
 
-const SCORE_CLASS =
-  'font-display text-[20px] leading-6 font-semibold text-accent-text dark:text-accent-text-dark';
-
 export function ItemDetailContent({
   item,
   rank,
   rankedCount,
   rankingMode,
   canMutate,
-  hasDraft,
   isBusy,
   onRank,
   onEdit,
@@ -48,18 +43,13 @@ export function ItemDetailContent({
   const imageFailed =
     item.image_url !== null && failedImageUrl === item.image_url;
   const actionsBlocked = !canMutate || isBusy;
-  const rankTitle = hasDraft
-    ? 'Resume ranking'
-    : item.position === null
-      ? 'Rank now'
-      : 'Re-rank';
-  const medal = item.position === null ? null : rankMedal(rank);
+  const medal = rankMedal(rank);
   const [pickingIcon, setPickingIcon] = useState(false);
   const pickIcon = (icon: string | null) => {
     setPickingIcon(false);
     onIconChange(icon);
   };
-  const scoreEditable = rankingMode === 'score' && item.position !== null;
+  const scoreEditable = rankingMode === 'score';
 
   return (
     <BaseModalContent
@@ -73,7 +63,7 @@ export function ItemDetailContent({
       footer={
         <View className="gap-2">
           <Button
-            title={rankTitle}
+            title="Re-rank"
             onPress={onRank}
             disabled={actionsBlocked}
             loading={isBusy}
@@ -144,37 +134,28 @@ export function ItemDetailContent({
               : hue.cardStyle
           }
         >
-          {item.position === null ? (
-            <View className="flex-row items-center gap-1">
-              <Emoji symbol="⏳" size={14} />
-              <Text style={TABULAR_NUMS} className={SCORE_CLASS}>
-                Not ranked yet
+          <View className="flex-row items-center flex-wrap gap-3">
+            {medal ? <Emoji symbol={medal} size={30} /> : null}
+            <ItemRankBadge
+              rankingMode={rankingMode}
+              rating={item.rating}
+              rank={rank}
+              size="lg"
+            />
+            {rank !== null ? (
+              <Text
+                style={TABULAR_NUMS}
+                className="text-body-medium text-ink dark:text-ink-dark"
+              >
+                {rankingMode === 'rank'
+                  ? `of ${rankedCount} ranked`
+                  : `Rank #${rank} of ${rankedCount}`}
               </Text>
-            </View>
-          ) : (
-            <View className="flex-row items-center flex-wrap gap-3">
-              {medal ? <Emoji symbol={medal} size={30} /> : null}
-              <ItemRankBadge
-                rankingMode={rankingMode}
-                rating={item.rating}
-                rank={rank}
-                size="lg"
-              />
-              {rank !== null ? (
-                <Text
-                  style={TABULAR_NUMS}
-                  className="text-body-medium text-ink dark:text-ink-dark"
-                >
-                  {rankingMode === 'rank'
-                    ? `of ${rankedCount} ranked`
-                    : `Rank #${rank} of ${rankedCount}`}
-                </Text>
-              ) : null}
-            </View>
-          )}
+            ) : null}
+          </View>
           {rankingMode === 'score' ? (
             <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-              {item.position !== null && item.manual_rating !== null
+              {item.manual_rating !== null
                 ? 'Manual score · items without one adjust around it.'
                 : 'Scores are based on list order and any manual scores.'}
             </Text>

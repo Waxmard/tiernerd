@@ -15,10 +15,18 @@ from app.core.constants import (
 )
 from app.crud import item as item_crud, list as list_crud
 from app.db.database import get_db
-from app.schemas.ai import EmojiFillResult, EmojiSuggestionRequest, EmojiSuggestions
+from app.schemas.ai import (
+    EmojiFillResult,
+    EmojiSuggestionRequest,
+    EmojiSuggestions,
+    ItemSuggestion,
+    ListSuggestion,
+    SuggestionRequest,
+)
 from app.schemas.user import User
 from app.services.auth import get_current_user
 from app.services.emoji_suggestion import suggest_emojis
+from app.services.item_suggestion import suggest_next_item, suggest_next_list
 from app.settings import get_settings
 
 router = APIRouter()
@@ -139,3 +147,74 @@ async def fill_item_emojis(
         if updated:
             locked.updated_at = now
     return {"updated": updated, "remaining": len(missing) - updated}
+
+
+@router.post("/lists/{list_id}/next-item", response_model=ItemSuggestion)
+async def suggest_next_list_item(
+    list_id: uuid.UUID,
+    payload: SuggestionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Suggest one new item name for a list.
+    """
+    if not get_settings().AI_PROJECT:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=AI_NOT_CONFIGURED_ERROR,
+        )
+    list_obj = await list_crud.get_by_id_and_user(db, list_id, current_user.user_id)
+    if list_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=LIST_NOT_FOUND_ERROR
+        )
+    title = list_obj.title.strip()
+    description = (list_obj.description or "")[:500].strip()
+    existing = [
+        item.name for item in await item_crud.get_by_list_id(db, list_id)
+    ] + payload.exclude
+    await db.commit()
+
+    try:
+        name = await asyncio.to_thread(suggest_next_item, title, description, existing)
+    except Exception:
+        logger.warning("Item suggestion failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=AI_UNAVAILABLE_ERROR,
+        ) from None
+
+    return {"name": name}
+
+
+@router.post("/next-list", response_model=ListSuggestion)
+async def suggest_next_list_title(
+    payload: SuggestionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Suggest one new list title for the current user.
+    """
+    if not get_settings().AI_PROJECT:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=AI_NOT_CONFIGURED_ERROR,
+        )
+    existing = [
+        row[0].title
+        for row in await list_crud.get_by_user_with_stats(db, current_user.user_id)
+    ] + payload.exclude
+    await db.commit()
+
+    try:
+        title = await asyncio.to_thread(suggest_next_list, existing)
+    except Exception:
+        logger.warning("List suggestion failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=AI_UNAVAILABLE_ERROR,
+        ) from None
+
+    return {"title": title}

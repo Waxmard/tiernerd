@@ -94,13 +94,24 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
 async def create_tables() -> None:
     """Create all database tables and seed dev users."""
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from scripts.migrate_manual_ratings import apply_connection  # noqa: PLC0415
+    from scripts.migrate_manual_ratings import (  # noqa: PLC0415
+        apply_connection,
+        rank_items_missing_position,
+    )
 
     async with engine.begin() as conn:
         await conn.execute(text("DROP TABLE IF EXISTS comparison_sessions"))
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_ensure_columns)
+        await rank_items_missing_position(conn)
         await apply_connection(conn)
+        if conn.dialect.name == "postgresql":
+            await conn.execute(
+                text("ALTER TABLE items ALTER COLUMN position SET NOT NULL")
+            )
+            await conn.execute(
+                text("ALTER TABLE items ALTER COLUMN rating SET NOT NULL")
+            )
 
     # Auto-seed dev users in development. `scripts/` lives outside the `app`
     # package and is dev-only, so the import stays lazy + scoped here.

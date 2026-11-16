@@ -92,47 +92,35 @@ class TestCreateItem:
         assert db_items[0].rating == 6.5
         assert db_items[0].manual_rating is None
 
-    async def test_create_second_item_is_unranked(
+    async def test_create_item_places_at_gap_and_rescores(
         self,
         client: AsyncClient,
         test_list: ListModel,
         auth_headers: dict,
-        test_db: AsyncSession,
     ):
-        """Test creating a second item leaves it unranked for the client to place."""
-        first = await client.post(
-            "/api/items/",
-            params={"list_id": str(test_list.list_id)},
-            json={"name": "First Item"},
-            headers=auth_headers,
-        )
-        assert first.status_code == 200
-        assert first.json()["rating"] == 6.5
+        async def create(name: str, **extra) -> dict:
+            response = await client.post(
+                "/api/items/",
+                params={"list_id": str(test_list.list_id)},
+                json={"name": name, **extra},
+                headers=auth_headers,
+            )
+            assert response.status_code == 200
+            return response.json()
 
-        response = await client.post(
-            "/api/items/",
-            params={"list_id": str(test_list.list_id)},
-            json={
-                "name": "Second Item",
-                "description": "The second item",
-                "image_url": "https://example.com/second.jpg",
-            },
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "Second Item"
-        assert data["position"] is None
-        assert data["rating"] is None
+        assert (await create("First"))["rating"] == 6.5
+        assert (await create("Second", gap=1))["rating"] == 7.5
+        await create("Third")
+        await create("Fourth", gap=1)
 
-        result = await test_db.execute(
-            select(ItemModel).where(ItemModel.list_id == test_list.list_id)
-        )
-        items_after = result.scalars().all()
-        assert len(items_after) == 2
-        candidate = next(item for item in items_after if item.name == "Second Item")
-        assert candidate.position is None
-        assert candidate.rating is None
+        rows = (
+            await client.get(
+                f"/api/lists/{test_list.list_id}/items", headers=auth_headers
+            )
+        ).json()
+        assert [row["name"] for row in rows] == ["Second", "First", "Fourth", "Third"]
+        assert [row["rating"] for row in rows] == [8.3, 7.1, 5.8, 4.1]
+        assert all(row["position"] for row in rows)
 
     async def test_create_item_unauthenticated(
         self, client: AsyncClient, test_list: ListModel
@@ -353,6 +341,8 @@ class TestUpdateItem:
             item_id=uuid.uuid4(),
             list_id=test_list.list_id,
             name="Other",
+            position="z0",
+            rating=0.0,
         )
         test_db.add_all([newer_list, foreign_list, duplicate_item])
         await test_db.commit()
@@ -428,9 +418,7 @@ class TestUpdateItem:
             )
         ).json()
         assert [
-            (row["name"], row["rating"], row["manual_rating"])
-            for row in list_items
-            if row["position"] is not None
+            (row["name"], row["rating"], row["manual_rating"]) for row in list_items
         ] == [
             ("Spot A", 9.1, None),
             ("Spot B", 8.6, None),
@@ -446,24 +434,6 @@ class TestUpdateItem:
         auth_headers: dict,
     ) -> None:
         spots = await _create_ranked_spots(client, test_list, auth_headers)
-        unranked_res = await client.post(
-            "/api/items/",
-            params={"list_id": str(test_list.list_id)},
-            json={"name": "Unranked Spot"},
-            headers=auth_headers,
-        )
-        assert unranked_res.status_code == 200
-        unranked = unranked_res.json()
-
-        unranked_pin = await _put_manual_rating(client, auth_headers, unranked, 7.0)
-        assert unranked_pin.status_code == 422
-        assert (
-            unranked_pin.json()["detail"]
-            == "Rank this item before setting a manual score."
-        )
-        unranked_noop = await _put_manual_rating(client, auth_headers, unranked, None)
-        assert unranked_noop.status_code == 200
-
         assert (
             await _put_manual_rating(client, auth_headers, spots[4], 7.2)
         ).status_code == 200
@@ -523,7 +493,7 @@ class TestUpdateItem:
                 f"/api/lists/{test_list.list_id}/items", headers=auth_headers
             )
         ).json()
-        assert [row["rating"] for row in restored if row["position"] is not None] == [
+        assert [row["rating"] for row in restored] == [
             8.5,
             7.5,
             6.5,
@@ -623,9 +593,6 @@ class TestDeleteItem:
         test_db: AsyncSession,
     ):
         list_id = multiple_items[0].list_id
-        unranked = ItemModel(list_id=list_id, name="Abandoned")
-        test_db.add(unranked)
-        await test_db.commit()
         response = await client.delete(
             f"/api/items/items/{multiple_items[2].item_id}", headers=auth_headers
         )
@@ -633,7 +600,7 @@ class TestDeleteItem:
 
         result = await test_db.execute(
             select(ItemModel.item_id, ItemModel.position, ItemModel.rating)
-            .where(ItemModel.list_id == list_id, ItemModel.position.isnot(None))
+            .where(ItemModel.list_id == list_id)
             .order_by(ItemModel.position)
         )
         assert list(result.all()) == [
@@ -642,9 +609,6 @@ class TestDeleteItem:
             (multiple_items[3].item_id, "a3", 7.1),
             (multiple_items[4].item_id, "a4", 8.3),
         ]
-        await test_db.refresh(unranked)
-        assert unranked.rating is None
-        assert unranked.position is None
 
         for item in (multiple_items[1], multiple_items[3], multiple_items[4]):
             response = await client.delete(
@@ -652,11 +616,8 @@ class TestDeleteItem:
             )
             assert response.status_code == 204
         await test_db.refresh(multiple_items[0])
-        await test_db.refresh(unranked)
         assert multiple_items[0].position == "a0"
         assert multiple_items[0].rating == 6.5
-        assert unranked.position is None
-        assert unranked.rating is None
 
     async def test_delete_item_unauthenticated(
         self, client: AsyncClient, test_item: ItemModel
@@ -800,28 +761,6 @@ class TestDuplicateNameRace:
             return None
 
         monkeypatch.setattr(item_crud, "get_by_name_key", no_match)
-
-    async def test_create_without_ranked_items_reports_database_conflict(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        test_item: ItemModel,
-        auth_headers: dict,
-        test_db: AsyncSession,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        test_item.position = None
-        test_item.rating = None
-        await test_db.commit()
-        self.bypass_precheck(monkeypatch)
-        response = await client.post(
-            "/api/items/",
-            params={"list_id": str(test_list.list_id)},
-            json={"name": "test item"},
-            headers=auth_headers,
-        )
-        assert response.status_code == 409
-        assert response.json()["detail"] == ITEM_NAME_ALREADY_EXISTS_ERROR
 
     async def test_create_with_ranked_items_reports_database_conflict(
         self,

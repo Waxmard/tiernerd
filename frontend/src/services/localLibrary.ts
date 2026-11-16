@@ -5,7 +5,6 @@ import {
   enqueueListCacheWrite,
   listItemsCacheKey,
   listsCacheKey,
-  mergePendingItems,
   parseCachedListItems,
   parseCachedLists,
   sortListsByRecency,
@@ -29,17 +28,29 @@ type SummaryPatch = ListMetadataPatch & {
 };
 
 function rescoreItems(items: Item[], nowIso: string): Item[] {
-  const ranked = items.filter((item) => item.position !== null);
-  const unranked = items.filter((item) => item.position === null);
-  const scores = computeScores(ranked.map((item) => item.manual_rating));
-  return [
-    ...ranked.map((item, index) => ({
-      ...item,
-      rating: scores[index] ?? null,
-      updated_at: nowIso,
-    })),
-    ...unranked,
-  ];
+  const scores = computeScores(items.map((item) => item.manual_rating));
+  return items.map((item, index) => ({
+    ...item,
+    rating: scores[index] ?? 0,
+    updated_at: nowIso,
+  }));
+}
+
+function insertAt(
+  others: Item[],
+  item: Item,
+  index: number,
+  nowIso: string
+): Item[] {
+  const at = Math.max(0, Math.min(index, others.length));
+  return rescoreItems(
+    [
+      ...others.slice(0, at),
+      { ...item, manual_rating: null, updated_at: nowIso },
+      ...others.slice(at),
+    ],
+    nowIso
+  );
 }
 
 export function reconcileListItems(
@@ -79,13 +90,13 @@ export function reconcileListItems(
         description: op.description,
         image_url: null,
         icon: op.icon ?? null,
-        rating: null,
+        rating: 0,
         manual_rating: null,
-        position: null,
+        position: 'pending',
         created_at: op.createdAt,
         updated_at: op.createdAt,
       };
-      items = mergePendingItems(items, [created]);
+      items = insertAt(items, created, items.length - op.gap, op.createdAt);
       continue;
     }
     if (op.kind === 'item.update') {
@@ -107,19 +118,14 @@ export function reconcileListItems(
         entry.item_id === op.itemId ? updated : entry
       );
       items =
-        updated.position !== null && op.manualRating !== undefined
-          ? rescoreItems(next, op.createdAt)
-          : next;
+        op.manualRating !== undefined ? rescoreItems(next, op.createdAt) : next;
       continue;
     }
     if (op.kind === 'item.delete') {
       const removed = items.find((entry) => entry.item_id === op.itemId);
       if (!removed) continue;
       const remaining = items.filter((entry) => entry.item_id !== op.itemId);
-      items =
-        removed.position !== null
-          ? rescoreItems(remaining, op.createdAt)
-          : remaining;
+      items = rescoreItems(remaining, op.createdAt);
       continue;
     }
     if (op.kind === 'ranking.set') {
@@ -128,24 +134,7 @@ export function reconcileListItems(
         cachedItems.find((entry) => entry.item_id === op.itemId);
       if (!target) continue;
       const others = items.filter((entry) => entry.item_id !== op.itemId);
-      const ranked = others.filter((entry) => entry.position !== null);
-      const unranked = others.filter((entry) => entry.position === null);
-      const clampedGap = Math.max(0, Math.min(op.gap, ranked.length));
-      const index = ranked.length - clampedGap;
-      items = rescoreItems(
-        [
-          ...ranked.slice(0, index),
-          {
-            ...target,
-            position: target.position ?? 'pending',
-            manual_rating: null,
-            updated_at: op.createdAt,
-          },
-          ...ranked.slice(index),
-          ...unranked,
-        ],
-        op.createdAt
-      );
+      items = insertAt(others, target, others.length - op.gap, op.createdAt);
     }
   }
   return items;
@@ -343,14 +332,18 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
     applyLocalItemCreate: async (
       userId: string,
       listId: string,
-      item: Item
+      item: Item,
+      insertIndexBestFirst: number
     ): Promise<void> => {
-      const items = [
-        ...(await readItems(userId, listId)).filter(
-          (entry) => entry.item_id !== item.item_id
-        ),
+      const others = (await readItems(userId, listId)).filter(
+        (entry) => entry.item_id !== item.item_id
+      );
+      const items = insertAt(
+        others,
         item,
-      ];
+        insertIndexBestFirst,
+        item.updated_at
+      );
       await writeItems(userId, listId, items);
       await patchSummary(userId, listId, {
         item_count: items.length,
@@ -369,7 +362,7 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
         entry.item_id === item.item_id ? item : entry
       );
       const items =
-        item.position !== null && previous?.manual_rating !== item.manual_rating
+        previous?.manual_rating !== item.manual_rating
           ? rescoreItems(next, item.updated_at)
           : next;
       await writeItems(userId, listId, items);
@@ -406,10 +399,7 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
       const removed = current.find((item) => item.item_id === itemId);
       const remaining = current.filter((item) => item.item_id !== itemId);
       const nowIso = new Date().toISOString();
-      const items =
-        removed && removed.position !== null
-          ? rescoreItems(remaining, nowIso)
-          : remaining;
+      const items = removed ? rescoreItems(remaining, nowIso) : remaining;
       await writeItems(userId, listId, items);
       await patchSummary(userId, listId, {
         item_count: items.length,
@@ -426,22 +416,11 @@ export function createLocalLibrary(storage: LocalCacheStorage) {
       const all = await readItems(userId, listId);
       const cached = all.find((entry) => entry.item_id === item.item_id);
       const others = all.filter((entry) => entry.item_id !== item.item_id);
-      const ranked = others.filter((entry) => entry.position !== null);
-      const unranked = others.filter((entry) => entry.position === null);
-      const index = Math.max(0, Math.min(insertIndexBestFirst, ranked.length));
       const nowIso = new Date().toISOString();
-      const next = rescoreItems(
-        [
-          ...ranked.slice(0, index),
-          {
-            ...(cached ?? item),
-            position: 'pending',
-            manual_rating: null,
-            updated_at: nowIso,
-          },
-          ...ranked.slice(index),
-          ...unranked,
-        ],
+      const next = insertAt(
+        others,
+        { ...(cached ?? item), position: 'pending' },
+        insertIndexBestFirst,
         nowIso
       );
       await writeItems(userId, listId, next);

@@ -23,11 +23,13 @@ import { useItemEmojiFill } from '../components/useItemEmojiFill';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { useListDetailData } from '../components/useListDetailData';
 import { useListViewRestore } from '../components/useListViewRestore';
-import { useRankingDraft } from '../components/useRankingDraft';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
+import { useNotify } from '../providers/NotificationProvider';
 import { useSync } from '../providers/SyncProvider';
 import { useThemeColors } from '../providers/ThemeProvider';
+import { aiService } from '../services/aiService';
+import { getApiErrorMessage } from '../services/apiError';
 import type { Item } from '../services/itemsService';
 import { confirmDestructive, notifyError } from '../utils/confirm';
 
@@ -66,7 +68,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     updateListOptions,
     evictDeletedList,
   } = useListDetailData({ userId, token, listId, routeTitle });
-  const { autoFill, fillMissing } = useItemEmojiFill({
+  const { autoFill, fillMissing, suggestIcon } = useItemEmojiFill({
     userId,
     token,
     listId,
@@ -83,7 +85,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     (!itemsLoaded && !hasItemsSnapshot) ||
     (!metadataLoaded && !hasMetadataSnapshot);
   const isListOptionsOpenRef = useRef(false);
-  const [isListOptionsOpen, setIsListOptionsOpen] = useState(false);
   const identityRef = useRef(screenIdentity);
   if (identityRef.current !== screenIdentity) {
     identityRef.current = screenIdentity;
@@ -97,6 +98,9 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     []
   );
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const notify = useNotify();
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const suggestedNamesRef = useRef<string[]>([]);
   const [dismissedDetailsItemId, setDismissedDetailsItemId] = useState<
     string | null
   >(null);
@@ -115,13 +119,12 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     identityRef.current = screenIdentity;
     setSelectedItemId(null);
     setDismissedDetailsItemId(null);
-    setIsListOptionsOpen(false);
     isListOptionsOpenRef.current = false;
+    suggestedNamesRef.current = [];
   }, [screenIdentity]);
   const setOptionsOpen = (open: boolean) => {
     if (identityRef.current !== screenIdentity) return;
     isListOptionsOpenRef.current = open;
-    setIsListOptionsOpen(open);
   };
   const [iconItem, setIconItem] = useState<Item | null>(null);
 
@@ -162,7 +165,11 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const landItemIdRef = useRef<string | null>(null);
   const scrollOnLandRef = useRef(false);
   const handleWorkspaceItemsChanged = useCallback(
-    async (item?: Item, created = false) => {
+    async (
+      item?: Item,
+      created = false,
+      pendingIcon?: Promise<string | null>
+    ) => {
       const identity = screenIdentity;
       const refreshedItems = await refreshAfterMutation();
       if (identityRef.current !== identity) return;
@@ -174,7 +181,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       }
       if (!refreshedItems.some((entry) => entry.item_id === item.item_id))
         return;
-      if (created && !item.icon) void autoFill(item).catch(() => undefined);
+      if (created && !item.icon)
+        void autoFill(item, pendingIcon).catch(() => undefined);
       view.clearRestoredSelection();
       view.clearRestoredOffset();
       landItemIdRef.current = item.item_id;
@@ -185,8 +193,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     [view, refreshAfterMutation, screenIdentity, autoFill]
   );
 
-  const pausedDraftItemIdRef = useRef<string | null>(null);
-  const closingItemIdRef = useRef<string | null>(null);
   const workspace = useItemWorkspace({
     userId,
     listId,
@@ -194,10 +200,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     rankingMode,
     items,
     onItemsChanged: handleWorkspaceItemsChanged,
-    onClosed: () => {
-      if (closingItemIdRef.current)
-        pausedDraftItemIdRef.current = closingItemIdRef.current;
-    },
+    suggestIcon,
   });
   const sheetOpen = workspace.mode !== 'closed' || detailsOpen;
   useEffect(() => {
@@ -207,68 +210,33 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     if (scrollOnLandRef.current) view.scrollToItem(itemId, true);
     scrollOnLandRef.current = false;
   }, [sheetOpen, view]);
-  closingItemIdRef.current =
-    workspace.mode === 'ranking'
-      ? (workspace.item?.item_id ?? workspace.ranking?.itemId ?? null)
-      : null;
-  const { openAdd } = workspace;
+  const { openAdd, setForm, submitMetadata } = workspace;
   const workspaceBusyRef = useRef(workspace.isBusy);
   workspaceBusyRef.current = workspace.isBusy;
+  const workspaceModeRef = useRef(workspace.mode);
+  workspaceModeRef.current = workspace.mode;
   const requestCloseForSwitch = useCallback(async () => {
     if (skipWorkspaceCloseFocusRef.current) return false;
     skipWorkspaceCloseFocusRef.current = true;
     try {
-      if (workspace.mode === 'ranking') {
-        return await workspace.pauseRanking();
-      }
       return await workspace.requestClose();
     } catch {
       return false;
     } finally {
       skipWorkspaceCloseFocusRef.current = false;
     }
-  }, [workspace.mode, workspace.pauseRanking, workspace.requestClose]);
-
-  const resumeWorkspace = workspace.resumeRanking;
-  const draftResumeEnabled =
-    canMutate &&
-    Boolean(userId) &&
-    !promptAddItem &&
-    !completedItemId &&
-    workspace.mode === 'closed' &&
-    !workspace.isBusy &&
-    !isListOptionsOpen &&
-    !isDeletingList;
-  useRankingDraft({
-    userId,
-    listId,
-    items,
-    enabled: draftResumeEnabled,
-    onResume: (session) => {
-      if (
-        !canMutateFor(screenIdentity) ||
-        workspace.mode !== 'closed' ||
-        isListOptionsOpenRef.current ||
-        pausedDraftItemIdRef.current === session.itemId
-      )
-        return;
-      view.clearRestoredSelection();
-      setSelectedItemId(session.itemId);
-      setDismissedDetailsItemId(null);
-      resumeWorkspace(session);
-    },
-  });
+  }, [workspace.requestClose]);
 
   const selectedItem =
     items.find((item) => item.item_id === selectedItemId) ?? null;
-  const rankByItemId = useMemo(() => {
-    const ranks = new Map<string, number>();
-    for (const item of items) {
-      if (item.position !== null) ranks.set(item.item_id, ranks.size + 1);
-    }
-    return ranks;
-  }, [items]);
-  const rankedCount = rankByItemId.size;
+  const rankByItemId = useMemo(
+    () =>
+      new Map(
+        items.map((item, index): [string, number] => [item.item_id, index + 1])
+      ),
+    [items]
+  );
+  const rankedCount = items.length;
   const selectedRank = selectedItemId
     ? (rankByItemId.get(selectedItemId) ?? null)
     : null;
@@ -309,6 +277,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       (item) => item.item_id === completedItemId
     );
     if (completedItem) {
+      if (!completedItem.icon)
+        void autoFill(completedItem).catch(() => undefined);
       view.clearRestoredSelection();
       setSelectedItemId(completedItemId);
       view.clearRestoredOffset();
@@ -317,7 +287,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     }
     consumedCompletedItemIdRef.current = completedItemId;
     navigation.setParams({ completedItemId: undefined });
-  }, [view, completedItemId, items, itemsLoaded, navigation]);
+  }, [view, completedItemId, items, itemsLoaded, navigation, autoFill]);
 
   const handleDeleteList = useCallback(async () => {
     const identity = screenIdentity;
@@ -397,6 +367,48 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     openAdd();
     return true;
   }, [canMutateFor, view, requestCloseForSwitch, screenIdentity, openAdd]);
+  const handleSuggestPress = useCallback(async () => {
+    const identity = screenIdentity;
+    if (!token || !canMutateFor(identity)) return;
+    setIsSuggesting(true);
+    try {
+      const name = await aiService.suggestNextItem(
+        listId,
+        suggestedNamesRef.current,
+        token
+      );
+      if (
+        identityRef.current !== identity ||
+        workspaceModeRef.current !== 'closed' ||
+        isListOptionsOpenRef.current
+      )
+        return;
+      suggestedNamesRef.current = [...suggestedNamesRef.current, name].slice(
+        -50
+      );
+      if (!(await handleAddPress())) return;
+      setForm({ name });
+      if (items.length > 0) await submitMetadata();
+    } catch (err) {
+      if (identityRef.current === identity)
+        notify(
+          getApiErrorMessage(err, "Couldn't suggest an item. Try again."),
+          '⚠️'
+        );
+    } finally {
+      setIsSuggesting(false);
+    }
+  }, [
+    canMutateFor,
+    handleAddPress,
+    items.length,
+    listId,
+    notify,
+    screenIdentity,
+    setForm,
+    submitMetadata,
+    token,
+  ]);
   const handleWorkspaceContentClose = useCallback(() => {
     if (
       deletingListInFlightRef.current ||
@@ -449,7 +461,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   };
   const handleStartRanking = () => {
     if (!selectedItem || !canMutateFor(screenIdentity)) return;
-    void workspace.startRanking(selectedItem);
+    workspace.startRanking(selectedItem);
   };
   const leaveEdit = async () => {
     const item = workspace.item;
@@ -466,7 +478,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     const identity = screenIdentity;
     const item = await leaveEdit();
     if (!item) return;
-    if (canMutateFor(identity)) await workspace.startRanking(item);
+    if (canMutateFor(identity)) workspace.startRanking(item);
     if (identityRef.current === identity)
       setDismissedDetailsItemId(item.item_id);
   };
@@ -630,6 +642,16 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
                 workspace.mode === 'add'
               }
               onAdd={() => void handleAddPress()}
+              onSuggest={() => void handleSuggestPress()}
+              suggestLoading={isSuggesting}
+              suggestDisabled={
+                !canMutate ||
+                isDeletingList ||
+                workspace.isBusy ||
+                workspace.mode !== 'closed' ||
+                isOffline ||
+                !token
+              }
               deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
               onBack={() => navigation.goBack()}
               onDelete={() => void handleDeleteList()}

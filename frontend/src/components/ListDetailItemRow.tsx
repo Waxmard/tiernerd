@@ -20,7 +20,7 @@ export const TABULAR_NUMS = { fontVariant: ['tabular-nums' as const] };
 
 export interface ItemRankBadgeProps {
   rankingMode: ListRankingMode;
-  rating: number | null;
+  rating: number;
   rank: number | null;
   size?: 'md' | 'lg';
   className?: string;
@@ -34,7 +34,7 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
   className,
 }) => {
   const { colors } = useTheme();
-  if (rankingMode === 'score' ? rating === null : rank === null) {
+  if (rankingMode === 'rank' && rank === null) {
     return null;
   }
 
@@ -52,8 +52,7 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
   const secondaryTextClass =
     size === 'lg' ? 'text-[15px] font-semibold' : 'text-[13px] font-semibold';
 
-  const scoreParts =
-    rankingMode === 'score' && rating !== null ? splitScoreParts(rating) : null;
+  const scoreParts = rankingMode === 'score' ? splitScoreParts(rating) : null;
 
   return (
     <View
@@ -122,18 +121,11 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   onIconPress,
 }) => {
   const celebrateIcon = useEmojiArrival(Boolean(item.icon));
-  const ranked = item.position !== null;
-  const medal = ranked ? rankMedal(rank) : null;
-  const score =
-    ranked && item.rating !== null ? formatScore(item.rating) : null;
+  const medal = rankMedal(rank);
   const accessibleDescription = [
     item.name,
     rank !== null ? `rank ${rank}` : null,
-    !ranked
-      ? 'Not ranked yet'
-      : rankingMode === 'score' && score !== null
-        ? `${score} out of 10`
-        : null,
+    rankingMode === 'score' ? `${formatScore(item.rating)} out of 10` : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -188,25 +180,15 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
           >
             {item.name}
           </Text>
-          {!ranked ? (
-            <View className="flex-row items-center gap-1">
-              <Emoji symbol="⏳" size={14} />
-              <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark mt-0.5">
-                Not ranked yet
-              </Text>
-            </View>
-          ) : null}
         </Animated.View>
-        {ranked ? (
-          <View className="ml-3 flex-row items-center gap-1 shrink-0">
-            {medal ? <Emoji symbol={medal} size={22} /> : null}
-            <ItemRankBadge
-              rankingMode={rankingMode}
-              rating={item.rating}
-              rank={rank}
-            />
-          </View>
-        ) : null}
+        <View className="ml-3 flex-row items-center gap-1 shrink-0">
+          {medal ? <Emoji symbol={medal} size={22} /> : null}
+          <ItemRankBadge
+            rankingMode={rankingMode}
+            rating={item.rating}
+            rank={rank}
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );
