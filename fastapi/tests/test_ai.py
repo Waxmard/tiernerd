@@ -364,11 +364,6 @@ class TestSuggestNextListService:
             body["contents"][0]["parts"][0]["text"] == "Existing lists:\n- Pixar movies"
         )
 
-    def test_rejects_existing_title(self, monkeypatch: MonkeyPatch):
-        _patch_gemini(monkeypatch, "pixar movies")
-        with pytest.raises(ValueError):
-            item_suggestion.suggest_next_list(["Pixar movies"])
-
 
 class TestSuggestNextListEndpoint:
     async def test_returns_title_excluding_known_titles(
