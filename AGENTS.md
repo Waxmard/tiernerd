@@ -184,7 +184,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 ## Development Notes for AI Agents
 
 - Google is the only sign-in method: the client obtains a Google ID token and exchanges it at `POST /api/users/google`.
-- Items are created only once ranked: `POST /api/lists/{id}/items` carries the ranking `gap`, and a re-rank stores its gap via `PUT /api/lists/{id}/ranking`. Comparisons in progress live only in client memory.
+- Items are created only once ranked: `POST /api/items/?list_id=` carries the ranking `gap`, and a re-rank stores its gap via `PUT /api/lists/{id}/ranking`. Comparisons in progress live only in client memory.
 - API endpoints are prefixed with `/api/`.
 - Do **not** run `npm run ios` or `npx expo start` — the user runs these in a separate terminal.
 - Do **not** run `make cloud-deploy` by hand unless asked — it always mutates shared cloud state. See [Cloud Dev Loop](#cloud-dev-loop-cloud-run--neon) for when `make ios` deploys.

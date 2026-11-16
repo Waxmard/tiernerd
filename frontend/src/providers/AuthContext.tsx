@@ -113,6 +113,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     const restore = async () => {
+      void AsyncStorage.getAllKeys().then((keys) =>
+        AsyncStorage.multiRemove(
+          keys.filter((key) => key.startsWith('rankingDraft:v1:'))
+        )
+      );
       const [storedToken, storedUser] = await Promise.all([
         AsyncStorage.getItem(AUTH_TOKEN_KEY),
         AsyncStorage.getItem(USER_DATA_KEY),

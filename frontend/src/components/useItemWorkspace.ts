@@ -286,10 +286,18 @@ export function useItemWorkspace({
               }
             );
         if (outcome.status === 'rejected') {
-          notify(outcome.message);
+          if (!existing && outcome.message.includes('already exists')) {
+            pendingIconRef.current = null;
+            updateWorkspace({
+              mode: 'add',
+              ranking: null,
+              fieldErrors: { name: outcome.message },
+            });
+          } else notify(outcome.message);
           return false;
         }
         const pending = pendingIconRef.current;
+        pendingIconRef.current = null;
         await optionsRef.current.onItemsChanged(
           item,
           !existing,
