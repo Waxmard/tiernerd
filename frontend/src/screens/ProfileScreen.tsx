@@ -175,7 +175,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             >
               Profile
             </Text>
-            <View className="flex-row items-center gap-4 mb-4">
+            <View className="flex-row items-center gap-4 mb-4 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4">
               {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
                 <Image
                   source={{ uri: user.photoUrl }}
@@ -189,44 +189,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   }
                 />
               ) : (
-                <View className="w-11 h-11 rounded-full bg-card dark:bg-card-dark items-center justify-center border border-card-line dark:border-card-line-dark">
+                <View className="w-11 h-11 rounded-full bg-card-muted dark:bg-card-muted-dark items-center justify-center border border-card-line dark:border-card-line-dark">
                   <Emoji symbol="👤" size={22} />
                 </View>
               )}
               <View className="flex-1 min-w-0">
-                <Text className="text-title-medium text-ink dark:text-ink-dark shrink">
+                <Text className="text-title-medium text-card-ink dark:text-card-ink-dark shrink">
                   {user?.displayName || user?.email?.split('@')[0] || 'User'}
                 </Text>
-                <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark mt-1">
-                  TierNerd account
-                </Text>
-              </View>
-            </View>
-
-            <View className="mb-4">
-              <SectionLabel
-                emoji="👤"
-                label="Account"
-                className="mb-2"
-                onBackdrop
-              />
-              <View className="bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4 gap-1">
-                <Text className="text-label-medium text-card-ink dark:text-card-ink-dark">
-                  Email address
-                </Text>
-                <Text className="text-body-medium text-card-ink-muted dark:text-card-ink-muted-dark shrink">
+                <Text className="text-body-medium text-card-ink-muted dark:text-card-ink-muted-dark shrink mt-1">
                   {user?.email || 'No email'}
                 </Text>
               </View>
             </View>
 
-            <View className="mb-4">
-              <SectionLabel
-                emoji="🎨"
-                label="Appearance"
-                className="mb-2"
-                onBackdrop
-              />
+            <View className="mb-4 bg-canvas/90 dark:bg-canvas-dark/90 border border-line dark:border-line-dark rounded-2xl p-4">
+              <SectionLabel emoji="🎨" label="Appearance" className="mb-2" />
               <View className="flex-row gap-2">
                 {THEME_OPTIONS.map((option) => {
                   const selected = preference === option.value;
@@ -271,7 +249,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 emoji="🏞️"
                 label="Workspace background"
                 className="mt-4 mb-2"
-                onBackdrop
               />
               <View className="flex-row flex-wrap gap-2">
                 {BACKGROUND_OPTIONS.map((option) => {
@@ -334,7 +311,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 })}
               </View>
               {hasPhoto ? (
-                <Text className="mt-2 self-start rounded-xl px-3 py-1 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark text-body-small text-card-ink-muted dark:text-card-ink-muted-dark">
+                <Text className="mt-2 text-body-small text-ink-muted dark:text-ink-muted-dark">
                   Choosing another background stops using your photo. It stays
                   in your photo library.
                 </Text>
@@ -345,9 +322,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     emoji="🌫️"
                     label="Background opacity"
                     className="mt-4 mb-2"
-                    onBackdrop
                   />
-                  <View className="flex-row items-center gap-3 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl px-4 py-1">
+                  <View className="flex-row items-center gap-3 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-[10px] px-4 py-1">
                     <Ionicons
                       name="image-outline"
                       size={16}

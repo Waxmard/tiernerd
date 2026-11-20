@@ -65,7 +65,6 @@ interface SectionLabelProps {
   emoji?: string;
   nativeID?: string;
   className?: string;
-  onBackdrop?: boolean;
 }
 
 export function SectionLabel({
@@ -73,27 +72,13 @@ export function SectionLabel({
   emoji,
   nativeID,
   className = '',
-  onBackdrop = false,
 }: SectionLabelProps) {
   return (
-    <View
-      className={[
-        'flex-row items-center gap-1',
-        onBackdrop
-          ? 'self-start rounded-full px-3 py-1 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark'
-          : '',
-        className,
-      ].join(' ')}
-    >
+    <View className={['flex-row items-center gap-1', className].join(' ')}>
       {emoji ? <Emoji symbol={emoji} size={14} /> : null}
       <Text
         nativeID={nativeID}
-        className={[
-          'text-label-large font-semibold',
-          onBackdrop
-            ? 'text-card-ink-muted dark:text-card-ink-muted-dark'
-            : 'text-ink-muted dark:text-ink-muted-dark',
-        ].join(' ')}
+        className="text-label-large font-semibold text-ink-muted dark:text-ink-muted-dark"
       >
         {label}
       </Text>
