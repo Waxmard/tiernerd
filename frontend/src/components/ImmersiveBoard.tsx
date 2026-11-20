@@ -208,7 +208,7 @@ export function NavProfileButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-export const FLOATING_ACTIONS_CLEARANCE = 80;
+export const FLOATING_ACTIONS_CLEARANCE = 72;
 const FLOATING_SHADOW = '0px 4px 12px 0px rgba(10, 24, 48, 0.28)';
 
 interface FloatingOption {
@@ -239,7 +239,7 @@ export function FloatingActions({
       pointerEvents="box-none"
       accessibilityViewIsModal={open}
       className="absolute inset-0 items-center justify-end"
-      style={{ paddingBottom: 16 + insets.bottom }}
+      style={{ paddingBottom: 8 + insets.bottom }}
     >
       {open ? (
         <Animated.View
