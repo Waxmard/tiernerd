@@ -122,9 +122,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     if (
       hasPhoto &&
       !(await confirmDestructive(
-        'Remove background photo?',
-        'Your uploaded photo will be deleted.',
-        'Remove'
+        'Stop using your photo?',
+        'It will no longer be your TierNerd background. The original stays in your photo library.',
+        'Stop using'
       ))
     )
       return;
@@ -312,7 +312,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               </View>
               {hasPhoto ? (
                 <Text className="mt-2 text-body-small text-ink-muted dark:text-ink-muted-dark">
-                  Choosing another background removes your photo.
+                  Choosing another background stops using your photo. It stays
+                  in your photo library.
                 </Text>
               ) : null}
             </View>

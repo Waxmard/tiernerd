@@ -47,10 +47,10 @@ const SCENES: Record<WorkspaceScene, Record<ColorSchemeName, Scene>> = {
       shapes: ridges('#8BA9BC', '#5E8294', '#385C6C'),
     },
     dark: {
-      skyColor: '#183542',
-      sky: 'linear-gradient(180deg, #142A34 0%, #183542 60%)',
-      sun: [88, '9%', '47%', '#F2B89B', 0.85],
-      shapes: ridges('#5A7688', '#375966', '#1B3742'),
+      skyColor: '#132C37',
+      sky: 'linear-gradient(180deg, #0D1F27 0%, #132C37 60%)',
+      sun: [88, '9%', '47%', '#F2B89B', 0.3],
+      shapes: ridges('#2A3943', '#1C3139', '#0F232B', 1, 1),
     },
   },
   dusk: {
@@ -61,10 +61,10 @@ const SCENES: Record<WorkspaceScene, Record<ColorSchemeName, Scene>> = {
       shapes: ridges('#C9A9C4', '#8E77A6', '#4B4476', 0.8, 0.9),
     },
     dark: {
-      skyColor: '#5C3A55',
-      sky: 'linear-gradient(180deg, #171A33 0%, #2E2547 40%, #5C3A55 64%)',
-      sun: [120, '14%', '43%', '#F2B89B', 0.8],
-      shapes: ridges('#4A3C63', '#33294E', '#1F1A36', 0.9, 0.95),
+      skyColor: '#462B40',
+      sky: 'linear-gradient(180deg, #161932 0%, #28203E 40%, #462B40 64%)',
+      sun: [120, '14%', '43%', '#F2B89B', 0.3],
+      shapes: ridges('#3D3152', '#2F2548', '#1E1934', 1, 1),
     },
   },
   meadow: {
@@ -75,10 +75,10 @@ const SCENES: Record<WorkspaceScene, Record<ColorSchemeName, Scene>> = {
       shapes: hills('#B5DCC0', '#7FC29A', '#46976C'),
     },
     dark: {
-      skyColor: '#15302F',
-      sky: 'linear-gradient(180deg, #0F2328 0%, #15302F 60%)',
-      sun: [72, '12%', '44%', '#E8F0D8', 0.7],
-      shapes: hills('#2E5B4A', '#214838', '#163629'),
+      skyColor: '#122B2A',
+      sky: 'linear-gradient(180deg, #0D1F24 0%, #122B2A 60%)',
+      sun: [72, '12%', '44%', '#E8F0D8', 0.3],
+      shapes: hills('#1D3D31', '#163327', '#0D251B'),
     },
   },
   shore: {
@@ -89,10 +89,10 @@ const SCENES: Record<WorkspaceScene, Record<ColorSchemeName, Scene>> = {
       shapes: coast('#8CC3E0', '#5FA3CB', '#F3E2BF'),
     },
     dark: {
-      skyColor: '#17304A',
-      sky: 'linear-gradient(180deg, #101F33 0%, #17304A 50%)',
-      sun: [96, '12%', '44.5%', '#E6EEF5', 0.8],
-      shapes: coast('#1F4A66', '#17384F', '#5B5546'),
+      skyColor: '#142A42',
+      sky: 'linear-gradient(180deg, #0F1D30 0%, #142A42 50%)',
+      sun: [96, '12%', '44.5%', '#E6EEF5', 0.3],
+      shapes: coast('#15374D', '#112D41', '#3C382D'),
     },
   },
 };

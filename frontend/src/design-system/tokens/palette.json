@@ -17,9 +17,9 @@
   },
   "dark": {
     "canvas": "#142A34",
-    "surface": "#213C46",
-    "surface-muted": "#34535D",
-    "line": "#52717C",
+    "surface": "#2B4A56",
+    "surface-muted": "#3E5F6A",
+    "line": "#5C7C88",
     "control": "#C5D9DF",
     "ink": "#F5FAFC",
     "ink-muted": "#C5D9DF",
@@ -27,7 +27,7 @@
     "accent": "#87C9F2",
     "on-accent": "#142A34",
     "accent-text": "#87C9F2",
-    "accent-tint": "#34535D",
+    "accent-tint": "#3E5F6A",
     "accent-line": "#87C9F2",
     "danger-text": "#FCA5A5"
   }
