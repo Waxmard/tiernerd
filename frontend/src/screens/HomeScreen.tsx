@@ -568,7 +568,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Button
           icon={<Emoji symbol="✨" size={18} />}
           title="Suggest list"
-          variant="text"
+          variant="secondary"
           loading={isSuggesting}
           disabled={isOffline || !token || modalStep !== null}
           onPress={() => void handleSuggestList()}

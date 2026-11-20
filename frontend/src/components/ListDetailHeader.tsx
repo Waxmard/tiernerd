@@ -227,7 +227,7 @@ export function ListTitleBlock({
           onPress={onSuggest}
           disabled={suggestDisabled}
           loading={suggestLoading}
-          variant="text"
+          variant="secondary"
         />
       </View>
     </View>

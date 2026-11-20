@@ -210,7 +210,7 @@ export function NavProfileButton({ onPress }: { onPress: () => void }) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="w-10 h-10 mr-2 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
+      className="w-10 h-10 ml-2 mr-2 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel="Open profile"

@@ -1,6 +1,7 @@
 import type React from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '../../providers/ThemeProvider';
+import type { ThemeColors } from '../tokens/colors';
 
 type ButtonVariant = 'primary' | 'secondary' | 'text';
 type ButtonSize = 'small' | 'medium' | 'large';
@@ -20,9 +21,19 @@ interface ButtonProps {
 }
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent dark:bg-accent-dark',
-  secondary: 'border border-control dark:border-control-dark',
+  primary: 'mb-[3px] bg-accent dark:bg-accent-dark',
+  secondary:
+    'mb-[3px] bg-surface dark:bg-surface-dark border border-control dark:border-control-dark',
   text: '',
+};
+
+const DISABLED_CLASS =
+  'mb-[3px] bg-surface-muted dark:bg-surface-muted-dark border border-control dark:border-control-dark';
+
+const LEDGE_COLOR: Record<ButtonVariant, keyof ThemeColors | null> = {
+  primary: 'accent-deep',
+  secondary: 'control',
+  text: null,
 };
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
@@ -58,22 +69,18 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const colors = useThemeColors();
   const isDisabled = disabled || loading;
+  const ledge = isDisabled ? null : LEDGE_COLOR[variant];
   const classes = [
-    'flex-row items-center justify-center rounded-[10px]',
-    VARIANT_CLASS[variant],
+    'flex-row items-center justify-center rounded-[14px]',
+    isDisabled && variant !== 'text' ? DISABLED_CLASS : VARIANT_CLASS[variant],
     SIZE_CLASS[size],
     fullWidth ? 'w-full' : '',
-    isDisabled
-      ? variant === 'text'
-        ? ''
-        : 'bg-surface-muted dark:bg-surface-muted-dark border border-control dark:border-control-dark'
-      : '',
     className ?? '',
   ]
     .filter(Boolean)
     .join(' ');
   const textClasses = [
-    'shrink font-semibold',
+    'shrink font-display font-semibold',
     TEXT_SIZE_CLASS[size],
     VARIANT_TEXT_CLASS[variant],
     isDisabled ? 'text-ink-disabled dark:text-ink-disabled-dark' : '',
@@ -83,16 +90,22 @@ export const Button: React.FC<ButtonProps> = ({
     .join(' ');
 
   return (
-    <TouchableOpacity
+    <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       className={classes}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.8}
-      delayPressIn={0}
-      delayPressOut={0}
+      style={({ pressed }) =>
+        ledge === null
+          ? pressed
+            ? { opacity: 0.7 }
+            : undefined
+          : pressed
+            ? { transform: [{ translateY: 3 }] }
+            : { boxShadow: `0px 3px 0px 0px ${colors[ledge]}` }
+      }
     >
       <View className="flex-row items-center shrink">
         {icon && (
@@ -120,6 +133,6 @@ export const Button: React.FC<ButtonProps> = ({
           />
         )}
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
