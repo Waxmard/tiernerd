@@ -1,5 +1,5 @@
 import type React from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '../../providers/ThemeProvider';
 
 type ButtonVariant = 'primary' | 'secondary' | 'text';
@@ -21,9 +21,11 @@ interface ButtonProps {
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
   primary: 'bg-accent dark:bg-accent-dark',
-  secondary: 'border border-control dark:border-control-dark',
+  secondary: 'bg-accent-tint dark:bg-accent-tint-dark',
   text: '',
 };
+
+const DISABLED_CLASS = 'bg-surface-muted dark:bg-surface-muted-dark';
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
   small: 'px-4 py-2 min-h-[44px]',
@@ -59,21 +61,16 @@ export const Button: React.FC<ButtonProps> = ({
   const colors = useThemeColors();
   const isDisabled = disabled || loading;
   const classes = [
-    'flex-row items-center justify-center rounded-[10px]',
-    VARIANT_CLASS[variant],
+    'flex-row items-center justify-center rounded-[14px]',
+    isDisabled && variant !== 'text' ? DISABLED_CLASS : VARIANT_CLASS[variant],
     SIZE_CLASS[size],
     fullWidth ? 'w-full' : '',
-    isDisabled
-      ? variant === 'text'
-        ? ''
-        : 'bg-surface-muted dark:bg-surface-muted-dark border border-control dark:border-control-dark'
-      : '',
     className ?? '',
   ]
     .filter(Boolean)
     .join(' ');
   const textClasses = [
-    'shrink font-semibold',
+    'shrink font-display font-semibold',
     TEXT_SIZE_CLASS[size],
     VARIANT_TEXT_CLASS[variant],
     isDisabled ? 'text-ink-disabled dark:text-ink-disabled-dark' : '',
@@ -83,16 +80,14 @@ export const Button: React.FC<ButtonProps> = ({
     .join(' ');
 
   return (
-    <TouchableOpacity
+    <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       className={classes}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.8}
-      delayPressIn={0}
-      delayPressOut={0}
+      style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
     >
       <View className="flex-row items-center shrink">
         {icon && (
@@ -120,6 +115,6 @@ export const Button: React.FC<ButtonProps> = ({
           />
         )}
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };

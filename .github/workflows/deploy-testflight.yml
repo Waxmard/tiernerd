@@ -16,7 +16,7 @@ concurrency:
 jobs:
   deploy-ios-testflight:
     name: Upload iOS to TestFlight
-    runs-on: macos-26
+    runs-on: xcode-27
     environment: preview
     steps:
       - uses: actions/checkout@v7

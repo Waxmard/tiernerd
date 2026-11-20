@@ -5,7 +5,6 @@ from typing import Any
 from fastapi import (
     APIRouter,
     Depends,
-    Form,
     HTTPException,
     Request,
     status,
@@ -24,7 +23,6 @@ from app.db.database import get_db
 from app.db.models import List as ListModel
 from app.schemas.item import Item, RankingSetRequest
 from app.schemas.list import (
-    LegacyListUpdate,
     List,
     ListCreate,
     ListSimple,
@@ -47,12 +45,8 @@ router = APIRouter(
 )
 
 
-def parse_metadata[Model: BaseModel](
-    metadata: str | bytes | dict[str, Any], model: type[Model]
-) -> Model:
+def parse_metadata[Model: BaseModel](metadata: str, model: type[Model]) -> Model:
     try:
-        if isinstance(metadata, dict):
-            return model.model_validate(metadata)
         return model.model_validate_json(metadata)
     except ValidationError as exc:
         raise HTTPException(
@@ -61,7 +55,7 @@ def parse_metadata[Model: BaseModel](
         ) from exc
 
 
-async def _require_multipart(request: Request) -> None:
+async def read_metadata_form(request: Request) -> str:
     content_type = request.headers.get("content-type", "").split(";", 1)[0].strip()
     if content_type.lower() != "multipart/form-data":
         raise HTTPException(
@@ -69,8 +63,14 @@ async def _require_multipart(request: Request) -> None:
             detail="Multipart form data required",
         )
     form = await request.form()
-    if set(form.keys()) != {"metadata"} or len(form.getlist("metadata")) != 1:
+    metadata = form.get("metadata")
+    if (
+        set(form.keys()) != {"metadata"}
+        or len(form.getlist("metadata")) != 1
+        or not isinstance(metadata, str)
+    ):
         raise HTTPException(status_code=422, detail="Invalid multipart fields")
+    return metadata
 
 
 @router.get("/", response_model=list[ListSimple])
@@ -91,28 +91,14 @@ async def read_lists(
 
 @router.post("/", response_model=List)
 async def create_list(
-    request: Request,
-    metadata: str | None = Form(None),
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    metadata: str = Depends(read_metadata_form),
+    db: AsyncSession = Depends(get_db),
 ) -> Any:
     """
     Create new list.
     """
-    content_type = request.headers.get("content-type", "").split(";", 1)[0].strip()
-    if content_type.lower() == "multipart/form-data":
-        await _require_multipart(request)
-        list_in = parse_metadata(metadata or "", ListCreate)
-    elif "name" in request.query_params or "description" in request.query_params:
-        params = request.query_params
-        if "name" not in params or "description" not in params:
-            raise HTTPException(status_code=422, detail="Invalid list metadata")
-        data = {"title": params["name"], "description": params["description"]}
-        if "ranking_mode" in params:
-            data["ranking_mode"] = params["ranking_mode"]
-        list_in = parse_metadata(data, ListCreate)
-    else:
-        raise HTTPException(status_code=415, detail="Unsupported list request")
+    list_in = parse_metadata(metadata, ListCreate)
     if list_in.list_id is not None:
         by_id = await list_crud.get_by_id(db, list_in.list_id)
         if by_id is not None:
@@ -217,28 +203,14 @@ async def set_list_ranking(
 @router.put("/{list_id}", response_model=List)
 async def update_list(
     list_id: uuid.UUID,
-    request: Request,
-    metadata: str | None = Form(None),
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    metadata: str = Depends(read_metadata_form),
+    db: AsyncSession = Depends(get_db),
 ) -> Any:
     """
     Update a list.
     """
-    content_type = (
-        request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
-    )
-    if content_type == "multipart/form-data":
-        await _require_multipart(request)
-        list_in: ListUpdate | LegacyListUpdate = parse_metadata(
-            metadata or "", ListUpdate
-        )
-    elif content_type == "application/json" or (
-        content_type.startswith("application/") and content_type.endswith("+json")
-    ):
-        list_in = parse_metadata(await request.body(), LegacyListUpdate)
-    else:
-        raise HTTPException(status_code=415, detail="Unsupported list request")
+    list_in = parse_metadata(metadata, ListUpdate)
     list_obj = await list_crud.get_by_id_and_user(
         db, list_id, current_user.user_id, for_update=True
     )

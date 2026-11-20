@@ -6,16 +6,25 @@ export function parseThemePreference(raw: string | null): ThemePreference {
   return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system';
 }
 
-export type WorkspaceBackground = 'landscape' | 'none';
+export const WORKSPACE_SCENES = [
+  'landscape',
+  'dusk',
+  'meadow',
+  'shore',
+] as const;
+export type WorkspaceScene = (typeof WORKSPACE_SCENES)[number];
+export type WorkspaceBackground = WorkspaceScene | 'none';
 
 export interface WorkspaceAppearance {
   background: WorkspaceBackground;
+  backgroundOpacity: number;
 }
 
 export const WORKSPACE_APPEARANCE_KEY = 'tiernerd.workspaceAppearance';
 
 export const DEFAULT_WORKSPACE_APPEARANCE: WorkspaceAppearance = {
   background: 'landscape',
+  backgroundOpacity: 0.4,
 };
 
 export function parseWorkspaceAppearance(
@@ -27,11 +36,17 @@ export function parseWorkspaceAppearance(
     if (!parsed || typeof parsed !== 'object') {
       return DEFAULT_WORKSPACE_APPEARANCE;
     }
+    const stored = parsed.background;
     const background: WorkspaceBackground =
-      parsed.background === 'landscape' || parsed.background === 'none'
-        ? parsed.background
+      stored === 'none' || WORKSPACE_SCENES.some((scene) => scene === stored)
+        ? (stored as WorkspaceBackground)
         : DEFAULT_WORKSPACE_APPEARANCE.background;
-    return { background };
+    const opacity = parsed.backgroundOpacity;
+    const backgroundOpacity =
+      typeof opacity === 'number' && opacity >= 0 && opacity <= 1
+        ? opacity
+        : DEFAULT_WORKSPACE_APPEARANCE.backgroundOpacity;
+    return { background, backgroundOpacity };
   } catch {
     return DEFAULT_WORKSPACE_APPEARANCE;
   }

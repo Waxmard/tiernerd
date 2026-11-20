@@ -7,18 +7,22 @@ import {
   View,
 } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmojiPickerModal } from '../components/EmojiPicker';
-import { ImmersiveScreenShell } from '../components/ImmersiveBoard';
-import { ListDetailHeader } from '../components/ListDetailHeader';
+import {
+  FLOATING_ACTIONS_CLEARANCE,
+  FloatingActions,
+  ImmersiveScreenShell,
+  ListBottomFade,
+  useScrolledPast,
+} from '../components/ImmersiveBoard';
+import { ListNavBar, ListTitleBlock } from '../components/ListDetailHeader';
 import {
   ListDetailItemRow,
   ListItemEmptyState,
 } from '../components/ListDetailItemRow';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
+import type { ListOptionsHandle } from '../components/ListRankingOptions';
 import { useItemEmojiFill } from '../components/useItemEmojiFill';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { useListDetailData } from '../components/useListDetailData';
@@ -35,6 +39,7 @@ import { confirmDestructive, notifyError } from '../utils/confirm';
 
 type ListDetailScreenProps = RootStackScreenProps<'ListDetail'>;
 const ROW_TRANSITION = LinearTransition.duration(250);
+const NO_ITEMS: Item[] = [];
 
 export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   route,
@@ -100,6 +105,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const notify = useNotify();
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isFilling, setIsFilling] = useState(false);
   const suggestedNamesRef = useRef<string[]>([]);
   const [dismissedDetailsItemId, setDismissedDetailsItemId] = useState<
     string | null
@@ -107,6 +113,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const detailsOpen =
     selectedItemId !== null && dismissedDetailsItemId !== selectedItemId;
   const listRef = useRef<FlatList<Item> | null>(null);
+  const optionsRef = useRef<ListOptionsHandle>(null);
+  const nav = useScrolledPast();
   const selectedItemIdRef = useRef<string | null>(null);
   const consumedCompletedItemIdRef = useRef<string | null>(null);
   const promptHandledRef = useRef(false);
@@ -302,7 +310,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setIsDeletingList(true);
     try {
       const confirmed = await confirmDestructive(
-        'Delete List',
+        'Delete list',
         'Are you sure you want to delete this list? All items will be permanently deleted.',
         'Delete'
       );
@@ -573,124 +581,135 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       }
     />
   );
-  const renderListItems = () => {
-    if (isLoadingList && (!hasItemsSnapshot || items.length === 0)) {
-      return (
-        <View className="flex-1 items-center justify-center px-6">
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
-      );
+  const handleFillEmojis = async () => {
+    setIsFilling(true);
+    try {
+      await fillMissing();
+    } finally {
+      setIsFilling(false);
     }
-    if (items.length === 0 && (hasItemsSnapshot || !itemsError))
-      return (
-        <ListItemEmptyState
-          onAdd={() => void handleAddPress()}
-          disabled={
-            !canMutate ||
-            isDeletingList ||
-            workspace.isBusy ||
-            workspace.mode === 'add'
-          }
-        />
-      );
-
-    return (
-      <Animated.FlatList
-        ref={listRef}
-        style={{ flex: 1, minHeight: 0 }}
-        itemLayoutAnimation={ROW_TRANSITION}
-        data={items}
-        keyExtractor={(item) => item.item_id}
-        contentContainerStyle={{
-          paddingTop: 8,
-          paddingBottom: 16 + safeAreaInsets.bottom,
-        }}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        onScrollToIndexFailed={view.onScrollToIndexFailed}
-        scrollEventThrottle={100}
-        onScrollBeginDrag={view.onScrollBeginDrag}
-        onScroll={view.onScroll}
-        onContentSizeChange={view.onContentSizeChange}
+  };
+  const addDisabled =
+    !canMutate ||
+    isDeletingList ||
+    workspace.isBusy ||
+    workspace.mode === 'add';
+  const optionsDisabled =
+    !canMutate ||
+    isDeletingList ||
+    workspace.isBusy ||
+    detailsOpen ||
+    isFilling;
+  const missingEmojiCount = items.filter((item) => !item.icon).length;
+  const titleBlock = (
+    <ListTitleBlock
+      title={detailsTitle}
+      icon={listIcon}
+      description={listDescription}
+      loading={isLoadingList}
+      optionsDisabled={optionsDisabled}
+      onOpenOptions={(target) => optionsRef.current?.open(target)}
+      onTitleLayout={nav.onTitleLayout}
+    />
+  );
+  const renderListItems = () => {
+    const showSpinner =
+      isLoadingList && (!hasItemsSnapshot || items.length === 0);
+    const listEmpty = showSpinner ? (
+      <View className="items-center justify-center px-6 py-16">
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    ) : hasItemsSnapshot || !itemsError ? (
+      <ListItemEmptyState
+        onAdd={() => void handleAddPress()}
+        disabled={addDisabled}
       />
+    ) : undefined;
+    return (
+      <ListBottomFade>
+        <Animated.FlatList
+          ref={listRef}
+          style={{ flex: 1, minHeight: 0 }}
+          itemLayoutAnimation={ROW_TRANSITION}
+          data={showSpinner ? NO_ITEMS : items}
+          keyExtractor={(item) => item.item_id}
+          ListHeaderComponent={titleBlock}
+          ListEmptyComponent={listEmpty}
+          contentContainerStyle={{
+            paddingBottom:
+              16 + FLOATING_ACTIONS_CLEARANCE + safeAreaInsets.bottom,
+          }}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          onScrollToIndexFailed={view.onScrollToIndexFailed}
+          scrollEventThrottle={16}
+          onScrollBeginDrag={view.onScrollBeginDrag}
+          onScroll={(event) => {
+            view.onScroll(event);
+            nav.onScroll(event);
+          }}
+          onContentSizeChange={view.onContentSizeChange}
+        />
+      </ListBottomFade>
     );
   };
 
   return (
     <ImmersiveScreenShell>
-      <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
-        <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
-          <View className="flex-1 min-h-0 mx-4">
-            <ListDetailHeader
-              title={detailsTitle}
-              icon={listIcon}
-              description={listDescription}
-              addLoading={isLoadingList}
-              optionsKey={screenIdentity}
-              rankingMode={rankingMode}
-              optionsDisabled={
-                !canMutate || isDeletingList || workspace.isBusy || detailsOpen
-              }
-              onSaveOptions={updateListOptions}
-              onOptionsVisibilityChange={setOptionsOpen}
-              missingEmojiCount={items.filter((item) => !item.icon).length}
-              onFillEmojis={fillMissing}
-              addDisabled={
-                !canMutate ||
-                isDeletingList ||
-                workspace.isBusy ||
-                workspace.mode === 'add'
-              }
-              onAdd={() => void handleAddPress()}
-              onSuggest={() => void handleSuggestPress()}
-              suggestLoading={isSuggesting}
-              suggestDisabled={
-                !canMutate ||
-                isDeletingList ||
-                workspace.isBusy ||
-                workspace.mode !== 'closed' ||
-                isOffline ||
-                !token
-              }
-              deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
-              onBack={() => navigation.goBack()}
-              onDelete={() => void handleDeleteList()}
-            />
-            <ListDetailWorkspaceHost
-              canMutate={canMutate}
-              isScreenBusy={isDeletingList}
-              listTitle={detailsTitle}
-              selectedItemId={selectedItemId}
-              dismissedDetailsItemId={dismissedDetailsItemId}
-              selectedItem={selectedItem}
-              selectedRank={selectedRank}
-              rankedCount={rankedCount}
-              rankingMode={rankingMode}
-              isLoadingItems={isLoadingItems}
-              itemsLoaded={itemsLoaded}
-              workspace={workspace}
-              onEdit={(focus) => {
-                if (selectedItem && canMutateFor(screenIdentity))
-                  workspace.openEdit(selectedItem, focus);
-              }}
-              onIconChange={(icon) => {
-                if (selectedItem) void handleItemIcon(selectedItem, icon);
-              }}
-              onDelete={() => {
-                if (selectedItem && canMutateFor(screenIdentity))
-                  void workspace.deleteItem(selectedItem);
-              }}
-              onDetailsClose={handleWorkspaceContentClose}
-              onMobileClose={handleMobileClose}
-              onStartRanking={handleStartRanking}
-              onEditRank={() => void handleEditRank()}
-              onEditDetails={() => void leaveEdit()}
-            >
-              {renderListItems()}
-            </ListDetailWorkspaceHost>
-          </View>
+      <ListNavBar
+        title={detailsTitle}
+        icon={listIcon}
+        scrolled={nav.scrolled}
+        description={listDescription}
+        optionsKey={screenIdentity}
+        rankingMode={rankingMode}
+        optionsDisabled={optionsDisabled}
+        optionsRef={optionsRef}
+        onSaveOptions={updateListOptions}
+        onOptionsVisibilityChange={setOptionsOpen}
+        missingEmojiCount={missingEmojiCount}
+        onFillEmojis={fillMissing}
+        deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
+        onOpenProfile={() => navigation.navigate('Profile')}
+        onBack={() => navigation.goBack()}
+        onDelete={() => void handleDeleteList()}
+      />
+      <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
+        <View className="flex-1 min-h-0 mx-4">
+          <ListDetailWorkspaceHost
+            canMutate={canMutate}
+            isScreenBusy={isDeletingList}
+            listTitle={detailsTitle}
+            selectedItemId={selectedItemId}
+            dismissedDetailsItemId={dismissedDetailsItemId}
+            selectedItem={selectedItem}
+            selectedRank={selectedRank}
+            rankedCount={rankedCount}
+            rankingMode={rankingMode}
+            isLoadingItems={isLoadingItems}
+            itemsLoaded={itemsLoaded}
+            workspace={workspace}
+            onEdit={(focus) => {
+              if (selectedItem && canMutateFor(screenIdentity))
+                workspace.openEdit(selectedItem, focus);
+            }}
+            onIconChange={(icon) => {
+              if (selectedItem) void handleItemIcon(selectedItem, icon);
+            }}
+            onDelete={() => {
+              if (selectedItem && canMutateFor(screenIdentity))
+                void workspace.deleteItem(selectedItem);
+            }}
+            onDetailsClose={handleWorkspaceContentClose}
+            onMobileClose={handleMobileClose}
+            onStartRanking={handleStartRanking}
+            onEditRank={() => void handleEditRank()}
+            onEditDetails={() => void leaveEdit()}
+          >
+            {renderListItems()}
+          </ListDetailWorkspaceHost>
         </View>
-      </SafeAreaView>
+      </View>
       <EmojiPickerModal
         visible={iconItem !== null}
         value={iconItem?.icon ?? null}
@@ -710,6 +729,39 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           setOptionsOpen(false);
           setIconItem(null);
         }}
+      />
+      <FloatingActions
+        label="Add"
+        loading={isLoadingList || isSuggesting || isFilling}
+        options={[
+          {
+            label: 'Add item',
+            onPress: () => void handleAddPress(),
+            disabled: addDisabled,
+          },
+          {
+            label: 'Suggest next',
+            emoji: '✨',
+            onPress: () => void handleSuggestPress(),
+            disabled:
+              !canMutate ||
+              isDeletingList ||
+              workspace.isBusy ||
+              workspace.mode !== 'closed' ||
+              isOffline ||
+              !token,
+          },
+          ...(missingEmojiCount > 0 && !isOffline
+            ? [
+                {
+                  label: `Add emoji to ${missingEmojiCount} ${missingEmojiCount === 1 ? 'item' : 'items'}`,
+                  emoji: '😀',
+                  onPress: () => void handleFillEmojis(),
+                  disabled: optionsDisabled,
+                },
+              ]
+            : []),
+        ]}
       />
     </ImmersiveScreenShell>
   );

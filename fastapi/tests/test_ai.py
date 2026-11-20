@@ -77,8 +77,13 @@ class TestSuggestEmojiEndpoint:
         ],
     )
     async def test_rejects_invalid_body(
-        self, client: AsyncClient, auth_headers: dict, body: dict
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        body: dict,
+        monkeypatch: MonkeyPatch,
     ):
+        monkeypatch.setattr(get_settings(), "AI_PROJECT", "test-project")
         response = await client.post("/api/ai/emoji", json=body, headers=auth_headers)
         assert response.status_code == 422
 

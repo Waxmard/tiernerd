@@ -88,7 +88,6 @@ export function reconcileListItems(
         list_id: listId,
         name: op.name,
         description: op.description,
-        image_url: null,
         icon: op.icon ?? null,
         rating: 0,
         manual_rating: null,

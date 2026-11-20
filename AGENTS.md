@@ -146,15 +146,15 @@ psql -h localhost -p 55432 -U tiernerd tiernerd
 
 ### Backend Structure (`fastapi/app/`)
 
-- `api/endpoints/` — Route handlers (users, lists, items)
-- `services/` — Business logic (auth/JWT, list, ranking placement, covers)
-- `core/` — Pure utilities (constants, fractional index)
+- `api/endpoints/` — Route handlers (users, lists, items, ai)
+- `services/` — Business logic (auth/JWT, list, ranking placement, AI suggestions, photo uploads)
+- `core/` — Pure utilities (constants, fractional index, rounding)
 - `crud/` — Database operations
 - `db/` — SQLAlchemy models and async database setup
 - `schemas/` — Pydantic request/response models
 - `settings.py` — Configuration via pydantic-settings
 
-Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml`). Layering: `main → api → services → crud → db`. `api` may also call `crud` directly (endpoint handlers use `crud_*` helpers); this is intentional, not a violation. `core` is a pure leaf (constants, fractional_index) reachable from `api`/`services`/`crud`. `schemas`/`settings` are cross-cutting. Run `make backend-boundaries` (or `uv run tach check` in `fastapi/`) to verify.
+Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml`). Layering: `main → api → services → crud → db`. `api` may also call `crud` directly (endpoint handlers use `crud_*` helpers); this is intentional, not a violation. `core` is a pure leaf (constants, fractional_index, rounding) reachable from `api`/`services`/`crud`/`schemas`. `schemas`/`settings` are cross-cutting. Run `make backend-boundaries` (or `uv run tach check` in `fastapi/`) to verify.
 
 ### Frontend Structure (`frontend/src/`)
 
@@ -179,7 +179,7 @@ Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml
 
 - PostgreSQL with async (asyncpg)
 - UUID primary keys throughout
-- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Startup (`create_tables`) also adds missing additive columns, drops the retired `lists.cover`/`lists.cover_photo`/`lists.color` columns, and applies the manual-rating migration. The Google auth migration stays manual (see the [backend README](fastapi/README.md#upgrade-the-google-authentication-schema)); it permanently removes password hashes, so back it up first and do not wipe application data.
+- Fresh schemas use `Base.metadata.create_all` (`app/db/database.py`, `scripts/seed.py`) — no Alembic. Startup (`create_tables`) runs `create_all` only: no startup migrations, so apply schema changes to existing databases by hand and do not wipe application data.
 
 ## Development Notes for AI Agents
 

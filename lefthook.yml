@@ -19,6 +19,16 @@ pre-commit:
       run: uv run ruff format {staged_files}
       stage_fixed: true
 
+    mypy:
+      root: fastapi/
+      glob: "*.py"
+      run: uv run --locked mypy app/
+
+    uv-lock-check:
+      root: fastapi/
+      glob: "{pyproject.toml,uv.lock}"
+      run: uv lock --check
+
     tach:
       root: fastapi/
       glob:

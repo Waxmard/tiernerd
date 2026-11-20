@@ -124,6 +124,8 @@ export function ListRankingOptions({
   onVisibilityChange,
   missingEmojiCount,
   onFillEmojis,
+  deleteDisabled,
+  onDelete,
   ref,
 }: {
   title: string;
@@ -135,8 +137,11 @@ export function ListRankingOptions({
   onVisibilityChange: (open: boolean) => void;
   missingEmojiCount: number;
   onFillEmojis: () => Promise<void>;
+  deleteDisabled: boolean;
+  onDelete: () => void;
   ref?: Ref<ListOptionsHandle>;
 }) {
+  const colors = useThemeColors();
   const notify = useNotifyWhenOnline();
   const { isOffline } = useSync();
   const [open, setOpen] = useState(false);
@@ -262,7 +267,13 @@ export function ListRankingOptions({
         }
         className="w-11 h-11 items-center justify-center shrink-0"
       >
-        <Emoji symbol="⚙️" size={22} dimmed={disabled} />
+        <Ionicons
+          name="settings-outline"
+          size={24}
+          color={colors['ink-muted']}
+          accessible={false}
+          style={{ opacity: disabled ? 0.4 : 1 }}
+        />
       </Pressable>
       <SheetModal
         visible={open}
@@ -356,6 +367,16 @@ export function ListRankingOptions({
               onChange={setDraft}
               disabled={saving}
             />
+            <View className="border-t border-control dark:border-control-dark pt-4">
+              <Button
+                title="Delete list"
+                variant="text"
+                onPress={onDelete}
+                disabled={deleteDisabled || saving || filling}
+                textClassName="text-danger-text dark:text-danger-text-dark"
+                icon={<Emoji symbol="🗑️" size={18} />}
+              />
+            </View>
           </View>
         </BaseModalContent>
       </SheetModal>

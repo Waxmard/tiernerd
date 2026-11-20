@@ -127,21 +127,6 @@ class TestCreateList:
         assert response.status_code == 409
         assert "already exists" in response.json()["detail"].lower()
 
-    async def test_create_list_ignores_retired_color(
-        self, client: AsyncClient, auth_headers: dict
-    ):
-        response = await client.post(
-            "/api/lists/",
-            files=metadata_files({"title": "Colored", "color": "teal"}),
-            headers=auth_headers,
-        )
-        assert response.status_code == 200
-        assert "color" not in response.json()
-
-        lists = await client.get("/api/lists/", headers=auth_headers)
-        assert lists.status_code == 200
-        assert all("color" not in row for row in lists.json())
-
     async def test_create_list_with_icon_round_trips_through_the_api(
         self, client: AsyncClient, auth_headers: dict
     ):
@@ -338,12 +323,11 @@ class TestUpdateList:
 
         appearance = await client.put(
             url,
-            files=metadata_files({"color": "coral", "icon": "heart"}),
+            files=metadata_files({"icon": "heart"}),
             headers=auth_headers,
         )
         assert appearance.status_code == 200
         assert appearance.json()["ranking_mode"] == "rank"
-        assert "color" not in appearance.json()
         assert appearance.json()["icon"] == "heart"
         after_appearance = await client.get(f"{url}/items", headers=auth_headers)
         assert after_appearance.json() == before
@@ -530,134 +514,7 @@ class TestListWriteFormats:
                 response = await request(url, files=form, headers=auth_headers)
                 assert response.status_code == 422
 
-    async def test_legacy_create_query_preserves_validation_and_data(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        auth_headers: dict,
-    ):
-        params = {
-            "name": "Cafés & tea",
-            "description": "",
-            "color": "teal",
-            "ranking_mode": "rank",
-        }
-        denied = await client.post("/api/lists/", params=params)
-        assert denied.status_code == 401
-
-        created = await client.post("/api/lists/", params=params, headers=auth_headers)
-        assert created.status_code == 200
-        assert created.json()["title"] == params["name"]
-        assert created.json()["description"] == ""
-        assert created.json()["ranking_mode"] == "rank"
-
-        detail = await client.get(
-            f"/api/lists/{created.json()['list_id']}", headers=auth_headers
-        )
-        assert detail.status_code == 200
-        assert detail.json() == created.json()
-
-        defaulted = await client.post(
-            "/api/lists/",
-            params={"name": "Default legacy list", "description": ""},
-            headers=auth_headers,
-        )
-        assert defaulted.status_code == 200
-        assert defaulted.json()["ranking_mode"] == "score"
-
-        duplicate = await client.post(
-            "/api/lists/",
-            params={"name": test_list.title, "description": ""},
-            headers=auth_headers,
-        )
-        assert duplicate.status_code == 409
-
-        for invalid in (
-            {"description": ""},
-            {"name": "Missing description"},
-            {"name": "", "description": ""},
-            {"name": "x" * 61, "description": ""},
-            {"name": "Long description", "description": "x" * 501},
-            {"name": "Bad mode", "description": "", "ranking_mode": "other"},
-        ):
-            response = await client.post(
-                "/api/lists/", params=invalid, headers=auth_headers
-            )
-            assert response.status_code == 422
-
-    async def test_legacy_json_update_preserves_new_fields_and_validates(
-        self,
-        client: AsyncClient,
-        test_list: ListModel,
-        auth_headers: dict,
-        auth_headers_user2: dict,
-        test_db: AsyncSession,
-    ):
-        test_list.icon = "heart"
-        test_db.add(ListModel(user_id=test_list.user_id, title="Existing title"))
-        await test_db.commit()
-        url = f"/api/lists/{test_list.list_id}"
-
-        denied = await client.put(url, json={"ranking_mode": "rank"})
-        assert denied.status_code == 401
-        other_user = await client.put(
-            url, json={"ranking_mode": "rank"}, headers=auth_headers_user2
-        )
-        assert other_user.status_code == 404
-
-        updated = await client.put(
-            url,
-            json={
-                "title": "Legacy rename",
-                "description": "Legacy description",
-                "ranking_mode": "rank",
-                "color": "pink",
-            },
-            headers=auth_headers,
-        )
-        assert updated.status_code == 200
-        assert updated.json()["title"] == "Legacy rename"
-        assert updated.json()["description"] == "Legacy description"
-        assert updated.json()["ranking_mode"] == "rank"
-        assert updated.json()["icon"] == "heart"
-
-        partial = await client.put(
-            url, json={"description": None}, headers=auth_headers
-        )
-        assert partial.status_code == 200
-        assert partial.json()["description"] is None
-        assert partial.json()["title"] == "Legacy rename"
-        assert partial.json()["ranking_mode"] == "rank"
-
-        for invalid in (
-            {"title": ""},
-            {"title": "x" * 61},
-            {"description": "x" * 501},
-            {"title": None},
-            {"ranking_mode": None},
-            {"ranking_mode": "other"},
-            {"description": 123},
-        ):
-            response = await client.put(url, json=invalid, headers=auth_headers)
-            assert response.status_code == 422
-        duplicate = await client.put(
-            url, json={"title": "Existing title"}, headers=auth_headers
-        )
-        assert duplicate.status_code == 409
-        malformed = await client.put(
-            url,
-            content="{",
-            headers=auth_headers | {"Content-Type": "application/json"},
-        )
-        assert malformed.status_code == 422
-        wrong_type = await client.put(url, json=[], headers=auth_headers)
-        assert wrong_type.status_code == 422
-
-        detail = await client.get(url, headers=auth_headers)
-        assert detail.status_code == 200
-        assert detail.json() == partial.json()
-
-    async def test_legacy_json_update_enforces_stream_size_limit(
+    async def test_write_enforces_stream_size_limit(
         self,
         client: AsyncClient,
         test_list: ListModel,
@@ -669,15 +526,15 @@ class TestListWriteFormats:
         monkeypatch.setattr(lists, "MAX_LIST_WRITE_BYTES", 32)
 
         async def body():
-            yield b'{"description":"'
+            yield b"--x\r\nContent-Disposition: form-data; name=metadata\r\n\r\n"
             yield b"x" * 32
-            yield b'"}'
+            yield b"\r\n--x--\r\n"
 
         url = f"/api/lists/{test_list.list_id}"
         response = await client.put(
             url,
             content=body(),
-            headers=auth_headers | {"Content-Type": "application/json"},
+            headers=auth_headers | {"Content-Type": "multipart/form-data; boundary=x"},
         )
         assert response.status_code == 413
         assert response.request.headers["transfer-encoding"] == "chunked"
@@ -784,7 +641,6 @@ class TestDeleteList:
                 list_id=list_id,
                 name=f"Item {i}",
                 description=f"Description {i}",
-                image_url=f"https://example.com/img{i}.jpg",
                 position=f"a{i}",
                 rating=i * 5.0,
                 created_at=datetime.now(),

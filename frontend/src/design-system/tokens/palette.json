@@ -8,12 +8,19 @@
     "ink": "#172B4D",
     "ink-muted": "#506580",
     "ink-disabled": "#506580",
-    "accent": "#172B4D",
+    "accent": "#2456D8",
     "on-accent": "#FFFFFF",
-    "accent-text": "#172B4D",
+    "accent-text": "#2456D8",
     "accent-tint": "#E4EEFF",
     "accent-line": "#506580",
-    "danger-text": "#B91C1C"
+    "danger-text": "#B91C1C",
+    "card": "#FFFFFF",
+    "card-muted": "#EFF7FF",
+    "card-line": "#C1D3E8",
+    "card-ink": "#172B4D",
+    "card-ink-muted": "#506580",
+    "card-tint": "#E4EEFF",
+    "card-accent": "#2456D8"
   },
   "dark": {
     "canvas": "#142A34",
@@ -24,11 +31,18 @@
     "ink": "#F5FAFC",
     "ink-muted": "#C5D9DF",
     "ink-disabled": "#8AA6B0",
-    "accent": "#F5FAFC",
+    "accent": "#A9CBE3",
     "on-accent": "#142A34",
-    "accent-text": "#F5FAFC",
+    "accent-text": "#B4D2E6",
     "accent-tint": "#34535D",
-    "accent-line": "#87C9F2",
-    "danger-text": "#FCA5A5"
+    "accent-line": "#A9CBE3",
+    "danger-text": "#F2B8B5",
+    "card": "#C2D3DA",
+    "card-muted": "#AEC4CD",
+    "card-line": "#9DB4BE",
+    "card-ink": "#142A34",
+    "card-ink-muted": "#38525C",
+    "card-tint": "#AEC4CD",
+    "card-accent": "#1B4A80"
   }
 }

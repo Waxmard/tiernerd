@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   type ListRenderItemInfo,
   Pressable,
   Text,
@@ -26,8 +25,15 @@ import {
 } from '../components/CreateListModal';
 import { EmojiPickerModal } from '../components/EmojiPicker';
 import {
+  FLOATING_ACTIONS_CLEARANCE,
+  FloatingActions,
   ImmersiveScreenShell,
+  ListBottomFade,
   ListIdentityBadge,
+  NavBarTitle,
+  NavProfileButton,
+  ScreenNavBar,
+  useScrolledPast,
 } from '../components/ImmersiveBoard';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button, Emoji, SheetModal } from '../design-system/components';
@@ -112,7 +118,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestedTitle, setSuggestedTitle] = useState('');
   const suggestedTitlesRef = useRef<string[]>([]);
-  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
   const [iconListId, setIconListId] = useState<string | null>(null);
   const createListRef = useRef<CreateListContentHandle | null>(null);
@@ -496,7 +501,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
         activeOpacity={0.7}
         style={{ width: cardWidth }}
-        className="shrink-0 flex-row items-center gap-3 rounded-2xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark"
+        className="shrink-0 flex-row items-center gap-3 rounded-2xl border border-card-line bg-card p-4 dark:border-card-line-dark dark:bg-card-dark"
       >
         {item.icon ? (
           <Pressable
@@ -515,15 +520,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             numberOfLines={2}
             className={`${
               titleLength <= 40 ? 'text-title-medium' : 'text-title-small'
-            } font-semibold text-ink dark:text-ink-dark`}
+            } font-semibold text-card-ink dark:text-card-ink-dark`}
           >
             {item.title}
           </Text>
           <View className="flex-row flex-wrap items-center gap-x-3">
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-body-small text-card-ink-muted dark:text-card-ink-muted-dark">
               {count}
             </Text>
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-body-small text-card-ink-muted dark:text-card-ink-muted-dark">
               Modified {formatDate(item.updatedAt)}
             </Text>
           </View>
@@ -531,134 +536,115 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Ionicons
           name="chevron-forward"
           size={20}
-          color={colors['ink-muted']}
+          color={colors['card-ink-muted']}
           accessible={false}
         />
       </TouchableOpacity>
     );
   };
+  const nav = useScrolledPast();
+  const navScrolled = currentSnapshot && nav.scrolled;
+  const titleBlock = (
+    <View className="pt-1 pb-2">
+      <Text
+        onLayout={nav.onTitleLayout}
+        accessibilityRole="header"
+        className="font-display-bold text-[32px] leading-[38px] tracking-[-0.4px] text-ink dark:text-ink-dark"
+      >
+        My lists
+      </Text>
+    </View>
+  );
   const content = currentSnapshot ? (
-    <FlatList
-      key={columns}
-      className="flex-1 min-h-0"
-      data={visibleLists}
-      numColumns={columns}
-      columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
-      renderItem={renderRow}
-      keyExtractor={(item) => item.id}
-      showsVerticalScrollIndicator={false}
-      refreshing={isRefreshing}
-      onRefresh={handleRefresh}
-      contentContainerStyle={{
-        paddingBottom: 16 + safeAreaInsets.bottom,
-        gap: 12,
-      }}
-      ListEmptyComponent={
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Create a list. Start ranking what you love."
-          onPress={() => setModalStep('create')}
-          activeOpacity={0.7}
-          className="w-full items-center gap-2 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-8 dark:border-control-dark dark:bg-surface-muted-dark"
-        >
-          <Emoji symbol="🏆" size={56} />
-          <View className="items-center gap-1">
-            <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
-              Create a list
-            </Text>
-            <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
-              Start ranking what you love.
-            </Text>
-          </View>
-        </TouchableOpacity>
-      }
-    />
-  ) : loadFailed && !isLoading ? (
-    <View className="w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-8 dark:border-line-dark dark:bg-surface-dark">
-      <Emoji symbol="⚠️" size={40} />
-      <View className="items-center gap-1">
-        <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
-          Couldn't load your lists
-        </Text>
-        <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
-          Check your connection and try again.
-        </Text>
-      </View>
-      <Button
-        title="Try again"
-        variant="secondary"
-        size="small"
-        onPress={() => void fetchLists()}
+    <ListBottomFade>
+      <FlatList
+        key={columns}
+        className="flex-1 min-h-0"
+        data={visibleLists}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
+        renderItem={renderRow}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        refreshing={isRefreshing}
+        onRefresh={handleRefresh}
+        contentContainerStyle={{
+          paddingBottom:
+            16 + FLOATING_ACTIONS_CLEARANCE + safeAreaInsets.bottom,
+          gap: 12,
+        }}
+        ListHeaderComponent={titleBlock}
+        onScroll={nav.onScroll}
+        scrollEventThrottle={16}
+        ListEmptyComponent={
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Create a list. Start ranking what you love."
+            onPress={() => setModalStep('create')}
+            activeOpacity={0.7}
+            className="w-full items-center gap-2 border-2 border-dashed border-card-ink-muted rounded-2xl bg-card-muted px-4 py-8 dark:border-card-ink-muted-dark dark:bg-card-muted-dark"
+          >
+            <Emoji symbol="🏆" size={56} />
+            <View className="items-center gap-1">
+              <Text className="text-title-medium font-semibold text-center text-card-ink dark:text-card-ink-dark">
+                Create a list
+              </Text>
+              <Text className="text-body-medium text-center text-card-ink-muted dark:text-card-ink-muted-dark">
+                Start ranking what you love.
+              </Text>
+            </View>
+          </TouchableOpacity>
+        }
       />
-    </View>
+    </ListBottomFade>
+  ) : loadFailed && !isLoading ? (
+    <>
+      {titleBlock}
+      <View className="mt-3 w-full items-center gap-3 rounded-2xl border border-card-line bg-card px-4 py-8 dark:border-card-line-dark dark:bg-card-dark">
+        <Emoji symbol="⚠️" size={40} />
+        <View className="items-center gap-1">
+          <Text className="text-title-medium font-semibold text-center text-card-ink dark:text-card-ink-dark">
+            Couldn't load your lists
+          </Text>
+          <Text className="text-body-medium text-center text-card-ink-muted dark:text-card-ink-muted-dark">
+            Check your connection and try again.
+          </Text>
+        </View>
+        <Button
+          title="Try again"
+          variant="secondary"
+          size="small"
+          onPress={() => void fetchLists()}
+        />
+      </View>
+    </>
   ) : (
-    <View className="flex-1 items-center justify-center px-6">
-      <ActivityIndicator size="large" color={colors.accent} />
-    </View>
+    <>
+      {titleBlock}
+      <View className="flex-1 items-center justify-center px-6">
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    </>
   );
   return (
     <ImmersiveScreenShell>
-      <SafeAreaView className="min-h-0 flex-1" edges={['top', 'left', 'right']}>
+      <ScreenNavBar scrolled={navScrolled}>
+        {navScrolled ? null : (
+          <Text className="pl-3 text-brand-title text-ink dark:text-ink-dark">
+            TierNerd
+          </Text>
+        )}
+        <NavBarTitle visible={navScrolled} align="left">
+          My lists
+        </NavBarTitle>
+        <NavProfileButton onPress={() => navigation.navigate('Profile')} />
+      </ScreenNavBar>
+      <SafeAreaView className="min-h-0 flex-1" edges={['left', 'right']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View
             className="flex-1 min-h-0"
             style={{ marginHorizontal: horizontalGutter }}
           >
-            <View className="my-2 py-2 pl-4 pr-3 flex-row items-center gap-2 shrink-0 rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-              <Text
-                accessibilityRole="header"
-                numberOfLines={1}
-                className="flex-1 min-w-0 text-headline-small text-ink dark:text-ink-dark"
-              >
-                My lists
-              </Text>
-              <Button
-                title="New list"
-                onPress={() => setModalStep('create')}
-                size="small"
-                icon={
-                  <Ionicons
-                    name="add"
-                    size={20}
-                    color={colors['on-accent']}
-                    accessible={false}
-                  />
-                }
-                accessibilityLabel="Create new list"
-              />
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Profile')}
-                className="w-11 h-11 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="Open profile"
-              >
-                {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
-                  <Image
-                    source={{ uri: user.photoUrl }}
-                    onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
-                    resizeMode="cover"
-                    className="w-full h-full"
-                    accessible={false}
-                  />
-                ) : (
-                  <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
-                    <Emoji symbol="👤" size={20} />
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-            <View className="flex-row">
-              <Button
-                icon={<Emoji symbol="✨" size={18} />}
-                title="Suggest list"
-                variant="text"
-                size="small"
-                loading={isSuggesting}
-                disabled={isOffline || !token || modalStep !== null}
-                onPress={() => void handleSuggestList()}
-              />
-            </View>
             <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>
@@ -725,6 +711,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onClose={() => setIconListId(null)}
         />
       </SafeAreaView>
+      <FloatingActions
+        label="Create"
+        loading={isSuggesting}
+        options={[
+          { label: 'New list', onPress: () => setModalStep('create') },
+          {
+            label: 'Suggest list',
+            emoji: '✨',
+            onPress: () => void handleSuggestList(),
+            disabled: isOffline || !token || modalStep !== null,
+          },
+        ]}
+      />
     </ImmersiveScreenShell>
   );
 };

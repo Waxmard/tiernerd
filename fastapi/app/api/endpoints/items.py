@@ -71,7 +71,6 @@ async def create_item(
         list_id=list_obj.list_id,
         name=item_in.name,
         description=item_in.description,
-        image_url=str(item_in.image_url) if item_in.image_url else None,
         icon=item_in.icon,
         manual_rating=None,
         created_at=now,
@@ -116,7 +115,7 @@ async def update_item(
     current_user: User = Depends(get_current_user),
 ) -> Item:
     item_obj = await item_crud.get_by_id_with_ownership(
-        db, item_id, current_user.user_id, populate_existing=True
+        db, item_id, current_user.user_id
     )
     if item_obj is None:
         raise HTTPException(
@@ -178,7 +177,7 @@ async def delete_item(
     current_user: User = Depends(get_current_user),
 ) -> None:
     item_obj = await item_crud.get_by_id_with_ownership(
-        db, item_id, current_user.user_id, populate_existing=True
+        db, item_id, current_user.user_id
     )
     if item_obj is None:
         raise HTTPException(

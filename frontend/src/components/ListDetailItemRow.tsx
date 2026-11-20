@@ -24,6 +24,7 @@ export interface ItemRankBadgeProps {
   rank: number | null;
   size?: 'md' | 'lg';
   className?: string;
+  onCard?: boolean;
 }
 
 export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
@@ -32,15 +33,20 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
   rank,
   size = 'md',
   className,
+  onCard = false,
 }) => {
   const { colors } = useTheme();
   if (rankingMode === 'rank' && rank === null) {
     return null;
   }
 
-  const tintClass = 'bg-accent-tint dark:bg-accent-tint-dark';
-  const primaryColor = colors['accent-text'];
-  const secondaryColor = colors['ink-muted'];
+  const tintClass = onCard
+    ? 'bg-card-tint dark:bg-card-tint-dark'
+    : 'bg-accent-tint dark:bg-accent-tint-dark';
+  const primaryColor = onCard ? colors['card-ink'] : colors.ink;
+  const secondaryColor = onCard
+    ? colors['card-ink-muted']
+    : colors['ink-muted'];
   const sizeClass =
     size === 'lg'
       ? 'min-w-[64px] h-12 px-3.5 rounded-2xl'
@@ -110,7 +116,7 @@ interface ListDetailItemRowProps {
 }
 
 const ROW_CLASS =
-  'flex-row items-center px-4 py-3 mb-2 min-h-16 rounded-2xl bg-surface dark:bg-surface-dark';
+  'flex-row items-center px-4 py-3 mb-2 min-h-16 rounded-2xl bg-card dark:bg-card-dark';
 
 export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
   item,
@@ -176,7 +182,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
         <Animated.View layout={EMOJI_SLIDE} style={{ flex: 1, minWidth: 0 }}>
           <Text
             numberOfLines={2}
-            className="text-title-medium font-semibold text-ink dark:text-ink-dark"
+            className="text-title-medium font-semibold text-card-ink dark:text-card-ink-dark"
           >
             {item.name}
           </Text>
@@ -187,6 +193,7 @@ export const ListDetailItemRow: React.FC<ListDetailItemRowProps> = ({
             rankingMode={rankingMode}
             rating={item.rating}
             rank={rank}
+            onCard
           />
         </View>
       </View>
@@ -205,14 +212,14 @@ export const ListItemEmptyState: React.FC<{
       disabled={disabled}
       onPress={onAdd}
       activeOpacity={0.7}
-      className="w-full items-center gap-2 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-8 dark:border-control-dark dark:bg-surface-muted-dark"
+      className="mt-4 w-full items-center gap-2 border-2 border-dashed border-card-ink-muted rounded-2xl bg-card-muted px-4 py-8 dark:border-card-ink-muted-dark dark:bg-card-muted-dark"
     >
       <Emoji symbol="🥇" size={56} dimmed={disabled} />
       <View className="items-center gap-1">
-        <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
+        <Text className="text-title-medium font-semibold text-center text-card-ink dark:text-card-ink-dark">
           Add your first item
         </Text>
-        <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
+        <Text className="text-body-medium text-center text-card-ink-muted dark:text-card-ink-muted-dark">
           Add an item, then compare to rank it.
         </Text>
       </View>

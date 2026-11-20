@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
 import Constants from 'expo-constants';
 import type React from 'react';
 import { useState } from 'react';
@@ -12,7 +13,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ImmersiveScreenShell } from '../components/ImmersiveBoard';
+import {
+  ImmersiveScreenShell,
+  NavBackButton,
+  NavBarTitle,
+  ScreenNavBar,
+  useScrolledPast,
+} from '../components/ImmersiveBoard';
 import { Emoji, SectionLabel } from '../design-system/components';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
@@ -21,14 +28,20 @@ import { useTheme, useThemeColors } from '../providers/ThemeProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import { authService } from '../services/authService';
 import { pickLocalPhoto } from '../services/photoPicker';
-import type { ThemePreference } from '../services/themePreference';
+import type {
+  ThemePreference,
+  WorkspaceBackground,
+} from '../services/themePreference';
 import { confirmDestructive } from '../utils/confirm';
 
 type ProfileScreenProps = RootStackScreenProps<'Profile'>;
 
 const BACKGROUND_OPTIONS = [
-  { label: 'Built-in landscape', value: 'landscape', emoji: '🏞️' },
-  { label: 'Solid canvas', value: 'none', emoji: '⬜' },
+  { label: 'Ridgeline', value: 'landscape', emoji: '🏞️' },
+  { label: 'Dusk', value: 'dusk', emoji: '🌇' },
+  { label: 'Meadow', value: 'meadow', emoji: '🌿' },
+  { label: 'Shore', value: 'shore', emoji: '🏖️' },
+  { label: 'Solid', value: 'none', emoji: '⬜' },
   { label: 'My photo', value: 'photo', emoji: '🖼️' },
 ] as const;
 
@@ -49,7 +62,10 @@ const THEME_OPTIONS = [
   emoji: string;
 }>;
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const { user, token, signOut, updateUser } = useAuth();
   const notify = useNotify();
   const {
@@ -67,6 +83,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const handleSignOut = async () => {
     await signOut();
   };
+
+  const routes = navigation.getState().routes;
+  const cameFromList =
+    routes[routes.findIndex((r) => r.key === route.key) - 1]?.name ===
+    'ListDetail';
 
   const handleBack = () => {
     navigation.goBack();
@@ -105,13 +126,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       'Could not save the background photo. Try again.'
     );
 
-  const chooseBuiltInBackground = async (background: 'landscape' | 'none') => {
+  const nav = useScrolledPast();
+  const chooseBuiltInBackground = async (background: WorkspaceBackground) => {
     if (
       hasPhoto &&
       !(await confirmDestructive(
-        'Remove background photo?',
-        'Your uploaded photo will be deleted.',
-        'Remove'
+        'Stop using your photo?',
+        'It will no longer be your TierNerd background. The original stays in your photo library.',
+        'Stop using'
       ))
     )
       return;
@@ -129,38 +151,31 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   return (
     <ImmersiveScreenShell>
-      <SafeAreaView className="flex-1">
+      <ScreenNavBar scrolled={nav.scrolled} maxWidthClass="max-w-[560px]">
+        <NavBackButton
+          label={cameFromList ? 'List' : 'Lists'}
+          compact={nav.scrolled}
+          onPress={handleBack}
+        />
+        <NavBarTitle visible={nav.scrolled}>Profile</NavBarTitle>
+        {nav.scrolled ? <View className="w-11" /> : null}
+      </ScreenNavBar>
+      <SafeAreaView className="flex-1" edges={['bottom', 'left', 'right']}>
         <ScrollView
           contentContainerClassName="w-full grow"
+          onScroll={nav.onScroll}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full max-w-[560px] self-center px-4 pb-4">
-            <View className="flex-row items-center justify-between py-2 px-2 my-3 rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel="Back"
-                onPress={handleBack}
-                className="min-w-[44px] min-h-[44px] justify-center items-center"
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={28}
-                  color={colors.ink}
-                  accessible={false}
-                />
-              </TouchableOpacity>
-              <Text
-                className="text-headline-small font-semibold text-ink dark:text-ink-dark"
-                accessibilityRole="header"
-              >
-                Profile
-              </Text>
-              <View className="w-11 h-11" />
-            </View>
-
-            <View className="flex-row items-center gap-4 mb-4">
+          <View className="w-full max-w-[560px] self-center px-4 pb-4 pt-1">
+            <Text
+              onLayout={nav.onTitleLayout}
+              accessibilityRole="header"
+              className="mb-4 font-display-bold text-[32px] leading-[38px] tracking-[-0.4px] text-ink dark:text-ink-dark"
+            >
+              Profile
+            </Text>
+            <View className="flex-row items-center gap-4 mb-4 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4">
               {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
                 <Image
                   source={{ uri: user.photoUrl }}
@@ -174,34 +189,27 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   }
                 />
               ) : (
-                <View className="w-11 h-11 rounded-full bg-surface dark:bg-surface-dark items-center justify-center border border-line dark:border-line-dark">
+                <View className="w-11 h-11 rounded-full bg-card-muted dark:bg-card-muted-dark items-center justify-center border border-card-line dark:border-card-line-dark">
                   <Emoji symbol="👤" size={22} />
                 </View>
               )}
               <View className="flex-1 min-w-0">
-                <Text className="text-title-medium text-ink dark:text-ink-dark shrink">
+                <Text className="text-title-medium text-card-ink dark:text-card-ink-dark shrink">
                   {user?.displayName || user?.email?.split('@')[0] || 'User'}
                 </Text>
-                <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark mt-1">
-                  TierNerd account
-                </Text>
-              </View>
-            </View>
-
-            <View className="mb-4">
-              <SectionLabel emoji="👤" label="Account" className="mb-2" />
-              <View className="bg-surface dark:bg-surface-dark border border-line dark:border-line-dark rounded-2xl p-4 gap-1">
-                <Text className="text-label-medium text-ink dark:text-ink-dark">
-                  Email address
-                </Text>
-                <Text className="text-body-medium text-ink-muted dark:text-ink-muted-dark shrink">
+                <Text className="text-body-medium text-card-ink-muted dark:text-card-ink-muted-dark shrink mt-1">
                   {user?.email || 'No email'}
                 </Text>
               </View>
             </View>
 
-            <View className="mb-4">
-              <SectionLabel emoji="🎨" label="Appearance" className="mb-2" />
+            <View className="mb-4 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4">
+              <SectionLabel
+                emoji="🎨"
+                label="Appearance"
+                className="mb-2"
+                onCard
+              />
               <View className="flex-row gap-2">
                 {THEME_OPTIONS.map((option) => {
                   const selected = preference === option.value;
@@ -215,8 +223,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       className={[
                         'flex-1 min-h-[44px] flex-row items-center justify-center gap-1 border rounded-[10px] px-3 py-2',
                         selected
-                          ? 'bg-accent-tint dark:bg-accent-tint-dark border-accent dark:border-accent-dark'
-                          : 'bg-surface dark:bg-surface-dark border-line dark:border-line-dark',
+                          ? 'bg-card-tint dark:bg-card-tint-dark border-card-accent dark:border-card-accent-dark'
+                          : 'bg-card dark:bg-card-dark border-card-line dark:border-card-line-dark',
                       ].join(' ')}
                     >
                       <Emoji symbol={option.emoji} size={16} />
@@ -224,8 +232,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         className={[
                           'text-label-large',
                           selected
-                            ? 'text-accent-text dark:text-accent-text-dark'
-                            : 'text-ink-muted dark:text-ink-muted-dark',
+                            ? 'text-card-accent dark:text-card-accent-dark'
+                            : 'text-card-ink-muted dark:text-card-ink-muted-dark',
                         ].join(' ')}
                       >
                         {option.label}
@@ -233,7 +241,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       {selected ? (
                         <Text
                           accessible={false}
-                          className="text-label-large text-accent-text dark:text-accent-text-dark"
+                          className="text-label-large text-card-accent dark:text-card-accent-dark"
                         >
                           ✓
                         </Text>
@@ -242,10 +250,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   );
                 })}
               </View>
+            </View>
+
+            <View className="mb-4 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4">
               <SectionLabel
                 emoji="🏞️"
                 label="Workspace background"
-                className="mt-4 mb-2"
+                className="mb-2"
+                onCard
               />
               <View className="flex-row flex-wrap gap-2">
                 {BACKGROUND_OPTIONS.map((option) => {
@@ -272,13 +284,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       className={[
                         'grow basis-[140px] min-h-[44px] flex-row items-center justify-center gap-1 border rounded-[10px] px-3 py-2',
                         selected
-                          ? 'bg-accent-tint dark:bg-accent-tint-dark border-accent dark:border-accent-dark'
-                          : 'bg-surface dark:bg-surface-dark border-line dark:border-line-dark',
+                          ? 'bg-card-tint dark:bg-card-tint-dark border-card-accent dark:border-card-accent-dark'
+                          : 'bg-card dark:bg-card-dark border-card-line dark:border-card-line-dark',
                         backgroundBusy ? 'opacity-60' : '',
                       ].join(' ')}
                     >
                       {busyBackground === option.value ? (
-                        <ActivityIndicator size="small" color={colors.accent} />
+                        <ActivityIndicator
+                          size="small"
+                          color={colors['card-accent']}
+                        />
                       ) : (
                         <Emoji symbol={option.emoji} size={16} />
                       )}
@@ -286,8 +301,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         className={[
                           'text-label-large',
                           selected
-                            ? 'text-accent-text dark:text-accent-text-dark'
-                            : 'text-ink-muted dark:text-ink-muted-dark',
+                            ? 'text-card-accent dark:text-card-accent-dark'
+                            : 'text-card-ink-muted dark:text-card-ink-muted-dark',
                         ].join(' ')}
                       >
                         {option.label}
@@ -295,7 +310,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       {selected ? (
                         <Text
                           accessible={false}
-                          className="text-label-large text-accent-text dark:text-accent-text-dark"
+                          className="text-label-large text-card-accent dark:text-card-accent-dark"
                         >
                           ✓
                         </Text>
@@ -305,27 +320,71 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 })}
               </View>
               {hasPhoto ? (
-                <Text className="mt-2 text-body-small text-ink-muted dark:text-ink-muted-dark">
-                  Choosing another background removes your photo.
+                <Text className="mt-2 text-body-small text-card-ink-muted dark:text-card-ink-muted-dark">
+                  Choosing another background stops using your photo. It stays
+                  in your photo library.
                 </Text>
               ) : null}
             </View>
 
+            {hasPhoto || workspaceAppearance.background !== 'none' ? (
+              <View className="mb-4 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4">
+                <SectionLabel
+                  emoji="🌫️"
+                  label="Background opacity"
+                  className="mb-2"
+                  onCard
+                />
+                <View className="flex-row items-center gap-3">
+                  <Ionicons
+                    name="image-outline"
+                    size={16}
+                    color={colors['card-ink-muted']}
+                    accessible={false}
+                  />
+                  <Slider
+                    accessibilityLabel="Background opacity"
+                    style={{ flex: 1, height: 40 }}
+                    minimumValue={0}
+                    maximumValue={100}
+                    step={5}
+                    value={Math.round(
+                      workspaceAppearance.backgroundOpacity * 100
+                    )}
+                    onValueChange={(percent) =>
+                      setWorkspaceAppearance({
+                        ...workspaceAppearance,
+                        backgroundOpacity: percent / 100,
+                      })
+                    }
+                    minimumTrackTintColor={colors['card-accent']}
+                    maximumTrackTintColor={colors['card-ink-muted']}
+                  />
+                  <Ionicons
+                    name="image"
+                    size={24}
+                    color={colors['card-ink-muted']}
+                    accessible={false}
+                  />
+                </View>
+              </View>
+            ) : null}
+
             <TouchableOpacity
               accessibilityRole="button"
               accessibilityLabel="Sign out"
-              className="flex-row items-center justify-between min-h-[48px] bg-surface dark:bg-surface-dark border border-line dark:border-line-dark rounded-[10px] py-3 px-4"
+              className="flex-row items-center justify-between min-h-[48px] bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl py-3 px-4"
               onPress={handleSignOut}
               activeOpacity={0.8}
             >
               <Emoji symbol="👋" size={20} />
-              <Text className="text-label-large text-ink dark:text-ink-dark font-semibold flex-1 ml-4">
+              <Text className="text-label-large text-card-ink dark:text-card-ink-dark font-semibold flex-1 ml-4">
                 Sign Out
               </Text>
               <Ionicons
                 name="chevron-forward"
                 size={18}
-                color={colors['ink-muted']}
+                color={colors['card-ink-muted']}
                 accessible={false}
               />
             </TouchableOpacity>

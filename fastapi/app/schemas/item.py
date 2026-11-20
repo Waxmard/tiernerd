@@ -2,13 +2,14 @@ import math
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.core.rounding import half_even_1
 
 
 class ItemBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=60)
     description: str | None = Field(None, max_length=500)
-    image_url: HttpUrl | None = None
     icon: str | None = Field(None, min_length=1, max_length=16)
 
     @field_validator("name", mode="before")
@@ -25,7 +26,6 @@ class ItemCreate(ItemBase):
 class ItemUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=60)
     description: str | None = Field(None, max_length=500)
-    image_url: HttpUrl | None = None
     icon: str | None = Field(None, min_length=1, max_length=16)
     manual_rating: float | None = None
 
@@ -46,16 +46,7 @@ class ItemUpdate(BaseModel):
         num = float(value)
         if not math.isfinite(num) or num < 0.0 or num > 10.0:
             raise ValueError("Score must be between 0.0 and 10.0")
-        scaled = num * 10
-        floor = math.floor(scaled)
-        diff = scaled - floor
-        if diff > 0.5:
-            rounded = floor + 1
-        elif diff < 0.5 or floor % 2 == 0:
-            rounded = floor
-        else:
-            rounded = floor + 1
-        return rounded / 10
+        return half_even_1(num)
 
 
 class Item(ItemBase):
