@@ -38,7 +38,7 @@ def require_ai() -> None:
         )
 
 
-router = APIRouter(dependencies=[Depends(require_ai)])
+router = APIRouter(dependencies=[Depends(get_current_user), Depends(require_ai)])
 logger = logging.getLogger(__name__)
 
 EMOJI_FILL_BATCH = 40

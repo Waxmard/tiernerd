@@ -91,9 +91,9 @@ async def read_lists(
 
 @router.post("/", response_model=List)
 async def create_list(
+    current_user: User = Depends(get_current_user),
     metadata: str = Depends(read_metadata_form),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ) -> Any:
     """
     Create new list.
@@ -203,9 +203,9 @@ async def set_list_ranking(
 @router.put("/{list_id}", response_model=List)
 async def update_list(
     list_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     metadata: str = Depends(read_metadata_form),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ) -> Any:
     """
     Update a list.

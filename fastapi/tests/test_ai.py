@@ -62,8 +62,7 @@ class TestSuggestEmojiEndpoint:
         assert response.status_code == 503
         assert response.json()["detail"] == AI_UNAVAILABLE_ERROR
 
-    async def test_requires_auth(self, client: AsyncClient, monkeypatch: MonkeyPatch):
-        monkeypatch.setattr(get_settings(), "AI_PROJECT", "test-project")
+    async def test_requires_auth(self, client: AsyncClient):
         response = await client.post(
             "/api/ai/emoji", json={"name": "x", "kind": "item"}
         )
