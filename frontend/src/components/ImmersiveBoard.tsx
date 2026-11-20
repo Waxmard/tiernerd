@@ -1,5 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import MaskedViewNative from '@react-native-masked-view/masked-view';
 import {
+  type ComponentType,
+  type ReactElement,
   type ReactNode,
   useCallback,
   useEffect,
@@ -16,6 +19,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  type ViewProps,
 } from 'react-native';
 import Animated, {
   FadeIn,
@@ -32,6 +36,10 @@ import { useTheme } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/listIcon';
 import { SceneBackdrop } from './SceneBackdrop';
 import { WorkspacePhotoBackdrop } from './WorkspacePhotoBackdrop';
+
+const MaskedView = MaskedViewNative as unknown as ComponentType<
+  ViewProps & { maskElement: ReactElement }
+>;
 
 export function ImmersiveScreenShell({ children }: { children: ReactNode }) {
   const { workspaceAppearance } = useTheme();
@@ -210,6 +218,30 @@ export function NavProfileButton({ onPress }: { onPress: () => void }) {
 
 export const FLOATING_ACTIONS_CLEARANCE = 72;
 const FLOATING_SHADOW = '0px 4px 12px 0px rgba(10, 24, 48, 0.28)';
+
+export function ListBottomFade({ children }: { children: ReactNode }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <MaskedView
+      style={{ flex: 1, minHeight: 0 }}
+      maskElement={
+        <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: '#000000' }} />
+          <View
+            style={{
+              height: 8 + FLOATING_ACTIONS_CLEARANCE,
+              backgroundImage:
+                'linear-gradient(180deg, #000000 0%, #00000000 100%)',
+            }}
+          />
+          <View style={{ height: 8 + insets.bottom }} />
+        </View>
+      }
+    >
+      {children}
+    </MaskedView>
+  );
+}
 
 interface FloatingOption {
   label: string;

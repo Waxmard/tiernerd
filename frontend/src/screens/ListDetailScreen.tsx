@@ -13,6 +13,7 @@ import {
   FLOATING_ACTIONS_CLEARANCE,
   FloatingActions,
   ImmersiveScreenShell,
+  ListBottomFade,
   useScrolledPast,
 } from '../components/ImmersiveBoard';
 import { ListNavBar, ListTitleBlock } from '../components/ListDetailHeader';
@@ -625,29 +626,31 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       />
     ) : undefined;
     return (
-      <Animated.FlatList
-        ref={listRef}
-        style={{ flex: 1, minHeight: 0 }}
-        itemLayoutAnimation={ROW_TRANSITION}
-        data={showSpinner ? NO_ITEMS : items}
-        keyExtractor={(item) => item.item_id}
-        ListHeaderComponent={titleBlock}
-        ListEmptyComponent={listEmpty}
-        contentContainerStyle={{
-          paddingBottom:
-            16 + FLOATING_ACTIONS_CLEARANCE + safeAreaInsets.bottom,
-        }}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        onScrollToIndexFailed={view.onScrollToIndexFailed}
-        scrollEventThrottle={16}
-        onScrollBeginDrag={view.onScrollBeginDrag}
-        onScroll={(event) => {
-          view.onScroll(event);
-          nav.onScroll(event);
-        }}
-        onContentSizeChange={view.onContentSizeChange}
-      />
+      <ListBottomFade>
+        <Animated.FlatList
+          ref={listRef}
+          style={{ flex: 1, minHeight: 0 }}
+          itemLayoutAnimation={ROW_TRANSITION}
+          data={showSpinner ? NO_ITEMS : items}
+          keyExtractor={(item) => item.item_id}
+          ListHeaderComponent={titleBlock}
+          ListEmptyComponent={listEmpty}
+          contentContainerStyle={{
+            paddingBottom:
+              16 + FLOATING_ACTIONS_CLEARANCE + safeAreaInsets.bottom,
+          }}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          onScrollToIndexFailed={view.onScrollToIndexFailed}
+          scrollEventThrottle={16}
+          onScrollBeginDrag={view.onScrollBeginDrag}
+          onScroll={(event) => {
+            view.onScroll(event);
+            nav.onScroll(event);
+          }}
+          onContentSizeChange={view.onContentSizeChange}
+        />
+      </ListBottomFade>
     );
   };
 

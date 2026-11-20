@@ -28,6 +28,7 @@ import {
   FLOATING_ACTIONS_CLEARANCE,
   FloatingActions,
   ImmersiveScreenShell,
+  ListBottomFade,
   ListIdentityBadge,
   NavBarTitle,
   NavProfileButton,
@@ -555,44 +556,47 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     </View>
   );
   const content = currentSnapshot ? (
-    <FlatList
-      key={columns}
-      className="flex-1 min-h-0"
-      data={visibleLists}
-      numColumns={columns}
-      columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
-      renderItem={renderRow}
-      keyExtractor={(item) => item.id}
-      showsVerticalScrollIndicator={false}
-      refreshing={isRefreshing}
-      onRefresh={handleRefresh}
-      contentContainerStyle={{
-        paddingBottom: 16 + FLOATING_ACTIONS_CLEARANCE + safeAreaInsets.bottom,
-        gap: 12,
-      }}
-      ListHeaderComponent={titleBlock}
-      onScroll={nav.onScroll}
-      scrollEventThrottle={16}
-      ListEmptyComponent={
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Create a list. Start ranking what you love."
-          onPress={() => setModalStep('create')}
-          activeOpacity={0.7}
-          className="w-full items-center gap-2 border-2 border-dashed border-card-ink-muted rounded-2xl bg-card-muted px-4 py-8 dark:border-card-ink-muted-dark dark:bg-card-muted-dark"
-        >
-          <Emoji symbol="🏆" size={56} />
-          <View className="items-center gap-1">
-            <Text className="text-title-medium font-semibold text-center text-card-ink dark:text-card-ink-dark">
-              Create a list
-            </Text>
-            <Text className="text-body-medium text-center text-card-ink-muted dark:text-card-ink-muted-dark">
-              Start ranking what you love.
-            </Text>
-          </View>
-        </TouchableOpacity>
-      }
-    />
+    <ListBottomFade>
+      <FlatList
+        key={columns}
+        className="flex-1 min-h-0"
+        data={visibleLists}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { gap: 12 } : undefined}
+        renderItem={renderRow}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        refreshing={isRefreshing}
+        onRefresh={handleRefresh}
+        contentContainerStyle={{
+          paddingBottom:
+            16 + FLOATING_ACTIONS_CLEARANCE + safeAreaInsets.bottom,
+          gap: 12,
+        }}
+        ListHeaderComponent={titleBlock}
+        onScroll={nav.onScroll}
+        scrollEventThrottle={16}
+        ListEmptyComponent={
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Create a list. Start ranking what you love."
+            onPress={() => setModalStep('create')}
+            activeOpacity={0.7}
+            className="w-full items-center gap-2 border-2 border-dashed border-card-ink-muted rounded-2xl bg-card-muted px-4 py-8 dark:border-card-ink-muted-dark dark:bg-card-muted-dark"
+          >
+            <Emoji symbol="🏆" size={56} />
+            <View className="items-center gap-1">
+              <Text className="text-title-medium font-semibold text-center text-card-ink dark:text-card-ink-dark">
+                Create a list
+              </Text>
+              <Text className="text-body-medium text-center text-card-ink-muted dark:text-card-ink-muted-dark">
+                Start ranking what you love.
+              </Text>
+            </View>
+          </TouchableOpacity>
+        }
+      />
+    </ListBottomFade>
   ) : loadFailed && !isLoading ? (
     <>
       {titleBlock}
