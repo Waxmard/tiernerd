@@ -1,10 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
 import type { Ref } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
 import { Pressable, Text, View } from 'react-native';
-import { Button, Emoji } from '../design-system/components';
+import { Emoji } from '../design-system/components';
 import type { ListIcon } from '../design-system/tokens/colors';
-import { useTheme } from '../providers/ThemeProvider';
 import { listIconEmoji } from '../services/listIcon';
 import type {
   ListOptionsInput,
@@ -13,7 +11,6 @@ import type {
 import {
   NavBackButton,
   NavBarTitle,
-  NavIconButton,
   NavProfileButton,
   ScreenNavBar,
 } from './ImmersiveBoard';
@@ -35,8 +32,6 @@ interface ListNavBarProps {
   onOptionsVisibilityChange: (open: boolean) => void;
   missingEmojiCount: number;
   onFillEmojis: () => Promise<void>;
-  addDisabled: boolean;
-  onAdd: () => void;
   deleteDisabled: boolean;
   onOpenProfile: () => void;
   onBack: () => void;
@@ -56,8 +51,6 @@ export function ListNavBar({
   onOptionsVisibilityChange,
   missingEmojiCount,
   onFillEmojis,
-  addDisabled,
-  onAdd,
   deleteDisabled,
   onOpenProfile,
   onBack,
@@ -70,19 +63,9 @@ export function ListNavBar({
       <NavBarTitle visible={scrolled}>
         {emoji ? `${emoji} ${title}` : title}
       </NavBarTitle>
-      {scrolled ? (
-        <NavIconButton
-          name="add"
-          label="Add item"
-          tone="accent"
-          onPress={onAdd}
-          disabled={addDisabled}
-        />
-      ) : null}
       <ListRankingOptions
         ref={optionsRef}
         key={optionsKey}
-        showTrigger={!scrolled}
         title={title}
         description={description}
         rankingMode={rankingMode}
@@ -104,12 +87,7 @@ interface ListTitleBlockProps {
   title: string;
   icon: ListIcon | null;
   description: string | null;
-  addDisabled: boolean;
-  addLoading: boolean;
-  onAdd: () => void;
-  onSuggest: () => void;
-  suggestDisabled: boolean;
-  suggestLoading: boolean;
+  loading: boolean;
   optionsDisabled: boolean;
   onOpenOptions: (target: 'title' | 'description' | 'icon') => void;
   onTitleLayout: (event: LayoutChangeEvent) => void;
@@ -119,17 +97,11 @@ export function ListTitleBlock({
   title,
   icon,
   description,
-  addDisabled,
-  addLoading,
-  onAdd,
-  onSuggest,
-  suggestDisabled,
-  suggestLoading,
+  loading,
   optionsDisabled,
   onOpenOptions,
   onTitleLayout,
 }: ListTitleBlockProps) {
-  const { colors } = useTheme();
   const emoji = listIconEmoji(icon);
   const titleLength = Array.from(title).length;
   const titleClass =
@@ -140,7 +112,7 @@ export function ListTitleBlock({
         : 'text-[22px] leading-[28px]';
   return (
     <View className="px-1 pt-1 pb-4">
-      {!emoji ? null : addLoading ? (
+      {!emoji ? null : loading ? (
         <View accessible={false} className="h-12" />
       ) : (
         <Pressable
@@ -196,7 +168,7 @@ export function ListTitleBlock({
           </Text>
         </Pressable>
       ) : null}
-      {addLoading ? (
+      {loading ? (
         <Text
           accessibilityLiveRegion="polite"
           className="mt-1 text-body-small text-ink-muted dark:text-ink-muted-dark"
@@ -204,32 +176,6 @@ export function ListTitleBlock({
           Loading list…
         </Text>
       ) : null}
-      <View className="mt-3 flex-row flex-wrap items-center gap-2">
-        <Button
-          title="Add item"
-          onPress={onAdd}
-          disabled={addDisabled}
-          loading={addLoading}
-          icon={
-            addLoading ? undefined : (
-              <Ionicons
-                name="add"
-                size={20}
-                color={colors['on-accent']}
-                accessible={false}
-              />
-            )
-          }
-        />
-        <Button
-          icon={<Emoji symbol="✨" size={18} />}
-          title="Suggest next"
-          onPress={onSuggest}
-          disabled={suggestDisabled}
-          loading={suggestLoading}
-          variant="secondary"
-        />
-      </View>
     </View>
   );
 }

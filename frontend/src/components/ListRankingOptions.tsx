@@ -124,7 +124,6 @@ export function ListRankingOptions({
   onVisibilityChange,
   missingEmojiCount,
   onFillEmojis,
-  showTrigger = true,
   deleteDisabled,
   onDelete,
   ref,
@@ -141,7 +140,6 @@ export function ListRankingOptions({
   deleteDisabled: boolean;
   onDelete: () => void;
   ref?: Ref<ListOptionsHandle>;
-  showTrigger?: boolean;
 }) {
   const colors = useThemeColors();
   const notify = useNotifyWhenOnline();
@@ -258,27 +256,25 @@ export function ListRankingOptions({
   };
   return (
     <>
-      {showTrigger ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="List options"
-          accessibilityState={{ disabled }}
-          disabled={disabled}
-          onPress={() => openOptions()}
-          style={({ pressed }) =>
-            pressed && !disabled ? { opacity: 0.7 } : undefined
-          }
-          className="w-11 h-11 items-center justify-center shrink-0"
-        >
-          <Ionicons
-            name="settings-outline"
-            size={24}
-            color={colors['ink-muted']}
-            accessible={false}
-            style={{ opacity: disabled ? 0.4 : 1 }}
-          />
-        </Pressable>
-      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="List options"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={() => openOptions()}
+        style={({ pressed }) =>
+          pressed && !disabled ? { opacity: 0.7 } : undefined
+        }
+        className="w-11 h-11 items-center justify-center shrink-0"
+      >
+        <Ionicons
+          name="settings-outline"
+          size={24}
+          color={colors['ink-muted']}
+          accessible={false}
+          style={{ opacity: disabled ? 0.4 : 1 }}
+        />
+      </Pressable>
       <SheetModal
         visible={open}
         accessibilityLabel="List options"

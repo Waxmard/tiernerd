@@ -25,10 +25,11 @@ import {
 } from '../components/CreateListModal';
 import { EmojiPickerModal } from '../components/EmojiPicker';
 import {
+  FLOATING_ACTIONS_CLEARANCE,
+  FloatingActions,
   ImmersiveScreenShell,
   ListIdentityBadge,
   NavBarTitle,
-  NavIconButton,
   NavProfileButton,
   ScreenNavBar,
   useScrolledPast,
@@ -543,7 +544,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const nav = useScrolledPast();
   const navScrolled = currentSnapshot && nav.scrolled;
   const titleBlock = (
-    <View className="pt-1">
+    <View className="pt-1 pb-2">
       <Text
         onLayout={nav.onTitleLayout}
         accessibilityRole="header"
@@ -551,29 +552,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       >
         My lists
       </Text>
-      <View className="mt-3 flex-row flex-wrap items-center gap-2">
-        <Button
-          title="New list"
-          onPress={() => setModalStep('create')}
-          icon={
-            <Ionicons
-              name="add"
-              size={20}
-              color={colors['on-accent']}
-              accessible={false}
-            />
-          }
-          accessibilityLabel="Create new list"
-        />
-        <Button
-          icon={<Emoji symbol="✨" size={18} />}
-          title="Suggest list"
-          variant="secondary"
-          loading={isSuggesting}
-          disabled={isOffline || !token || modalStep !== null}
-          onPress={() => void handleSuggestList()}
-        />
-      </View>
     </View>
   );
   const content = currentSnapshot ? (
@@ -589,7 +567,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       refreshing={isRefreshing}
       onRefresh={handleRefresh}
       contentContainerStyle={{
-        paddingBottom: 16 + safeAreaInsets.bottom,
+        paddingBottom: 16 + FLOATING_ACTIONS_CLEARANCE + safeAreaInsets.bottom,
         gap: 12,
       }}
       ListHeaderComponent={titleBlock}
@@ -655,14 +633,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <NavBarTitle visible={navScrolled} align="left">
           My lists
         </NavBarTitle>
-        {navScrolled ? (
-          <NavIconButton
-            name="add"
-            label="Create new list"
-            tone="accent"
-            onPress={() => setModalStep('create')}
-          />
-        ) : null}
         <NavProfileButton onPress={() => navigation.navigate('Profile')} />
       </ScreenNavBar>
       <SafeAreaView className="min-h-0 flex-1" edges={['left', 'right']}>
@@ -672,6 +642,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             style={{ marginHorizontal: horizontalGutter }}
           >
             <View className="flex-1 min-h-0">{content}</View>
+            <FloatingActions
+              add={{
+                label: 'Create new list',
+                onPress: () => setModalStep('create'),
+              }}
+              suggest={{
+                label: 'Suggest list',
+                onPress: () => void handleSuggestList(),
+                loading: isSuggesting,
+                disabled: isOffline || !token || modalStep !== null,
+              }}
+            />
           </View>
         </View>
         <SheetModal

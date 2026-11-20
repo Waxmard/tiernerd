@@ -10,6 +10,8 @@ import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmojiPickerModal } from '../components/EmojiPicker';
 import {
+  FLOATING_ACTIONS_CLEARANCE,
+  FloatingActions,
   ImmersiveScreenShell,
   useScrolledPast,
 } from '../components/ImmersiveBoard';
@@ -590,19 +592,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       title={detailsTitle}
       icon={listIcon}
       description={listDescription}
-      addLoading={isLoadingList}
-      addDisabled={addDisabled}
-      onAdd={() => void handleAddPress()}
-      onSuggest={() => void handleSuggestPress()}
-      suggestLoading={isSuggesting}
-      suggestDisabled={
-        !canMutate ||
-        isDeletingList ||
-        workspace.isBusy ||
-        workspace.mode !== 'closed' ||
-        isOffline ||
-        !token
-      }
+      loading={isLoadingList}
       optionsDisabled={optionsDisabled}
       onOpenOptions={(target) => optionsRef.current?.open(target)}
       onTitleLayout={nav.onTitleLayout}
@@ -630,7 +620,10 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         keyExtractor={(item) => item.item_id}
         ListHeaderComponent={titleBlock}
         ListEmptyComponent={listEmpty}
-        contentContainerStyle={{ paddingBottom: 16 + safeAreaInsets.bottom }}
+        contentContainerStyle={{
+          paddingBottom:
+            16 + FLOATING_ACTIONS_CLEARANCE + safeAreaInsets.bottom,
+        }}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         onScrollToIndexFailed={view.onScrollToIndexFailed}
@@ -660,8 +653,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         onOptionsVisibilityChange={setOptionsOpen}
         missingEmojiCount={missingEmojiCount}
         onFillEmojis={fillMissing}
-        addDisabled={addDisabled || isLoadingList}
-        onAdd={() => void handleAddPress()}
         deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
         onOpenProfile={() => navigation.navigate('Profile')}
         onBack={() => navigation.goBack()}
@@ -701,6 +692,26 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           >
             {renderListItems()}
           </ListDetailWorkspaceHost>
+          <FloatingActions
+            add={{
+              label: 'Add item',
+              onPress: () => void handleAddPress(),
+              disabled: addDisabled,
+              loading: isLoadingList,
+            }}
+            suggest={{
+              label: 'Suggest next',
+              onPress: () => void handleSuggestPress(),
+              loading: isSuggesting,
+              disabled:
+                !canMutate ||
+                isDeletingList ||
+                workspace.isBusy ||
+                workspace.mode !== 'closed' ||
+                isOffline ||
+                !token,
+            }}
+          />
         </View>
       </View>
       <EmojiPickerModal

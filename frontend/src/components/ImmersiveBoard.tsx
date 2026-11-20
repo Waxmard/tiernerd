@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import {
-  type ComponentProps,
   type ReactNode,
   useCallback,
   useEffect,
@@ -8,10 +7,12 @@ import {
   useState,
 } from 'react';
 import {
+  ActivityIndicator,
   Image,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Pressable,
   Text,
   TouchableOpacity,
   View,
@@ -169,41 +170,6 @@ export function NavBackButton({
   );
 }
 
-export function NavIconButton({
-  name,
-  label,
-  onPress,
-  disabled = false,
-  tone = 'muted',
-}: {
-  name: ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  tone?: 'muted' | 'accent';
-}) {
-  const { colors } = useTheme();
-  return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      activeOpacity={0.7}
-      className="w-11 h-11 items-center justify-center shrink-0"
-      style={{ opacity: disabled ? 0.4 : 1 }}
-    >
-      <Ionicons
-        name={name}
-        size={24}
-        color={tone === 'accent' ? colors.accent : colors['ink-muted']}
-        accessible={false}
-      />
-    </TouchableOpacity>
-  );
-}
-
 export function NavProfileButton({ onPress }: { onPress: () => void }) {
   const { user } = useAuth();
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
@@ -229,6 +195,80 @@ export function NavProfileButton({ onPress }: { onPress: () => void }) {
         </View>
       )}
     </TouchableOpacity>
+  );
+}
+
+export const FLOATING_ACTIONS_CLEARANCE = 72;
+
+interface FloatingAction {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+}
+
+function FloatingButton({
+  action,
+  primary,
+}: {
+  action: FloatingAction;
+  primary: boolean;
+}) {
+  const { colors } = useTheme();
+  const loading = action.loading ?? false;
+  const inactive = loading || (action.disabled ?? false);
+  const contentColor = primary ? colors.surface : colors.ink;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={action.label}
+      accessibilityState={{ disabled: inactive, busy: loading }}
+      disabled={inactive}
+      onPress={action.onPress}
+      className={`items-center justify-center rounded-full ${
+        primary
+          ? 'w-14 h-14 bg-ink dark:bg-ink-dark'
+          : 'w-11 h-11 bg-surface dark:bg-surface-dark'
+      }`}
+      style={({ pressed }) => ({
+        boxShadow: '0px 4px 12px 0px rgba(10, 24, 48, 0.28)',
+        opacity: inactive && !loading ? 0.5 : 1,
+        transform: [{ scale: pressed ? 0.94 : 1 }],
+      })}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color={contentColor} />
+      ) : primary ? (
+        <Ionicons
+          name="add"
+          size={30}
+          color={contentColor}
+          accessible={false}
+        />
+      ) : (
+        <Emoji symbol="✨" size={20} />
+      )}
+    </Pressable>
+  );
+}
+
+export function FloatingActions({
+  add,
+  suggest,
+}: {
+  add: FloatingAction;
+  suggest: FloatingAction;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      pointerEvents="box-none"
+      className="absolute right-0 flex-row items-center gap-3"
+      style={{ bottom: 16 + insets.bottom }}
+    >
+      <FloatingButton action={suggest} primary={false} />
+      <FloatingButton action={add} primary />
+    </View>
   );
 }
 

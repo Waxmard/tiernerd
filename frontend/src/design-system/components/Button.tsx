@@ -1,7 +1,6 @@
 import type React from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '../../providers/ThemeProvider';
-import type { ThemeColors } from '../tokens/colors';
 
 type ButtonVariant = 'primary' | 'secondary' | 'text';
 type ButtonSize = 'small' | 'medium' | 'large';
@@ -21,20 +20,12 @@ interface ButtonProps {
 }
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  primary: 'mb-[3px] bg-accent dark:bg-accent-dark',
-  secondary:
-    'mb-[3px] bg-surface dark:bg-surface-dark border border-control dark:border-control-dark',
+  primary: 'bg-accent dark:bg-accent-dark',
+  secondary: 'bg-accent-tint dark:bg-accent-tint-dark',
   text: '',
 };
 
-const DISABLED_CLASS =
-  'mb-[3px] bg-surface-muted dark:bg-surface-muted-dark border border-control dark:border-control-dark';
-
-const LEDGE_COLOR: Record<ButtonVariant, keyof ThemeColors | null> = {
-  primary: 'accent-deep',
-  secondary: 'control',
-  text: null,
-};
+const DISABLED_CLASS = 'bg-surface-muted dark:bg-surface-muted-dark';
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
   small: 'px-4 py-2 min-h-[44px]',
@@ -69,7 +60,6 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const colors = useThemeColors();
   const isDisabled = disabled || loading;
-  const ledge = isDisabled ? null : LEDGE_COLOR[variant];
   const classes = [
     'flex-row items-center justify-center rounded-[14px]',
     isDisabled && variant !== 'text' ? DISABLED_CLASS : VARIANT_CLASS[variant],
@@ -97,15 +87,7 @@ export const Button: React.FC<ButtonProps> = ({
       className={classes}
       onPress={onPress}
       disabled={isDisabled}
-      style={({ pressed }) =>
-        ledge === null
-          ? pressed
-            ? { opacity: 0.7 }
-            : undefined
-          : pressed
-            ? { transform: [{ translateY: 3 }] }
-            : { boxShadow: `0px 3px 0px 0px ${colors[ledge]}` }
-      }
+      style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
     >
       <View className="flex-row items-center shrink">
         {icon && (
