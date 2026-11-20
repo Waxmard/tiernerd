@@ -46,7 +46,7 @@ This is currently a solo-maintained repo, so there is no `.github/CODEOWNERS` an
 
 Two things ship on or alongside `main`:
 
-- **TestFlight (`deploy-testflight.yml`)** — A published GitHub Release builds its tag. A manual `workflow_dispatch` run builds the commit captured when the run starts, even if the branch advances. Ordinary pushes do not upload. Both paths build a signed iOS Release archive on `macos-26` against the development Cloud Run API and upload `TierNerd.ipa` using the `preview` environment secrets, the same `ASC_*` and `APPLE_*` values listed in [Upload to TestFlight locally](#upload-to-testflight-locally). Uploads do not wait for CI and do not prove that TestFlight processing or installation succeeded.
+- **TestFlight (`deploy-testflight.yml`)** — A published GitHub Release builds its tag. A manual `workflow_dispatch` run builds the commit captured when the run starts, even if the branch advances. Ordinary pushes do not upload. Both paths build a signed iOS Release archive on `xcode-27` against the development Cloud Run API and upload `TierNerd.ipa` using the `preview` environment secrets, the same `ASC_*` and `APPLE_*` values listed in [Upload to TestFlight locally](#upload-to-testflight-locally). Uploads do not wait for CI and do not prove that TestFlight processing or installation succeeded.
 - **Backend** — deploy Cloud Run from `fastapi/` with `make cloud-deploy` (not triggered by a release).
 
 This is why commit hygiene matters: every commit on `main` is read by the release tooling.
