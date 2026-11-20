@@ -369,7 +369,7 @@ export function ListRankingOptions({
             />
             <View className="border-t border-control dark:border-control-dark pt-4">
               <Button
-                title="Delete List"
+                title="Delete list"
                 variant="text"
                 onPress={onDelete}
                 disabled={deleteDisabled || saving || filling}

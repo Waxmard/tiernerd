@@ -204,7 +204,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
 
             <View className="mb-4">
-              <SectionLabel emoji="👤" label="Account" className="mb-2" />
+              <SectionLabel
+                emoji="👤"
+                label="Account"
+                className="mb-2"
+                onBackdrop
+              />
               <View className="bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4 gap-1">
                 <Text className="text-label-medium text-card-ink dark:text-card-ink-dark">
                   Email address
@@ -216,7 +221,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
 
             <View className="mb-4">
-              <SectionLabel emoji="🎨" label="Appearance" className="mb-2" />
+              <SectionLabel
+                emoji="🎨"
+                label="Appearance"
+                className="mb-2"
+                onBackdrop
+              />
               <View className="flex-row gap-2">
                 {THEME_OPTIONS.map((option) => {
                   const selected = preference === option.value;
@@ -261,6 +271,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 emoji="🏞️"
                 label="Workspace background"
                 className="mt-4 mb-2"
+                onBackdrop
               />
               <View className="flex-row flex-wrap gap-2">
                 {BACKGROUND_OPTIONS.map((option) => {
@@ -323,7 +334,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 })}
               </View>
               {hasPhoto ? (
-                <Text className="mt-2 text-body-small text-ink-muted dark:text-ink-muted-dark">
+                <Text className="mt-2 self-start rounded-xl px-3 py-1 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark text-body-small text-card-ink-muted dark:text-card-ink-muted-dark">
                   Choosing another background stops using your photo. It stays
                   in your photo library.
                 </Text>
@@ -334,6 +345,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     emoji="🌫️"
                     label="Background opacity"
                     className="mt-4 mb-2"
+                    onBackdrop
                   />
                   <View className="flex-row items-center gap-3 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl px-4 py-1">
                     <Ionicons
@@ -358,7 +370,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         })
                       }
                       minimumTrackTintColor={colors['card-accent']}
-                      maximumTrackTintColor={colors['card-line']}
+                      maximumTrackTintColor={colors['card-ink-muted']}
                     />
                     <Ionicons
                       name="image"

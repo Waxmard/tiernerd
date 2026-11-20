@@ -310,7 +310,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
     setIsDeletingList(true);
     try {
       const confirmed = await confirmDestructive(
-        'Delete List',
+        'Delete list',
         'Are you sure you want to delete this list? All items will be permanently deleted.',
         'Delete'
       );
