@@ -203,8 +203,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
             </View>
 
-            <View className="mb-4 bg-canvas/90 dark:bg-canvas-dark/90 border border-line dark:border-line-dark rounded-2xl p-4">
-              <SectionLabel emoji="🎨" label="Appearance" className="mb-2" />
+            <View className="mb-4 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4">
+              <SectionLabel
+                emoji="🎨"
+                label="Appearance"
+                className="mb-2"
+                onCard
+              />
               <View className="flex-row gap-2">
                 {THEME_OPTIONS.map((option) => {
                   const selected = preference === option.value;
@@ -245,10 +250,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   );
                 })}
               </View>
+            </View>
+
+            <View className="mb-4 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4">
               <SectionLabel
                 emoji="🏞️"
                 label="Workspace background"
-                className="mt-4 mb-2"
+                className="mb-2"
+                onCard
               />
               <View className="flex-row flex-wrap gap-2">
                 {BACKGROUND_OPTIONS.map((option) => {
@@ -311,58 +320,60 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 })}
               </View>
               {hasPhoto ? (
-                <Text className="mt-2 text-body-small text-ink-muted dark:text-ink-muted-dark">
+                <Text className="mt-2 text-body-small text-card-ink-muted dark:text-card-ink-muted-dark">
                   Choosing another background stops using your photo. It stays
                   in your photo library.
                 </Text>
               ) : null}
-              {hasPhoto || workspaceAppearance.background !== 'none' ? (
-                <>
-                  <SectionLabel
-                    emoji="🌫️"
-                    label="Background opacity"
-                    className="mt-4 mb-2"
-                  />
-                  <View className="flex-row items-center gap-3 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-[10px] px-4 py-1">
-                    <Ionicons
-                      name="image-outline"
-                      size={16}
-                      color={colors['card-ink-muted']}
-                      accessible={false}
-                    />
-                    <Slider
-                      accessibilityLabel="Background opacity"
-                      style={{ flex: 1, height: 40 }}
-                      minimumValue={0}
-                      maximumValue={100}
-                      step={5}
-                      value={Math.round(
-                        workspaceAppearance.backgroundOpacity * 100
-                      )}
-                      onValueChange={(percent) =>
-                        setWorkspaceAppearance({
-                          ...workspaceAppearance,
-                          backgroundOpacity: percent / 100,
-                        })
-                      }
-                      minimumTrackTintColor={colors['card-accent']}
-                      maximumTrackTintColor={colors['card-ink-muted']}
-                    />
-                    <Ionicons
-                      name="image"
-                      size={24}
-                      color={colors['card-ink-muted']}
-                      accessible={false}
-                    />
-                  </View>
-                </>
-              ) : null}
             </View>
+
+            {hasPhoto || workspaceAppearance.background !== 'none' ? (
+              <View className="mb-4 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl p-4">
+                <SectionLabel
+                  emoji="🌫️"
+                  label="Background opacity"
+                  className="mb-2"
+                  onCard
+                />
+                <View className="flex-row items-center gap-3">
+                  <Ionicons
+                    name="image-outline"
+                    size={16}
+                    color={colors['card-ink-muted']}
+                    accessible={false}
+                  />
+                  <Slider
+                    accessibilityLabel="Background opacity"
+                    style={{ flex: 1, height: 40 }}
+                    minimumValue={0}
+                    maximumValue={100}
+                    step={5}
+                    value={Math.round(
+                      workspaceAppearance.backgroundOpacity * 100
+                    )}
+                    onValueChange={(percent) =>
+                      setWorkspaceAppearance({
+                        ...workspaceAppearance,
+                        backgroundOpacity: percent / 100,
+                      })
+                    }
+                    minimumTrackTintColor={colors['card-accent']}
+                    maximumTrackTintColor={colors['card-ink-muted']}
+                  />
+                  <Ionicons
+                    name="image"
+                    size={24}
+                    color={colors['card-ink-muted']}
+                    accessible={false}
+                  />
+                </View>
+              </View>
+            ) : null}
 
             <TouchableOpacity
               accessibilityRole="button"
               accessibilityLabel="Sign out"
-              className="flex-row items-center justify-between min-h-[48px] bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-[10px] py-3 px-4"
+              className="flex-row items-center justify-between min-h-[48px] bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl py-3 px-4"
               onPress={handleSignOut}
               activeOpacity={0.8}
             >
