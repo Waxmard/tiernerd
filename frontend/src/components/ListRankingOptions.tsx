@@ -125,6 +125,8 @@ export function ListRankingOptions({
   missingEmojiCount,
   onFillEmojis,
   showTrigger = true,
+  deleteDisabled,
+  onDelete,
   ref,
 }: {
   title: string;
@@ -136,6 +138,8 @@ export function ListRankingOptions({
   onVisibilityChange: (open: boolean) => void;
   missingEmojiCount: number;
   onFillEmojis: () => Promise<void>;
+  deleteDisabled: boolean;
+  onDelete: () => void;
   ref?: Ref<ListOptionsHandle>;
   showTrigger?: boolean;
 }) {
@@ -367,6 +371,16 @@ export function ListRankingOptions({
               onChange={setDraft}
               disabled={saving}
             />
+            <View className="border-t border-control dark:border-control-dark pt-4">
+              <Button
+                title="Delete List"
+                variant="text"
+                onPress={onDelete}
+                disabled={deleteDisabled || saving || filling}
+                textClassName="text-danger-text dark:text-danger-text-dark"
+                icon={<Emoji symbol="🗑️" size={18} />}
+              />
+            </View>
           </View>
         </BaseModalContent>
       </SheetModal>

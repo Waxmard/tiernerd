@@ -92,15 +92,9 @@ export function ListNavBar({
         onVisibilityChange={onOptionsVisibilityChange}
         missingEmojiCount={missingEmojiCount}
         onFillEmojis={onFillEmojis}
+        deleteDisabled={deleteDisabled}
+        onDelete={onDelete}
       />
-      {scrolled ? null : (
-        <NavIconButton
-          name="trash-outline"
-          label="Delete list"
-          onPress={onDelete}
-          disabled={deleteDisabled}
-        />
-      )}
       <NavProfileButton onPress={onOpenProfile} />
     </ScreenNavBar>
   );
