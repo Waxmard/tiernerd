@@ -146,15 +146,15 @@ psql -h localhost -p 55432 -U tiernerd tiernerd
 
 ### Backend Structure (`fastapi/app/`)
 
-- `api/endpoints/` — Route handlers (users, lists, items)
-- `services/` — Business logic (auth/JWT, list, ranking placement, covers)
-- `core/` — Pure utilities (constants, fractional index)
+- `api/endpoints/` — Route handlers (users, lists, items, ai)
+- `services/` — Business logic (auth/JWT, list, ranking placement, AI suggestions, photo uploads)
+- `core/` — Pure utilities (constants, fractional index, rounding)
 - `crud/` — Database operations
 - `db/` — SQLAlchemy models and async database setup
 - `schemas/` — Pydantic request/response models
 - `settings.py` — Configuration via pydantic-settings
 
-Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml`). Layering: `main → api → services → crud → db`. `api` may also call `crud` directly (endpoint handlers use `crud_*` helpers); this is intentional, not a violation. `core` is a pure leaf (constants, fractional_index) reachable from `api`/`services`/`crud`. `schemas`/`settings` are cross-cutting. Run `make backend-boundaries` (or `uv run tach check` in `fastapi/`) to verify.
+Module boundaries enforced by [tach](https://docs.gauge.sh/) (`fastapi/tach.toml`). Layering: `main → api → services → crud → db`. `api` may also call `crud` directly (endpoint handlers use `crud_*` helpers); this is intentional, not a violation. `core` is a pure leaf (constants, fractional_index, rounding) reachable from `api`/`services`/`crud`/`schemas`. `schemas`/`settings` are cross-cutting. Run `make backend-boundaries` (or `uv run tach check` in `fastapi/`) to verify.
 
 ### Frontend Structure (`frontend/src/`)
 

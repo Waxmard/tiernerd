@@ -28,8 +28,9 @@ Development startup seeds accounts for fixture data, not password sign-in. Sign 
 - `/api/users` — User management and authentication
 - `/api/lists` — List creation and management
 - `/api/items` — Item management
+- `/api/ai` — Emoji and item/list suggestions
 
-List writes use multipart `metadata` and an optional image file. Older clients can create lists with `name` and `description` query parameters and an optional `ranking_mode` parameter. They can update `title`, `description`, or `ranking_mode` with JSON.
+List creates and updates send their fields as JSON in a multipart `metadata` part.
 
 ### Backend commands
 
