@@ -500,7 +500,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }
         activeOpacity={0.7}
         style={{ width: cardWidth }}
-        className="shrink-0 flex-row items-center gap-3 rounded-2xl border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark"
+        className="shrink-0 flex-row items-center gap-3 rounded-2xl border border-card-line bg-card p-4 dark:border-card-line-dark dark:bg-card-dark"
       >
         {item.icon ? (
           <Pressable
@@ -519,15 +519,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             numberOfLines={2}
             className={`${
               titleLength <= 40 ? 'text-title-medium' : 'text-title-small'
-            } font-semibold text-ink dark:text-ink-dark`}
+            } font-semibold text-card-ink dark:text-card-ink-dark`}
           >
             {item.title}
           </Text>
           <View className="flex-row flex-wrap items-center gap-x-3">
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-body-small text-card-ink-muted dark:text-card-ink-muted-dark">
               {count}
             </Text>
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-body-small text-card-ink-muted dark:text-card-ink-muted-dark">
               Modified {formatDate(item.updatedAt)}
             </Text>
           </View>
@@ -535,7 +535,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Ionicons
           name="chevron-forward"
           size={20}
-          color={colors['ink-muted']}
+          color={colors['card-ink-muted']}
           accessible={false}
         />
       </TouchableOpacity>
@@ -602,14 +602,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           accessibilityLabel="Create a list. Start ranking what you love."
           onPress={() => setModalStep('create')}
           activeOpacity={0.7}
-          className="w-full items-center gap-2 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-8 dark:border-control-dark dark:bg-surface-muted-dark"
+          className="w-full items-center gap-2 border-2 border-dashed border-card-ink-muted rounded-2xl bg-card-muted px-4 py-8 dark:border-card-ink-muted-dark dark:bg-card-muted-dark"
         >
           <Emoji symbol="🏆" size={56} />
           <View className="items-center gap-1">
-            <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
+            <Text className="text-title-medium font-semibold text-center text-card-ink dark:text-card-ink-dark">
               Create a list
             </Text>
-            <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
+            <Text className="text-body-medium text-center text-card-ink-muted dark:text-card-ink-muted-dark">
               Start ranking what you love.
             </Text>
           </View>
@@ -619,13 +619,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   ) : loadFailed && !isLoading ? (
     <>
       {titleBlock}
-      <View className="mt-3 w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-8 dark:border-line-dark dark:bg-surface-dark">
+      <View className="mt-3 w-full items-center gap-3 rounded-2xl border border-card-line bg-card px-4 py-8 dark:border-card-line-dark dark:bg-card-dark">
         <Emoji symbol="⚠️" size={40} />
         <View className="items-center gap-1">
-          <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
+          <Text className="text-title-medium font-semibold text-center text-card-ink dark:text-card-ink-dark">
             Couldn't load your lists
           </Text>
-          <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
+          <Text className="text-body-medium text-center text-card-ink-muted dark:text-card-ink-muted-dark">
             Check your connection and try again.
           </Text>
         </View>

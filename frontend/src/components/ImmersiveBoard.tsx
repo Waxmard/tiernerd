@@ -224,8 +224,8 @@ export function ListIdentityBadge({
     <View
       className={[
         boxClass,
-        'shrink-0 items-center justify-center overflow-hidden border border-line dark:border-line-dark',
-        'bg-accent-tint dark:bg-accent-tint-dark',
+        'shrink-0 items-center justify-center overflow-hidden border border-card-line dark:border-card-line-dark',
+        'bg-card-tint dark:bg-card-tint-dark',
       ].join(' ')}
     >
       <Emoji symbol={emoji} size={iconSize} />
