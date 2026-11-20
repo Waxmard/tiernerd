@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import {
+  Image,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -199,6 +200,34 @@ export function NavIconButton({
         color={tone === 'accent' ? colors.accent : colors['ink-muted']}
         accessible={false}
       />
+    </TouchableOpacity>
+  );
+}
+
+export function NavProfileButton({ onPress }: { onPress: () => void }) {
+  const { user } = useAuth();
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      className="w-10 h-10 mr-2 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Open profile"
+    >
+      {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
+        <Image
+          source={{ uri: user.photoUrl }}
+          onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
+          resizeMode="cover"
+          className="w-full h-full"
+          accessible={false}
+        />
+      ) : (
+        <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
+          <Emoji symbol="👤" size={20} />
+        </View>
+      )}
     </TouchableOpacity>
   );
 }

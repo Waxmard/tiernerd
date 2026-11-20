@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   type ListRenderItemInfo,
   Pressable,
   Text,
@@ -30,6 +29,7 @@ import {
   ListIdentityBadge,
   NavBarTitle,
   NavIconButton,
+  NavProfileButton,
   ScreenNavBar,
   useScrolledPast,
 } from '../components/ImmersiveBoard';
@@ -116,7 +116,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestedTitle, setSuggestedTitle] = useState('');
   const suggestedTitlesRef = useRef<string[]>([]);
-  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const [pendingList, setPendingList] = useState<CreatedList | null>(null);
   const [iconListId, setIconListId] = useState<string | null>(null);
   const createListRef = useRef<CreateListContentHandle | null>(null);
@@ -664,27 +663,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             onPress={() => setModalStep('create')}
           />
         ) : null}
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Profile')}
-          className="w-10 h-10 mr-2 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Open profile"
-        >
-          {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
-            <Image
-              source={{ uri: user.photoUrl }}
-              onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
-              resizeMode="cover"
-              className="w-full h-full"
-              accessible={false}
-            />
-          ) : (
-            <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
-              <Emoji symbol="👤" size={20} />
-            </View>
-          )}
-        </TouchableOpacity>
+        <NavProfileButton onPress={() => navigation.navigate('Profile')} />
       </ScreenNavBar>
       <SafeAreaView className="min-h-0 flex-1" edges={['left', 'right']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">

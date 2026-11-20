@@ -14,6 +14,7 @@ import {
   NavBackButton,
   NavBarTitle,
   NavIconButton,
+  NavProfileButton,
   ScreenNavBar,
 } from './ImmersiveBoard';
 import {
@@ -37,6 +38,7 @@ interface ListNavBarProps {
   addDisabled: boolean;
   onAdd: () => void;
   deleteDisabled: boolean;
+  onOpenProfile: () => void;
   onBack: () => void;
   onDelete: () => void;
 }
@@ -57,6 +59,7 @@ export function ListNavBar({
   addDisabled,
   onAdd,
   deleteDisabled,
+  onOpenProfile,
   onBack,
   onDelete,
 }: ListNavBarProps) {
@@ -98,6 +101,7 @@ export function ListNavBar({
           disabled={deleteDisabled}
         />
       )}
+      <NavProfileButton onPress={onOpenProfile} />
     </ScreenNavBar>
   );
 }
@@ -193,7 +197,7 @@ export function ListTitleBlock({
             pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
           }
         >
-          <Text className="text-prose-large text-ink-muted dark:text-ink-muted-dark">
+          <Text className="text-prose-large text-ink dark:text-ink-dark">
             {description}
           </Text>
         </Pressable>

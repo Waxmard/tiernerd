@@ -663,6 +663,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         addDisabled={addDisabled || isLoadingList}
         onAdd={() => void handleAddPress()}
         deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
+        onOpenProfile={() => navigation.navigate('Profile')}
         onBack={() => navigation.goBack()}
         onDelete={() => void handleDeleteList()}
       />

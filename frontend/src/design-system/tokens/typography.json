@@ -39,14 +39,14 @@
   "body-medium": { "fontSize": 14, "lineHeight": 20, "fontWeight": "400" },
   "body-small": { "fontSize": 12, "lineHeight": 16, "fontWeight": "400" },
   "prose-large": {
-    "fontSize": 16,
-    "lineHeight": 24,
+    "fontSize": 17,
+    "lineHeight": 26,
     "fontWeight": "400",
     "fontFamily": "prose"
   },
   "prose-medium": {
-    "fontSize": 15,
-    "lineHeight": 22,
+    "fontSize": 16,
+    "lineHeight": 24,
     "fontWeight": "400",
     "fontFamily": "prose"
   },

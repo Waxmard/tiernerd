@@ -61,7 +61,10 @@ const THEME_OPTIONS = [
   emoji: string;
 }>;
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const { user, token, signOut, updateUser } = useAuth();
   const notify = useNotify();
   const {
@@ -79,6 +82,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const handleSignOut = async () => {
     await signOut();
   };
+
+  const routes = navigation.getState().routes;
+  const cameFromList =
+    routes[routes.findIndex((r) => r.key === route.key) - 1]?.name ===
+    'ListDetail';
 
   const handleBack = () => {
     navigation.goBack();
@@ -144,7 +152,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     <ImmersiveScreenShell>
       <ScreenNavBar scrolled={nav.scrolled} maxWidthClass="max-w-[560px]">
         <NavBackButton
-          label="Lists"
+          label={cameFromList ? 'List' : 'Lists'}
           compact={nav.scrolled}
           onPress={handleBack}
         />
