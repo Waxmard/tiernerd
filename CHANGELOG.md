@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.17.0](https://github.com/Waxmard/tiernerd/compare/v0.16.0...v0.17.0) (2026-11-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* redesign app layout with floating actions ([#144](https://github.com/Waxmard/tiernerd/issues/144))
+
+### Features
+
+* redesign app layout with floating actions ([#144](https://github.com/Waxmard/tiernerd/issues/144)) ([dfd2a84](https://github.com/Waxmard/tiernerd/commit/dfd2a8426c790bd6a38b812cd15e2fe111db615a))
+
 ## [0.16.0](https://github.com/Waxmard/tiernerd/compare/v0.15.0...v0.16.0) (2026-11-16)
 
 
