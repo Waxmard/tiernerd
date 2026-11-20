@@ -642,18 +642,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             style={{ marginHorizontal: horizontalGutter }}
           >
             <View className="flex-1 min-h-0">{content}</View>
-            <FloatingActions
-              add={{
-                label: 'Create new list',
-                onPress: () => setModalStep('create'),
-              }}
-              suggest={{
-                label: 'Suggest list',
-                onPress: () => void handleSuggestList(),
-                loading: isSuggesting,
-                disabled: isOffline || !token || modalStep !== null,
-              }}
-            />
           </View>
         </View>
         <SheetModal
@@ -719,6 +707,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onClose={() => setIconListId(null)}
         />
       </SafeAreaView>
+      <FloatingActions
+        label="Create"
+        loading={isSuggesting}
+        options={[
+          { label: 'New list', onPress: () => setModalStep('create') },
+          {
+            label: 'Suggest list',
+            emoji: '✨',
+            onPress: () => void handleSuggestList(),
+            disabled: isOffline || !token || modalStep !== null,
+          },
+        ]}
+      />
     </ImmersiveScreenShell>
   );
 };

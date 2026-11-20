@@ -17,7 +17,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  FadeOutDown,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Emoji } from '../design-system/components';
 import type { ListIcon } from '../design-system/tokens/colors';
@@ -198,76 +203,133 @@ export function NavProfileButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-export const FLOATING_ACTIONS_CLEARANCE = 72;
+export const FLOATING_ACTIONS_CLEARANCE = 88;
+const FLOATING_SHADOW = '0px 4px 12px 0px rgba(10, 24, 48, 0.28)';
 
-interface FloatingAction {
+interface FloatingOption {
   label: string;
+  emoji?: string;
   onPress: () => void;
   disabled?: boolean;
-  loading?: boolean;
-}
-
-function FloatingButton({
-  action,
-  primary,
-}: {
-  action: FloatingAction;
-  primary: boolean;
-}) {
-  const { colors } = useTheme();
-  const loading = action.loading ?? false;
-  const inactive = loading || (action.disabled ?? false);
-  const contentColor = primary ? colors.surface : colors.ink;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={action.label}
-      accessibilityState={{ disabled: inactive, busy: loading }}
-      disabled={inactive}
-      onPress={action.onPress}
-      className={`items-center justify-center rounded-full ${
-        primary
-          ? 'w-14 h-14 bg-ink dark:bg-ink-dark'
-          : 'w-11 h-11 bg-surface dark:bg-surface-dark'
-      }`}
-      style={({ pressed }) => ({
-        boxShadow: '0px 4px 12px 0px rgba(10, 24, 48, 0.28)',
-        opacity: inactive && !loading ? 0.5 : 1,
-        transform: [{ scale: pressed ? 0.94 : 1 }],
-      })}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color={contentColor} />
-      ) : primary ? (
-        <Ionicons
-          name="add"
-          size={30}
-          color={contentColor}
-          accessible={false}
-        />
-      ) : (
-        <Emoji symbol="✨" size={20} />
-      )}
-    </Pressable>
-  );
 }
 
 export function FloatingActions({
-  add,
-  suggest,
+  label,
+  options,
+  loading = false,
 }: {
-  add: FloatingAction;
-  suggest: FloatingAction;
+  label: string;
+  options: FloatingOption[];
+  loading?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const [open, setOpen] = useState(false);
+  const inactive = loading || options.every((option) => option.disabled);
+  useEffect(() => {
+    if (inactive) setOpen(false);
+  }, [inactive]);
   return (
     <View
       pointerEvents="box-none"
-      className="absolute right-0 flex-row items-center gap-3"
-      style={{ bottom: 16 + insets.bottom }}
+      accessibilityViewIsModal={open}
+      className="absolute inset-0 items-center justify-end"
+      style={{ paddingBottom: 16 + insets.bottom }}
     >
-      <FloatingButton action={suggest} primary={false} />
-      <FloatingButton action={add} primary />
+      {open ? (
+        <Animated.View
+          entering={FadeIn.duration(150)}
+          exiting={FadeOut.duration(150)}
+          style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            onPress={() => setOpen(false)}
+            className="flex-1 bg-black/30"
+          />
+        </Animated.View>
+      ) : null}
+      <View
+        pointerEvents="box-none"
+        className="mb-3 flex-col-reverse items-center gap-2"
+      >
+        {open
+          ? options.map((option, index) => (
+              <Animated.View
+                key={option.label}
+                entering={FadeInDown.duration(180).delay(index * 40)}
+                exiting={FadeOutDown.duration(120)}
+              >
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={option.label}
+                  accessibilityState={{ disabled: option.disabled ?? false }}
+                  disabled={option.disabled}
+                  onPress={() => {
+                    setOpen(false);
+                    option.onPress();
+                  }}
+                  className="min-h-[48px] flex-row items-center gap-2 rounded-full bg-surface dark:bg-surface-dark px-5"
+                  style={({ pressed }) => ({
+                    boxShadow: FLOATING_SHADOW,
+                    opacity: option.disabled ? 0.5 : pressed ? 0.7 : 1,
+                  })}
+                >
+                  {option.emoji ? (
+                    <Emoji symbol={option.emoji} size={18} />
+                  ) : (
+                    <Ionicons
+                      name="add"
+                      size={20}
+                      color={colors.ink}
+                      accessible={false}
+                    />
+                  )}
+                  <Text className="font-display font-semibold text-[16px] leading-6 text-ink dark:text-ink-dark">
+                    {option.label}
+                  </Text>
+                </Pressable>
+              </Animated.View>
+            ))
+          : null}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={open ? 'Close' : label}
+        accessibilityState={{
+          disabled: inactive,
+          busy: loading,
+          expanded: open,
+        }}
+        disabled={inactive}
+        onPress={() => setOpen((value) => !value)}
+        className="w-[72px] h-[72px] items-center justify-center rounded-full bg-ink dark:bg-ink-dark"
+        style={({ pressed }) => ({
+          boxShadow: FLOATING_SHADOW,
+          opacity: inactive && !loading ? 0.5 : 1,
+          transform: [{ scale: pressed ? 0.94 : 1 }],
+        })}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={colors.surface} />
+        ) : (
+          <Animated.View
+            style={{
+              transform: [{ rotate: open ? '45deg' : '0deg' }],
+              transitionProperty: 'transform',
+              transitionDuration: 200,
+            }}
+          >
+            <Ionicons
+              name="add"
+              size={36}
+              color={colors.surface}
+              accessible={false}
+            />
+          </Animated.View>
+        )}
+      </Pressable>
     </View>
   );
 }

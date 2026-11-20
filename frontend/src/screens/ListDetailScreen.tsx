@@ -104,6 +104,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const notify = useNotify();
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isFilling, setIsFilling] = useState(false);
   const suggestedNamesRef = useRef<string[]>([]);
   const [dismissedDetailsItemId, setDismissedDetailsItemId] = useState<
     string | null
@@ -579,13 +580,25 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       }
     />
   );
+  const handleFillEmojis = async () => {
+    setIsFilling(true);
+    try {
+      await fillMissing();
+    } finally {
+      setIsFilling(false);
+    }
+  };
   const addDisabled =
     !canMutate ||
     isDeletingList ||
     workspace.isBusy ||
     workspace.mode === 'add';
   const optionsDisabled =
-    !canMutate || isDeletingList || workspace.isBusy || detailsOpen;
+    !canMutate ||
+    isDeletingList ||
+    workspace.isBusy ||
+    detailsOpen ||
+    isFilling;
   const missingEmojiCount = items.filter((item) => !item.icon).length;
   const titleBlock = (
     <ListTitleBlock
@@ -692,26 +705,6 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           >
             {renderListItems()}
           </ListDetailWorkspaceHost>
-          <FloatingActions
-            add={{
-              label: 'Add item',
-              onPress: () => void handleAddPress(),
-              disabled: addDisabled,
-              loading: isLoadingList,
-            }}
-            suggest={{
-              label: 'Suggest next',
-              onPress: () => void handleSuggestPress(),
-              loading: isSuggesting,
-              disabled:
-                !canMutate ||
-                isDeletingList ||
-                workspace.isBusy ||
-                workspace.mode !== 'closed' ||
-                isOffline ||
-                !token,
-            }}
-          />
         </View>
       </View>
       <EmojiPickerModal
@@ -733,6 +726,39 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
           setOptionsOpen(false);
           setIconItem(null);
         }}
+      />
+      <FloatingActions
+        label="Add"
+        loading={isLoadingList || isSuggesting || isFilling}
+        options={[
+          {
+            label: 'Add item',
+            onPress: () => void handleAddPress(),
+            disabled: addDisabled,
+          },
+          {
+            label: 'Suggest next',
+            emoji: '✨',
+            onPress: () => void handleSuggestPress(),
+            disabled:
+              !canMutate ||
+              isDeletingList ||
+              workspace.isBusy ||
+              workspace.mode !== 'closed' ||
+              isOffline ||
+              !token,
+          },
+          ...(missingEmojiCount > 0 && !isOffline
+            ? [
+                {
+                  label: `Add emoji to ${missingEmojiCount} ${missingEmojiCount === 1 ? 'item' : 'items'}`,
+                  emoji: '😀',
+                  onPress: () => void handleFillEmojis(),
+                  disabled: optionsDisabled,
+                },
+              ]
+            : []),
+        ]}
       />
     </ImmersiveScreenShell>
   );
