@@ -9,13 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Item as ItemModel, List as ListModel
 
 
-async def get_by_id(
-    db: AsyncSession, item_id: uuid.UUID, *, populate_existing: bool = True
-) -> ItemModel | None:
+async def get_by_id(db: AsyncSession, item_id: uuid.UUID) -> ItemModel | None:
     query = select(ItemModel).where(ItemModel.item_id == item_id)
-    if populate_existing:
-        query = query.execution_options(populate_existing=True)
-    result = await db.execute(query)
+    result = await db.execute(query.execution_options(populate_existing=True))
     return result.scalar_one_or_none()
 
 
@@ -23,17 +19,13 @@ async def get_by_id_with_ownership(
     db: AsyncSession,
     item_id: uuid.UUID,
     user_id: uuid.UUID,
-    *,
-    populate_existing: bool = True,
 ) -> ItemModel | None:
     query = (
         select(ItemModel)
         .join(ListModel, ItemModel.list_id == ListModel.list_id)
         .where(ItemModel.item_id == item_id, ListModel.user_id == user_id)
     )
-    if populate_existing:
-        query = query.execution_options(populate_existing=True)
-    result = await db.execute(query)
+    result = await db.execute(query.execution_options(populate_existing=True))
     return result.scalar_one_or_none()
 
 
@@ -66,13 +58,9 @@ def is_duplicate_name_error(error: IntegrityError) -> bool:
     )
 
 
-async def get_by_list_id(
-    db: AsyncSession, list_id: uuid.UUID, *, populate_existing: bool = True
-) -> list[ItemModel]:
+async def get_by_list_id(db: AsyncSession, list_id: uuid.UUID) -> list[ItemModel]:
     query = select(ItemModel).where(ItemModel.list_id == list_id)
-    if populate_existing:
-        query = query.execution_options(populate_existing=True)
-    result = await db.execute(query)
+    result = await db.execute(query.execution_options(populate_existing=True))
     return list(result.scalars().all())
 
 
@@ -86,8 +74,7 @@ async def update(
     db: AsyncSession, item: ItemModel, update_data: dict[str, Any]
 ) -> ItemModel:
     for field, value in update_data.items():
-        new_value = str(value) if field == "image_url" and value is not None else value
-        setattr(item, field, new_value)
+        setattr(item, field, value)
     db.add(item)
     await db.flush()
     return item

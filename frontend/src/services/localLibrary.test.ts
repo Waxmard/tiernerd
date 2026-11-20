@@ -56,7 +56,6 @@ const item = (
   list_id: LIST,
   name: itemId,
   description: null,
-  image_url: null,
   icon: null,
   position,
   rating,

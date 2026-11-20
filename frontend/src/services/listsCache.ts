@@ -41,7 +41,6 @@ const isItem = (value: unknown, listId: string): value is CachedItem => {
     candidate.list_id === listId &&
     typeof candidate.name === 'string' &&
     isNullableString(candidate.description) &&
-    isNullableString(candidate.image_url) &&
     typeof candidate.rating === 'number' &&
     Number.isFinite(candidate.rating) &&
     typeof candidate.position === 'string' &&
@@ -156,7 +155,6 @@ export interface ListDetailLifecycle {
   deleted: boolean;
   itemsRequest: number;
   metadataRequest: number;
-  hydrationRequest: number;
   cacheVersion: number;
   itemsAcceptedLive: boolean;
   metadataAcceptedLive: boolean;
@@ -201,7 +199,6 @@ export const createListDetailLifecycle = (options: {
   deleted: false,
   itemsRequest: 0,
   metadataRequest: 0,
-  hydrationRequest: 0,
   cacheVersion: 0,
   itemsAcceptedLive: false,
   metadataAcceptedLive: false,
@@ -240,16 +237,6 @@ export const canAcceptMetadataResponse = (
   isLifecycleReadable(lifecycle, current) &&
   lifecycle.metadataRequest === requestId;
 
-export const canApplyHydration = (
-  lifecycle: ListDetailLifecycle,
-  hydrationId: number,
-  version: number,
-  current?: ListDetailLifecycle | null
-): boolean =>
-  isLifecycleReadable(lifecycle, current) &&
-  lifecycle.hydrationRequest === hydrationId &&
-  lifecycle.cacheVersion === version;
-
 export const canWriteCachedItems = (
   lifecycle: ListDetailLifecycle,
   version: number,
@@ -280,7 +267,6 @@ export const deactivateLifecycle = (lifecycle: ListDetailLifecycle): void => {
   lifecycle.active = false;
   lifecycle.itemsRequest += 1;
   lifecycle.metadataRequest += 1;
-  lifecycle.hydrationRequest += 1;
   lifecycle.cacheVersion += 1;
   lifecycle.itemsAcceptedLive = false;
   lifecycle.metadataAcceptedLive = false;
@@ -290,7 +276,6 @@ export const evictLifecycleList = (lifecycle: ListDetailLifecycle): number => {
   lifecycle.deleted = true;
   lifecycle.itemsRequest += 1;
   lifecycle.metadataRequest += 1;
-  lifecycle.hydrationRequest += 1;
   lifecycle.cacheVersion += 1;
   lifecycle.itemsAcceptedLive = false;
   lifecycle.metadataAcceptedLive = false;
@@ -302,7 +287,6 @@ export const invalidateLifecycleReads = (
 ): number => {
   lifecycle.itemsRequest += 1;
   lifecycle.metadataRequest += 1;
-  lifecycle.hydrationRequest += 1;
   lifecycle.cacheVersion += 1;
   lifecycle.itemsAcceptedLive = false;
   lifecycle.metadataAcceptedLive = false;
@@ -313,7 +297,6 @@ export const bumpLifecycleMutation = (
   lifecycle: ListDetailLifecycle
 ): number => {
   lifecycle.itemsRequest += 1;
-  lifecycle.hydrationRequest += 1;
   lifecycle.cacheVersion += 1;
   lifecycle.itemsAcceptedLive = false;
   return lifecycle.cacheVersion;

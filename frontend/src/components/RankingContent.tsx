@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { AccessibilityInfo, Image, Pressable, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInRight,
@@ -89,13 +89,6 @@ function ComparisonChoice({
         layout={EMOJI_SLIDE}
         style={{ alignSelf: 'stretch', alignItems: 'center', gap: 8 }}
       >
-        {item.image_url ? (
-          <Image
-            source={{ uri: item.image_url }}
-            accessibilityLabel={item.name}
-            className="w-20 h-20 rounded-2xl"
-          />
-        ) : null}
         <Text
           numberOfLines={3}
           className={[

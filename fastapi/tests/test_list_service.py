@@ -21,7 +21,6 @@ def create_mock_item(
         list_id=uuid.uuid4(),
         name=name,
         description=f"Description for {name}",
-        image_url=f"https://example.com/{name}.jpg",
         position=position,
         rating=None,
         created_at=datetime.now(),

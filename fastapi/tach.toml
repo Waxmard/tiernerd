@@ -52,7 +52,7 @@ depends_on = ["app.settings"]
 
 [[modules]]
 path = "app.schemas"
-depends_on = []
+depends_on = ["app.core"]
 
 [[modules]]
 path = "app.settings"

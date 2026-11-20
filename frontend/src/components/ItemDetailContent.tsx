@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { BaseModalContent, Button, Emoji } from '../design-system/components';
 import { useListHue } from '../providers/ThemeProvider';
 import type { Item } from '../services/itemsService';
@@ -39,9 +39,6 @@ export function ItemDetailContent({
   listTitle,
 }: ItemDetailContentProps) {
   const hue = useListHue();
-  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
-  const imageFailed =
-    item.image_url !== null && failedImageUrl === item.image_url;
   const actionsBlocked = !canMutate || isBusy;
   const medal = rankMedal(rank);
   const [pickingIcon, setPickingIcon] = useState(false);
@@ -161,21 +158,6 @@ export function ItemDetailContent({
             </Text>
           ) : null}
         </Pressable>
-        {item.image_url ? (
-          imageFailed ? (
-            <Text className="text-body-small text-ink-muted dark:text-ink-muted-dark">
-              Image unavailable
-            </Text>
-          ) : (
-            <Image
-              source={{ uri: item.image_url }}
-              accessibilityLabel={item.name}
-              onError={() => setFailedImageUrl(item.image_url)}
-              resizeMode="cover"
-              className="w-full h-[220px] rounded-2xl bg-canvas dark:bg-canvas-dark border border-line dark:border-line-dark"
-            />
-          )
-        ) : null}
       </View>
       <EmojiPickerModal
         visible={pickingIcon}

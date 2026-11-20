@@ -52,7 +52,7 @@ export interface UseItemWorkspaceOptions {
 
 export type RankingSubject = Pick<
   Item,
-  'item_id' | 'name' | 'description' | 'icon' | 'image_url'
+  'item_id' | 'name' | 'description' | 'icon'
 >;
 
 export interface RankingView {

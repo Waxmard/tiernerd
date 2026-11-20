@@ -66,7 +66,6 @@ class TestCreateItem:
             json={
                 "name": "First Item",
                 "description": "The first item",
-                "image_url": "https://example.com/first.jpg",
             },
             headers=auth_headers,
         )
@@ -132,7 +131,6 @@ class TestCreateItem:
             json={
                 "name": "New Item",
                 "description": "Description",
-                "image_url": "https://example.com/image.jpg",
             },
         )
         assert response.status_code == 401
@@ -147,7 +145,6 @@ class TestCreateItem:
             json={
                 "name": "New Item",
                 "description": "Description",
-                "image_url": "https://example.com/image.jpg",
             },
             headers=auth_headers,
         )
@@ -163,7 +160,6 @@ class TestCreateItem:
             json={
                 "name": "New Item",
                 "description": "Description",
-                "image_url": "https://example.com/image.jpg",
             },
             headers=auth_headers_user2,
         )
@@ -231,7 +227,6 @@ class TestUpdateItem:
             json={
                 "name": "Updated Name",
                 "description": "Updated description",
-                "image_url": "https://example.com/updated.jpg",
             },
             headers=auth_headers,
         )
@@ -239,12 +234,10 @@ class TestUpdateItem:
         data = response.json()
         assert data["name"] == "Updated Name"
         assert data["description"] == "Updated description"
-        assert data["image_url"] == "https://example.com/updated.jpg"
 
         await test_db.refresh(test_item)
         assert test_item.name == "Updated Name"
         assert test_item.description == "Updated description"
-        assert test_item.image_url == "https://example.com/updated.jpg"
         assert test_item.name != original_name
         assert test_item.description != original_description
 

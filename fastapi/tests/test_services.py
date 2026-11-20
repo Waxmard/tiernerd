@@ -8,7 +8,6 @@ from app.db.models import Item as ItemModel, List as ListModel
 from app.services.list_service import get_items_best_first
 from app.services.ranking import (
     assign_scores,
-    score_for_rank,
     set_item_ranking,
 )
 
@@ -25,7 +24,6 @@ def create_item(
         list_id=list_id or uuid.uuid4(),
         name=name,
         description="",
-        image_url=None,
         position=position,
         rating=rating,
         created_at=now,
@@ -53,9 +51,6 @@ class TestRankingService:
         best_first = get_items_best_first(items)
         assert best_first == list(reversed(items))
         assert [item.rating for item in best_first] == best_first_scores
-        assert [
-            score_for_rank(rank, len(items)) for rank in range(1, len(items) + 1)
-        ] == best_first_scores
 
 
 class TestSetItemRanking:

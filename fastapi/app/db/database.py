@@ -1,10 +1,6 @@
-import sys
 from collections.abc import AsyncGenerator
-from pathlib import Path
 from typing import Any
 
-from sqlalchemy import inspect, text
-from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.models import Base
@@ -33,43 +29,6 @@ engine = create_async_engine(
 )
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-_STARTUP_COLUMNS: tuple[tuple[str, str, str], ...] = (
-    ("users", "photo_url", "ALTER TABLE users ADD COLUMN photo_url TEXT"),
-    ("lists", "icon", "ALTER TABLE lists ADD COLUMN icon VARCHAR(16)"),
-    (
-        "users",
-        "background_photo_id",
-        "ALTER TABLE users ADD COLUMN background_photo_id UUID",
-    ),
-    (
-        "lists",
-        "ranking_mode",
-        "ALTER TABLE lists ADD COLUMN ranking_mode "
-        "VARCHAR(16) NOT NULL DEFAULT 'score'",
-    ),
-    (
-        "items",
-        "manual_rating",
-        "ALTER TABLE items ADD COLUMN manual_rating DOUBLE PRECISION",
-    ),
-    ("items", "icon", "ALTER TABLE items ADD COLUMN icon VARCHAR(16)"),
-)
-_RETIRED_COLUMNS: tuple[tuple[str, str, str], ...] = (
-    ("lists", "cover", "ALTER TABLE lists DROP COLUMN cover"),
-    ("lists", "cover_photo", "ALTER TABLE lists DROP COLUMN cover_photo"),
-    ("lists", "color", "ALTER TABLE lists DROP COLUMN color"),
-)
-
-
-def _ensure_columns(connection: Connection) -> None:
-    inspector = inspect(connection)
-    for table, column, ddl in _STARTUP_COLUMNS:
-        if column not in {col["name"] for col in inspector.get_columns(table)}:
-            connection.execute(text(ddl))
-    for table, column, ddl in _RETIRED_COLUMNS:
-        if column in {col["name"] for col in inspector.get_columns(table)}:
-            connection.execute(text(ddl))
-
 
 async def get_db() -> AsyncGenerator[AsyncSession]:
     """
@@ -93,25 +52,8 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
 
 async def create_tables() -> None:
     """Create all database tables and seed dev users."""
-    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from scripts.migrate_manual_ratings import (  # noqa: PLC0415
-        apply_connection,
-        rank_items_missing_position,
-    )
-
     async with engine.begin() as conn:
-        await conn.execute(text("DROP TABLE IF EXISTS comparison_sessions"))
         await conn.run_sync(Base.metadata.create_all)
-        await conn.run_sync(_ensure_columns)
-        await rank_items_missing_position(conn)
-        await apply_connection(conn)
-        if conn.dialect.name == "postgresql":
-            await conn.execute(
-                text("ALTER TABLE items ALTER COLUMN position SET NOT NULL")
-            )
-            await conn.execute(
-                text("ALTER TABLE items ALTER COLUMN rating SET NOT NULL")
-            )
 
     # Auto-seed dev users in development. `scripts/` lives outside the `app`
     # package and is dev-only, so the import stays lazy + scoped here.

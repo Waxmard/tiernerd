@@ -29,7 +29,16 @@ from app.services.emoji_suggestion import suggest_emojis
 from app.services.item_suggestion import suggest_next_item, suggest_next_list
 from app.settings import get_settings
 
-router = APIRouter()
+
+def require_ai() -> None:
+    if not get_settings().AI_PROJECT:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=AI_NOT_CONFIGURED_ERROR,
+        )
+
+
+router = APIRouter(dependencies=[Depends(require_ai)])
 logger = logging.getLogger(__name__)
 
 EMOJI_FILL_BATCH = 40
@@ -50,12 +59,6 @@ async def suggest_emoji_for_name(payload: EmojiSuggestionRequest) -> Any:
     """
     Suggest up to three emoji for a list or item name.
     """
-    if not get_settings().AI_PROJECT:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=AI_NOT_CONFIGURED_ERROR,
-        )
-
     try:
         emojis = await asyncio.to_thread(
             suggest_emojis,
@@ -83,11 +86,6 @@ async def fill_item_emojis(
     """
     Give an AI-picked emoji to up to forty items in a list that have none.
     """
-    if not get_settings().AI_PROJECT:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=AI_NOT_CONFIGURED_ERROR,
-        )
     list_obj = await list_crud.get_by_id_and_user(db, list_id, current_user.user_id)
     if list_obj is None:
         raise HTTPException(
@@ -159,11 +157,6 @@ async def suggest_next_list_item(
     """
     Suggest one new item name for a list.
     """
-    if not get_settings().AI_PROJECT:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=AI_NOT_CONFIGURED_ERROR,
-        )
     list_obj = await list_crud.get_by_id_and_user(db, list_id, current_user.user_id)
     if list_obj is None:
         raise HTTPException(
@@ -197,11 +190,6 @@ async def suggest_next_list_title(
     """
     Suggest one new list title for the current user.
     """
-    if not get_settings().AI_PROJECT:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=AI_NOT_CONFIGURED_ERROR,
-        )
     existing = [
         row[0].title
         for row in await list_crud.get_by_user_with_stats(db, current_user.user_id)

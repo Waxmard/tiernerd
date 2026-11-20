@@ -5,7 +5,6 @@ export interface Item {
   list_id: string;
   name: string;
   description: string | null;
-  image_url: string | null;
   icon: string | null;
   rating: number;
   manual_rating: number | null;
@@ -17,7 +16,6 @@ export interface Item {
 export interface CreateItemRequest {
   name: string;
   description?: string;
-  image_url?: string;
   icon?: string;
   gap: number;
 }

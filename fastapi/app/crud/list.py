@@ -8,12 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Item as ItemModel, List as ListModel
 
 
-async def get_by_id(
-    db: AsyncSession, list_id: uuid.UUID, *, populate_existing: bool = False
-) -> ListModel | None:
+async def get_by_id(db: AsyncSession, list_id: uuid.UUID) -> ListModel | None:
     query = select(ListModel).where(ListModel.list_id == list_id)
-    if populate_existing:
-        query = query.execution_options(populate_existing=True)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
@@ -38,15 +34,11 @@ async def get_by_title_and_user(
     db: AsyncSession,
     title: str,
     user_id: uuid.UUID,
-    *,
-    for_update: bool = False,
 ) -> ListModel | None:
     query = select(ListModel).where(
         ListModel.title == title,
         ListModel.user_id == user_id,
     )
-    if for_update:
-        query = query.with_for_update(of=ListModel)
     result = await db.execute(query.execution_options(populate_existing=True))
     return result.scalar_one_or_none()
 

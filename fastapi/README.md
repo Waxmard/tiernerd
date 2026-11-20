@@ -79,48 +79,6 @@ uv run python scripts/cleanup_photo_uploads.py --apply
 
 Do not configure a bucket-wide expiration policy: it would also remove attached photos.
 
-## Before any migration
+## Schema changes
 
-Fresh databases use the model schema, and `create_all` does not upgrade existing tables. Before running a migration script against an existing database:
-
-- Back up the intended database.
-- Stop the application that uses it.
-- Load `DATABASE_URL` from the environment's existing secret store; do not put credentials in commands or tracked files.
-- Run `--check` first, then `--apply`. Both scripts are idempotent.
-- Do not wipe application data to fix a schema mismatch.
-
-Run the commands below from `fastapi/`.
-
-## Upgrade manual ratings and automatic startup migrations
-
-Application startup applies these upgrades automatically. `create_tables` drops the retired `comparison_sessions` table and `lists.cover`/`lists.cover_photo`/`lists.color` columns, adds any missing additive columns (`users.photo_url`, `users.background_photo_id`, `lists.icon`, `lists.ranking_mode`, `items.manual_rating`, `items.icon`), and runs the manual-rating migration, which recalculates `items.rating` to the current score curve.
-
-The manual-rating script remains available for preflight checks or an offline upgrade of an older schema. Inspect the schema and count incorrect ratings without changing data:
-
-```bash
-uv run python scripts/migrate_manual_ratings.py --check
-```
-
-Then apply it:
-
-```bash
-uv run python scripts/migrate_manual_ratings.py --apply
-```
-
-`--check` reports whether `items.manual_rating` exists and how many rows need score updates. `--apply` adds the column if missing, rescales scores in a locked transaction, verifies the result, and rolls back on failure. Reapplying it is a no-op.
-
-## Upgrade the Google authentication schema
-
-Startup does not run this migration, and applying it permanently discards password hashes. Inspect the existing schema without changing it:
-
-```bash
-uv run python scripts/migrate_google_auth.py --check
-```
-
-Then apply the migration:
-
-```bash
-uv run python scripts/migrate_google_auth.py --apply
-```
-
-The migration preserves accounts and their relationships, adds a nullable Google photo URL, and removes password hashes. Reapplying it is a no-op. Deploy the matching backend after the migration. Accounts can sign in only with a verified Google account matching their email; existing app sessions remain valid.
+Startup runs `create_all` only: it creates missing tables and never alters existing ones. Apply schema changes to an existing database by hand, and do not wipe application data to fix a schema mismatch.

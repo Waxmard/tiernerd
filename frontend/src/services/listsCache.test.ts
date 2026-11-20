@@ -6,7 +6,6 @@ import {
   bumpLifecycleMutation,
   canAcceptItemsResponse,
   canAcceptMetadataResponse,
-  canApplyHydration,
   canWriteCachedItems,
   canWriteCachedSummary,
   createInvalidatedReadState,
@@ -43,7 +42,6 @@ const item = (overrides: Partial<Item> = {}): Item => ({
   list_id: 'list-1',
   name: 'First',
   description: null,
-  image_url: null,
   icon: null,
   rating: 8.5,
   manual_rating: null,
@@ -126,7 +124,6 @@ test('rejects malformed, foreign-list, missing, and invalid item fields', () => 
         'list_id',
         'name',
         'description',
-        'image_url',
         'rating',
         'position',
         'created_at',
@@ -142,7 +139,6 @@ test('rejects malformed, foreign-list, missing, and invalid item fields', () => 
     { ...item(), created_at: null },
     { ...item(), updated_at: false },
     { ...item(), description: 1 },
-    { ...item(), image_url: false },
     { ...item(), icon: 1 },
     { ...item(), position: 1 },
     { ...item(), rating: '8.5' },
@@ -320,7 +316,7 @@ test('accepts cached lists with or without an icon', () => {
     null
   );
 });
-test('account switching drops in-flight reads and hydration for the previous account', () => {
+test('account switching drops in-flight reads for the previous account', () => {
   const lifecycleA = createListDetailLifecycle({
     identity: JSON.stringify(['user-a', 'token-a', 'list-1']),
     userId: 'user-a',
@@ -329,10 +325,7 @@ test('account switching drops in-flight reads and hydration for the previous acc
     routeTitle: 'Account A List',
   });
   const requestId = ++lifecycleA.itemsRequest;
-  const hydrationId = ++lifecycleA.hydrationRequest;
-  const version = lifecycleA.cacheVersion;
   assert.equal(canAcceptItemsResponse(lifecycleA, requestId), true);
-  assert.equal(canApplyHydration(lifecycleA, hydrationId, version), true);
 
   deactivateLifecycle(lifecycleA);
   const lifecycleB = createListDetailLifecycle({
@@ -353,13 +346,9 @@ test('account switching drops in-flight reads and hydration for the previous acc
     canWriteCachedItems(lifecycleA, 0, requestId, lifecycleB),
     false
   );
-  assert.equal(
-    canApplyHydration(lifecycleA, hydrationId, version, lifecycleB),
-    false
-  );
 });
 
-test('eviction drops in-flight reads and hydration so a deleted list cannot be repopulated', () => {
+test('eviction drops in-flight reads so a deleted list cannot be repopulated', () => {
   const lifecycle = createListDetailLifecycle({
     identity: JSON.stringify(['user-1', 'token-1', 'list-1']),
     userId: 'user-1',
@@ -368,10 +357,7 @@ test('eviction drops in-flight reads and hydration so a deleted list cannot be r
     routeTitle: 'My List',
   });
   const requestId = ++lifecycle.itemsRequest;
-  const hydrationId = ++lifecycle.hydrationRequest;
-  const version = lifecycle.cacheVersion;
   const preEvictionVersion = lifecycle.cacheVersion;
-  assert.equal(canApplyHydration(lifecycle, hydrationId, version), true);
 
   const evictionVersion = evictLifecycleList(lifecycle);
   assert.equal(lifecycle.deleted, true);
@@ -388,10 +374,9 @@ test('eviction drops in-flight reads and hydration so a deleted list cannot be r
     canWriteCachedItems(lifecycle, evictionVersion, requestId),
     false
   );
-  assert.equal(canApplyHydration(lifecycle, hydrationId, version), false);
 });
 
-test('definitive read error invalidation drops in-flight responses and hydration', () => {
+test('definitive read error invalidation drops in-flight responses', () => {
   const lifecycle = createListDetailLifecycle({
     identity: JSON.stringify(['user-1', 'token-1', 'list-1']),
     userId: 'user-1',
@@ -400,13 +385,11 @@ test('definitive read error invalidation drops in-flight responses and hydration
     routeTitle: 'My List',
   });
   const requestId = ++lifecycle.itemsRequest;
-  const hydrationId = ++lifecycle.hydrationRequest;
   const version = lifecycle.cacheVersion;
 
   const invalidatedVersion = invalidateLifecycleReads(lifecycle);
 
   assert.equal(canAcceptItemsResponse(lifecycle, requestId), false);
-  assert.equal(canApplyHydration(lifecycle, hydrationId, version), false);
   assert.equal(canWriteCachedItems(lifecycle, version, requestId), false);
   assert.equal(isCacheCurrent(lifecycle, version), false);
   assert.equal(isCacheCurrent(lifecycle, invalidatedVersion), true);

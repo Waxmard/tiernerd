@@ -559,7 +559,6 @@ export function useListDetailData({
       modeSaveRef.current = lifecycle;
       const requestId = ++lifecycle.metadataRequest;
       ++lifecycle.cacheVersion;
-      lifecycle.hydrationRequest++;
       try {
         const outcome = await mutate(
           {
