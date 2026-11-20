@@ -12,7 +12,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ImmersiveScreenShell } from '../components/ImmersiveBoard';
+import {
+  ImmersiveScreenShell,
+  ScreenTopBar,
+} from '../components/ImmersiveBoard';
 import { Emoji, SectionLabel } from '../design-system/components';
 import type { RootStackScreenProps } from '../navigation/types';
 import { useAuth } from '../providers/AuthContext';
@@ -129,37 +132,38 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   return (
     <ImmersiveScreenShell>
-      <SafeAreaView className="flex-1">
+      <ScreenTopBar>
+        <View className="w-full max-w-[560px] self-center flex-row items-center justify-between px-2 pt-3 pb-2">
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            onPress={handleBack}
+            className="min-w-[44px] min-h-[44px] justify-center items-center"
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={28}
+              color={colors['on-bar']}
+              accessible={false}
+            />
+          </TouchableOpacity>
+          <Text
+            className="text-headline-small font-semibold text-on-bar dark:text-on-bar-dark"
+            accessibilityRole="header"
+          >
+            Profile
+          </Text>
+          <View className="w-11 h-11" />
+        </View>
+      </ScreenTopBar>
+      <SafeAreaView className="flex-1" edges={['bottom', 'left', 'right']}>
         <ScrollView
           contentContainerClassName="w-full grow"
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full max-w-[560px] self-center px-4 pb-4">
-            <View className="flex-row items-center justify-between py-2 px-2 my-3 rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel="Back"
-                onPress={handleBack}
-                className="min-w-[44px] min-h-[44px] justify-center items-center"
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={28}
-                  color={colors.ink}
-                  accessible={false}
-                />
-              </TouchableOpacity>
-              <Text
-                className="text-headline-small font-semibold text-ink dark:text-ink-dark"
-                accessibilityRole="header"
-              >
-                Profile
-              </Text>
-              <View className="w-11 h-11" />
-            </View>
-
+          <View className="w-full max-w-[560px] self-center px-4 pb-4 pt-4">
             <View className="flex-row items-center gap-4 mb-4">
               {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
                 <Image

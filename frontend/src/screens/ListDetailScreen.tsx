@@ -7,10 +7,7 @@ import {
   View,
 } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmojiPickerModal } from '../components/EmojiPicker';
 import { ImmersiveScreenShell } from '../components/ImmersiveBoard';
 import { ListDetailHeader } from '../components/ListDetailHeader';
@@ -602,7 +599,7 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
         data={items}
         keyExtractor={(item) => item.item_id}
         contentContainerStyle={{
-          paddingTop: 8,
+          paddingTop: 16,
           paddingBottom: 16 + safeAreaInsets.bottom,
         }}
         renderItem={renderItem}
@@ -618,79 +615,77 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 
   return (
     <ImmersiveScreenShell>
-      <SafeAreaView className="flex-1 min-h-0" edges={['top']}>
-        <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
-          <View className="flex-1 min-h-0 mx-4">
-            <ListDetailHeader
-              title={detailsTitle}
-              icon={listIcon}
-              description={listDescription}
-              addLoading={isLoadingList}
-              optionsKey={screenIdentity}
-              rankingMode={rankingMode}
-              optionsDisabled={
-                !canMutate || isDeletingList || workspace.isBusy || detailsOpen
-              }
-              onSaveOptions={updateListOptions}
-              onOptionsVisibilityChange={setOptionsOpen}
-              missingEmojiCount={items.filter((item) => !item.icon).length}
-              onFillEmojis={fillMissing}
-              addDisabled={
-                !canMutate ||
-                isDeletingList ||
-                workspace.isBusy ||
-                workspace.mode === 'add'
-              }
-              onAdd={() => void handleAddPress()}
-              onSuggest={() => void handleSuggestPress()}
-              suggestLoading={isSuggesting}
-              suggestDisabled={
-                !canMutate ||
-                isDeletingList ||
-                workspace.isBusy ||
-                workspace.mode !== 'closed' ||
-                isOffline ||
-                !token
-              }
-              deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
-              onBack={() => navigation.goBack()}
-              onDelete={() => void handleDeleteList()}
-            />
-            <ListDetailWorkspaceHost
-              canMutate={canMutate}
-              isScreenBusy={isDeletingList}
-              listTitle={detailsTitle}
-              selectedItemId={selectedItemId}
-              dismissedDetailsItemId={dismissedDetailsItemId}
-              selectedItem={selectedItem}
-              selectedRank={selectedRank}
-              rankedCount={rankedCount}
-              rankingMode={rankingMode}
-              isLoadingItems={isLoadingItems}
-              itemsLoaded={itemsLoaded}
-              workspace={workspace}
-              onEdit={(focus) => {
-                if (selectedItem && canMutateFor(screenIdentity))
-                  workspace.openEdit(selectedItem, focus);
-              }}
-              onIconChange={(icon) => {
-                if (selectedItem) void handleItemIcon(selectedItem, icon);
-              }}
-              onDelete={() => {
-                if (selectedItem && canMutateFor(screenIdentity))
-                  void workspace.deleteItem(selectedItem);
-              }}
-              onDetailsClose={handleWorkspaceContentClose}
-              onMobileClose={handleMobileClose}
-              onStartRanking={handleStartRanking}
-              onEditRank={() => void handleEditRank()}
-              onEditDetails={() => void leaveEdit()}
-            >
-              {renderListItems()}
-            </ListDetailWorkspaceHost>
-          </View>
+      <ListDetailHeader
+        title={detailsTitle}
+        icon={listIcon}
+        description={listDescription}
+        addLoading={isLoadingList}
+        optionsKey={screenIdentity}
+        rankingMode={rankingMode}
+        optionsDisabled={
+          !canMutate || isDeletingList || workspace.isBusy || detailsOpen
+        }
+        onSaveOptions={updateListOptions}
+        onOptionsVisibilityChange={setOptionsOpen}
+        missingEmojiCount={items.filter((item) => !item.icon).length}
+        onFillEmojis={fillMissing}
+        addDisabled={
+          !canMutate ||
+          isDeletingList ||
+          workspace.isBusy ||
+          workspace.mode === 'add'
+        }
+        onAdd={() => void handleAddPress()}
+        onSuggest={() => void handleSuggestPress()}
+        suggestLoading={isSuggesting}
+        suggestDisabled={
+          !canMutate ||
+          isDeletingList ||
+          workspace.isBusy ||
+          workspace.mode !== 'closed' ||
+          isOffline ||
+          !token
+        }
+        deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
+        onBack={() => navigation.goBack()}
+        onDelete={() => void handleDeleteList()}
+      />
+      <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
+        <View className="flex-1 min-h-0 mx-4">
+          <ListDetailWorkspaceHost
+            canMutate={canMutate}
+            isScreenBusy={isDeletingList}
+            listTitle={detailsTitle}
+            selectedItemId={selectedItemId}
+            dismissedDetailsItemId={dismissedDetailsItemId}
+            selectedItem={selectedItem}
+            selectedRank={selectedRank}
+            rankedCount={rankedCount}
+            rankingMode={rankingMode}
+            isLoadingItems={isLoadingItems}
+            itemsLoaded={itemsLoaded}
+            workspace={workspace}
+            onEdit={(focus) => {
+              if (selectedItem && canMutateFor(screenIdentity))
+                workspace.openEdit(selectedItem, focus);
+            }}
+            onIconChange={(icon) => {
+              if (selectedItem) void handleItemIcon(selectedItem, icon);
+            }}
+            onDelete={() => {
+              if (selectedItem && canMutateFor(screenIdentity))
+                void workspace.deleteItem(selectedItem);
+            }}
+            onDetailsClose={handleWorkspaceContentClose}
+            onMobileClose={handleMobileClose}
+            onStartRanking={handleStartRanking}
+            onEditRank={() => void handleEditRank()}
+            onEditDetails={() => void leaveEdit()}
+          >
+            {renderListItems()}
+          </ListDetailWorkspaceHost>
         </View>
-      </SafeAreaView>
+      </View>
       <EmojiPickerModal
         visible={iconItem !== null}
         value={iconItem?.icon ?? null}

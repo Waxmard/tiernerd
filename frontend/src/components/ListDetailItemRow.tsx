@@ -205,7 +205,7 @@ export const ListItemEmptyState: React.FC<{
       disabled={disabled}
       onPress={onAdd}
       activeOpacity={0.7}
-      className="w-full items-center gap-2 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-8 dark:border-control-dark dark:bg-surface-muted-dark"
+      className="mt-4 w-full items-center gap-2 border-2 border-dashed border-control rounded-2xl bg-surface-muted px-4 py-8 dark:border-control-dark dark:bg-surface-muted-dark"
     >
       <Emoji symbol="🥇" size={56} dimmed={disabled} />
       <View className="items-center gap-1">

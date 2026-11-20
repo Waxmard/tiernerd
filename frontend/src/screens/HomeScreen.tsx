@@ -28,6 +28,7 @@ import { EmojiPickerModal } from '../components/EmojiPicker';
 import {
   ImmersiveScreenShell,
   ListIdentityBadge,
+  ScreenTopBar,
 } from '../components/ImmersiveBoard';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button, Emoji, SheetModal } from '../design-system/components';
@@ -598,57 +599,63 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   );
   return (
     <ImmersiveScreenShell>
-      <SafeAreaView className="min-h-0 flex-1" edges={['top', 'left', 'right']}>
+      <ScreenTopBar>
+        <View
+          className="w-full max-w-[1280px] self-center flex-row items-center gap-2 pt-3 pb-3"
+          style={{ paddingHorizontal: horizontalGutter }}
+        >
+          <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            className="flex-1 min-w-0 text-headline-small text-on-bar dark:text-on-bar-dark"
+          >
+            My lists
+          </Text>
+          <Button
+            title="New list"
+            onPress={() => setModalStep('create')}
+            variant="on-bar"
+            size="small"
+            icon={
+              <Ionicons
+                name="add"
+                size={20}
+                color={colors.bar}
+                accessible={false}
+              />
+            }
+            accessibilityLabel="Create new list"
+          />
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Profile')}
+            className="w-11 h-11 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Open profile"
+          >
+            {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
+              <Image
+                source={{ uri: user.photoUrl }}
+                onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
+                resizeMode="cover"
+                className="w-full h-full"
+                accessible={false}
+              />
+            ) : (
+              <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
+                <Emoji symbol="👤" size={20} />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScreenTopBar>
+      <SafeAreaView className="min-h-0 flex-1" edges={['left', 'right']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View
             className="flex-1 min-h-0"
             style={{ marginHorizontal: horizontalGutter }}
           >
-            <View className="my-2 py-2 pl-4 pr-3 flex-row items-center gap-2 shrink-0 rounded-2xl border border-line bg-surface dark:border-line-dark dark:bg-surface-dark">
-              <Text
-                accessibilityRole="header"
-                numberOfLines={1}
-                className="flex-1 min-w-0 text-headline-small text-ink dark:text-ink-dark"
-              >
-                My lists
-              </Text>
-              <Button
-                title="New list"
-                onPress={() => setModalStep('create')}
-                size="small"
-                icon={
-                  <Ionicons
-                    name="add"
-                    size={20}
-                    color={colors['on-accent']}
-                    accessible={false}
-                  />
-                }
-                accessibilityLabel="Create new list"
-              />
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Profile')}
-                className="w-11 h-11 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="Open profile"
-              >
-                {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
-                  <Image
-                    source={{ uri: user.photoUrl }}
-                    onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
-                    resizeMode="cover"
-                    className="w-full h-full"
-                    accessible={false}
-                  />
-                ) : (
-                  <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
-                    <Emoji symbol="👤" size={20} />
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-            <View className="flex-row">
+            <View className="flex-row mt-2">
               <Button
                 icon={<Emoji symbol="✨" size={18} />}
                 title="Suggest list"

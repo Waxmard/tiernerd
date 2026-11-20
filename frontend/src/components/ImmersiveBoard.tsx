@@ -1,5 +1,7 @@
+import { StatusBar } from 'expo-status-bar';
 import { type ReactNode, useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Emoji } from '../design-system/components';
 import type { ListIcon } from '../design-system/tokens/colors';
 import { useAuth } from '../providers/AuthContext';
@@ -30,6 +32,19 @@ export function ImmersiveScreenShell({ children }: { children: ReactNode }) {
       ) : workspaceAppearance.background === 'landscape' ? (
         <LandscapeBackdrop className="absolute inset-0" />
       ) : null}
+      {children}
+    </View>
+  );
+}
+
+export function ScreenTopBar({ children }: { children: ReactNode }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      className="shrink-0 border-b border-bar bg-bar dark:border-line-dark dark:bg-bar-dark"
+      style={{ paddingTop: insets.top }}
+    >
+      <StatusBar style="light" />
       {children}
     </View>
   );
