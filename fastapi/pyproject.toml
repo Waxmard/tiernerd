@@ -31,9 +31,15 @@ dependencies = [
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 
+[tool.uv]
+preview-features = ["audit-command"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py314"
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "PL", "S"]
@@ -73,10 +79,15 @@ extend-immutable-calls = [
 [tool.mypy]
 python_version = "3.14"
 strict = true
-ignore_missing_imports = true
+follow_untyped_imports = true
 # FastAPI / SQLAlchemy decorators are dynamically typed; strict's
 # disallow_untyped_decorators is too noisy here.
 disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+module = "google.cloud.*"
+follow_untyped_imports = false
+ignore_missing_imports = true
 
 [dependency-groups]
 dev = [
@@ -115,6 +126,7 @@ exclude_lines = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["."]
 filterwarnings = [
