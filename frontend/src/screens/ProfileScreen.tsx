@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
 import Constants from 'expo-constants';
 import type React from 'react';
 import { useState } from 'react';
@@ -326,6 +327,47 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   Choosing another background stops using your photo. It stays
                   in your photo library.
                 </Text>
+              ) : null}
+              {hasPhoto || workspaceAppearance.background !== 'none' ? (
+                <>
+                  <SectionLabel
+                    emoji="🌫️"
+                    label="Background opacity"
+                    className="mt-4 mb-2"
+                  />
+                  <View className="flex-row items-center gap-3 bg-card dark:bg-card-dark border border-card-line dark:border-card-line-dark rounded-2xl px-4 py-1">
+                    <Ionicons
+                      name="image-outline"
+                      size={16}
+                      color={colors['card-ink-muted']}
+                      accessible={false}
+                    />
+                    <Slider
+                      accessibilityLabel="Background opacity"
+                      style={{ flex: 1, height: 40 }}
+                      minimumValue={0}
+                      maximumValue={100}
+                      step={5}
+                      value={Math.round(
+                        workspaceAppearance.backgroundOpacity * 100
+                      )}
+                      onValueChange={(percent) =>
+                        setWorkspaceAppearance({
+                          ...workspaceAppearance,
+                          backgroundOpacity: percent / 100,
+                        })
+                      }
+                      minimumTrackTintColor={colors['card-accent']}
+                      maximumTrackTintColor={colors['card-line']}
+                    />
+                    <Ionicons
+                      name="image"
+                      size={24}
+                      color={colors['card-ink-muted']}
+                      accessible={false}
+                    />
+                  </View>
+                </>
               ) : null}
             </View>
 

@@ -57,6 +57,11 @@ export function ImmersiveScreenShell({ children }: { children: ReactNode }) {
           className="absolute inset-0"
         />
       )}
+      <View
+        pointerEvents="none"
+        className="absolute inset-0 bg-canvas dark:bg-canvas-dark"
+        style={{ opacity: 1 - workspaceAppearance.backgroundOpacity }}
+      />
       {children}
     </View>
   );
@@ -304,7 +309,7 @@ export function FloatingActions({
         }}
         disabled={inactive}
         onPress={() => setOpen((value) => !value)}
-        className="w-[72px] h-[72px] items-center justify-center rounded-full bg-ink dark:bg-ink-dark"
+        className="w-[72px] h-[72px] items-center justify-center rounded-full bg-ink/80 dark:bg-ink-dark/80"
         style={({ pressed }) => ({
           boxShadow: FLOATING_SHADOW,
           opacity: inactive && !loading ? 0.5 : 1,

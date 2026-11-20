@@ -31,7 +31,6 @@ export function WorkspacePhotoBackdrop({
         onError={() => onError(photoId)}
         className="w-full h-full"
       />
-      <View className="absolute inset-0 bg-canvas dark:bg-canvas-dark opacity-60" />
       <View
         className="absolute inset-x-0 top-0 h-[360px]"
         style={{
