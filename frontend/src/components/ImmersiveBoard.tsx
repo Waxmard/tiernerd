@@ -208,7 +208,7 @@ export function NavProfileButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-export const FLOATING_ACTIONS_CLEARANCE = 88;
+export const FLOATING_ACTIONS_CLEARANCE = 80;
 const FLOATING_SHADOW = '0px 4px 12px 0px rgba(10, 24, 48, 0.28)';
 
 interface FloatingOption {
@@ -275,23 +275,23 @@ export function FloatingActions({
                     setOpen(false);
                     option.onPress();
                   }}
-                  className="min-h-[48px] flex-row items-center gap-2 rounded-full bg-surface dark:bg-surface-dark px-5"
+                  className="min-h-[56px] flex-row items-center gap-2.5 rounded-full bg-surface dark:bg-surface-dark px-6"
                   style={({ pressed }) => ({
                     boxShadow: FLOATING_SHADOW,
                     opacity: option.disabled ? 0.5 : pressed ? 0.7 : 1,
                   })}
                 >
                   {option.emoji ? (
-                    <Emoji symbol={option.emoji} size={18} />
+                    <Emoji symbol={option.emoji} size={22} />
                   ) : (
                     <Ionicons
                       name="add"
-                      size={20}
+                      size={24}
                       color={colors.ink}
                       accessible={false}
                     />
                   )}
-                  <Text className="font-display font-semibold text-[16px] leading-6 text-ink dark:text-ink-dark">
+                  <Text className="font-display font-semibold text-[18px] leading-7 text-ink dark:text-ink-dark">
                     {option.label}
                   </Text>
                 </Pressable>
@@ -309,7 +309,7 @@ export function FloatingActions({
         }}
         disabled={inactive}
         onPress={() => setOpen((value) => !value)}
-        className="w-[72px] h-[72px] items-center justify-center rounded-full bg-ink/80 dark:bg-ink-dark/80"
+        className="w-[64px] h-[64px] items-center justify-center rounded-full bg-ink/80 dark:bg-ink-dark/80"
         style={({ pressed }) => ({
           boxShadow: FLOATING_SHADOW,
           opacity: inactive && !loading ? 0.5 : 1,
@@ -328,7 +328,7 @@ export function FloatingActions({
           >
             <Ionicons
               name="add"
-              size={36}
+              size={32}
               color={colors.surface}
               accessible={false}
             />
