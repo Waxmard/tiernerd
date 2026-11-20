@@ -14,7 +14,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ImmersiveScreenShell,
-  ScreenTopBar,
+  NavBackButton,
+  NavBarTitle,
+  ScreenNavBar,
+  useScrolledPast,
 } from '../components/ImmersiveBoard';
 import { Emoji, SectionLabel } from '../design-system/components';
 import type { RootStackScreenProps } from '../navigation/types';
@@ -24,14 +27,20 @@ import { useTheme, useThemeColors } from '../providers/ThemeProvider';
 import { ApiError, getApiErrorMessage } from '../services/apiError';
 import { authService } from '../services/authService';
 import { pickLocalPhoto } from '../services/photoPicker';
-import type { ThemePreference } from '../services/themePreference';
+import type {
+  ThemePreference,
+  WorkspaceBackground,
+} from '../services/themePreference';
 import { confirmDestructive } from '../utils/confirm';
 
 type ProfileScreenProps = RootStackScreenProps<'Profile'>;
 
 const BACKGROUND_OPTIONS = [
-  { label: 'Built-in landscape', value: 'landscape', emoji: '🏞️' },
-  { label: 'Solid canvas', value: 'none', emoji: '⬜' },
+  { label: 'Ridgeline', value: 'landscape', emoji: '🏞️' },
+  { label: 'Dusk', value: 'dusk', emoji: '🌇' },
+  { label: 'Meadow', value: 'meadow', emoji: '🌿' },
+  { label: 'Shore', value: 'shore', emoji: '🏖️' },
+  { label: 'Solid', value: 'none', emoji: '⬜' },
   { label: 'My photo', value: 'photo', emoji: '🖼️' },
 ] as const;
 
@@ -108,7 +117,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       'Could not save the background photo. Try again.'
     );
 
-  const chooseBuiltInBackground = async (background: 'landscape' | 'none') => {
+  const nav = useScrolledPast();
+  const chooseBuiltInBackground = async (background: WorkspaceBackground) => {
     if (
       hasPhoto &&
       !(await confirmDestructive(
@@ -132,38 +142,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   return (
     <ImmersiveScreenShell>
-      <ScreenTopBar>
-        <View className="w-full max-w-[560px] self-center flex-row items-center justify-between px-2 pt-3 pb-2">
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            onPress={handleBack}
-            className="min-w-[44px] min-h-[44px] justify-center items-center"
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={28}
-              color={colors['on-bar']}
-              accessible={false}
-            />
-          </TouchableOpacity>
-          <Text
-            className="text-headline-small font-semibold text-on-bar dark:text-on-bar-dark"
-            accessibilityRole="header"
-          >
-            Profile
-          </Text>
-          <View className="w-11 h-11" />
-        </View>
-      </ScreenTopBar>
+      <ScreenNavBar scrolled={nav.scrolled} maxWidthClass="max-w-[560px]">
+        <NavBackButton
+          label="Lists"
+          compact={nav.scrolled}
+          onPress={handleBack}
+        />
+        <NavBarTitle visible={nav.scrolled}>Profile</NavBarTitle>
+        {nav.scrolled ? <View className="w-11" /> : null}
+      </ScreenNavBar>
       <SafeAreaView className="flex-1" edges={['bottom', 'left', 'right']}>
         <ScrollView
           contentContainerClassName="w-full grow"
+          onScroll={nav.onScroll}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
         >
-          <View className="w-full max-w-[560px] self-center px-4 pb-4 pt-4">
+          <View className="w-full max-w-[560px] self-center px-4 pb-4 pt-1">
+            <Text
+              onLayout={nav.onTitleLayout}
+              accessibilityRole="header"
+              className="mb-4 font-display-bold text-[32px] leading-[38px] tracking-[-0.4px] text-ink dark:text-ink-dark"
+            >
+              Profile
+            </Text>
             <View className="flex-row items-center gap-4 mb-4">
               {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
                 <Image

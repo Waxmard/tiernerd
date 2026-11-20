@@ -39,7 +39,7 @@ export const ItemRankBadge: React.FC<ItemRankBadgeProps> = ({
   }
 
   const tintClass = 'bg-accent-tint dark:bg-accent-tint-dark';
-  const primaryColor = colors['accent-text'];
+  const primaryColor = colors.ink;
   const secondaryColor = colors['ink-muted'];
   const sizeClass =
     size === 'lg'

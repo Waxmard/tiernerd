@@ -124,6 +124,7 @@ export function ListRankingOptions({
   onVisibilityChange,
   missingEmojiCount,
   onFillEmojis,
+  showTrigger = true,
   ref,
 }: {
   title: string;
@@ -136,7 +137,9 @@ export function ListRankingOptions({
   missingEmojiCount: number;
   onFillEmojis: () => Promise<void>;
   ref?: Ref<ListOptionsHandle>;
+  showTrigger?: boolean;
 }) {
+  const colors = useThemeColors();
   const notify = useNotifyWhenOnline();
   const { isOffline } = useSync();
   const [open, setOpen] = useState(false);
@@ -251,19 +254,27 @@ export function ListRankingOptions({
   };
   return (
     <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="List options"
-        accessibilityState={{ disabled }}
-        disabled={disabled}
-        onPress={() => openOptions()}
-        style={({ pressed }) =>
-          pressed && !disabled ? { opacity: 0.7 } : undefined
-        }
-        className="w-11 h-11 items-center justify-center shrink-0"
-      >
-        <Emoji symbol="⚙️" size={22} dimmed={disabled} />
-      </Pressable>
+      {showTrigger ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="List options"
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={() => openOptions()}
+          style={({ pressed }) =>
+            pressed && !disabled ? { opacity: 0.7 } : undefined
+          }
+          className="w-11 h-11 items-center justify-center shrink-0"
+        >
+          <Ionicons
+            name="settings-outline"
+            size={24}
+            color={colors['ink-muted']}
+            accessible={false}
+            style={{ opacity: disabled ? 0.4 : 1 }}
+          />
+        </Pressable>
+      ) : null}
       <SheetModal
         visible={open}
         accessibilityLabel="List options"

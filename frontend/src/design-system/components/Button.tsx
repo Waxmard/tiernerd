@@ -2,12 +2,7 @@ import type React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { useThemeColors } from '../../providers/ThemeProvider';
 
-type ButtonVariant =
-  | 'primary'
-  | 'secondary'
-  | 'text'
-  | 'on-bar'
-  | 'on-bar-text';
+type ButtonVariant = 'primary' | 'secondary' | 'text';
 type ButtonSize = 'small' | 'medium' | 'large';
 
 interface ButtonProps {
@@ -28,8 +23,6 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
   primary: 'bg-accent dark:bg-accent-dark',
   secondary: 'border border-control dark:border-control-dark',
   text: '',
-  'on-bar': 'bg-on-bar dark:bg-on-bar-dark',
-  'on-bar-text': '',
 };
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
@@ -48,8 +41,6 @@ const VARIANT_TEXT_CLASS: Record<ButtonVariant, string> = {
   primary: 'text-on-accent dark:text-on-accent-dark',
   secondary: 'text-ink dark:text-ink-dark',
   text: 'text-accent-text dark:text-accent-text-dark',
-  'on-bar': 'text-bar dark:text-bar-dark',
-  'on-bar-text': 'text-on-bar dark:text-on-bar-dark',
 };
 
 export const Button: React.FC<ButtonProps> = ({
@@ -67,14 +58,13 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const colors = useThemeColors();
   const isDisabled = disabled || loading;
-  const onBarText = variant === 'on-bar-text';
   const classes = [
     'flex-row items-center justify-center rounded-[10px]',
     VARIANT_CLASS[variant],
     SIZE_CLASS[size],
     fullWidth ? 'w-full' : '',
     isDisabled
-      ? variant === 'text' || onBarText
+      ? variant === 'text'
         ? ''
         : 'bg-surface-muted dark:bg-surface-muted-dark border border-control dark:border-control-dark'
       : '',
@@ -86,11 +76,7 @@ export const Button: React.FC<ButtonProps> = ({
     'shrink font-semibold',
     TEXT_SIZE_CLASS[size],
     VARIANT_TEXT_CLASS[variant],
-    isDisabled
-      ? onBarText
-        ? 'opacity-40'
-        : 'text-ink-disabled dark:text-ink-disabled-dark'
-      : '',
+    isDisabled ? 'text-ink-disabled dark:text-ink-disabled-dark' : '',
     textClassName ?? '',
   ]
     .filter(Boolean)
@@ -123,13 +109,11 @@ export const Button: React.FC<ButtonProps> = ({
         {loading && (
           <ActivityIndicator
             color={
-              onBarText
-                ? colors['on-bar']
-                : isDisabled
-                  ? colors['ink-disabled']
-                  : variant === 'primary'
-                    ? colors['on-accent']
-                    : colors['accent-text']
+              isDisabled
+                ? colors['ink-disabled']
+                : variant === 'primary'
+                  ? colors['on-accent']
+                  : colors['accent-text']
             }
             size="small"
             className="ml-2"

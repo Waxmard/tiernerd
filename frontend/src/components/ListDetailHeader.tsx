@@ -1,14 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import type React from 'react';
-import { useRef } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import type { Ref } from 'react';
+import type { LayoutChangeEvent } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Button, Emoji } from '../design-system/components';
 import type { ListIcon } from '../design-system/tokens/colors';
 import { useTheme } from '../providers/ThemeProvider';
@@ -17,227 +10,228 @@ import type {
   ListOptionsInput,
   ListRankingMode,
 } from '../services/listsService';
-import { ScreenTopBar } from './ImmersiveBoard';
+import {
+  NavBackButton,
+  NavBarTitle,
+  NavIconButton,
+  ScreenNavBar,
+} from './ImmersiveBoard';
 import {
   type ListOptionsHandle,
   ListRankingOptions,
 } from './ListRankingOptions';
 
-interface ListDetailHeaderProps {
+interface ListNavBarProps {
   title: string;
   icon: ListIcon | null;
+  scrolled: boolean;
+  description: string | null;
+  optionsKey: string;
+  rankingMode: ListRankingMode;
+  optionsDisabled: boolean;
+  optionsRef: Ref<ListOptionsHandle>;
+  onSaveOptions: (options: ListOptionsInput) => Promise<void>;
+  onOptionsVisibilityChange: (open: boolean) => void;
+  missingEmojiCount: number;
+  onFillEmojis: () => Promise<void>;
+  addDisabled: boolean;
+  onAdd: () => void;
+  deleteDisabled: boolean;
+  onBack: () => void;
+  onDelete: () => void;
+}
+
+export function ListNavBar({
+  title,
+  icon,
+  scrolled,
+  description,
+  optionsKey,
+  rankingMode,
+  optionsDisabled,
+  optionsRef,
+  onSaveOptions,
+  onOptionsVisibilityChange,
+  missingEmojiCount,
+  onFillEmojis,
+  addDisabled,
+  onAdd,
+  deleteDisabled,
+  onBack,
+  onDelete,
+}: ListNavBarProps) {
+  const emoji = listIconEmoji(icon);
+  return (
+    <ScreenNavBar scrolled={scrolled}>
+      <NavBackButton label="Lists" compact={scrolled} onPress={onBack} />
+      <NavBarTitle visible={scrolled}>
+        {emoji ? `${emoji} ${title}` : title}
+      </NavBarTitle>
+      {scrolled ? (
+        <NavIconButton
+          name="add"
+          label="Add item"
+          tone="accent"
+          onPress={onAdd}
+          disabled={addDisabled}
+        />
+      ) : null}
+      <ListRankingOptions
+        ref={optionsRef}
+        key={optionsKey}
+        showTrigger={!scrolled}
+        title={title}
+        description={description}
+        rankingMode={rankingMode}
+        icon={icon}
+        disabled={optionsDisabled}
+        onSave={onSaveOptions}
+        onVisibilityChange={onOptionsVisibilityChange}
+        missingEmojiCount={missingEmojiCount}
+        onFillEmojis={onFillEmojis}
+      />
+      {scrolled ? null : (
+        <NavIconButton
+          name="trash-outline"
+          label="Delete list"
+          onPress={onDelete}
+          disabled={deleteDisabled}
+        />
+      )}
+    </ScreenNavBar>
+  );
+}
+
+interface ListTitleBlockProps {
+  title: string;
+  icon: ListIcon | null;
+  description: string | null;
   addDisabled: boolean;
   addLoading: boolean;
   onAdd: () => void;
   onSuggest: () => void;
   suggestDisabled: boolean;
   suggestLoading: boolean;
-  description: string | null;
-  deleteDisabled: boolean;
-  optionsKey: string;
-  rankingMode: ListRankingMode;
   optionsDisabled: boolean;
-  onSaveOptions: (options: ListOptionsInput) => Promise<void>;
-  onOptionsVisibilityChange: (open: boolean) => void;
-  missingEmojiCount: number;
-  onFillEmojis: () => Promise<void>;
-  onBack: () => void;
-  onDelete: () => void;
+  onOpenOptions: (target: 'title' | 'description' | 'icon') => void;
+  onTitleLayout: (event: LayoutChangeEvent) => void;
 }
 
-export const ListDetailHeader: React.FC<ListDetailHeaderProps> = ({
+export function ListTitleBlock({
   title,
   icon,
+  description,
   addDisabled,
   addLoading,
   onAdd,
   onSuggest,
   suggestDisabled,
   suggestLoading,
-  description,
-  deleteDisabled,
-  optionsKey,
-  rankingMode,
   optionsDisabled,
-  onSaveOptions,
-  onOptionsVisibilityChange,
-  missingEmojiCount,
-  onFillEmojis,
-  onBack,
-  onDelete,
-}) => {
+  onOpenOptions,
+  onTitleLayout,
+}: ListTitleBlockProps) {
   const { colors } = useTheme();
-  const optionsRef = useRef<ListOptionsHandle>(null);
   const emoji = listIconEmoji(icon);
-  const { height: windowHeight } = useWindowDimensions();
   const titleLength = Array.from(title).length;
   const titleClass =
-    titleLength <= 28
-      ? 'text-headline-small py-1.5'
-      : titleLength <= 56
-        ? 'text-title-medium py-2.5'
-        : 'text-title-small py-2.5';
+    titleLength <= 24
+      ? 'text-[32px] leading-[38px]'
+      : titleLength <= 48
+        ? 'text-[26px] leading-[32px]'
+        : 'text-[22px] leading-[28px]';
   return (
-    <ScreenTopBar>
-      <ScrollView
-        style={{ flexGrow: 0, maxHeight: windowHeight * 0.5 }}
-        alwaysBounceVertical={false}
-        nestedScrollEnabled
-        showsVerticalScrollIndicator
-        indicatorStyle="white"
+    <View className="px-1 pt-1 pb-4">
+      {!emoji ? null : addLoading ? (
+        <View accessible={false} className="h-12" />
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`List emoji: ${emoji}`}
+          accessibilityHint="Opens the emoji picker"
+          accessibilityState={{ disabled: optionsDisabled }}
+          disabled={optionsDisabled}
+          className="self-start h-12 justify-center"
+          hitSlop={10}
+          onPress={() => onOpenOptions('icon')}
+          style={({ pressed }) =>
+            pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+          }
+        >
+          <Emoji symbol={emoji} size={40} />
+        </Pressable>
+      )}
+      <Pressable
+        onLayout={onTitleLayout}
+        accessibilityRole="header"
+        accessibilityLabel={title}
+        accessibilityHint={optionsDisabled ? undefined : 'Edit list title'}
+        onPress={optionsDisabled ? undefined : () => onOpenOptions('title')}
+        className="mt-1"
+        style={({ pressed }) =>
+          pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+        }
       >
-        <View className="w-full max-w-[1280px] self-center px-2 pt-3 pb-2">
-          <View className="flex-row items-start">
-            <TouchableOpacity
-              onPress={onBack}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              className="w-11 h-11 items-center justify-center shrink-0"
-              activeOpacity={0.7}
-            >
+        <Text
+          className={`font-display-bold tracking-[-0.4px] text-ink dark:text-ink-dark ${titleClass}`}
+        >
+          {title}
+        </Text>
+      </Pressable>
+      {description?.trim() ? (
+        <Pressable
+          accessibilityRole={optionsDisabled ? undefined : 'button'}
+          accessibilityHint={
+            optionsDisabled ? undefined : 'Edit list description'
+          }
+          onPress={
+            optionsDisabled ? undefined : () => onOpenOptions('description')
+          }
+          className="mt-1.5 min-h-11 justify-center"
+          hitSlop={10}
+          style={({ pressed }) =>
+            pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
+          }
+        >
+          <Text className="text-prose-large text-ink-muted dark:text-ink-muted-dark">
+            {description}
+          </Text>
+        </Pressable>
+      ) : null}
+      {addLoading ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          className="mt-1 text-body-small text-ink-muted dark:text-ink-muted-dark"
+        >
+          Loading list…
+        </Text>
+      ) : null}
+      <View className="mt-3 flex-row flex-wrap items-center gap-2">
+        <Button
+          title="Add item"
+          onPress={onAdd}
+          disabled={addDisabled}
+          loading={addLoading}
+          icon={
+            addLoading ? undefined : (
               <Ionicons
-                name="chevron-back"
-                size={28}
-                color={colors['on-bar']}
+                name="add"
+                size={20}
+                color={colors['on-accent']}
                 accessible={false}
               />
-            </TouchableOpacity>
-            {!emoji ? null : addLoading ? (
-              <View accessible={false} className="w-6 h-11 mr-2" />
-            ) : (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`List emoji: ${emoji}`}
-                accessibilityHint="Opens the emoji picker"
-                accessibilityState={{ disabled: optionsDisabled }}
-                disabled={optionsDisabled}
-                className="w-6 h-11 mr-2 items-center justify-center"
-                hitSlop={10}
-                onPress={() => optionsRef.current?.open('icon')}
-                style={({ pressed }) =>
-                  pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
-                }
-              >
-                <Emoji symbol={emoji} size={24} />
-              </Pressable>
-            )}
-            <Pressable
-              accessibilityRole="header"
-              accessibilityLabel={title}
-              accessibilityHint={
-                optionsDisabled ? undefined : 'Edit list title'
-              }
-              onPress={
-                optionsDisabled
-                  ? undefined
-                  : () => optionsRef.current?.open('title')
-              }
-              className="flex-1 min-w-0 min-h-11"
-              style={({ pressed }) =>
-                pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
-              }
-            >
-              <Text
-                className={`${titleClass} text-on-bar dark:text-on-bar-dark text-left`}
-              >
-                {title}
-              </Text>
-            </Pressable>
-            <ListRankingOptions
-              ref={optionsRef}
-              key={optionsKey}
-              title={title}
-              description={description}
-              rankingMode={rankingMode}
-              icon={icon}
-              disabled={optionsDisabled}
-              onSave={onSaveOptions}
-              onVisibilityChange={onOptionsVisibilityChange}
-              missingEmojiCount={missingEmojiCount}
-              onFillEmojis={onFillEmojis}
-            />
-            <TouchableOpacity
-              onPress={onDelete}
-              disabled={deleteDisabled}
-              accessibilityRole="button"
-              accessibilityLabel="Delete list"
-              accessibilityState={{ disabled: deleteDisabled }}
-              className="w-11 h-11 items-center justify-center shrink-0"
-              activeOpacity={0.7}
-            >
-              <Emoji symbol="🗑️" size={22} dimmed={deleteDisabled} />
-            </TouchableOpacity>
-          </View>
-          {description?.trim() ? (
-            <ScrollView
-              className="max-h-[66px]"
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-              indicatorStyle="white"
-            >
-              <Pressable
-                accessibilityRole={optionsDisabled ? undefined : 'button'}
-                accessibilityHint={
-                  optionsDisabled ? undefined : 'Edit list description'
-                }
-                onPress={
-                  optionsDisabled
-                    ? undefined
-                    : () => optionsRef.current?.open('description')
-                }
-                className={`${emoji ? 'pl-[76px]' : 'pl-11'} pr-2 min-h-11 justify-center`}
-                hitSlop={10}
-                style={({ pressed }) =>
-                  pressed && !optionsDisabled ? { opacity: 0.7 } : undefined
-                }
-              >
-                <Text className="text-prose-medium text-on-bar-muted dark:text-on-bar-muted-dark">
-                  {description}
-                </Text>
-              </Pressable>
-            </ScrollView>
-          ) : null}
-          {addLoading ? (
-            <Text
-              accessibilityLiveRegion="polite"
-              className="text-body-small text-on-bar-muted dark:text-on-bar-muted-dark pl-11 pr-2 pb-1"
-            >
-              Loading list…
-            </Text>
-          ) : null}
-          <View className="flex-row justify-between gap-2">
-            <Button
-              icon={<Emoji symbol="✨" size={18} />}
-              title="Suggest next"
-              onPress={onSuggest}
-              disabled={suggestDisabled}
-              loading={suggestLoading}
-              variant="on-bar-text"
-              size="small"
-              className="shrink"
-            />
-            <Button
-              title="Add item"
-              onPress={onAdd}
-              disabled={addDisabled}
-              loading={addLoading}
-              variant="on-bar-text"
-              size="small"
-              className="shrink"
-              icon={
-                addLoading ? undefined : (
-                  <Ionicons
-                    name="add"
-                    size={20}
-                    color={colors['on-bar']}
-                    accessible={false}
-                  />
-                )
-              }
-            />
-          </View>
-        </View>
-      </ScrollView>
-    </ScreenTopBar>
+            )
+          }
+        />
+        <Button
+          icon={<Emoji symbol="✨" size={18} />}
+          title="Suggest next"
+          onPress={onSuggest}
+          disabled={suggestDisabled}
+          loading={suggestLoading}
+          variant="text"
+        />
+      </View>
+    </View>
   );
-};
+}

@@ -28,7 +28,10 @@ import { EmojiPickerModal } from '../components/EmojiPicker';
 import {
   ImmersiveScreenShell,
   ListIdentityBadge,
-  ScreenTopBar,
+  NavBarTitle,
+  NavIconButton,
+  ScreenNavBar,
+  useScrolledPast,
 } from '../components/ImmersiveBoard';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { Button, Emoji, SheetModal } from '../design-system/components';
@@ -538,6 +541,42 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       </TouchableOpacity>
     );
   };
+  const nav = useScrolledPast();
+  const navScrolled = currentSnapshot && nav.scrolled;
+  const titleBlock = (
+    <View className="pt-1">
+      <Text
+        onLayout={nav.onTitleLayout}
+        accessibilityRole="header"
+        className="font-display-bold text-[32px] leading-[38px] tracking-[-0.4px] text-ink dark:text-ink-dark"
+      >
+        My lists
+      </Text>
+      <View className="mt-3 flex-row flex-wrap items-center gap-2">
+        <Button
+          title="New list"
+          onPress={() => setModalStep('create')}
+          icon={
+            <Ionicons
+              name="add"
+              size={20}
+              color={colors['on-accent']}
+              accessible={false}
+            />
+          }
+          accessibilityLabel="Create new list"
+        />
+        <Button
+          icon={<Emoji symbol="✨" size={18} />}
+          title="Suggest list"
+          variant="text"
+          loading={isSuggesting}
+          disabled={isOffline || !token || modalStep !== null}
+          onPress={() => void handleSuggestList()}
+        />
+      </View>
+    </View>
+  );
   const content = currentSnapshot ? (
     <FlatList
       key={columns}
@@ -554,6 +593,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         paddingBottom: 16 + safeAreaInsets.bottom,
         gap: 12,
       }}
+      ListHeaderComponent={titleBlock}
+      onScroll={nav.onScroll}
+      scrollEventThrottle={16}
       ListEmptyComponent={
         <TouchableOpacity
           accessibilityRole="button"
@@ -575,97 +617,81 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       }
     />
   ) : loadFailed && !isLoading ? (
-    <View className="w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-8 dark:border-line-dark dark:bg-surface-dark">
-      <Emoji symbol="⚠️" size={40} />
-      <View className="items-center gap-1">
-        <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
-          Couldn't load your lists
-        </Text>
-        <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
-          Check your connection and try again.
-        </Text>
+    <>
+      {titleBlock}
+      <View className="mt-3 w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-8 dark:border-line-dark dark:bg-surface-dark">
+        <Emoji symbol="⚠️" size={40} />
+        <View className="items-center gap-1">
+          <Text className="text-title-medium font-semibold text-center text-ink dark:text-ink-dark">
+            Couldn't load your lists
+          </Text>
+          <Text className="text-body-medium text-center text-ink-muted dark:text-ink-muted-dark">
+            Check your connection and try again.
+          </Text>
+        </View>
+        <Button
+          title="Try again"
+          variant="secondary"
+          size="small"
+          onPress={() => void fetchLists()}
+        />
       </View>
-      <Button
-        title="Try again"
-        variant="secondary"
-        size="small"
-        onPress={() => void fetchLists()}
-      />
-    </View>
+    </>
   ) : (
-    <View className="flex-1 items-center justify-center px-6">
-      <ActivityIndicator size="large" color={colors.accent} />
-    </View>
+    <>
+      {titleBlock}
+      <View className="flex-1 items-center justify-center px-6">
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    </>
   );
   return (
     <ImmersiveScreenShell>
-      <ScreenTopBar>
-        <View
-          className="w-full max-w-[1280px] self-center flex-row items-center gap-2 pt-3 pb-3"
-          style={{ paddingHorizontal: horizontalGutter }}
-        >
-          <Text
-            accessibilityRole="header"
-            numberOfLines={1}
-            className="flex-1 min-w-0 text-headline-small text-on-bar dark:text-on-bar-dark"
-          >
-            My lists
+      <ScreenNavBar scrolled={navScrolled}>
+        {navScrolled ? null : (
+          <Text className="pl-3 text-brand-title text-ink dark:text-ink-dark">
+            TierNerd
           </Text>
-          <Button
-            title="New list"
+        )}
+        <NavBarTitle visible={navScrolled} align="left">
+          My lists
+        </NavBarTitle>
+        {navScrolled ? (
+          <NavIconButton
+            name="add"
+            label="Create new list"
+            tone="accent"
             onPress={() => setModalStep('create')}
-            variant="on-bar"
-            size="small"
-            icon={
-              <Ionicons
-                name="add"
-                size={20}
-                color={colors.bar}
-                accessible={false}
-              />
-            }
-            accessibilityLabel="Create new list"
           />
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Profile')}
-            className="w-11 h-11 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Open profile"
-          >
-            {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
-              <Image
-                source={{ uri: user.photoUrl }}
-                onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
-                resizeMode="cover"
-                className="w-full h-full"
-                accessible={false}
-              />
-            ) : (
-              <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
-                <Emoji symbol="👤" size={20} />
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScreenTopBar>
+        ) : null}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Profile')}
+          className="w-10 h-10 mr-2 shrink-0 rounded-full overflow-hidden bg-surface dark:bg-surface-dark border border-accent-line dark:border-accent-line-dark"
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Open profile"
+        >
+          {user?.photoUrl && user.photoUrl !== failedPhotoUrl ? (
+            <Image
+              source={{ uri: user.photoUrl }}
+              onError={() => setFailedPhotoUrl(user.photoUrl ?? null)}
+              resizeMode="cover"
+              className="w-full h-full"
+              accessible={false}
+            />
+          ) : (
+            <View className="w-full h-full bg-surface dark:bg-surface-dark items-center justify-center">
+              <Emoji symbol="👤" size={20} />
+            </View>
+          )}
+        </TouchableOpacity>
+      </ScreenNavBar>
       <SafeAreaView className="min-h-0 flex-1" edges={['left', 'right']}>
         <View className="w-full max-w-[1280px] self-center flex-1 min-h-0">
           <View
             className="flex-1 min-h-0"
             style={{ marginHorizontal: horizontalGutter }}
           >
-            <View className="flex-row mt-2">
-              <Button
-                icon={<Emoji symbol="✨" size={18} />}
-                title="Suggest list"
-                variant="text"
-                size="small"
-                loading={isSuggesting}
-                disabled={isOffline || !token || modalStep !== null}
-                onPress={() => void handleSuggestList()}
-              />
-            </View>
             <View className="flex-1 min-h-0">{content}</View>
           </View>
         </View>

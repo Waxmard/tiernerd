@@ -9,13 +9,17 @@ import {
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmojiPickerModal } from '../components/EmojiPicker';
-import { ImmersiveScreenShell } from '../components/ImmersiveBoard';
-import { ListDetailHeader } from '../components/ListDetailHeader';
+import {
+  ImmersiveScreenShell,
+  useScrolledPast,
+} from '../components/ImmersiveBoard';
+import { ListNavBar, ListTitleBlock } from '../components/ListDetailHeader';
 import {
   ListDetailItemRow,
   ListItemEmptyState,
 } from '../components/ListDetailItemRow';
 import { ListDetailWorkspaceHost } from '../components/ListDetailWorkspaceHost';
+import type { ListOptionsHandle } from '../components/ListRankingOptions';
 import { useItemEmojiFill } from '../components/useItemEmojiFill';
 import { useItemWorkspace } from '../components/useItemWorkspace';
 import { useListDetailData } from '../components/useListDetailData';
@@ -32,6 +36,7 @@ import { confirmDestructive, notifyError } from '../utils/confirm';
 
 type ListDetailScreenProps = RootStackScreenProps<'ListDetail'>;
 const ROW_TRANSITION = LinearTransition.duration(250);
+const NO_ITEMS: Item[] = [];
 
 export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   route,
@@ -104,6 +109,8 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
   const detailsOpen =
     selectedItemId !== null && dismissedDetailsItemId !== selectedItemId;
   const listRef = useRef<FlatList<Item> | null>(null);
+  const optionsRef = useRef<ListOptionsHandle>(null);
+  const nav = useScrolledPast();
   const selectedItemIdRef = useRef<string | null>(null);
   const consumedCompletedItemIdRef = useRef<string | null>(null);
   const promptHandledRef = useRef(false);
@@ -570,44 +577,69 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
       }
     />
   );
+  const addDisabled =
+    !canMutate ||
+    isDeletingList ||
+    workspace.isBusy ||
+    workspace.mode === 'add';
+  const optionsDisabled =
+    !canMutate || isDeletingList || workspace.isBusy || detailsOpen;
+  const missingEmojiCount = items.filter((item) => !item.icon).length;
+  const titleBlock = (
+    <ListTitleBlock
+      title={detailsTitle}
+      icon={listIcon}
+      description={listDescription}
+      addLoading={isLoadingList}
+      addDisabled={addDisabled}
+      onAdd={() => void handleAddPress()}
+      onSuggest={() => void handleSuggestPress()}
+      suggestLoading={isSuggesting}
+      suggestDisabled={
+        !canMutate ||
+        isDeletingList ||
+        workspace.isBusy ||
+        workspace.mode !== 'closed' ||
+        isOffline ||
+        !token
+      }
+      optionsDisabled={optionsDisabled}
+      onOpenOptions={(target) => optionsRef.current?.open(target)}
+      onTitleLayout={nav.onTitleLayout}
+    />
+  );
   const renderListItems = () => {
-    if (isLoadingList && (!hasItemsSnapshot || items.length === 0)) {
-      return (
-        <View className="flex-1 items-center justify-center px-6">
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
-      );
-    }
-    if (items.length === 0 && (hasItemsSnapshot || !itemsError))
-      return (
-        <ListItemEmptyState
-          onAdd={() => void handleAddPress()}
-          disabled={
-            !canMutate ||
-            isDeletingList ||
-            workspace.isBusy ||
-            workspace.mode === 'add'
-          }
-        />
-      );
-
+    const showSpinner =
+      isLoadingList && (!hasItemsSnapshot || items.length === 0);
+    const listEmpty = showSpinner ? (
+      <View className="items-center justify-center px-6 py-16">
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    ) : hasItemsSnapshot || !itemsError ? (
+      <ListItemEmptyState
+        onAdd={() => void handleAddPress()}
+        disabled={addDisabled}
+      />
+    ) : undefined;
     return (
       <Animated.FlatList
         ref={listRef}
         style={{ flex: 1, minHeight: 0 }}
         itemLayoutAnimation={ROW_TRANSITION}
-        data={items}
+        data={showSpinner ? NO_ITEMS : items}
         keyExtractor={(item) => item.item_id}
-        contentContainerStyle={{
-          paddingTop: 16,
-          paddingBottom: 16 + safeAreaInsets.bottom,
-        }}
+        ListHeaderComponent={titleBlock}
+        ListEmptyComponent={listEmpty}
+        contentContainerStyle={{ paddingBottom: 16 + safeAreaInsets.bottom }}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         onScrollToIndexFailed={view.onScrollToIndexFailed}
-        scrollEventThrottle={100}
+        scrollEventThrottle={16}
         onScrollBeginDrag={view.onScrollBeginDrag}
-        onScroll={view.onScroll}
+        onScroll={(event) => {
+          view.onScroll(event);
+          nav.onScroll(event);
+        }}
         onContentSizeChange={view.onContentSizeChange}
       />
     );
@@ -615,37 +647,21 @@ export const ListDetailScreen: React.FC<ListDetailScreenProps> = ({
 
   return (
     <ImmersiveScreenShell>
-      <ListDetailHeader
+      <ListNavBar
         title={detailsTitle}
         icon={listIcon}
+        scrolled={nav.scrolled}
         description={listDescription}
-        addLoading={isLoadingList}
         optionsKey={screenIdentity}
         rankingMode={rankingMode}
-        optionsDisabled={
-          !canMutate || isDeletingList || workspace.isBusy || detailsOpen
-        }
+        optionsDisabled={optionsDisabled}
+        optionsRef={optionsRef}
         onSaveOptions={updateListOptions}
         onOptionsVisibilityChange={setOptionsOpen}
-        missingEmojiCount={items.filter((item) => !item.icon).length}
+        missingEmojiCount={missingEmojiCount}
         onFillEmojis={fillMissing}
-        addDisabled={
-          !canMutate ||
-          isDeletingList ||
-          workspace.isBusy ||
-          workspace.mode === 'add'
-        }
+        addDisabled={addDisabled || isLoadingList}
         onAdd={() => void handleAddPress()}
-        onSuggest={() => void handleSuggestPress()}
-        suggestLoading={isSuggesting}
-        suggestDisabled={
-          !canMutate ||
-          isDeletingList ||
-          workspace.isBusy ||
-          workspace.mode !== 'closed' ||
-          isOffline ||
-          !token
-        }
         deleteDisabled={!canMutate || workspace.isBusy || isDeletingList}
         onBack={() => navigation.goBack()}
         onDelete={() => void handleDeleteList()}

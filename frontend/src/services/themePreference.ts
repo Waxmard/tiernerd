@@ -6,7 +6,14 @@ export function parseThemePreference(raw: string | null): ThemePreference {
   return raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system';
 }
 
-export type WorkspaceBackground = 'landscape' | 'none';
+export const WORKSPACE_SCENES = [
+  'landscape',
+  'dusk',
+  'meadow',
+  'shore',
+] as const;
+export type WorkspaceScene = (typeof WORKSPACE_SCENES)[number];
+export type WorkspaceBackground = WorkspaceScene | 'none';
 
 export interface WorkspaceAppearance {
   background: WorkspaceBackground;
@@ -27,9 +34,10 @@ export function parseWorkspaceAppearance(
     if (!parsed || typeof parsed !== 'object') {
       return DEFAULT_WORKSPACE_APPEARANCE;
     }
+    const stored = parsed.background;
     const background: WorkspaceBackground =
-      parsed.background === 'landscape' || parsed.background === 'none'
-        ? parsed.background
+      stored === 'none' || WORKSPACE_SCENES.some((scene) => scene === stored)
+        ? (stored as WorkspaceBackground)
         : DEFAULT_WORKSPACE_APPEARANCE.background;
     return { background };
   } catch {

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   parseThemePreference,
   parseWorkspaceAppearance,
+  WORKSPACE_SCENES,
 } from './themePreference.ts';
 
 test('defaults to system for missing or unknown values', () => {
@@ -31,8 +32,8 @@ test('parseWorkspaceAppearance defaults missing or malformed values', () => {
   );
 });
 
-test('parseWorkspaceAppearance round-trips both background modes', () => {
-  for (const background of ['landscape', 'none'] as const) {
+test('parseWorkspaceAppearance round-trips every background', () => {
+  for (const background of [...WORKSPACE_SCENES, 'none'] as const) {
     assert.deepEqual(parseWorkspaceAppearance(JSON.stringify({ background })), {
       background,
     });
