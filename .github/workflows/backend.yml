@@ -27,7 +27,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -43,7 +43,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -59,7 +59,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -74,7 +74,7 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           cache-dependency-glob: "fastapi/uv.lock"
@@ -89,5 +89,5 @@ jobs:
         working-directory: fastapi
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10.4.0
       - run: uv audit --locked --ignore-until-fixed PYSEC-2026-1325 --ignore-until-fixed PYSEC-2024-232
